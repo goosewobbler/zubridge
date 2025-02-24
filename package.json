@@ -29,7 +29,7 @@
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^15.4.3",
-    "prettier": "^3.5.0",
+    "prettier": "^3.5.2",
     "shelljs": "^0.8.5",
     "tsx": "^4.19.2",
     "turbo": "^2.4.1"
