@@ -1,6 +1,6 @@
 {
   "name": "zubridge-electron-example-reducers",
-  "version": "0.0.1",
+  "version": "1.0.0-next.0",
   "description": "An application demonstrating the use of zubridge-electron with Redux-style reducers",
   "main": "./out/main/index.js",
   "type": "module",
