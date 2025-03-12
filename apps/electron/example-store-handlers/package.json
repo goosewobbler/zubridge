@@ -1,6 +1,6 @@
 {
   "name": "zubridge-electron-example-store-handlers",
-  "version": "1.0.0-next.1",
+  "version": "0.0.1-next.3",
   "description": "An application demonstrating the use of zubridge-electron with action handlers which are located in the Zustand store",
   "main": "./out/main/index.js",
   "type": "module",
