@@ -12,3 +12,5 @@ packages:
   - 'packages/electron'
   - 'packages/tauri'
   - 'packages/tauri-v1'
+  - 'packages/types'
+  - 'packages/core'
