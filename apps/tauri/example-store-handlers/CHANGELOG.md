@@ -1,4 +1,6 @@
-# 1.0.0-next.0 (2025-03-12)
+# [1.0.0-next.1](https://github.com/goosewobbler/zubridge/compare/v1.0.0-next.0...v1.0.0-next.1) (2025-03-12)
+
+# [1.0.0-next.0](https://github.com/goosewobbler/zubridge/compare/522ac2fb774c84b3370d11df2a2267f7ae9af677...v1.0.0-next.0) (2025-03-12)
 
 ### Bug Fixes
 

@@ -1,4 +1,6 @@
-# 1.0.0-next.0 (2025-03-12)
+# [1.0.0-next.1](https://github.com/goosewobbler/zubridge/compare/v1.0.0-next.0...v1.0.0-next.1) (2025-03-12)
+
+# [1.0.0-next.0](https://github.com/goosewobbler/zubridge/compare/e1626dd8e8ba601219dd21fbaa5ce6b4cb1a0f5e...v1.0.0-next.0) (2025-03-12)
 
 ### Features
 
