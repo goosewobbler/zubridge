@@ -38,7 +38,7 @@
     "@turbo-version/version": "^0.8.3",
     "@types/shelljs": "^0.8.15",
     "husky": "^9.1.7",
-    "lint-staged": "^15.4.3",
+    "lint-staged": "^15.5.0",
     "prettier": "^3.5.0",
     "shelljs": "^0.9.1",
     "tsx": "^4.19.2",
