@@ -19,13 +19,13 @@
   },
   "dependencies": {
     "@zubridge/electron": "workspace:*",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
-    "@types/react": "^19.0.8",
+    "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.2",
     "electron": "^35.0.1",
@@ -33,6 +33,6 @@
     "electron-vite": "^3.0.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
-    "wdio-electron-service": "^8.0.1"
+    "wdio-electron-service": "^8.0.2"
   }
 }
