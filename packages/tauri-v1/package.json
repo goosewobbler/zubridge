@@ -72,14 +72,14 @@
   "devDependencies": {
     "@tauri-apps/cli": "^1.6.3",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
+    "@testing-library/react": "^16.3.0",
     "@types/shelljs": "^0.8.15",
-    "@vitest/coverage-v8": "^3.0.5",
+    "@vitest/coverage-v8": "^3.1.1",
     "react": "^19.0.0",
-    "rollup": "^4.34.6",
-    "shelljs": "^0.9.1",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "rollup": "^4.39.0",
+    "shelljs": "^0.9.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
   },
   "files": [
     "dist/*",
