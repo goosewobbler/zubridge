@@ -1,0 +1,38 @@
+{
+  "name": "zubridge-tauri-example",
+  "version": "1.0.0-next.1",
+  "description": "An application demonstrating different approaches of using zubridge with Tauri v2",
+  "type": "module",
+  "author": "goosewobbler",
+  "homepage": "https://github.com/goosewobbler/zubridge",
+  "scripts": {
+    "clean": "pnpm clean:output && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml ./dist ./src-tauri/target",
+    "clean:output": "pnpm dlx shx rm -rf ./dist* ./out* ./src-tauri/target",
+    "typecheck:web": "tsc --noEmit -p tsconfig.json --composite false",
+    "typecheck": "pnpm run typecheck:web",
+    "dev": "vite",
+    "build": "pnpm run typecheck && pnpm tauri build",
+    "tauri:dev": "pnpm tauri dev",
+    "dev:basic": "VITE_APP_MODE=basic pnpm tauri dev",
+    "dev:handlers": "VITE_APP_MODE=handlers pnpm tauri dev",
+    "dev:reducers": "VITE_APP_MODE=reducers pnpm tauri dev"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.4.1",
+    "@zubridge/tauri": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.3.1",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.3.2",
+    "@zubridge/types": "workspace:*",
+    "cross-env": "^7.0.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.6"
+  }
+}

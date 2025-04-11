@@ -1,0 +1,6 @@
+{
+  "identifier": "main-capability",
+  "description": "Main application capabilities",
+  "windows": ["main", "runtime_*"],
+  "permissions": ["core:default", "core:webview:allow-create-webview-window", "core:window:allow-close"]
+}

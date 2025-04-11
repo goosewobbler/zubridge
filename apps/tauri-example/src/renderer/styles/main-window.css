@@ -1,0 +1,257 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  color: #1e293b;
+  background-color: #f8fafc;
+}
+
+.container {
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 22px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.window-id {
+  font-weight: bold;
+  color: #4f46e5;
+}
+
+h2 {
+  font-size: 18px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.mode-info {
+  background-color: #e0e7ff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.counter,
+.window-controls,
+.debug-info {
+  background-color: white;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #3b82f6;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #2563eb;
+}
+
+.debug-info {
+  background-color: #f1f5f9;
+}
+
+.debug-info ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.debug-info li {
+  padding: 4px 0;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #f1f5f9;
+    background-color: #0f172a;
+  }
+
+  .window-id {
+    color: #818cf8;
+  }
+
+  .counter,
+  .window-controls {
+    background-color: #1e293b;
+  }
+
+  .mode-info {
+    background-color: #312e81;
+    color: #e0e7ff;
+  }
+
+  .debug-info {
+    background-color: #1e293b;
+  }
+
+  button {
+    background-color: #4f46e5;
+  }
+
+  button:hover {
+    background-color: #4338ca;
+  }
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.content {
+  padding: 20px;
+  margin-top: 20px; /* Space for the fixed header */
+}
+
+/* Counter section */
+.counter-section {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.counter-section h2 {
+  margin-bottom: 15px;
+  font-size: 24px;
+}
+
+/* Window section */
+.window-section {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.window-section h2 {
+  margin-bottom: 15px;
+  font-size: 24px;
+}
+
+/* Info section */
+.info-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.info-section h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 20px;
+  color: #475569;
+}
+
+.info-section p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+/* Dark mode styles for info section */
+@media (prefers-color-scheme: dark) {
+  .info-section {
+    background-color: #1e293b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .info-section h2 {
+    color: #94a3b8;
+  }
+}
+
+/* Button styles */
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+button:active {
+  background-color: #1d4ed8;
+}
+
+/* Dark mode button styles */
+@media (prefers-color-scheme: dark) {
+  button:active {
+    background-color: #3730a3;
+  }
+}
+
+/* Fixed header styles */
+.fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background-color: rgba(0, 0, 255, 0.3);
+  color: white;
+  text-align: center;
+  font-size: 12px;
+  line-height: 20px;
+  z-index: 9999;
+}
+
+/* Dark mode header styles */
+@media (prefers-color-scheme: dark) {
+  .fixed-header {
+    background-color: rgba(0, 0, 128, 0.5);
+  }
+}
+
+.counter.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 20px auto;
+  max-width: 80%;
+}
+
+.counter.centered h2 {
+  margin-bottom: 16px;
+}
+
+.counter.centered .buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* Main window specific styles */
+.app-container .fixed-header {
+  background-color: rgba(59, 130, 246, 0.4); /* Light blue background */
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .app-container .fixed-header {
+    background-color: rgba(96, 165, 250, 0.5); /* Lighter blue in dark mode */
+  }
+}
