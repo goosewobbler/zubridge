@@ -18,7 +18,7 @@ function createReduxAdapter<S>(reduxStore: Store<S>): StoreApi<S> {
     getState: reduxStore.getState,
     getInitialState: reduxStore.getState,
     setState: (_partial, _replace) => {
-      console.warn('setState is not supported for Redux stores, use dispatch instead');
+      throw new Error('setState is not supported for Redux stores. Please use dispatch to update the state.');
     },
     subscribe: (listener) => {
       const unsubscribe = reduxStore.subscribe(() => {
