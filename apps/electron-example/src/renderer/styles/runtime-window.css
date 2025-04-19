@@ -6,79 +6,97 @@ body {
   background-color: #ede9fe;
 }
 
-/* Runtime window specific header */
-.runtime-window .fixed-header {
-  background-color: rgba(109, 40, 217, 0.4);
-}
+/* Runtime window specific header is now using the common black style */
 
 .runtime-window button {
   background-color: #6d28d9;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
 .runtime-window button:hover {
   background-color: #5b21b6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .runtime-window button:active {
   background-color: #4c1d95;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
-/* Vertical window button layout */
+/* Window button group layout */
 .window-button-group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  align-items: center;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
 }
 
 .window-button-group button {
   width: auto;
-  min-width: 160px;
+  min-width: 0;
 }
 
+/* Consistent styling for close/quit buttons regardless of window type */
+.close-button,
 .window-button-group .close-button {
-  background-color: #dc2626;
+  background-color: #ef4444 !important; /* Red for close/quit buttons */
 }
 
+.close-button:hover,
 .window-button-group .close-button:hover {
-  background-color: #b91c1c;
+  background-color: #dc2626 !important; /* Darker red on hover */
 }
 
+.close-button:active,
 .window-button-group .close-button:active {
-  background-color: #991b1b;
+  background-color: #b91c1c !important; /* Even darker red when active */
 }
 
-/* Dark mode overrides */
+/* Dark mode overrides for runtime window */
+body.dark-theme {
+  background-color: #1e1b4b;
+}
+
+body.dark-theme .runtime-window .fixed-header {
+  background-color: rgba(124, 58, 237, 0.5);
+}
+
+body.dark-theme .runtime-window button {
+  background-color: #7c3aed;
+}
+
+body.dark-theme .runtime-window button:hover {
+  background-color: #6d28d9;
+}
+
+body.dark-theme .runtime-window button:active {
+  background-color: #5b21b6;
+}
+
+/* System preference based fallback */
 @media (prefers-color-scheme: dark) {
-  body {
+  body:not(.light-theme):not(.dark-theme) {
     background-color: #1e1b4b;
   }
 
-  .runtime-window .fixed-header {
+  body:not(.light-theme):not(.dark-theme) .runtime-window .fixed-header {
     background-color: rgba(124, 58, 237, 0.5);
   }
 
-  .runtime-window button {
+  body:not(.light-theme):not(.dark-theme) .runtime-window button {
     background-color: #7c3aed;
   }
 
-  .runtime-window button:hover {
+  body:not(.light-theme):not(.dark-theme) .runtime-window button:hover {
     background-color: #6d28d9;
   }
 
-  .runtime-window button:active {
+  body:not(.light-theme):not(.dark-theme) .runtime-window button:active {
     background-color: #5b21b6;
-  }
-
-  .window-button-group .close-button {
-    background-color: #ef4444;
-  }
-
-  .window-button-group .close-button:hover {
-    background-color: #dc2626;
-  }
-
-  .window-button-group .close-button:active {
-    background-color: #b91c1c;
   }
 }

@@ -4,48 +4,13 @@ import fs from 'node:fs';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 
+console.log('ZUBRIDGE_MODE', process.env.ZUBRIDGE_MODE);
+
 // Get the current mode from environment variables
 const mode = process.env.ZUBRIDGE_MODE || 'basic'; // Default to basic if not specified
 const outDir = `out-${mode}`; // Create mode-specific output directory
 
 console.log(`[DEBUG] Mode: ${mode}, OutDir: ${outDir}`);
-
-// Function to update package.json during build
-const updatePackageJsonPlugin = () => {
-  return {
-    name: 'update-package-json',
-    buildStart() {
-      console.log('[DEBUG] Build started for plugin');
-    },
-    buildEnd() {
-      console.log('[DEBUG] Build ended for plugin');
-    },
-    closeBundle: () => {
-      console.log('[DEBUG] Close bundle called for plugin');
-      try {
-        // Read the original package.json
-        const packageJsonPath = resolve(__dirname, 'package.json');
-        console.log(`[DEBUG] Reading package.json from: ${packageJsonPath}`);
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-
-        // Create a modified package.json for the build
-        const modifiedPackageJson = {
-          ...packageJson,
-          main: `./${outDir}/main/index.js`,
-        };
-
-        // Write the modified package.json to the output directory
-        const outputPath = resolve(__dirname, outDir, 'package.json');
-        console.log(`[DEBUG] Writing package.json to: ${outputPath}`);
-        fs.writeFileSync(outputPath, JSON.stringify(modifiedPackageJson, null, 2));
-
-        console.log(`Updated package.json with main field pointing to ${outDir}/main/index.js`);
-      } catch (error) {
-        console.error('[DEBUG] Error in plugin:', error);
-      }
-    },
-  };
-};
 
 // Debug plugin to show output of main build
 const debugPlugin = () => ({
@@ -84,7 +49,7 @@ const debugPlugin = () => ({
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ['@zubridge/electron'] }), debugPlugin(), updatePackageJsonPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ['@zubridge/electron'] }), debugPlugin()],
     build: {
       outDir: join(outDir, 'main'),
       rollupOptions: {

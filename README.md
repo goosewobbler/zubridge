@@ -17,9 +17,7 @@ _Cross-platform state without boundaries: Zustand-inspired simplicity_
 
 > tldr: I want to seamlessly interact with my backend state using Zustand-inspired hooks.
 
-[Zustand](https://github.com/pmndrs/zustand) is a great state management library. As with other state libraries [such as Redux](https://redux.js.org/tutorials/fundamentals/part-4-store#redux-store), it is [recommended](https://zustand.docs.pmnd.rs/guides/flux-inspired-practice#recommended-patterns) that a single store is used in your app.
-
-For cross-platform apps, accessing state across processes presents a challenge due to the IPC boundary.
+[Zustand](https://github.com/pmndrs/zustand) is a great state management library that, like [Redux](https://redux.js.org/tutorials/fundamentals/part-4-store#redux-store), [recommends](https://zustand.docs.pmnd.rs/guides/flux-inspired-practice#recommended-patterns) using a single store for your application. However, in cross-platform apps, this approach faces challenges when state needs to be accessed across process boundaries.
 
 Zubridge solves this by enabling a single store workflow, abstracting away the IPC management and state synchronization between processes.
 
@@ -33,8 +31,9 @@ Zubridge solves this by enabling a single store workflow, abstracting away the I
 #### Electron-specific features
 
 - Works with the latest security model in Electron
+- Supports Zustand and Redux
 - Supports various usage patterns when using Zustand for your main process store (store handlers, separate handlers, Redux-style reducers)
-- Supports thunks, action objects and string actions in both processes
+- Supports dispatching thunks, action objects and string actions in both processes
 
 #### Tauri-specific features
 

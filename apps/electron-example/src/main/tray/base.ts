@@ -67,6 +67,7 @@ export class BaseSystemTray {
       }
     };
     const stateText = `state: ${state.counter ?? 'loading...'}`;
+    const isDarkMode = state.theme?.isDark ?? false;
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'decrement',
@@ -94,7 +95,7 @@ export class BaseSystemTray {
         type: 'normal',
         click: () => {
           dispatch((getState, dispatch) => {
-            const currentValue = (getState().counter as number) || 0;
+            const currentValue = getState().counter || 0;
             console.log(`[Tray] Thunk: Doubling counter from ${currentValue} to ${currentValue * 2}`);
             dispatch('COUNTER:SET', currentValue * 2);
           });
@@ -105,8 +106,21 @@ export class BaseSystemTray {
         label: 'double (action object)',
         type: 'normal',
         click: () => {
-          console.log(`[Tray] Action Object: Doubling counter from ${state.counter} to ${state.counter * 2}`);
-          dispatch({ type: 'COUNTER:SET', payload: state.counter * 2 });
+          const currentValue = state.counter || 0;
+          console.log(`[Tray] Action Object: Doubling counter from ${currentValue} to ${currentValue * 2}`);
+          dispatch({ type: 'COUNTER:SET', payload: currentValue * 2 });
+          showWindow();
+        },
+      },
+      { type: 'separator' },
+      {
+        label: `Switch theme to ${isDarkMode ? 'Light' : 'Dark'}`,
+        type: 'normal',
+        click: () => {
+          console.log(
+            `[Tray] Toggling theme from ${isDarkMode ? 'Dark' : 'Light'} to ${isDarkMode ? 'Light' : 'Dark'}`,
+          );
+          dispatch('THEME:TOGGLE');
           showWindow();
         },
       },

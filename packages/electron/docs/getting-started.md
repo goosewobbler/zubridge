@@ -14,13 +14,70 @@ Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
 
 Zubridge creates a bridge between Electron's main and renderer processes using IPC (Inter-Process Communication). The bridge automatically synchronizes state changes between the main process and all renderer processes, ensuring that all windows stay in sync with the authoritative state.
 
+## Core Setup
+
+Regardless of which state management approach you choose, these setup steps are common to all implementations.
+
+### Preload Script
+
+Create a preload script to expose the Zubridge handlers to the renderer process:
+
+```ts
+// `src/preload.js`
+import { contextBridge } from 'electron';
+import { preloadBridge } from '@zubridge/electron/preload';
+
+const { handlers } = preloadBridge();
+
+// Expose the handlers to the renderer process
+contextBridge.exposeInMainWorld('zubridge', handlers);
+```
+
+### Renderer Process Hooks
+
+In the renderer process, create hooks to access the store and dispatch actions:
+
+```ts
+// `src/renderer/hooks/useStore.ts`
+import { createUseStore } from '@zubridge/electron';
+import type { AppState } from '../../types/index.js';
+
+// Create a hook to access the store
+export const useStore = createUseStore<AppState>();
+```
+
+Then use these hooks in your components:
+
+```tsx
+// `src/renderer/App.tsx`
+import { useStore } from './hooks/useStore.js';
+import { useDispatch } from '@zubridge/electron';
+import type { AppState } from '../types/index.js';
+
+export function App() {
+  const counter = useStore((state: AppState) => state.counter);
+  const dispatch = useDispatch<AppState>();
+
+  return (
+    <div>
+      <p>Counter: {counter}</p>
+      <button onClick={() => dispatch('INCREMENT')}>Increment</button>
+      <button onClick={() => dispatch('DECREMENT')}>Decrement</button>
+      <button onClick={() => dispatch({ type: 'SET_COUNTER', payload: 0 })}>Reset</button>
+    </div>
+  );
+}
+```
+
 ## Choosing an Approach
 
-There are two main approaches to using the Electron backend contract:
+There are three main approaches to using the Electron backend contract:
 
 1. **Zustand Adapter**: If you're already using Zustand, this is the easiest path. Use `createZustandBridge` to adapt your existing Zustand store.
 
-2. **Generic Bridge**: For more flexibility or if you're using another state management solution, implement the `StateManager` interface and use `createGenericBridge`.
+2. **Redux Adapter**: If you're using Redux for state management, use `createReduxBridge` to integrate your Redux store.
+
+3. **Custom State Manager**: For more flexibility or if you're using another state management solution, implement the `StateManager` interface and use `createCoreBridge`.
 
 ## Approach 1: Using the Zustand Adapter
 
@@ -31,7 +88,7 @@ First, create the Zustand store for your application using `zustand/vanilla` in 
 ```ts
 // `src/main/store.ts`
 import { createStore } from 'zustand/vanilla';
-import type { AppState } from '../features/index.js';
+import type { AppState } from '../types/index.js';
 
 const initialState: AppState = {
   counter: 0,
@@ -68,58 +125,67 @@ const { unsubscribe } = createZustandBridge(store, [mainWindow]);
 app.on('quit', unsubscribe);
 ```
 
-### Setup Preload Script
+## Approach 2: Using the Redux Adapter
 
-Create a preload script to expose the handlers to the renderer process:
+If you're using Redux for state management, you can integrate it seamlessly with Zubridge.
 
-```ts
-// `src/preload.js`
-import { contextBridge } from 'electron';
-import { preloadBridge } from '@zubridge/electron/preload';
+### Create Redux Store in Main Process
 
-const { handlers } = preloadBridge();
-
-// Expose the handlers to the renderer process
-contextBridge.exposeInMainWorld('zubridge', handlers);
-```
-
-### Create Hook in Renderer Process
-
-In the renderer process, create a hook to access the store:
+Create your Redux store in the main process:
 
 ```ts
-// `src/renderer/hooks/useStore.ts`
-import { createUseStore } from '@zubridge/electron';
-import type { AppState } from '../../features/index.js';
+// `src/main/store.ts`
+import { configureStore } from '@reduxjs/toolkit';
+import counterReducer from './features/counter/counterSlice.js';
 
-// Create a hook to access the store
-export const useStore = createUseStore<AppState>();
+// Create the Redux store
+export const store = configureStore({
+  reducer: {
+    counter: counterReducer,
+  },
+  // Optional middleware configuration
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false, // Helpful for Electron IPC integration
+    }),
+});
+
+// Type inference for your application state
+export type RootState = ReturnType<typeof store.getState>;
 ```
 
-Then use the hook in your components:
+### Initialize Bridge in Main Process
+
+In the main process, instantiate the bridge with your Redux store:
 
 ```ts
-// `src/renderer/App.tsx`
-import { useStore } from './hooks/useStore.js';
-import { useDispatch } from '@zubridge/electron';
-import type { AppState } from '../features/index.js';
+// `src/main/index.ts`
+import { app, BrowserWindow } from 'electron';
+import { createReduxBridge } from '@zubridge/electron/main';
+import { store } from './store.js';
 
-export function App() {
-  const counter = useStore((state: AppState) => state.counter);
-  const dispatch = useDispatch<AppState>();
+// create main window
+const mainWindow = new BrowserWindow({
+  // ...
+  webPreferences: {
+    preload: path.join(__dirname, 'preload.js'),
+    // other options...
+  },
+});
 
-  return (
-    <div>
-      <p>Counter: {counter}</p>
-      <button onClick={() => dispatch('INCREMENT')}>Increment</button>
-    </div>
-  );
-}
+// instantiate bridge
+const { unsubscribe, dispatch } = createReduxBridge(store, [mainWindow]);
+
+// you can dispatch actions directly from the main process
+dispatch({ type: 'counter/initialize', payload: 5 });
+
+// unsubscribe on quit
+app.on('quit', unsubscribe);
 ```
 
-## Approach 2: Using the Generic Bridge
+## Approach 3: Using a Custom State Manager
 
-If you prefer to use your own state management solution or want more control, you can implement the `StateManager` interface and use the generic bridge.
+If you prefer to use your own state management solution or want more control, you can implement the `StateManager` interface and use the core bridge.
 
 ### Create a Custom State Manager
 
@@ -127,7 +193,7 @@ First, create a state manager that implements the required interface:
 
 ```ts
 // `src/main/state-manager.ts`
-import { StateManager } from '@zubridge/electron';
+import type { StateManager } from '@zubridge/electron';
 import type { Action } from '@zubridge/types';
 
 // Define your application state type
@@ -181,12 +247,12 @@ export const stateManager: StateManager<AppState> = {
 
 ### Initialize Bridge in Main Process
 
-Use `createGenericBridge` to connect your state manager to the renderer processes:
+Use `createCoreBridge` to connect your state manager to the renderer processes:
 
 ```ts
 // `src/main/index.ts`
 import { app, BrowserWindow } from 'electron';
-import { createGenericBridge } from '@zubridge/electron/main';
+import { createCoreBridge } from '@zubridge/electron/main';
 import { stateManager } from './state-manager.js';
 
 // create main window
@@ -199,50 +265,10 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe } = createGenericBridge(stateManager, [mainWindow]);
+const { unsubscribe } = createCoreBridge(stateManager, [mainWindow]);
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
-```
-
-### Setup Preload Script
-
-The preload script is the same for both approaches:
-
-```ts
-// `src/preload.js`
-import { contextBridge } from 'electron';
-import { preloadBridge } from '@zubridge/electron/preload';
-
-const { handlers } = preloadBridge();
-
-// Expose the handlers to the renderer process
-contextBridge.exposeInMainWorld('zubridge', handlers);
-```
-
-### Use State in Renderer Process
-
-The renderer process code is also the same, regardless of which approach you use in the main process:
-
-```tsx
-// `src/renderer/App.tsx`
-import { useStore } from './hooks/useStore.js';
-import { useDispatch } from '@zubridge/electron';
-import type { AppState } from '../features/index.js';
-
-export function App() {
-  const counter = useStore((state: AppState) => state.counter);
-  const dispatch = useDispatch<AppState>();
-
-  return (
-    <div>
-      <p>Counter: {counter}</p>
-      <button onClick={() => dispatch('INCREMENT')}>Increment</button>
-      <button onClick={() => dispatch('DECREMENT')}>Decrement</button>
-      <button onClick={() => dispatch('SET_COUNTER', 0)}>Reset</button>
-    </div>
-  );
-}
 ```
 
 ## Advanced Configuration
@@ -294,9 +320,12 @@ For more detailed information about the API:
 
 ## Example Applications
 
-The example app demonstrates all three approaches of using zubridge with Electron:
+The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron-example) demonstrates the different approaches to state management with Zubridge:
 
-- [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron-example)
-  - Basic Mode: Direct store mutation
-  - Handlers Mode: Action handler functions
-  - Reducers Mode: Redux-style reducers
+- **Basic Mode**: Zustand with direct store mutations using `createZustandBridge`
+- **Handlers Mode**: Zustand with dedicated action handler functions using `createZustandBridge`
+- **Reducers Mode**: Zustand with Redux-style reducers using `createZustandBridge`
+- **Redux Mode**: Redux with Redux Toolkit using `createReduxBridge`
+- **Custom Mode**: Custom state manager implementation using `createCoreBridge`
+
+Each example demonstrates the same functionality implemented with different state management patterns, allowing you to compare approaches and choose what works best for your application.

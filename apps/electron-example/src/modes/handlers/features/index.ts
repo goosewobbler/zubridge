@@ -4,10 +4,6 @@ import type { Handler } from '@zubridge/types';
 /**
  * Types for the handlers mode state
  */
-export interface WindowState {
-  isOpen: boolean;
-}
-
 export interface State extends BaseState {}
 
 /**
@@ -21,10 +17,13 @@ export interface CounterHandlers {
   'COUNTER:SET': (value: number) => void;
 }
 
-export interface WindowHandlers {
-  'WINDOW:CREATE': () => void;
-  'WINDOW:CLOSE': (payload?: { windowId?: number }) => void;
+/**
+ * Theme action handlers for the handlers mode
+ */
+export interface ThemeHandlers {
+  'THEME:TOGGLE': () => void;
+  'THEME:SET': (isDark: boolean) => void;
 }
 
 // Define ActionHandlers as a Record<string, Handler> to be compatible with createDispatch
-export type ActionHandlers = Record<string, Handler> & CounterHandlers & WindowHandlers;
+export type ActionHandlers = Record<string, Handler> & CounterHandlers & ThemeHandlers;

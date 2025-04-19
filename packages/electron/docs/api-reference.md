@@ -8,7 +8,7 @@ This document provides a comprehensive reference for the `@zubridge/electron` AP
 
 #### `createCoreBridge(stateManager, windows)`
 
-Creates a core bridge between the main process and renderer processes, using any state manager that implements the `StateManager` interface.
+Creates a core bridge between the main process and renderer processes, using any state manager that implements the `StateManager` interface. This is useful for creating custom bridges with state management libraries not directly supported by Zubridge.
 
 ##### Parameters:
 
@@ -42,7 +42,7 @@ app.on('quit', unsubscribe);
 
 #### `createZustandBridge(store, windows, options?)`
 
-Convenience function that creates a bridge between a Zustand store in the main process and renderer processes. This combines `createZustandAdapter` and `createCoreBridge` internally.
+Creates a bridge between a Zustand store in the main process and renderer processes. This is the recommended way to integrate a Zustand store with Electron's IPC system.
 
 ##### Parameters:
 
@@ -58,8 +58,8 @@ A `ZustandBridge` object with:
 
 - `subscribe(windows)`: Function to subscribe additional windows to the store updates. Returns an object with an `unsubscribe` method.
 - `unsubscribe(windows?)`: Function to unsubscribe windows from the store. When called without arguments, unsubscribes all windows.
-- `getSubscribers()`: Function to get all currently subscribed window IDs.
-- `getSubscribedWindows()`: Alias for `getSubscribers()`.
+- `getSubscribedWindows()`: Function to get all currently subscribed window IDs.
+- `dispatch`: Function to dispatch actions to the store.
 - `destroy()`: Function to clean up resources used by the bridge.
 
 ##### Example:
@@ -72,10 +72,10 @@ import { store } from './store';
 const mainWindow = new BrowserWindow({
   /* options */
 });
-const { unsubscribe, subscribe } = createZustandBridge(store, [mainWindow]);
+const { unsubscribe, subscribe, dispatch } = createZustandBridge(store, [mainWindow]);
 
 // Using with handlers option
-createZustandBridge(store, [mainWindow], {
+const bridge = createZustandBridge(store, [mainWindow], {
   handlers: {
     CUSTOM_ACTION: (payload) => {
       console.log('Custom action received:', payload);
@@ -85,7 +85,7 @@ createZustandBridge(store, [mainWindow], {
 });
 
 // Using with reducer option
-createZustandBridge(store, [mainWindow], {
+const bridgeWithReducer = createZustandBridge(store, [mainWindow], {
   reducer: (state, action) => {
     switch (action.type) {
       case 'SET_VALUE':
@@ -95,6 +95,48 @@ createZustandBridge(store, [mainWindow], {
     }
   },
 });
+
+// Dispatch actions from the main process
+dispatch('INCREMENT');
+
+// Unsubscribe when quitting
+app.on('quit', unsubscribe);
+```
+
+#### `createReduxBridge(store, windows, options?)`
+
+Creates a bridge between a Redux store in the main process and renderer processes. This is the recommended way to integrate a Redux store with Electron's IPC system.
+
+##### Parameters:
+
+- `store`: The Redux store to bridge
+- `windows`: Array of `BrowserWindow`, `BrowserView`, or `WebContentsView` instances to subscribe to the store
+- `options`: Optional configuration object for customizing store integration
+
+##### Returns:
+
+A `ReduxBridge` object with:
+
+- `subscribe(windows)`: Function to subscribe additional windows to the store updates. Returns an object with an `unsubscribe` method.
+- `unsubscribe(windows?)`: Function to unsubscribe windows from the store. When called without arguments, unsubscribes all windows.
+- `getSubscribedWindows()`: Function to get all currently subscribed window IDs.
+- `dispatch`: Function to dispatch actions to the store.
+- `destroy()`: Function to clean up resources used by the bridge.
+
+##### Example:
+
+```ts
+import { app, BrowserWindow } from 'electron';
+import { createReduxBridge } from '@zubridge/electron/main';
+import { store } from './redux-store';
+
+const mainWindow = new BrowserWindow({
+  /* options */
+});
+const { unsubscribe, subscribe, dispatch } = createReduxBridge(store, [mainWindow]);
+
+// Dispatch actions from the main process
+dispatch({ type: 'INCREMENT' });
 
 // Unsubscribe when quitting
 app.on('quit', unsubscribe);
@@ -108,60 +150,35 @@ app.on('quit', unsubscribe);
 
 Same as `createZustandBridge`.
 
-#### `createZustandAdapter(store, options?)`
-
-Creates a Zustand adapter that implements the `StateManager` interface. This wraps a Zustand store to work with the bridge system.
-
-##### Parameters:
-
-- `store`: The Zustand store to adapt
-- `options`: Optional configuration object
-  - `handlers`: Optional object containing store handler functions
-  - `reducer`: Optional root reducer function for Redux-style state management
-
-##### Returns:
-
-A `StateManager<State>` implementation that wraps the Zustand store.
-
-##### Example:
-
-```ts
-import { createZustandAdapter, createCoreBridge } from '@zubridge/electron/main';
-import { store } from './store';
-
-// Create an adapter for a Zustand store
-const stateManager = createZustandAdapter(store);
-
-// Use the adapter with the core bridge
-const bridge = createCoreBridge(stateManager, [mainWindow]);
-```
-
 ### Dispatch APIs
 
 #### `createDispatch(store, options?)`
 
-Creates a dispatch function that can be used in the main process to dispatch actions to the store.
+Creates a dispatch function that can be used in the main process to dispatch actions to the store. This function supports both Zustand and Redux stores.
 
 ##### Parameters:
 
-- `store`: The Zustand store to dispatch actions to
-- `options`: Optional configuration object
-  - `handlers`: Optional object containing store handler functions
-  - `reducer`: Optional root reducer function for Redux-style state management
+- `store`: Either a Zustand store (`StoreApi<State>`) or Redux store (`Store<State>`)
+- `options?`: Optional configuration object
+  - For Zustand stores: can include `handlers` or `reducer` options
+  - For Redux stores: can include Redux-specific integration options
 
 ##### Returns:
 
-A function that can dispatch actions to the store.
+A function that can dispatch actions to the store. This dispatch function supports:
+
+- String action types with optional payload
+- Action objects with type and payload
+- Thunk functions for complex logic
 
 ##### Example:
 
 ```ts
 import { createDispatch } from '@zubridge/electron/main';
-import { store } from './store';
-import { rootReducer } from '../features/index.js';
+import { myStore } from './store';
 
-// Create dispatch with a reducer
-export const dispatch = createDispatch(store, { reducer: rootReducer });
+// Create dispatch function
+export const dispatch = createDispatch(myStore);
 
 // Use the dispatch function
 dispatch('INCREMENT');
@@ -180,6 +197,10 @@ dispatch((getState, dispatch) => {
   }
 });
 ```
+
+##### Internal API: createDispatch with StateManager
+
+There's also an internal overload that accepts a state manager directly, but this is primarily for internal use by bridge implementations.
 
 ## Frontend (Renderer Process) APIs
 
@@ -315,7 +336,7 @@ interface StateManager<State> {
 
 ### `CoreBridge`
 
-Interface for the bridge created by `createBridge`.
+Interface for the bridge created by `createCoreBridge`.
 
 ```ts
 interface CoreBridge extends BaseBridge<number> {
@@ -331,11 +352,25 @@ interface CoreBridge extends BaseBridge<number> {
 Interface for the bridge created by `createZustandBridge`.
 
 ```ts
-interface ZustandBridge extends Omit<BaseBridge<number>, 'getSubscribedWindows'> {
-  subscribe: (wrappers: WebContentsWrapper[]) => { unsubscribe: () => void };
-  unsubscribe: (wrappers?: WebContentsWrapper[]) => void;
-  getSubscribers: () => number[];
+interface ZustandBridge extends BackendBridge<number> {
+  subscribe: (windows: Array<BrowserWindow | WebContentsWrapper>) => { unsubscribe: () => void };
+  unsubscribe: (windows?: Array<BrowserWindow | WebContentsWrapper>) => void;
   getSubscribedWindows: () => number[];
+  dispatch: Dispatch<S>;
+  destroy: () => void;
+}
+```
+
+### `ReduxBridge`
+
+Interface for the bridge created by `createReduxBridge`.
+
+```ts
+interface ReduxBridge extends BackendBridge<number> {
+  subscribe: (windows: Array<BrowserWindow | WebContentsWrapper>) => { unsubscribe: () => void };
+  unsubscribe: (windows?: Array<BrowserWindow | WebContentsWrapper>) => void;
+  getSubscribedWindows: () => number[];
+  dispatch: Dispatch<S>;
   destroy: () => void;
 }
 ```
@@ -370,14 +405,24 @@ Represents a thunk function for handling asynchronous logic.
 type Thunk<State> = (getState: StoreApi<State>['getState'], dispatch: Dispatch<State>) => void;
 ```
 
-### `MainZustandBridgeOpts<State>`
+### `ZustandOptions<State>`
 
 Configuration options for the Zustand bridge.
 
 ```ts
-type MainZustandBridgeOpts<State extends AnyState> = {
+type ZustandOptions<State extends AnyState> = {
   handlers?: Record<string, Handler>;
   reducer?: RootReducer<State>;
+};
+```
+
+### `ReduxOptions<State>`
+
+Configuration options for the Redux bridge.
+
+```ts
+type ReduxOptions<State extends AnyState> = {
+  // Custom options for Redux integration
 };
 ```
 

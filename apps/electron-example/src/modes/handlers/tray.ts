@@ -1,6 +1,6 @@
 import { type BrowserWindow } from 'electron';
 import { type StoreApi } from 'zustand';
-import { createDispatch, createZustandAdapter } from '@zubridge/electron/main';
+import { createDispatch } from '@zubridge/electron/main';
 import type { State } from '../../types/index.js';
 import { BaseSystemTray } from '../../main/tray/base.js';
 
@@ -9,7 +9,8 @@ import { createHandlers } from './main.js';
 
 /**
  * Handlers mode tray implementation
- * In handlers mode, we use state manager adapter with handlers
+ * In handlers mode, we use createDispatch with custom action handlers,
+ * which automatically creates a state manager adapter internally
  */
 export class HandlersSystemTray extends BaseSystemTray {
   public init(store: StoreApi<State>, window: BrowserWindow) {
@@ -18,11 +19,9 @@ export class HandlersSystemTray extends BaseSystemTray {
     // Get handlers from main.ts
     const handlers = createHandlers(store);
 
-    // Create a proper state manager adapter for the store with handlers
-    const stateManager = createZustandAdapter(store, { handlers });
-
-    // Now create dispatch with the state manager
-    this.dispatch = createDispatch(stateManager);
+    // Create dispatch directly from the store with handlers
+    // createDispatch will automatically create an appropriate state manager internally
+    this.dispatch = createDispatch(store, { handlers });
 
     // Initialize immediately with current state
     this.update(store.getState());

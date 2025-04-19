@@ -5,7 +5,7 @@ import { BrowserWindow, type BrowserWindowConstructorOptions, app, ipcMain } fro
 import { isDev } from '@zubridge/electron';
 import 'wdio-electron-service/main';
 
-import { store } from './store.js';
+import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
 import { createBridge } from './bridge.js';
 import { getModeName, getZubridgeMode } from '../utils/mode.js';
@@ -57,9 +57,8 @@ function initMainWindow(): BrowserWindow {
   }
 
   mainWindow = new BrowserWindow({
-    ...windowOptions, // Use updated base options
+    ...windowOptions,
     title: `Zubridge Electron Example (${modeName}) - Main Window`,
-    // No need to override width/height here anymore
   });
 
   mainWindow.setTitle(`Zubridge Electron Example (${modeName}) - Main Window`);
@@ -67,14 +66,13 @@ function initMainWindow(): BrowserWindow {
 
   if (isDevMode) {
     mainWindow.loadURL('http://localhost:5173/');
-    // REMOVED: mainWindow.webContents.openDevTools();
   } else {
     const htmlPath = path.join(__dirname, '..', 'renderer', 'index.html');
     mainWindow.loadFile(htmlPath);
   }
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.show(); // Use optional chaining
+    mainWindow?.show();
   });
 
   mainWindow.on('close', (event) => {
@@ -188,6 +186,9 @@ app.on('before-quit', () => {
 app
   .whenReady()
   .then(async () => {
+    // Initialize the store
+    await initStore();
+
     // Create both windows
     const initialMainWindow = initMainWindow();
     const initialSecondaryWindow = initSecondaryWindow();
@@ -266,15 +267,10 @@ app
       }
     };
 
-    // Run the tracker when a new window is created
-    store.subscribe((state, prevState) => {
-      if (state.window.isOpen !== prevState?.window?.isOpen) {
-        // Window state changed, we should check for any changes
-        setTimeout(trackNewWindows, 100); // Small delay to ensure window is fully created or closed
-      }
-    });
+    // Run the tracker when the app starts
+    trackNewWindows();
 
-    // Also poll for new windows every second to catch any windows created by child windows
+    // Poll for new windows every second to catch any windows created by child windows
     const windowTrackingInterval = setInterval(trackNewWindows, 1000);
 
     // Modify quit handler to clean up both windows if they exist
@@ -320,23 +316,8 @@ app
             // Common close logic for all modes
             console.log(`Closing window ${window.id}`);
 
-            if (mode === 'reducers') {
-              // In reducers mode, dispatch the action to the store
-              const { reducer: windowReducer } = await import('../modes/reducers/features/window/index.js');
-              store.setState((state) => ({
-                ...state,
-                window: windowReducer(state.window, {
-                  type: 'WINDOW:CLOSE',
-                  payload: { windowId: window.id },
-                }),
-              }));
-            } else if (mode === 'handlers') {
-              // In handlers mode, dispatch the action to the store
-              window.isFocused() && window.close();
-            } else {
-              // In basic mode, just close the window
-              window.isFocused() && window.close();
-            }
+            // In all modes, just close the window directly
+            window.isFocused() && window.close();
           }
         }
         return true;

@@ -4,8 +4,8 @@
  */
 export interface BaseState {
   counter: number;
-  window: {
-    isOpen: boolean;
+  theme: {
+    isDark: boolean;
   };
   [key: string]: any; // Add index signature to satisfy AnyState constraint
 }
@@ -17,9 +17,7 @@ export function isBaseState(state: unknown): state is BaseState {
   if (!state || typeof state !== 'object') return false;
 
   const s = state as any;
-  return (
-    typeof s.counter === 'number' && s.window && typeof s.window === 'object' && typeof s.window.isOpen === 'boolean'
-  );
+  return typeof s.counter === 'number' && s.theme && typeof s.theme === 'object' && typeof s.theme.isDark === 'boolean';
 }
 
 /**

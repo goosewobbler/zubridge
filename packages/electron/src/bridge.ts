@@ -1,7 +1,12 @@
 import { ipcMain } from 'electron';
-import type { IpcMainEvent } from 'electron';
+import type { BrowserWindow, IpcMainEvent } from 'electron';
 import type { WebContentsWrapper, Action, StateManager, AnyState, BackendBridge } from '@zubridge/types';
 import { IpcChannel } from './constants';
+import { StoreApi } from 'zustand';
+import { Store } from 'redux';
+import { ZustandOptions } from './adapters/zustand';
+import { ReduxOptions } from './main';
+import { getStateManager } from './utils/stateManagerRegistry';
 
 /**
  * Creates a core bridge between the main process and renderer processes
@@ -247,4 +252,21 @@ export function createCoreBridge<State extends AnyState>(
     getSubscribedWindows,
     destroy,
   };
+}
+
+/**
+ * Internal utility to create a bridge from a store
+ * This is used by createZustandBridge and createReduxBridge
+ * @internal
+ */
+export function createBridgeFromStore<S extends AnyState = AnyState>(
+  store: StoreApi<S> | Store<S>,
+  windows: Array<BrowserWindow | WebContentsWrapper> = [],
+  options?: ZustandOptions<S> | ReduxOptions<S>,
+): BackendBridge<number> {
+  // Get or create a state manager for the store
+  const stateManager = getStateManager(store, options);
+
+  // Create the bridge using the state manager
+  return createCoreBridge(stateManager, windows);
 }

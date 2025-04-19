@@ -1,4 +1,4 @@
-import { mainZustandBridge } from '@zubridge/electron/main';
+import { createZustandBridge } from '@zubridge/electron/main';
 import type { BrowserWindow } from 'electron';
 import type { StoreApi } from 'zustand';
 import type { RootReducer } from '@zubridge/types';
@@ -31,7 +31,7 @@ export const createReducersBridge = <S extends BaseState, Store extends StoreApi
   };
 
   // Create bridge with reducer
-  return mainZustandBridge<S, Store>(store, windows, {
+  return createZustandBridge<S>(store, windows, {
     reducer: debugReducer,
   });
 };

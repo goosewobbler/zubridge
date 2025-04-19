@@ -1,9 +1,22 @@
+/* Base styles */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* Light theme styles */
+body.light-theme {
   color: #1e293b;
-  background-color: #f8fafc;
+  background-color: #f3f0ff; /* Light purple background */
+}
+
+body:not(.light-theme):not(.dark-theme) {
+  color: #1e293b;
+  background-color: #f8fafc; /* Default background if no theme class */
 }
 
 .container {
@@ -18,7 +31,13 @@ h1 {
   margin-bottom: 20px;
 }
 
-.window-id {
+/* Light theme styles */
+body.light-theme .window-id {
+  font-weight: bold;
+  color: #6d28d9; /* Purple accent */
+}
+
+body:not(.light-theme):not(.dark-theme) .window-id {
   font-weight: bold;
   color: #4f46e5;
 }
@@ -29,22 +48,38 @@ h2 {
   margin-bottom: 8px;
 }
 
-.mode-info {
-  background-color: #e0e7ff;
+/* Light theme styles */
+body.light-theme .mode-info {
+  background-color: #ddd6fe; /* Light purple */
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   text-align: center;
   margin-bottom: 16px;
 }
 
-.counter,
-.window-controls,
-.debug-info {
-  background-color: white;
+body:not(.light-theme):not(.dark-theme) .mode-info {
+  background-color: #e0e7ff;
+  padding: 8px 12px;
   border-radius: 8px;
-  padding: 12px 16px;
+  text-align: center;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Light theme styles */
+body.light-theme .counter-section,
+body.light-theme .theme-section {
+  background-color: transparent;
+  border-radius: 0;
+  padding: 10px 0;
+  box-shadow: none;
+}
+
+body:not(.light-theme):not(.dark-theme) .counter-section,
+body:not(.light-theme):not(.dark-theme) .theme-section {
+  background-color: transparent;
+  border-radius: 0;
+  padding: 10px 0;
+  box-shadow: none;
 }
 
 .buttons {
@@ -53,23 +88,76 @@ h2 {
   justify-content: center;
 }
 
+/* Global button styles that apply to all themes */
 button {
   padding: 8px 16px;
   border: none;
-  border-radius: 4px;
-  background-color: #3b82f6;
+  border-radius: 8px; /* More rounded corners */
   color: white;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  min-width: 110px;
 }
 
 button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Consistent styling for close/quit buttons */
+.close-button {
+  background-color: #ef4444 !important; /* Red for close/quit buttons */
+}
+
+.close-button:hover {
+  background-color: #dc2626 !important; /* Darker red on hover */
+}
+
+.close-button:active {
+  background-color: #b91c1c !important; /* Even darker red when active */
+}
+
+/* Light theme button styles */
+body.light-theme button {
+  background-color: #8b5cf6; /* Purple */
+}
+
+body.light-theme button:hover {
+  background-color: #7c3aed; /* Darker purple */
+}
+
+body.light-theme button:active {
+  background-color: #6d28d9;
+}
+
+/* Default button styles */
+body:not(.light-theme):not(.dark-theme) button {
+  background-color: #3b82f6;
+}
+
+body:not(.light-theme):not(.dark-theme) button:hover {
   background-color: #2563eb;
 }
 
-.debug-info {
+body:not(.light-theme):not(.dark-theme) button:active {
+  background-color: #1d4ed8;
+}
+
+/* Light theme debug info */
+body.light-theme .debug-info {
+  background-color: #f5f3ff; /* Very light purple */
+  border-radius: 8px;
+}
+
+body:not(.light-theme):not(.dark-theme) .debug-info {
   background-color: #f1f5f9;
+  border-radius: 8px;
 }
 
 .debug-info ul {
@@ -84,35 +172,81 @@ button:hover {
   font-family: monospace;
 }
 
+/* Dark theme styles */
+body.dark-theme {
+  color: #f1f5f9;
+  background-color: #0f172a; /* Dark blue background */
+}
+
+body.dark-theme .window-id {
+  color: #a78bfa; /* Light purple */
+}
+
+body.dark-theme .counter-section,
+body.dark-theme .theme-section {
+  background-color: transparent;
+  border-radius: 0;
+  padding: 10px 0;
+  box-shadow: none;
+}
+
+body.dark-theme .mode-info {
+  background-color: #312e81;
+  color: #e0e7ff;
+  border-radius: 8px;
+}
+
+body.dark-theme .debug-info {
+  background-color: #1e293b;
+  border-radius: 8px;
+}
+
+body.dark-theme button {
+  background-color: #7c3aed; /* Purple */
+}
+
+body.dark-theme button:hover {
+  background-color: #8b5cf6; /* Lighter purple on hover for dark mode */
+}
+
+body.dark-theme button:active {
+  background-color: #6d28d9;
+}
+
+/* System preference based fallback */
 @media (prefers-color-scheme: dark) {
-  body {
+  body:not(.light-theme):not(.dark-theme) {
     color: #f1f5f9;
     background-color: #0f172a;
   }
 
-  .window-id {
+  body:not(.light-theme):not(.dark-theme) .window-id {
     color: #818cf8;
   }
 
-  .counter,
-  .window-controls {
-    background-color: #1e293b;
+  body:not(.light-theme):not(.dark-theme) .counter-section,
+  body:not(.light-theme):not(.dark-theme) .theme-section {
+    background-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
   }
 
-  .mode-info {
+  body:not(.light-theme):not(.dark-theme) .mode-info {
     background-color: #312e81;
     color: #e0e7ff;
+    border-radius: 8px;
   }
 
-  .debug-info {
+  body:not(.light-theme):not(.dark-theme) .debug-info {
     background-color: #1e293b;
+    border-radius: 8px;
   }
 
-  button {
+  body:not(.light-theme):not(.dark-theme) button {
     background-color: #4f46e5;
   }
 
-  button:hover {
+  body:not(.light-theme):not(.dark-theme) button:hover {
     background-color: #4338ca;
   }
 }
@@ -130,7 +264,8 @@ button:hover {
 
 /* Counter section */
 .counter-section {
-  margin-bottom: 30px;
+  margin-top: -30px;
+  margin-bottom: 0px;
   text-align: center;
 }
 
@@ -139,27 +274,43 @@ button:hover {
   font-size: 24px;
 }
 
-/* Window section */
-.window-section {
-  margin-bottom: 30px;
+/* Theme section */
+.theme-section {
+  margin-bottom: 0px;
   text-align: center;
 }
 
-.window-section h2 {
+.theme-section h2 {
   margin-bottom: 15px;
   font-size: 24px;
 }
 
-/* Info section */
-.info-section {
+/* Info section - Light Theme */
+body.light-theme .info-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f5f3ff; /* Very light purple */
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(109, 40, 217, 0.1);
+}
+
+body.light-theme .info-section h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 20px;
+  color: #6d28d9; /* Purple accent */
+}
+
+/* Info section - Default */
+body:not(.light-theme):not(.dark-theme) .info-section {
   margin-top: 30px;
   padding: 20px;
   background-color: #f1f5f9;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.info-section h2 {
+body:not(.light-theme):not(.dark-theme) .info-section h2 {
   margin-top: 0;
   margin-bottom: 15px;
   font-size: 20px;
@@ -172,44 +323,81 @@ button:hover {
 }
 
 /* Dark mode styles for info section */
-@media (prefers-color-scheme: dark) {
-  .info-section {
-    background-color: #1e293b;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  }
-
-  .info-section h2 {
-    color: #94a3b8;
-  }
+body.dark-theme .info-section {
+  background-color: #1e293b;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Button styles */
+body.dark-theme .info-section h2 {
+  color: #a78bfa; /* Light purple */
+}
+
+/* Button group styles */
 .button-group {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 15px;
+  width: 100%;
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-button:active {
-  background-color: #1d4ed8;
+/* Counter button layout */
+.counter-section .button-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 10px;
+  width: 100%;
+  max-width: 260px;
 }
 
-/* Dark mode button styles */
-@media (prefers-color-scheme: dark) {
-  button:active {
-    background-color: #3730a3;
-  }
+/* Make double buttons take full width */
+.counter-section .button-group button:nth-child(3),
+.counter-section .button-group button:nth-child(4) {
+  grid-column: 1 / -1;
 }
 
-/* Fixed header styles */
+/* Theme button section layout */
+.theme-button-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  width: 100%;
+  max-width: 260px;
+}
+
+/* Toggle Theme button takes full width on first row */
+.theme-button-group button:first-child {
+  grid-column: 1 / -1;
+}
+
+/* Create Window button - make it green */
+.create-window-button {
+  background-color: #22c55e !important; /* Green */
+}
+
+.create-window-button:hover {
+  background-color: #16a34a !important; /* Darker green on hover */
+}
+
+.create-window-button:active {
+  background-color: #15803d !important; /* Even darker green when active */
+}
+
+/* Fixed header styles - common for all themes */
 .fixed-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: 20px;
-  background-color: rgba(0, 0, 255, 0.3);
+  background-color: rgba(0, 0, 0, 0.85) !important; /* Black with slight transparency */
   color: white;
   text-align: center;
   font-size: 12px;
@@ -217,11 +405,12 @@ button:active {
   z-index: 9999;
 }
 
-/* Dark mode header styles */
-@media (prefers-color-scheme: dark) {
-  .fixed-header {
-    background-color: rgba(0, 0, 128, 0.5);
-  }
+/* Remove theme-specific header background colors - using !important above */
+body.light-theme .fixed-header,
+body.dark-theme .fixed-header,
+body:not(.light-theme):not(.dark-theme) .fixed-header,
+.runtime-window .fixed-header {
+  /* All using the common style above */
 }
 
 .counter.centered {
@@ -244,14 +433,15 @@ button:active {
   justify-content: center;
 }
 
-/* Main window specific styles */
-.app-container .fixed-header {
-  background-color: rgba(59, 130, 246, 0.4); /* Light blue background */
+/* Make window ID white in all themes */
+.window-id {
+  font-weight: bold;
+  color: white !important;
 }
 
-/* Dark mode overrides */
-@media (prefers-color-scheme: dark) {
-  .app-container .fixed-header {
-    background-color: rgba(96, 165, 250, 0.5); /* Lighter blue in dark mode */
-  }
+/* Override any theme-specific window ID colors */
+body.light-theme .window-id,
+body.dark-theme .window-id,
+body:not(.light-theme):not(.dark-theme) .window-id {
+  color: white !important;
 }

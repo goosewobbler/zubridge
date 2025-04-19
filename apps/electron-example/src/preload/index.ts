@@ -1,13 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import { preloadZustandBridge } from '@zubridge/electron/preload';
+import { preloadBridge } from '@zubridge/electron/preload';
 import 'wdio-electron-service/preload';
 
 import type { State } from '../types/index.js';
 
 console.log('[Preload] Script initializing');
 
-const { handlers } = preloadZustandBridge<State>();
+const { handlers } = preloadBridge<State>();
 
 // Add debugging to handlers
 const wrappedHandlers = {

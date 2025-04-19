@@ -41,6 +41,9 @@ body {
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
     'Helvetica Neue', sans-serif;
   overflow: hidden;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 button {
@@ -49,21 +52,43 @@ button {
   background-color: #2196f3;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px; /* More rounded corners */
   cursor: pointer;
   min-width: 110px;
   height: 38px;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.1s;
   font-size: 14px;
+  font-weight: 500;
 }
 
 button:hover {
   background-color: #0b7dda;
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* Consistent styling for close/quit buttons */
+.close-button {
+  background-color: #ef4444 !important; /* Red for close/quit buttons */
+}
+
+.close-button:hover {
+  background-color: #dc2626 !important; /* Darker red on hover */
+}
+
+.close-button:active {
+  background-color: #b91c1c !important; /* Even darker red when active */
 }
 
 pre {
@@ -71,8 +96,68 @@ pre {
   margin: 0 15px;
   padding: 8px 12px;
   background-color: #f1f1f1;
-  border-radius: 4px;
+  border-radius: 6px;
   min-width: 40px;
   text-align: center;
   font-size: 18px;
+}
+
+body.dark-theme {
+  color: #f1f5f9;
+  background-color: #0f172a; /* Dark blue background */
+}
+
+body.dark-theme .window-id {
+  color: #a78bfa; /* Light purple */
+}
+
+body.dark-theme .mode-info {
+  background-color: #312e81;
+  color: #e0e7ff;
+}
+
+body.dark-theme .debug-info {
+  background-color: #1e293b;
+}
+
+body.dark-theme button {
+  background-color: #7c3aed; /* Purple */
+}
+
+body.dark-theme button:hover {
+  background-color: #8b5cf6; /* Lighter purple on hover for dark mode */
+}
+
+body.dark-theme button:active {
+  background-color: #6d28d9;
+}
+
+body.light-theme {
+  color: #334155;
+  background-color: #f3f0ff;
+}
+
+body.light-theme .window-id {
+  color: #6d28d9; /* Purple */
+}
+
+body.light-theme .mode-info {
+  background-color: #e0e7ff;
+  color: #312e81;
+}
+
+body.light-theme .debug-info {
+  background-color: #f5f3ff;
+}
+
+body.light-theme button {
+  background-color: #8b5cf6; /* Purple */
+}
+
+body.light-theme button:hover {
+  background-color: #7c3aed; /* Darker purple on hover */
+}
+
+body.light-theme button:active {
+  background-color: #6d28d9;
 }

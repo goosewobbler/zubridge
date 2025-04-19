@@ -1,22 +1,22 @@
 import type { BrowserWindow } from 'electron';
-import type {
-  Action,
-  BackendBridge,
-  StateManager,
-  Thunk,
-  WebContentsWrapper,
-  AnyState,
-  Dispatch,
-  Handler,
-  RootReducer,
-} from '@zubridge/types';
+import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
-import { createCoreBridge } from './bridge.js';
+import type { BackendBridge, WebContentsWrapper, AnyState, Dispatch } from '@zubridge/types';
+import { createCoreBridge, createBridgeFromStore } from './bridge.js';
+import { createDispatch } from './utils/dispatch.js';
+import { ZustandOptions } from './adapters/zustand.js';
+import { ReduxOptions } from './adapters/redux.js';
+import { removeStateManager } from './utils/stateManagerRegistry.js';
 
 /**
- * Re-export core bridge creation function
+ * Export the core bridge creation function for custom implementations
  */
 export { createCoreBridge };
+
+/**
+ * Re-export adapter options types
+ */
+export type { ZustandOptions, ReduxOptions };
 
 /**
  * Interface for a bridge that connects a Zustand store to the main process
@@ -30,83 +30,6 @@ export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBri
 }
 
 /**
- * Creates a dispatch function for a bridge that handles both direct actions and thunks
- */
-export function createDispatch<S>(stateManager: StateManager<S>): Dispatch<S> {
-  return function dispatch(action: Thunk<S> | Action | string, payload?: unknown) {
-    if (typeof action === 'function') {
-      try {
-        // Handle thunks by passing getState and dispatch
-        (action as Thunk<S>)(() => stateManager.getState(), dispatch);
-      } catch (error) {
-        console.error('Error dispatching thunk:', error);
-      }
-    } else if (typeof action === 'string') {
-      try {
-        // Handle string actions with separate payload
-        stateManager.processAction({ type: action, payload });
-      } catch (error) {
-        console.error('Error dispatching action:', error);
-      }
-    } else {
-      try {
-        // Handle action objects
-        stateManager.processAction(action as Action);
-      } catch (error) {
-        console.error('Error dispatching action:', error);
-      }
-    }
-  };
-}
-
-/**
- * Options for the Zustand bridge and adapter
- */
-export interface ZustandOptions<S extends AnyState> {
-  exposeState?: boolean;
-  handlers?: Record<string, Handler>;
-  reducer?: RootReducer<S>;
-}
-
-/**
- * Creates a state manager adapter for Zustand stores
- */
-export function createZustandAdapter<S extends AnyState>(
-  store: StoreApi<S>,
-  options?: ZustandOptions<S>,
-): StateManager<S> {
-  return {
-    getState: () => store.getState(),
-    subscribe: (listener) => store.subscribe(listener),
-    processAction: (action) => {
-      try {
-        // First check if we have a custom handler for this action type
-        if (options?.handlers && typeof options.handlers[action.type] === 'function') {
-          options.handlers[action.type](action.payload);
-          return;
-        }
-
-        // Next check if we have a reducer
-        if (options?.reducer) {
-          store.setState(options.reducer(store.getState(), action));
-          return;
-        }
-
-        // Handle built-in actions
-        if (action.type === 'setState') {
-          store.setState(action.payload as Partial<S>);
-        } else if (typeof (store.getState() as any)[action.type] === 'function') {
-          // If the action type corresponds to a store method, call it with the payload
-          (store.getState() as any)[action.type](action.payload);
-        }
-      } catch (error) {
-        console.error('Error processing action:', error);
-      }
-    },
-  };
-}
-
-/**
  * Creates a bridge between a Zustand store and the renderer process
  */
 export function createZustandBridge<S extends AnyState>(
@@ -114,15 +37,61 @@ export function createZustandBridge<S extends AnyState>(
   windows: Array<BrowserWindow | WebContentsWrapper> = [],
   options?: ZustandOptions<S>,
 ): ZustandBridge<S> {
-  const stateManager = createZustandAdapter(store, options);
-  const coreBridge = createCoreBridge(stateManager, windows);
-  const dispatchFn = createDispatch(stateManager);
+  // Create the core bridge with the store
+  const coreBridge = createBridgeFromStore(store, windows, options);
 
+  // Create the dispatch function with the same store
+  const dispatchFn = createDispatch(store, options);
+
+  // Return bridge with all functionality
   return {
     subscribe: coreBridge.subscribe,
     unsubscribe: coreBridge.unsubscribe,
     getSubscribedWindows: coreBridge.getSubscribedWindows,
-    destroy: coreBridge.destroy,
+    destroy: () => {
+      coreBridge.destroy();
+      // Clean up the state manager from the registry
+      removeStateManager(store);
+    },
+    dispatch: dispatchFn,
+  };
+}
+
+/**
+ * Interface for a bridge that connects a Redux store to the main process
+ */
+export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
+  subscribe: (windows: Array<BrowserWindow | WebContentsWrapper>) => { unsubscribe: () => void };
+  unsubscribe: (windows?: Array<BrowserWindow | WebContentsWrapper>) => void;
+  getSubscribedWindows: () => number[];
+  dispatch: Dispatch<S>;
+  destroy: () => void;
+}
+
+/**
+ * Creates a bridge between a Redux store and the renderer process
+ */
+export function createReduxBridge<S extends AnyState>(
+  store: Store<S>,
+  windows: Array<BrowserWindow | WebContentsWrapper> = [],
+  options?: ReduxOptions<S>,
+): ReduxBridge<S> {
+  // Create the core bridge with the store
+  const coreBridge = createBridgeFromStore(store, windows, options);
+
+  // Create the dispatch function with the same store
+  const dispatchFn = createDispatch(store, options);
+
+  // Return bridge with all functionality
+  return {
+    subscribe: coreBridge.subscribe,
+    unsubscribe: coreBridge.unsubscribe,
+    getSubscribedWindows: coreBridge.getSubscribedWindows,
+    destroy: () => {
+      coreBridge.destroy();
+      // Clean up the state manager from the registry
+      removeStateManager(store);
+    },
     dispatch: dispatchFn,
   };
 }
@@ -133,3 +102,5 @@ export function createZustandBridge<S extends AnyState>(
  * Please update your code to use createZustandBridge directly in the future.
  */
 export const mainZustandBridge = createZustandBridge;
+
+export { createDispatch } from './utils/dispatch';
