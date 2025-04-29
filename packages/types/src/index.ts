@@ -119,11 +119,11 @@ export type DispatchFunc<S, TActions extends Record<string, any> = Record<string
   // Handle string action types with optional payload
   (action: string, payload?: unknown): unknown;
 
-  // Handle generic action objects
-  (action: Action): unknown;
-
   // Handle strongly typed action objects
   <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): unknown;
+
+  // Handle generic action objects
+  (action: Action): unknown;
 };
 
 // Shared state manager interface that can be implemented by different backends
