@@ -180,6 +180,21 @@ describe('useDispatch', () => {
     });
   });
 
+  it('should throw an error when action type is not a string', () => {
+    const dispatch = useDispatch<TestState>(mockHandlers);
+
+    // Create an action with non-string type
+    const invalidAction = { type: 123, payload: 'test' };
+
+    // Verify it throws an error with the expected message
+    expect(() => {
+      dispatch(invalidAction as any);
+    }).toThrow('Invalid action type: 123. Expected a string.');
+
+    // Verify dispatch was not called
+    expect(mockHandlers.dispatch).not.toHaveBeenCalled();
+  });
+
   it('should execute thunk actions', () => {
     const dispatch = useDispatch<TestState>(mockHandlers);
 
