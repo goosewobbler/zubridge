@@ -34,6 +34,9 @@ on:
       deploy_key:
         description: 'SSH deploy key for pushing to the repository'
         required: true
+      crates_io_token:
+        description: 'Crates.io token for publishing Rust crates'
+        required: true
     outputs:
       release_tag:
         description: 'The created release tag'
@@ -241,6 +244,29 @@ jobs:
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
           # GITHUB_WORKSPACE is automatically available
+
+      # Only publish Rust crates when explicitly selected
+      - name: 🦀 Set up Rust
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "all"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: 🔧 Login to crates.io
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "all"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
+        run: |
+          cargo login ${{ secrets.crates_io_token }}
+
+      - name: 📦 Publish Rust crates to crates.io
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "all"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        run: |
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            pnpx tsx scripts/publish-crates.ts --dry-run
+          else
+            pnpx tsx scripts/publish-crates.ts
+          fi
 
       - name: 🚀 Push Tags and Commits
         id: push_tags

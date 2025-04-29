@@ -30,6 +30,7 @@ on:
           - '@zubridge/electron'
           - '@zubridge/tauri'
           - '@zubridge/types'
+          - 'tauri-plugin-zubridge'
           - 'all'
       dry_run:
         description: 'Do not touch or write anything. Show the commands.'
@@ -50,3 +51,4 @@ jobs:
       github_bot_token: ${{ secrets.GITHUB_TOKEN }}
       npm_token: ${{ secrets.NPM_TOKEN }}
       deploy_key: ${{ secrets.DEPLOY_KEY }}
+      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
