@@ -5,6 +5,6 @@ packages:
   - 'e2e'
   - 'packages/electron'
   - 'packages/tauri'
-  - 'packages/tauri-plugin-zubridge'
+  - 'packages/tauri-plugin'
   - 'packages/types'
   - 'packages/ui'
