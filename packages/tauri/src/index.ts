@@ -279,7 +279,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
     if (typeof actionOrThunk === 'function') {
       try {
         // Execute the thunk with getState and dispatch functions
-        return (actionOrThunk as Thunk<S>)(() => internalStore.getState() as S, dispatch as any);
+        return (actionOrThunk as Thunk<S>)(() => internalStore.getState() as S, dispatch);
       } catch (error) {
         console.error('Zubridge Tauri: Error executing thunk:', error);
         throw error;

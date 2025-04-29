@@ -102,6 +102,14 @@ export const ActionButtons = () => {
       payload: 0,
     });
 
+  // Typed action object
+  const typedDispatch = useDispatch<State, { 'COUNTER:SET': number }>();
+  const handleTypedSetValue = () =>
+    typedDispatch({
+      type: 'COUNTER:SET',
+      payload: 42,
+    });
+
   // Thunk function for complex async logic
   const handleFetchAndUpdateCounter = () =>
     dispatch(async (getState, dispatch) => {
@@ -120,6 +128,7 @@ export const ActionButtons = () => {
     <div>
       <button onClick={handleIncrement}>Increment</button>
       <button onClick={handleSetValue}>Set to 42</button>
+      <button onClick={handleTypedSetValue}>Set to 42 (Typed)</button>
       <button onClick={handleResetCounter}>Reset</button>
       <button onClick={handleFetchAndUpdateCounter}>Fetch & Update</button>
     </div>

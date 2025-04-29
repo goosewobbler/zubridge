@@ -68,12 +68,16 @@ export function App() {
   const counter = useStore((state: AppState) => state.counter);
   const dispatch = useDispatch<AppState>();
 
+  // Optional: Create a typed dispatch function for better type safety
+  const typedDispatch = useDispatch<AppState, { SET_COUNTER: number }>();
+
   return (
     <div>
       <p>Counter: {counter}</p>
       <button onClick={() => dispatch('INCREMENT')}>Increment</button>
       <button onClick={() => dispatch('DECREMENT')}>Decrement</button>
       <button onClick={() => dispatch({ type: 'SET_COUNTER', payload: 0 })}>Reset</button>
+      <button onClick={() => typedDispatch({ type: 'SET_COUNTER', payload: 42 })}>Set to 42 (Type-checked)</button>
     </div>
   );
 }

@@ -114,8 +114,19 @@ describe('createUseStore', () => {
 });
 
 describe('useDispatch', () => {
+  let mockHandlers: Handlers<TestState>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Create mock handlers
+    mockHandlers = {
+      dispatch: vi.fn(),
+      getState: vi.fn().mockResolvedValue({ testCounter: 1 }),
+      subscribe: vi.fn(),
+    };
+
+    // Set up global window.zubridge
     (window as any).zubridge = {
       dispatch: vi.fn(),
       getState: vi.fn().mockReturnValue(Promise.resolve({ test: 'state' })),
@@ -138,31 +149,6 @@ describe('useDispatch', () => {
     const dispatch = useDispatch<AnyState>(customHandlers);
     expect(dispatch).toBeDefined();
   });
-});
-
-describe('useCoreDispatch', () => {
-  let mockHandlers: Handlers<TestState>;
-  let mockStore: any;
-
-  beforeEach(() => {
-    mockHandlers = {
-      dispatch: vi.fn(),
-      getState: vi.fn().mockResolvedValue({ testCounter: 1 }),
-      subscribe: vi.fn(),
-    };
-
-    mockStore = {
-      getState: vi.fn().mockReturnValue({ testCounter: 1 }),
-      setState: vi.fn(),
-      subscribe: vi.fn(),
-    };
-  });
-
-  it('should create a dispatch function with given handlers', () => {
-    const dispatch = useDispatch(mockHandlers as any);
-    expect(dispatch).toBeDefined();
-    expect(typeof dispatch).toBe('function');
-  });
 
   it('should handle string action types', () => {
     const dispatch = useDispatch<TestState>(mockHandlers);
@@ -179,6 +165,34 @@ describe('useCoreDispatch', () => {
     dispatch(action);
 
     expect(mockHandlers.dispatch).toHaveBeenCalledWith(action);
+  });
+
+  it('should normalize typed action objects', () => {
+    const dispatch = useDispatch<TestState, { SET_COUNTER: number }>(mockHandlers);
+    const typedAction = { type: 'SET_COUNTER', payload: 42 };
+
+    dispatch(typedAction);
+
+    // Verify the action was properly normalized for handlers.dispatch
+    expect(mockHandlers.dispatch).toHaveBeenCalledWith({
+      type: 'SET_COUNTER',
+      payload: 42,
+    });
+  });
+
+  it('should throw an error when action type is not a string', () => {
+    const dispatch = useDispatch<TestState>(mockHandlers);
+
+    // Create an action with non-string type
+    const invalidAction = { type: 123, payload: 'test' };
+
+    // Verify it throws an error with the expected message
+    expect(() => {
+      dispatch(invalidAction as any);
+    }).toThrow('Invalid action type: 123. Expected a string.');
+
+    // Verify dispatch was not called
+    expect(mockHandlers.dispatch).not.toHaveBeenCalled();
   });
 
   it('should execute thunk actions', () => {
