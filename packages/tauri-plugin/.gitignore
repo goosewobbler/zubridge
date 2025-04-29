@@ -1,0 +1,5 @@
+/.tauri
+/target
+Cargo.lock
+
+gen

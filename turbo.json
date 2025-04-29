@@ -133,6 +133,9 @@
     "zubridge-tauri-v1-example#build": {
       "dependsOn": ["@zubridge/tauri#build"],
       "cache": true
+    },
+    "tauri-plugin#build": {
+      "outputs": ["target/**"]
     }
   }
 }

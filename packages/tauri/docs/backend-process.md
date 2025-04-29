@@ -1,164 +1,280 @@
-# Implementing the Rust Backend Contract
+# Zubridge Backend Process
 
-This document details the contract your Tauri Rust backend must fulfill to integrate with the `@zubridge/tauri` frontend library. This architecture assumes the Rust backend holds the authoritative application state, and the frontend Zustand store acts as a synchronized replica.
-
-**Note:** The frontend library (`@zubridge/tauri`) relies on user-provided `invoke` and `listen` functions (passed during `initializeBridge`) to communicate with these backend commands and events. It no longer bundles a specific Tauri API version.
+This document explains how the Zubridge backend process works with the Tauri plugin, and details the underlying contract between your backend and frontend.
 
 ## Overview
 
-The core idea is to standardize communication:
+Zubridge works through a well-defined contract between your frontend and Rust backend. While the `tauri-plugin-zubridge` plugin handles most of the implementation details, understanding the underlying contract can help with debugging and custom implementations.
 
-1.  **Backend State:** Your authoritative state lives in Rust, managed likely via `tauri::State` and `std::sync::Mutex` or `RwLock`.
-2.  **Frontend Replica:** The `@zubridge/tauri` library manages a Zustand store in the frontend.
-3.  **Synchronization:**
-    - The frontend fetches the initial state using a specific command.
-    - The backend emits a specific event whenever its state changes.
-    - The frontend listens for this event to update its replica store.
-    - The frontend sends user actions to the backend using a specific command.
+## How the Plugin Works
 
-## 1. Required State Structure
+The `tauri-plugin-zubridge` plugin:
 
-While your internal Rust state struct (e.g., `ActualState` below) can be typed as needed, it **must** be wrapped or handled such that it can be serialized to and deserialized from `serde_json::Value` for communication via the contract.
+1. Implements the `StateManager` trait you provide
+2. Creates the necessary Tauri commands and event handlers automatically
+3. Manages state updates and broadcasts them to all windows
+4. Handles action dispatch and processing
+
+## The Contract
+
+Under the hood, the plugin implements the following contract:
+
+### Commands
+
+1. **`__zubridge_get_initial_state`**: Returns the complete current state of your application
+
+   - Called when the frontend initializes
+   - Returns a JSON serializable object representing your state
+
+2. **`__zubridge_dispatch_action`**: Processes actions dispatched from the frontend
+   - Takes a `ZubridgeAction` object with `type` and optional `payload` fields
+   - Updates the state according to the action
+   - Emits a state update event after processing
+
+### Events
+
+1. **`__zubridge_state_update`**: Emitted whenever the state changes
+   - Contains the complete updated state as payload
+   - Broadcast to all windows
+
+## Custom Implementation
+
+If you prefer not to use the plugin, you can implement this contract directly in your Tauri application. Here's an example of what that would look like:
 
 ```rust
-use serde::{Serialize, Deserialize};
+use tauri::{State, Manager};
 use std::sync::Mutex;
+use serde::{Serialize, Deserialize};
+use serde_json::Value;
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)] // Implement necessary traits
-pub struct ActualState {
-    // Your state fields, e.g.:
+// Your state structure
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AppState {
     counter: i32,
-    // other_data: String,
 }
 
-// Example Tauri managed state wrapper
-pub struct YourBackendState(pub Mutex<ActualState>); // Or RwLock
+impl Default for AppState {
+    fn default() -> Self {
+        Self { counter: 0 }
+    }
+}
 
-// You will register this with Tauri: builder.manage(YourBackendState(Mutex::new(ActualState::default())))
+// Managed state wrapper
+pub struct ManagedAppState(pub Mutex<AppState>);
+
+// Action structure
+#[derive(Deserialize, Debug)]
+pub struct ZubridgeAction {
+    #[serde(rename = "type")]
+    action_type: String,
+    payload: Option<Value>,
+}
+
+// Command to get initial state
+#[tauri::command]
+fn __zubridge_get_initial_state(state: State<'_, ManagedAppState>) -> Result<AppState, String> {
+    state.0.lock()
+        .map(|locked_state| locked_state.clone())
+        .map_err(|e| format!("Failed to lock state mutex: {}", e))
+}
+
+// Command to handle actions
+#[tauri::command]
+fn __zubridge_dispatch_action(
+    action: ZubridgeAction,
+    state: State<'_, ManagedAppState>,
+    app_handle: tauri::AppHandle
+) -> Result<(), String> {
+    let mut locked_state = state.0.lock()
+        .map_err(|e| format!("Failed to lock state mutex: {}", e))?;
+
+    // Process the action
+    match action.action_type.as_str() {
+        "INCREMENT" => {
+            locked_state.counter += 1;
+        },
+        "DECREMENT" => {
+            locked_state.counter -= 1;
+        },
+        _ => return Err(format!("Unknown action: {}", action.action_type)),
+    }
+
+    // Clone the state for emission
+    let updated_state = locked_state.clone();
+
+    // Release the lock before emitting
+    drop(locked_state);
+
+    // Emit state update event
+    if let Err(e) = app_handle.emit_all("__zubridge_state_update", updated_state) {
+        eprintln!("Error emitting state update: {}", e);
+    }
+
+    Ok(())
+}
+
+// Register in main.rs
+fn main() {
+    tauri::Builder::default()
+        .manage(ManagedAppState(Mutex::new(AppState::default())))
+        .invoke_handler(tauri::generate_handler![
+            __zubridge_get_initial_state,
+            __zubridge_dispatch_action,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
 ```
 
-## 2. Required Tauri Commands
+## Best Practices
 
-Implement and register these commands using `tauri::Builder::invoke_handler`.
+Whether you use the plugin or implement the contract directly, follow these practices:
 
-### a) `__zubridge_get_initial_state()`
+1. **Emit state updates consistently**: Always emit a state update event after any state change, regardless of how it was triggered.
 
-Fetches the current state for frontend initialization.
+2. **Use atomic state updates**: Make sure your state updates are atomic - don't emit partial updates.
 
-- **Signature (Rust):**
-  ```rust
-  #[tauri::command]
-  fn __zubridge_get_initial_state(state: tauri::State<'_, YourBackendState>) -> Result<serde_json::Value, String> {
-      match state.inner().0.lock() { // Access the Mutex inside YourBackendState
-          Ok(locked_state) => {
-              match serde_json::to_value(&*locked_state) {
-                  Ok(value) => {
-                      println!("Backend Contract: Returning initial state: {:?}", value);
-                      Ok(value)
-                  },
-                  Err(e) => Err(format!("Failed to serialize state: {}", e)),
-              }
-          },
-          Err(e) => Err(format!("Failed to lock state: {}", e.to_string())),
-      }
-  }
-  ```
-- **Return:** `Result<serde_json::Value, String>` containing the full current state as JSON.
+3. **Release locks before emitting**: Always release mutex locks before emitting events to avoid deadlocks.
 
-### b) `__zubridge_dispatch_action(action: ZubridgeAction)`
+4. **Validate actions**: Validate incoming actions and their payloads to prevent undefined behavior.
 
-Receives actions from the frontend, mutates state, and emits the update event.
+5. **Handle errors gracefully**: Return descriptive error messages when action processing fails.
 
-- **Required Action Struct (Rust):** Define this struct (or import from a potential `zubridge-core-rust` crate).
+## Plugin vs. Direct Implementation
 
-  ```rust
-  #[derive(Debug, serde::Deserialize, Clone)]
-  pub struct ZubridgeAction {
-      #[serde(rename = "type")]
-      pub action_type: String,
-      pub payload: Option<serde_json::Value>, // Payload is flexible JSON
-  }
-  ```
+### Using the Plugin (Recommended)
 
-- **Signature (Rust):**
+```rust
+use tauri_plugin_zubridge::{StateManager, ZubridgePlugin, ZubridgeAction};
+use std::sync::Mutex;
 
-  ```rust
-  use tauri::{Manager, Emitter}; // Need Manager for state, Emitter for emit
+struct AppStateManager {
+    state: Mutex<AppState>,
+}
 
-  #[tauri::command]
-  fn __zubridge_dispatch_action(
-      action: ZubridgeAction,
-      state: tauri::State<'_, YourBackendState>, // Your managed state type
-      app_handle: tauri::AppHandle           // To emit events
-  ) -> Result<(), String> {
-      println!("Backend Contract: Received action: {:?}", action);
+impl StateManager for AppStateManager {
+    fn get_state(&self) -> serde_json::Value {
+        let state = self.state.lock().unwrap();
+        serde_json::to_value(&*state).unwrap()
+    }
 
-      // 1. Lock state for mutation
-      let mut locked_state = match state.inner().0.lock() {
-          Ok(guard) => guard,
-          Err(e) => return Err(format!("Failed to lock state for dispatch: {}", e.to_string())),
-      };
+    fn process_action(&self, action: &ZubridgeAction) -> Result<(), String> {
+        let mut state = self.state.lock().unwrap();
 
-      // 2. --- Your State Mutation Logic ---
-      // Apply changes based on action.action_type & action.payload
-      // This is where your 'basic', 'handlers', or 'reducers' logic lives in Rust.
-      match action.action_type.as_str() {
-          "INCREMENT" => {
-              locked_state.counter += 1; // Example for ActualState having 'counter'
-              println!("Backend Contract: Incremented counter to {}", locked_state.counter);
-          }
-          "DECREMENT" => {
-              locked_state.counter -= 1;
-              println!("Backend Contract: Decremented counter to {}", locked_state.counter);
-          }
-          // Add cases for other actions your application needs
-          _ => {
-              println!("Backend Contract: Unknown action type received: {}", action.action_type);
-              // Decide whether to ignore or return an error
-          }
-      }
-      // --- End State Mutation Logic ---
+        match action.action_type.as_str() {
+            "INCREMENT" => {
+                state.counter += 1;
+                Ok(())
+            },
+            _ => Err(format!("Unknown action: {}", action.action_type)),
+        }
+    }
+}
 
-      // 3. Serialize the *new* state
-      let new_state_value = match serde_json::to_value(&*locked_state) {
-           Ok(value) => value,
-           Err(e) => {
-               // Log error but don't necessarily fail the command, state was already mutated
-               println!("Backend Contract: Failed to serialize state for event emission: {}", e);
-               // Might return Ok(()) or an error depending on desired behavior
-               return Ok(());
-           }
-      };
+pub fn zubridge<R: Runtime>() -> TauriPlugin<R> {
+    let state_manager = AppStateManager {
+        state: Mutex::new(AppState::default()),
+    };
 
-      // 4. Emit the update event (Crucial!)
-      println!("Backend Contract: Emitting state update event with payload: {:?}", new_state_value);
-      if let Err(e) = app_handle.emit("__zubridge_state_update", new_state_value) {
-           println!("Backend Contract: Failed to emit state update event: {}", e);
-           // Log error, but the state was mutated, so proceed.
-      }
+    ZubridgePlugin::new(state_manager)
+}
+```
 
-      // 5. Mutex guard is dropped here, unlocking the state.
+### Advantages of the Plugin
 
-      Ok(()) // Action processed successfully
-  }
-  ```
+1. **Simplified implementation**: No need to manually implement the communication contract
+2. **Consistent event handling**: The plugin handles event broadcasting to all windows
+3. **Error handling**: Built-in error handling for common issues
+4. **Future-proof**: Updates to the protocol will be handled by the plugin
 
-- **Input:** `ZubridgeAction`, `tauri::State<'_, YourBackendState>`, `tauri::AppHandle`.
-- **Return:** `Result<(), String>`.
+## Advanced Usage
 
-## 3. Required Tauri Event
+### Custom Action Types
 
-Your backend **must** emit this event via the `AppHandle` after _every_ state mutation intended to be synced with the frontend.
+You can define your own action types and handle them accordingly:
 
-### a) `__zubridge_state_update`
+```rust
+impl StateManager for AppStateManager {
+    // ...
 
-- **Purpose:** Notifies frontends of the latest state.
-- **Emitter:** `app_handle.emit("__zubridge_state_update", new_state_value)?`
-- **Payload:** The _complete, current_ state serialized as `serde_json::Value`.
+    fn process_action(&self, action: &ZubridgeAction) -> Result<(), String> {
+        let mut state = self.state.lock().unwrap();
 
-## Implementation Notes
+        match action.action_type.as_str() {
+            "INCREMENT" => {
+                state.counter += 1;
+                Ok(())
+            },
+            "SET_COUNTER" => {
+                if let Some(payload) = &action.payload {
+                    if let Ok(value) = serde_json::from_value::<i32>(payload.clone()) {
+                        state.counter = value;
+                        Ok(())
+                    } else {
+                        Err("Invalid payload for SET_COUNTER".to_string())
+                    }
+                } else {
+                    Err("Missing payload for SET_COUNTER".to_string())
+                }
+            },
+            _ => Err(format!("Unknown action: {}", action.action_type)),
+        }
+    }
+}
+```
 
-- Ensure your state struct derives `Serialize` and `Deserialize`.
-- Register the commands using `tauri::Builder::invoke_handler(tauri::generate_handler![__zubridge_get_initial_state, __zubridge_dispatch_action])`.
-- Remember to import necessary traits like `tauri::Manager` and `tauri::Emitter` where needed.
-- Consider using Rust helpers provided by `@zubridge/tauri` (if available in the future) to simplify implementing this contract.
+### Custom State Persistence
+
+You can implement state persistence by extending your state manager:
+
+```rust
+struct PersistentStateManager {
+    state: Mutex<AppState>,
+    storage_path: String,
+}
+
+impl PersistentStateManager {
+    fn new(storage_path: String) -> Self {
+        let state = if let Ok(data) = std::fs::read_to_string(&storage_path) {
+            serde_json::from_str(&data).unwrap_or_default()
+        } else {
+            AppState::default()
+        };
+
+        Self {
+            state: Mutex::new(state),
+            storage_path,
+        }
+    }
+
+    fn save_state(&self) {
+        let state = self.state.lock().unwrap();
+        if let Ok(json) = serde_json::to_string(&*state) {
+            let _ = std::fs::write(&self.storage_path, json);
+        }
+    }
+}
+
+impl StateManager for PersistentStateManager {
+    fn get_state(&self) -> serde_json::Value {
+        let state = self.state.lock().unwrap();
+        serde_json::to_value(&*state).unwrap()
+    }
+
+    fn process_action(&self, action: &ZubridgeAction) -> Result<(), String> {
+        let mut state = self.state.lock().unwrap();
+
+        // Process actions...
+
+        // Save after processing
+        drop(state);
+        self.save_state();
+
+        Ok(())
+    }
+}
+```
+
+## Conclusion
+
+The `tauri-plugin-zubridge` plugin provides a convenient way to implement the state management contract between your Tauri backend and frontend. By understanding the underlying contract, you can better debug issues or implement custom solutions if needed.
