@@ -297,6 +297,7 @@ Hook to dispatch actions to the store from the renderer process.
 
 - `customHandlers`: Optional custom handlers to use instead of `window.zubridge`
 - `State`: Type parameter representing your application state
+- `ActionTypes`: Optional generic type parameter for typed action objects
 
 ##### Returns:
 
@@ -323,6 +324,13 @@ function Counter() {
     payload: amount
   });
 
+  // Dispatch with typed actions
+  const typedDispatch = useDispatch<AppState, { 'SET_COUNTER': number }>();
+  const handleTypedSetCounter = (value: number) => typedDispatch({
+    type: 'SET_COUNTER',
+    payload: value // Type checked to be a number
+  });
+
   // Dispatch a thunk for complex logic
   const handleFetchAndUpdate = () => dispatch(async (getState, dispatch) => {
     const response = await fetch('/api/counter');
@@ -335,6 +343,7 @@ function Counter() {
       <button onClick={handleIncrement}>+1</button>
       <button onClick={() => handleSetCounter(0)}>Reset</button>
       <button onClick={() => handleCustomIncrement(5)}>+5</button>
+      <button onClick={() => handleTypedSetCounter(10)}>Set to 10 (Typed)</button>
       <button onClick={handleFetchAndUpdate}>Fetch</button>
     </div>
   );

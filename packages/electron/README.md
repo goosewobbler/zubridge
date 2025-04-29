@@ -32,6 +32,7 @@ Actions from renderer processes are sent through IPC to the main process, which 
   - Redux adapter for Redux/Redux Toolkit integration
   - Generic bridge for creating custom state management implementations
 - **Type-safe state management** between processes
+  - Enhanced TypeScript integration with typed action objects for auto-completion and type-checking
 - **Automatic state synchronization** across multiple windows
 - **Support for multiple windows and views**
 - **Works with the latest [Electron security recommendations](https://www.electronjs.org/docs/latest/tutorial/security#checklist-security-recommendations)**
@@ -54,11 +55,11 @@ Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
 
 ## Documentation
 
-- [Getting Started Guide](docs/getting-started.md) - Step-by-step guide to setting up Zubridge in your Electron app
-- [API Reference](docs/api-reference.md) - Complete API documentation
-- [Main Process](docs/main-process.md) - Setting up and using Zubridge in the main process
-- [Renderer Process](docs/renderer-process.md) - Setting up and using Zubridge in the renderer process
-- [Backend Contract](docs/backend-contract.md) - Understanding the IPC contract between processes
+- [Getting Started Guide](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/getting-started.md) - Step-by-step guide to setting up Zubridge in your Electron app
+- [API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/api-reference.md) - Complete API documentation
+- [Main Process](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/main-process.md) - Setting up and using Zubridge in the main process
+- [Renderer Process](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/renderer-process.md) - Setting up and using Zubridge in the renderer process
+- [Backend Contract](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/backend-contract.md) - Understanding the IPC contract between processes
 
 ## Example Applications
 
