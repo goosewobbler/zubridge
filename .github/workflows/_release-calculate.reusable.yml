@@ -78,7 +78,7 @@ jobs:
             PKG_JSON_PATH="packages/${FIRST_PACKAGE_SIMPLE_NAME}/package.json"
             echo "Packages specified. Using first package for version: ${FIRST_PACKAGE_FULL_NAME} -> ${PKG_JSON_PATH}"
           else
-            # No packages specified (release all), use default source
+            # No packages specified, use default source
             FIRST_PACKAGE_SIMPLE_NAME="electron" # Default package name
             PKG_JSON_PATH="packages/${FIRST_PACKAGE_SIMPLE_NAME}/package.json"
             echo "No specific packages specified. Using default for version: ${PKG_JSON_PATH}"

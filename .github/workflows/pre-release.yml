@@ -24,14 +24,13 @@ on:
       packages:
         description: 'Package(s) to release'
         required: true
-        default: 'all'
+        default: '@zubridge/electron'
         type: choice
         options:
           - '@zubridge/electron'
           - '@zubridge/tauri'
           - '@zubridge/types'
           - 'tauri-plugin-zubridge'
-          - 'all'
       dry_run:
         description: 'Do not touch or write anything. Show the commands.'
         required: false

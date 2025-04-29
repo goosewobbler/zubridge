@@ -5,7 +5,7 @@ set -e
 
 # --- Script Inputs (Environment Variables) ---
 # Note: GitHub Actions automatically makes workflow inputs available as INPUT_*, capitalized.
-PACKAGES_INPUT="${INPUT_PACKAGES:-all}" # Default to 'all' if not provided
+PACKAGES_INPUT="${INPUT_PACKAGES}" # Require explicit packages to be provided
 DRY_RUN="${INPUT_DRY_RUN:-false}"
 NEW_VERSION="${NEW_VERSION}" # Needs to be passed explicitly in env block
 
@@ -37,43 +37,29 @@ check_pkg_exists_locally() {
 PACKAGES_TO_VERIFY=()
 echo "Determining packages to verify..."
 
-if [[ "$PACKAGES_INPUT" == "all" ]]; then
-  # Find all @zubridge packages locally
-  while IFS= read -r pkg_json; do
-    if [[ "$pkg_json" != *"node_modules"* ]]; then
-      # Check if jq is available
-      if ! command -v jq &> /dev/null; then
-          echo "::error::jq command could not be found. Please install jq."
-          exit 1
-      fi
-      PKG_NAME=$(jq -r '.name' "$pkg_json")
-      if [[ "$PKG_NAME" == @zubridge/* ]]; then
-          PACKAGES_TO_VERIFY+=("$PKG_NAME")
-      fi
+# Parse specific packages list
+if [[ "$PACKAGES_INPUT" == *","* ]]; then
+  # Custom list
+  IFS=',' read -ra PKG_LIST <<< "$PACKAGES_INPUT"
+  for pkg_raw in "${PKG_LIST[@]}"; do
+    pkg_raw_trimmed=$(echo "$pkg_raw" | xargs)
+    # Ensure it's scoped and exists locally
+    if [[ "$pkg_raw_trimmed" == @zubridge/* ]] && check_pkg_exists_locally "$pkg_raw_trimmed"; then
+      PACKAGES_TO_VERIFY+=("$pkg_raw_trimmed")
+    else
+      echo "::warning::Skipping verification for non-existent/non-scoped package: $pkg_raw_trimmed"
     fi
-  done < <(find "${GITHUB_WORKSPACE:-.}"/packages -name "package.json" -maxdepth 2 -mindepth 2)
-  echo "Verifying ALL packages based on local find: ${PACKAGES_TO_VERIFY[*]}"
+  done
 else
-  # Specific or custom list
-  if [[ "$PACKAGES_INPUT" == "electron" ]]; then
-      PACKAGES_TO_VERIFY=("@zubridge/electron")
-  elif [[ "$PACKAGES_INPUT" == "tauri" ]]; then
-      PACKAGES_TO_VERIFY=("@zubridge/tauri")
+  # Single package
+  if [[ "$PACKAGES_INPUT" == @zubridge/* ]] && check_pkg_exists_locally "$PACKAGES_INPUT"; then
+    PACKAGES_TO_VERIFY+=("$PACKAGES_INPUT")
   else
-      # Custom list
-      IFS=',' read -ra PKG_LIST <<< "$PACKAGES_INPUT"
-      for pkg_raw in "${PKG_LIST[@]}"; do
-          pkg_raw_trimmed=$(echo "$pkg_raw" | xargs)
-          # Ensure it's scoped and exists locally
-          if [[ "$pkg_raw_trimmed" == @zubridge/* ]] && check_pkg_exists_locally "$pkg_raw_trimmed"; then
-              PACKAGES_TO_VERIFY+=("$pkg_raw_trimmed")
-          else
-              echo "::warning::Skipping verification for non-existent/non-scoped package: $pkg_raw_trimmed"
-          fi
-      done
+    echo "::warning::Skipping verification for non-existent/non-scoped package: $PACKAGES_INPUT"
   fi
-  echo "Verifying specified packages: ${PACKAGES_TO_VERIFY[*]}"
 fi
+
+echo "Verifying specified packages: ${PACKAGES_TO_VERIFY[*]}"
 
 # Exit if no packages determined for verification
 if [[ ${#PACKAGES_TO_VERIFY[@]} -eq 0 ]]; then

@@ -77,7 +77,7 @@ function getScopedPackageName(simpleName: string): string | null {
 
 async function main() {
   // Read Inputs
-  const packagesInput = process.env.INPUT_PACKAGES || 'all'; // Read INPUT_PACKAGES again
+  const packagesInput = process.env.INPUT_PACKAGES || '';
   const releaseVersionInput = process.env.INPUT_RELEASE_VERSION;
   const dryRun = process.env.INPUT_DRY_RUN === 'true';
   const workspaceRoot = process.env.GITHUB_WORKSPACE || '.';
@@ -124,46 +124,30 @@ async function main() {
     console.log('Could not determine package-versioner version');
   }
 
-  // --- Determine Targets (Revised for 'all' case) ---
+  // --- Determine Targets ---
   let targets: string[] = [];
 
-  if (packagesInput === 'all') {
-    // Find all package.json files under packages/*
-    console.log("Input is 'all', finding all @zubridge/* packages...");
-    const allPkgPaths = findPackageJsonFiles(path.join(workspaceRoot, 'packages'));
-    for (const pkgPath of allPkgPaths) {
-      const pkgJson = readPackageJson(pkgPath);
-      if (pkgJson && pkgJson.name.startsWith('@zubridge/')) {
-        // Extract simple name for the list
-        targets.push(getUnscopedPackageName(pkgJson.name));
-      }
+  // Process input as a comma-separated list (even for single packages)
+  const packageList = packagesInput.includes(',')
+    ? packagesInput
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+    : [packagesInput.trim()];
+
+  for (const pkg of packageList) {
+    // Get the unscoped name (handles both @zubridge/something and plain names)
+    const simpleName = getUnscopedPackageName(pkg);
+
+    // Verify the package exists in the workspace
+    if (fs.existsSync(path.resolve(`packages/${simpleName}/package.json`))) {
+      targets.push(simpleName);
+    } else {
+      console.warn(`::warning::Package ${pkg} (simple name: ${simpleName}) not found, skipping`);
     }
-    console.log(`Found targets for 'all': ${targets.join(', ')}`);
-  } else {
-    // Simplified logic for specific targets
-
-    // Process input as a comma-separated list (even for single packages)
-    const packageList = packagesInput.includes(',')
-      ? packagesInput
-          .split(',')
-          .map((p) => p.trim())
-          .filter(Boolean)
-      : [packagesInput.trim()];
-
-    for (const pkg of packageList) {
-      // Get the unscoped name (handles both @zubridge/something and plain names)
-      const simpleName = getUnscopedPackageName(pkg);
-
-      // Verify the package exists in the workspace
-      if (fs.existsSync(path.resolve(`packages/${simpleName}/package.json`))) {
-        targets.push(simpleName);
-      } else {
-        console.warn(`::warning::Package ${pkg} (simple name: ${simpleName}) not found, skipping`);
-      }
-    }
-
-    console.log(`Using specified targets: ${targets.join(', ')}`);
   }
+
+  console.log(`Using specified targets: ${targets.join(', ')}`);
 
   // Convert simple target names back to scoped names for the -t flag
   const scopedTargets: string[] = [];
@@ -233,15 +217,6 @@ async function main() {
     } else {
       console.log('No existing version.config.json found');
     }
-
-    // When doing a major release of prerelease packages, we need to be more explicit
-    // No prerelease identifier should be used for standard releases
-    // if (releaseVersionInput === 'major') {
-    //   packageVersionerCmd += ' --prerelease "" --no-prerelease';
-    // } else {
-    //   // For minor and patch, still clear any prerelease identifier
-    //   packageVersionerCmd += ' --prerelease ""';
-    // }
   } else if (releaseVersionInput.startsWith('pre')) {
     let identifier = 'beta'; // Default identifier for 'prerelease'
     if (releaseVersionInput.includes(':')) {
@@ -389,30 +364,3 @@ main().catch((error) => {
   console.error('Script failed:', error);
   process.exit(1);
 });
-
-// --- Helper Function needed for 'all' case ---
-function findPackageJsonFiles(startPath: string): string[] {
-  let results: string[] = [];
-  if (!fs.existsSync(startPath)) {
-    console.warn(`Warning: Directory not found for finding package.json: ${startPath}`);
-    return results;
-  }
-
-  const files = fs.readdirSync(startPath);
-  for (const file of files) {
-    const filename = path.join(startPath, file);
-    const stat = fs.lstatSync(filename);
-
-    if (stat.isDirectory()) {
-      // Recurse into directories (but only one level deep for `packages/*`)
-      if (path.basename(startPath) === 'packages') {
-        // Simple depth check
-        const subFiles = findPackageJsonFiles(filename);
-        results = results.concat(subFiles);
-      }
-    } else if (path.basename(filename) === 'package.json') {
-      results.push(filename);
-    }
-  }
-  return results;
-}

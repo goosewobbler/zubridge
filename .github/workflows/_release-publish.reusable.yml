@@ -21,7 +21,7 @@ on:
         required: true
         type: string
       packages:
-        description: 'Packages to release (all, specific packages, or a comma-separated list)'
+        description: 'Packages to release (specific packages, or a comma-separated list)'
         required: false
         type: string
     secrets:
@@ -129,21 +129,7 @@ jobs:
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             echo "DRY RUN: Would publish packages to NPM with tag '$TAG'"
 
-            if [[ "${{ inputs.packages }}" == "all" ]]; then
-              echo "Would publish all packages with tag $TAG"
-              for pkg_raw in "${PKG_LIST[@]}"; do
-                pkg_raw=$(echo "$pkg_raw" | xargs) # Trim whitespace
-                if check_pkg_exists "$pkg_raw"; then
-                   pkg_dir_name=$(get_pkg_dir_name "$pkg_raw")
-                   echo "Would publish $pkg_dir_name package with tag $TAG"
-                   hasPublishedPackages=true
-                else
-                   pkg_dir_name=$(get_pkg_dir_name "$pkg_raw")
-                   # Standardized warning/error format
-                   echo "::warning::[DRY RUN] Package $pkg_raw (path: packages/$pkg_dir_name) not found in packages directory."
-                fi
-              done
-            elif [[ "${{ inputs.packages }}" == *","* ]]; then
+            if [[ "${{ inputs.packages }}" == *","* ]]; then
               # For custom package list (potentially scoped)
               IFS=',' read -ra PKG_LIST <<< "${{ inputs.packages }}"
               hasPublishedPackages=false
@@ -176,10 +162,7 @@ jobs:
 
           # Actual publish
           PUBLISH_EXIT_CODE=0
-          if [[ "${{ inputs.packages }}" == "all" ]]; then
-            # Publish all packages
-            pnpx tsx scripts/publish.ts --tag=$TAG || PUBLISH_EXIT_CODE=$?
-          elif [[ "${{ inputs.packages }}" == *","* ]]; then
+          if [[ "${{ inputs.packages }}" == *","* ]]; then
             # Handle custom package list
             FILTER_CMD=""
             IFS=',' read -ra PKG_LIST <<< "${{ inputs.packages }}"
@@ -247,7 +230,7 @@ jobs:
 
       # Only publish Rust crates when explicitly selected
       - name: 🦀 Set up Rust
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "all"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -255,12 +238,12 @@ jobs:
           override: true
 
       - name: 🔧 Login to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "all"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
         run: |
           cargo login ${{ secrets.crates_io_token }}
 
       - name: 📦 Publish Rust crates to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "all"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         run: |
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             pnpx tsx scripts/publish-crates.ts --dry-run

@@ -71,13 +71,6 @@ function findPackagesToPublish(): string[] {
     }
   }
 
-  // Special handling for the 'all' option
-  if (filterPackages.includes('all')) {
-    return packageDirs
-      .filter((dir) => fs.existsSync(path.join(packagesDir, dir, 'package.json')))
-      .map((dir) => path.join('packages', dir));
-  }
-
   // If we have specific packages to filter
   if (filterPackages.length > 0) {
     // Set to track unique package directories to publish
@@ -126,7 +119,7 @@ function findPackagesToPublish(): string[] {
   }
 
   // If no filter specified, don't publish anything by default - require explicit selection
-  console.log('No packages specified with --filter. Please provide specific packages or use --filter=all.');
+  console.log('No packages specified with --filter. Please provide specific packages.');
   return [];
 }
 
