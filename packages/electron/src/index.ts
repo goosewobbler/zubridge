@@ -72,27 +72,61 @@ export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>)
 
 /**
  * Creates a dispatch function for sending actions to the main process
+ *
+ * @template S The state type
+ * @template TActions A record of action types to payload types mapping (optional)
+ * @param customHandlers Optional custom handlers to use instead of window.zubridge
+ * @returns A typed dispatch function
+ *
+ * @example
+ * // Basic usage
+ * const dispatch = useDispatch();
+ *
+ * @example
+ * // With typed actions
+ * type CounterActions = {
+ *   'COUNTER:INCREMENT': void;
+ *   'COUNTER:DECREMENT': void;
+ *   'COUNTER:SET': number;
+ * };
+ * const dispatch = useDispatch<State, CounterActions>();
+ * dispatch({ type: 'COUNTER:SET', payload: 5 }); // Type-safe payload
+ * dispatch({ type: 'UNKNOWN' }); // Type error
  */
-export const useDispatch = <S extends AnyState>(customHandlers?: Handlers<S>): DispatchFunc<S> => {
+export const useDispatch = <S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
+  customHandlers?: Handlers<S>,
+): DispatchFunc<S, TActions> => {
   const handlers = customHandlers || createHandlers<S>();
 
   // Ensure we have a store for these handlers
   const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
 
-  return (action: Thunk<S> | Action | string, payload?: unknown): unknown => {
+  // Create a dispatch function that will handle both generic and typed actions
+  const dispatch = ((
+    action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
+    payload?: unknown,
+  ): unknown => {
     if (typeof action === 'function') {
-      // passed a function / thunk - so we execute the action, pass dispatch & store getState into it
-      return action(store.getState, handlers.dispatch);
+      // Handle thunks
+      return (action as Thunk<S>)(store.getState, dispatch as any);
     }
 
-    // passed action type and payload separately
+    // Handle string action type with payload
     if (typeof action === 'string') {
-      return handlers.dispatch(action, payload);
+      // Only pass the payload parameter if it's not undefined
+      return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
     }
 
-    // passed an action
-    return handlers.dispatch(action);
-  };
+    // For action objects, normalize to standard Action format
+    const normalizedAction: Action = {
+      type: String(action.type),
+      payload: action.payload,
+    };
+
+    return handlers.dispatch(normalizedAction);
+  }) as DispatchFunc<S, TActions>;
+
+  return dispatch;
 };
 
 // Export environment utilities
