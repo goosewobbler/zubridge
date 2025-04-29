@@ -108,7 +108,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
   ): unknown => {
     if (typeof action === 'function') {
       // Handle thunks
-      return (action as Thunk<S>)(store.getState, dispatch as any);
+      return (action as Thunk<S>)(store.getState, dispatch);
     }
 
     // Handle string action type with payload
