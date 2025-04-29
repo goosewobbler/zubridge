@@ -106,7 +106,25 @@ export type ExtractState<S> = S extends {
 
 export type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialState' | 'subscribe'>;
 
-export type DispatchFunc<S> = (action: Thunk<S> | Action | string, payload?: unknown) => unknown;
+/**
+ * A typed dispatch function that supports actions, action strings, thunks, and optional action type mapping.
+ *
+ * @template S The state type
+ * @template TActions A record mapping action type strings to their payload types
+ */
+export type DispatchFunc<S, TActions extends Record<string, any> = Record<string, any>> = {
+  // Handle thunks
+  (action: Thunk<S>): unknown;
+
+  // Handle string action types with optional payload
+  (action: string, payload?: unknown): unknown;
+
+  // Handle generic action objects
+  (action: Action): unknown;
+
+  // Handle strongly typed action objects
+  <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): unknown;
+};
 
 // Shared state manager interface that can be implemented by different backends
 export interface StateManager<State> {
