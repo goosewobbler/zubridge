@@ -31,11 +31,11 @@ export function createDispatch<S extends AnyState>(
       ? (storeOrManager as StateManager<S>)
       : getStateManager(storeOrManager as StoreApi<S> | Store<S>, options);
 
-  const dispatch: Dispatch<S> = (actionOrThunk, payload?: unknown): any => {
+  const dispatch: Dispatch<S> = (actionOrThunk: Thunk<S> | Action | string, payload?: unknown): any => {
     try {
       if (typeof actionOrThunk === 'function') {
         // Handle thunks
-        return (actionOrThunk as Thunk<S>)(() => stateManager.getState() as S, dispatch as any);
+        return (actionOrThunk as Thunk<S>)(() => stateManager.getState() as S, dispatch);
       } else if (typeof actionOrThunk === 'string') {
         // Handle string action types with payload
         stateManager.processAction({
