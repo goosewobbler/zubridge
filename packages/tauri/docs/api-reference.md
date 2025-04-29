@@ -1,195 +1,349 @@
-# API Reference
+# Zubridge API Reference
 
-This document provides a comprehensive reference for the `@zubridge/tauri` API.
+This document provides a comprehensive reference of both the Tauri plugin API and the frontend JavaScript API.
 
-## Initialization
+## Tauri Plugin API (`tauri-plugin-zubridge`)
 
-### `initializeBridge(options: ZubridgeTauriOptions): void`
+### Core Types
 
-Initializes the Zubridge communication layer. **Must be called once** at the root of your application before any Zubridge hooks are used.
+#### `StateManager` Trait
 
-#### Parameters:
+```rust
+pub trait StateManager: Send + Sync + 'static {
+    fn get_state(&self) -> serde_json::Value;
+    fn process_action(&self, action: &ZubridgeAction) -> Result<(), String>;
+}
+```
 
-- `options`: `ZubridgeTauriOptions` - An object containing:
-  - `invoke`: `(cmd: string, args?: Record<string, unknown>) => Promise<any>` - The function to use for calling Tauri commands (e.g., from `@tauri-apps/api/core` or `@tauri-apps/api/tauri`).
-  - `listen`: `<T>(event: string, handler: TauriEventHandler<T>) => Promise<TauriUnlistenFn>` - The function to use for listening to Tauri events (e.g., from `@tauri-apps/api/event`).
-  - `getInitialStateCommand?`: `string` (Optional) - The name of the Tauri command to invoke for fetching the initial state. Defaults to `__zubridge_get_initial_state`.
-  - `dispatchActionCommand?`: `string` (Optional) - The name of the Tauri command to invoke for dispatching actions. Defaults to `__zubridge_dispatch_action`.
-  - `stateUpdateEvent?`: `string` (Optional) - The name of the Tauri event to listen for state updates. Defaults to `__zubridge_state_update`.
+The central trait that your state manager must implement:
 
-#### Example:
+- `get_state()`: Returns the current state as a JSON value that will be sent to the frontend
+- `process_action()`: Processes an action from the frontend and updates the state accordingly
+
+#### `ZubridgeAction` Struct
+
+```rust
+#[derive(Debug, serde::Deserialize, Clone)]
+pub struct ZubridgeAction {
+    #[serde(rename = "type")]
+    pub action_type: String,
+    pub payload: Option<serde_json::Value>,
+}
+```
+
+Represents an action dispatched from the frontend:
+
+- `action_type`: String identifying the action (e.g., "INCREMENT")
+- `payload`: Optional JSON data associated with the action
+
+#### `ZubridgePlugin` Struct
+
+```rust
+pub struct ZubridgePlugin<M: StateManager> {
+    state_manager: M,
+}
+```
+
+The main plugin struct that wraps your state manager.
+
+### Functions
+
+#### `ZubridgePlugin::new()`
+
+```rust
+pub fn new<M: StateManager>(state_manager: M) -> TauriPlugin<R>
+```
+
+Creates a new Zubridge plugin instance:
+
+- **Parameters**:
+  - `state_manager`: An instance implementing the `StateManager` trait
+- **Returns**: A Tauri plugin that can be registered with your application
+
+### Usage Example
+
+```rust
+use tauri_plugin_zubridge::{StateManager, ZubridgePlugin, ZubridgeAction};
+use std::sync::Mutex;
+use serde::{Serialize, Deserialize};
+
+// Define your state
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AppState {
+    counter: i32,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self { counter: 0 }
+    }
+}
+
+// Implement the StateManager trait
+struct AppStateManager {
+    state: Mutex<AppState>,
+}
+
+impl StateManager for AppStateManager {
+    fn get_state(&self) -> serde_json::Value {
+        let state = self.state.lock().unwrap();
+        serde_json::to_value(&*state).unwrap()
+    }
+
+    fn process_action(&self, action: &ZubridgeAction) -> Result<(), String> {
+        let mut state = self.state.lock().unwrap();
+
+        match action.action_type.as_str() {
+            "INCREMENT" => {
+                state.counter += 1;
+                Ok(())
+            },
+            "DECREMENT" => {
+                state.counter -= 1;
+                Ok(())
+            },
+            _ => Err(format!("Unknown action: {}", action.action_type)),
+        }
+    }
+}
+
+// Create and register the plugin
+pub fn zubridge<R: Runtime>() -> TauriPlugin<R> {
+    let state_manager = AppStateManager {
+        state: Mutex::new(AppState::default()),
+    };
+
+    ZubridgePlugin::new(state_manager)
+}
+```
+
+## Frontend API (`@zubridge/tauri`)
+
+### Core Functions
+
+#### `initializeBridge()`
+
+```typescript
+function initializeBridge(options: {
+  invoke: (cmd: string, args?: any) => Promise<any>;
+  listen: (event: string, callback: (event: any) => void) => Promise<() => void>;
+}): void;
+```
+
+Initializes the Zubridge bridge with the necessary Tauri functions:
+
+- **Parameters**:
+  - `options.invoke`: Function to invoke Tauri commands
+  - `options.listen`: Function to listen for Tauri events
+- **Returns**: void
+
+**Example**:
 
 ```typescript
 import { initializeBridge } from '@zubridge/tauri';
-import { invoke } from '@tauri-apps/api/core'; // v2 example
-import { listen } from '@tauri-apps/api/event'; // v2 example
+import { invoke } from '@tauri-apps/api/core'; // For Tauri v2
+import { listen } from '@tauri-apps/api/event';
 
 initializeBridge({ invoke, listen });
 ```
 
-## Frontend Hooks and Functions
+### Hooks
 
-These hooks and utilities interact with a Tauri Rust backend via the `invoke` and `listen` functions provided during `initializeBridge`.
+#### `useZubridgeStore()`
 
-### `useZubridgeStore<StateSlice>(selector, equalityFn?)`
+```typescript
+function useZubridgeStore<T = any>(selector?: (state: any) => T): T;
+```
 
-React hook to select state from the synchronized frontend store. Relies on the listener set up via the `listen` function provided during initialization.
+A hook to access the synchronized state:
 
-#### Parameters:
+- **Parameters**:
+  - `selector`: Optional function to select a slice of the state
+- **Returns**: The selected state or the entire state if no selector is provided
 
-- `selector`: `(state: InternalState) => StateSlice`
-  A function to pick data from the store. The `state` argument includes internal properties (`__zubridge_status`, `__zubridge_error`) alongside your application state fields.
-- `equalityFn`: `(a: StateSlice, b: StateSlice) => boolean` (Optional)
-  A function to compare the selected state slice for changes. Defaults to React's default shallow equality check.
-
-#### Returns:
-
-- `StateSlice`: The selected state slice.
-
-#### Example:
+**Example**:
 
 ```tsx
 import { useZubridgeStore } from '@zubridge/tauri';
-import type { CounterState } from '../types'; // Your app's state type
 
-function CounterDisplay() {
-  // Select the counter value, casting the state argument
-  const counter = useZubridgeStore((state) => (state as CounterState).counter);
-  const status = useZubridgeStore((state) => state.__zubridge_status);
+function Counter() {
+  const counter = useZubridgeStore((state) => state.counter);
+  // Access internal bridge status
+  const status = useZubridgeStore((state) => state.__bridge_status);
 
-  if (status !== 'ready') return <p>Loading...</p>;
-  return <p>Counter: {counter ?? 'N/A'}</p>;
+  return <div>Counter: {counter}</div>;
 }
 ```
 
-### `useZubridgeDispatch()`
+#### `useZubridgeDispatch()`
 
-React hook to get the dispatch function for sending actions to the backend. Uses the `invoke` function provided during initialization.
+```typescript
+function useZubridgeDispatch(): (action: { type: string; payload?: any }) => Promise<void>;
+```
 
-#### Returns:
+A hook to get the dispatch function for sending actions to the backend:
 
-- `dispatch`: `(action: ZubridgeAction) => Promise<void>`
-  A function that takes a `ZubridgeAction` object and sends it to the Rust backend via the provided `invoke` function (targeting the configured dispatch command).
+- **Returns**: A function that dispatches actions to the backend
 
-#### Example:
+**Example**:
 
 ```tsx
 import { useZubridgeDispatch } from '@zubridge/tauri';
 
-function CounterButtons() {
+function Counter() {
   const dispatch = useZubridgeDispatch();
 
-  const handleIncrement = () => {
-    // Dispatch an action object
-    dispatch({ type: 'INCREMENT' });
-  };
-  const handleSet = (value: number) => {
-    dispatch({ type: 'SET_COUNTER', payload: value });
-  };
-
-  return (
-    <>
-      <button onClick={handleIncrement}>+</button>
-      <button onClick={() => handleSet(0)}>Reset</button>
-    </>
-  );
+  return <button onClick={() => dispatch({ type: 'INCREMENT' })}>Increment</button>;
 }
 ```
 
-### `getState(): Promise<AnyState>`
+### Store Methods
 
-**Deprecated / Internal Use:** Directly invokes the configured `getInitialStateCommand` on the Rust backend using the provided `invoke` function.
+The Zubridge store also exposes these methods for non-hook usage:
 
-_Note: Prefer using `useZubridgeStore` to access state. This function bypasses the synchronized internal store and might not be needed for typical application code._
-
-#### Returns:
-
-- A Promise resolving to the application state fetched directly from the backend.
-
-### `updateState(state: AnyState): Promise<void>`
-
-**Removed / Not Applicable:** This function is not part of the current contract-based API. State updates must originate from the backend and be emitted via events.
-
-### `cleanupZubridge(): Promise<void>`
-
-Cleans up the Tauri event listener (using the provided `listen` function's unlisten capability) and resets the internal bridge status. Returns a Promise that resolves when the unlisten function completes.
-
-_Note: Primarily useful for testing or specific application teardown scenarios where the listener needs to be manually stopped._
-
-## Type Definitions
-
-### `AnyState`
-
-Represents any plain JavaScript object that can be used as state.
-
-```ts
-import type { AnyState } from '@zubridge/types';
-// type AnyState = Record<string, any>; // Effective definition
-```
-
-### `ZubridgeAction`
-
-Represents the action structure sent to the backend `__zubridge_dispatch_action` command.
-
-```ts
-export type ZubridgeAction = {
-  type: string;
-  payload?: any; // Corresponds to Rust's serde_json::Value
-};
-```
-
-### `ZubridgeTauriOptions`
+#### `getState()`
 
 ```typescript
-export type TauriEventHandler<T> = (event: { payload: T; [key: string]: any }) => void;
-export type TauriUnlistenFn = () => void;
+function getState(): any;
+```
 
-export interface ZubridgeTauriOptions {
-  invoke: (cmd: string, args?: Record<string, unknown>) => Promise<any>;
-  listen: <T>(event: string, handler: TauriEventHandler<T>) => Promise<TauriUnlistenFn>;
-  getInitialStateCommand?: string; // defaults to '__zubridge_get_initial_state'
-  dispatchActionCommand?: string; // defaults to '__zubridge_dispatch_action'
-  stateUpdateEvent?: string; // defaults to '__zubridge_state_update'
+Returns the current state:
+
+- **Returns**: The entire current state object
+
+**Example**:
+
+```typescript
+import { useZubridgeStore } from '@zubridge/tauri';
+
+const currentState = useZubridgeStore.getState();
+console.log(currentState.counter);
+```
+
+#### `subscribe()`
+
+```typescript
+function subscribe(listener: (state: any, prevState: any) => void): () => void;
+```
+
+Subscribes to state changes:
+
+- **Parameters**:
+  - `listener`: Function called whenever the state changes
+- **Returns**: Unsubscribe function
+
+**Example**:
+
+```typescript
+import { useZubridgeStore } from '@zubridge/tauri';
+
+const unsubscribe = useZubridgeStore.subscribe((state, prevState) => console.log('State changed:', state, prevState));
+
+// Later, to unsubscribe:
+unsubscribe();
+```
+
+### Internal State Properties
+
+The store contains special internal properties prefixed with `__bridge_`:
+
+- `__bridge_status`: String indicating the bridge status ('initializing', 'ready', or 'error')
+- `__bridge_error`: Any error that occurred during bridge operations
+
+**Example**:
+
+```typescript
+import { useZubridgeStore } from '@zubridge/tauri';
+
+function App() {
+  const status = useZubridgeStore(state => state.__bridge_status);
+  const error = useZubridgeStore(state => state.__bridge_error);
+
+  if (status === 'initializing') {
+    return <div>Loading...</div>;
+  }
+
+  if (status === 'error') {
+    return <div>Error: {String(error)}</div>;
+  }
+
+  return <div>App loaded!</div>;
 }
 ```
 
-### `InternalState` (Exported for Testing)
+## Action Pattern
 
-Represents the shape of the internal Zustand store, including Zubridge status flags alongside the application state.
+Actions follow a standard pattern inspired by Redux:
 
-```ts
-export type InternalState = AnyState & {
-  __zubridge_status: 'initializing' | 'ready' | 'error' | 'uninitialized';
-  __zubridge_error?: any;
-};
+```typescript
+interface ZubridgeAction {
+  type: string;
+  payload?: any;
+}
 ```
 
-## Required Rust Backend Contract (Summary)
+- `type`: String identifier for the action (e.g., 'INCREMENT', 'ADD_TODO')
+- `payload`: Optional data associated with the action
 
-Your Tauri Rust backend **must** implement the following contract for the frontend library to function correctly. See `docs/getting-started.md` for a detailed implementation example.
+**Examples**:
 
-### Required Commands:
+```typescript
+// Simple action without payload
+dispatch({ type: 'INCREMENT' });
 
-- `__zubridge_get_initial_state()`
-  - **Purpose:** Provide the initial state to the frontend on load.
-  - **Returns:** `Result<YourStateType, String>` (Replace `YourStateType` with your actual Rust state struct, e.g., `CounterState`)
-- `__zubridge_dispatch_action(action: ZubridgeAction)`
-  - **Purpose:** Receive and process actions from the frontend.
-  - **Input Struct:**
-    ```rust
-    #[derive(serde::Deserialize)]
-    pub struct ZubridgeAction {
-        #[serde(rename = "type")]
-        action_type: String,
-        payload: Option<serde_json::Value>,
-    }
-    ```
-  - **Returns:** `Result<(), String>`
-  - **Must Emit:** `__zubridge_state_update` event after successful state mutation.
+// Action with payload
+dispatch({
+  type: 'ADD_TODO',
+  payload: { text: 'Buy milk', completed: false },
+});
 
-### Required Event:
+// Action with primitive payload
+dispatch({
+  type: 'SET_COUNTER',
+  payload: 5,
+});
+```
 
-- `__zubridge_state_update`
-  - **Purpose:** Notify frontends about state changes.
-  - **Payload:** The _complete, current_ state (`YourStateType`) serialized.
-  - **Emission:** Must be emitted via `app_handle.emit(...)` **every time** the authoritative Rust state changes.
+## Error Handling
+
+Errors from the backend are captured and stored in the `__bridge_error` property:
+
+```typescript
+function ErrorBoundary() {
+  const error = useZubridgeStore(state => state.__bridge_error);
+
+  if (error) {
+    return <div className="error">Error: {String(error)}</div>;
+  }
+
+  return null;
+}
+```
+
+## Vanilla JavaScript Usage
+
+While the library uses hook naming conventions, it can be used with any JavaScript framework or vanilla JS:
+
+```javascript
+import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
+
+// Access state directly
+const counter = useZubridgeStore.getState().counter;
+
+// Subscribe to changes
+const unsubscribe = useZubridgeStore.subscribe((state) => {
+  console.log('Counter:', state.counter);
+  document.getElementById('counter').textContent = state.counter;
+});
+
+// Dispatch actions
+const dispatch = useZubridgeDispatch();
+document.getElementById('increment').addEventListener('click', () => {
+  dispatch({ type: 'INCREMENT' });
+});
+
+// Clean up
+window.addEventListener('beforeunload', () => {
+  unsubscribe();
+});
+```
