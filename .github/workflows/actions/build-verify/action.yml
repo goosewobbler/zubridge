@@ -17,6 +17,12 @@ runs:
       run: |
         echo "::group::Verifying package integrity"
 
+        # Define Rust-only packages (no JS/TS fields required)
+        RUST_ONLY_PACKAGES=(
+          "@zubridge/tauri-plugin"
+          # Add other Rust-only packages here as needed
+        )
+
         # Dynamically find all package directories
         EXPECTED_PACKAGES=()
         while IFS= read -r pkg_dir; do
@@ -56,6 +62,15 @@ runs:
         echo "Found package.json files to verify: ${PACKAGE_JSONS[*]}"
 
         for pkg_json in "${PACKAGE_JSONS[@]}"; do
+          # Get package name
+          PKG_NAME=$(jq -r '.name' "$pkg_json")
+
+          # Skip Rust-only packages that don't need JS fields
+          if [[ " ${RUST_ONLY_PACKAGES[*]} " == *" $PKG_NAME "* ]]; then
+            echo "Skipping required field check for Rust-only package: $PKG_NAME"
+            continue
+          fi
+
           # Check that package.json has required fields
           for field in "name" "version" "main" "types"; do
             if ! jq -e ".$field" "$pkg_json" > /dev/null; then
