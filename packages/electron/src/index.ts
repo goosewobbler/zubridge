@@ -123,6 +123,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
     }
     const normalizedAction: Action = {
       type: action.type,
+      payload: action.payload,
     };
 
     return handlers.dispatch(normalizedAction);
