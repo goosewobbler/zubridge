@@ -1,272 +1,171 @@
-# Tauri Plugin Zubridge
+<img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png"/>
 
-A Tauri plugin for state management between frontend and backend. This plugin is the core of the Zubridge system, which provides a simple way to share state between your frontend and backend code.
+_Cross-platform state without boundaries: The official Tauri plugin for Zubridge_
+
+<a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Crates.io Version">
+  <img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" /></a>
+<a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Crates.io Downloads">
+  <img src="https://img.shields.io/crates/d/tauri-plugin-zubridge" /></a>
+
+## Why Zubridge?
+
+> tldr: I want to seamlessly interact with my Rust backend state using Zustand-inspired hooks.
+
+Managing state between a Tauri backend and frontend requires implementing event listeners and command handlers. The `tauri-plugin-zubridge` plugin eliminates this boilerplate by providing a standardized approach for state management that works with the `@zubridge/tauri` frontend library.
+
+## How It Works
+
+Zubridge creates a bridge between your Rust backend state and your frontend JavaScript. Your Rust backend holds the source of truth, while the frontend uses hooks to access and update this state.
+
+1. **Backend**: Register the plugin with your app state
+2. **Backend**: Use the StateManager trait to handle state changes
+3. **Frontend**: Initialize the bridge with `@zubridge/tauri`
+4. **Frontend**: Access state with `useZubridgeStore` and dispatch actions with `useZubridgeDispatch`
+
+<img alt="zubridge tauri app architecture" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-tauri-app-architecture-v2.png"/>
+
+## Features
+
+- **Simple State Management**: Manages synchronization between Rust backend and JavaScript frontend
+- **Standard Interface**: Provides a consistent pattern for dispatching actions and receiving updates
+- **Type Safety**: Strong typing for both Rust and TypeScript sides
+- **Multi-Window Support**: Automatically broadcasts state changes to all windows
+- **Minimal Boilerplate**: Reduces the amount of code needed for state management
+- **Flexible Implementation**: Use with any frontend framework (React, Vue, Svelte, etc.)
 
 ## Installation
 
-Add the plugin to your `Cargo.toml`:
+### Cargo.toml
 
 ```toml
 [dependencies]
-tauri-plugin-zubridge = { path = "../path/to/tauri-plugin-zubridge" }
+tauri-plugin-zubridge = "0.1.0"
+serde = { version = "1.0", features = ["derive"] }
 ```
 
-## Usage
+### Frontend
 
-### Setup the Plugin
+```bash
+npm install @zubridge/tauri @tauri-apps/api
+```
 
-Create a state manager that implements the `StateManager` trait:
+Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
+
+## Quick Start
+
+### Rust Backend
 
 ```rust
-use tauri_plugin_zubridge::{StateManager, JsonValue};
-use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
+use tauri::{plugin::TauriPlugin, AppHandle, Runtime};
+use tauri_plugin_zubridge::{StateManager, ZubridgePlugin};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AppState {
+// 1. Define your state
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AppState {
     counter: i32,
-    theme: ThemeState,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ThemeState {
-    is_dark: bool,
+impl Default for AppState {
+    fn default() -> Self {
+        Self { counter: 0 }
+    }
 }
 
+// 2. Implement StateManager for your state
 struct AppStateManager {
-    state: Mutex<AppState>,
+    state: std::sync::Mutex<AppState>,
 }
 
 impl StateManager for AppStateManager {
-    fn get_initial_state(&self) -> JsonValue {
+    // Get the current state
+    fn get_state(&self) -> serde_json::Value {
         let state = self.state.lock().unwrap();
-        serde_json::to_value(state.clone()).unwrap()
+        serde_json::to_value(&*state).unwrap()
     }
 
-    fn dispatch_action(&mut self, action: JsonValue) -> JsonValue {
+    // Process actions dispatched from the frontend
+    fn process_action(&self, action: &ZubridgeAction) -> Result<(), String> {
         let mut state = self.state.lock().unwrap();
 
-        if let Ok(action_type) = serde_json::from_value::<String>(action["type"].clone()) {
-            // Handle actions based on the action_type
-            match action_type.as_str() {
-                "INCREMENT" => {
-                    state.counter += 1;
-                },
-                "DECREMENT" => {
-                    state.counter -= 1;
-                },
-                "THEME:TOGGLE" => {
-                    state.theme.is_dark = !state.theme.is_dark;
-                },
-                _ => {}
-            }
+        match action.action_type.as_str() {
+            "INCREMENT" => {
+                state.counter += 1;
+                Ok(())
+            },
+            "DECREMENT" => {
+                state.counter -= 1;
+                Ok(())
+            },
+            _ => Err(format!("Unknown action: {}", action.action_type)),
         }
-
-        serde_json::to_value(state.clone()).unwrap()
     }
 }
-```
 
-### Register the Plugin
-
-Register the plugin in your Tauri application:
-
-```rust
-use tauri_plugin_zubridge::{plugin, ZubridgeOptions};
-
-fn main() {
-    // Create a state manager
+// 3. Create a plugin function
+pub fn zubridge<R: Runtime>() -> TauriPlugin<R> {
     let state_manager = AppStateManager {
-        state: Mutex::new(AppState {
-            counter: 0,
-            theme: ThemeState { is_dark: false },
-        }),
+        state: std::sync::Mutex::new(AppState::default()),
     };
 
-    // Create options for the plugin (or use defaults)
-    let options = ZubridgeOptions {
-        event_name: "zubridge://state-update".to_string(),
-    };
+    ZubridgePlugin::new(state_manager)
+}
 
+// 4. Register the plugin in your main.rs
+fn main() {
     tauri::Builder::default()
-        .plugin(plugin(state_manager, options))
+        .plugin(zubridge())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 ```
 
-## Frontend Integration
+### Frontend
 
-There are two main ways to use Zubridge from your frontend:
-
-### 1. Using Zubridge Hooks (Recommended)
-
-The `@zubridge/tauri` package provides hooks that work with any JavaScript framework or vanilla JavaScript, despite their `use` prefix naming convention. They are built on a framework-agnostic foundation using Zustand.
-
-Install the `@zubridge/tauri` package:
-
-```bash
-npm install @zubridge/tauri
-# or
-yarn add @zubridge/tauri
-# or
-pnpm add @zubridge/tauri
-```
-
-Initialize the bridge once at the root of your application:
-
-```typescript
-// Example with React
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
+```tsx
+// main.tsx
 import { initializeBridge } from '@zubridge/tauri';
-
-// Import functions from Tauri API
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
-// Initialize Zubridge *once* before rendering
-initializeBridge({
-  invoke,
-  listen,
-  // Optional: Customize command/event names if needed
-});
+// Initialize the bridge
+initializeBridge({ invoke, listen });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
-
-// With vanilla JavaScript, you could do:
-// document.addEventListener('DOMContentLoaded', () => {
-//   initializeBridge({ invoke, listen });
-//   // Initialize your app...
-// });
-```
-
-Then use the hooks in your components:
-
-```typescript
-// Example with React
-import React from 'react';
+// Component.tsx
 import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
 
-// Assuming CounterState is your Rust state structure type
-import type { CounterState } from '../types';
-
 function Counter() {
-  // Access state with a selector
-  const counter = useZubridgeStore((state) => (state as CounterState).counter);
+  // Get state from the bridge
+  const counter = useZubridgeStore((state) => state.counter);
 
   // Get dispatch function
   const dispatch = useZubridgeDispatch();
 
-  // Get the bridge status
-  const status = useZubridgeStore((state) => state.__zubridge_status);
-
-  if (status !== 'ready') {
-    return <div>Loading state ({status})...</div>;
-  }
-
-  const handleIncrement = () => {
-    dispatch({ type: 'INCREMENT' });
-  };
-
-  const handleDecrement = () => {
-    dispatch({ type: 'DECREMENT' });
-  };
-
-  const handleToggleTheme = () => {
-    dispatch({ type: 'THEME:TOGGLE' });
-  };
-
   return (
     <div>
-      <p>Counter Value: {counter ?? 'N/A'}</p>
-      <button onClick={handleDecrement}>-</button>
-      <button onClick={handleIncrement}>+</button>
-      <button onClick={handleToggleTheme}>Toggle Theme</button>
+      <h1>Counter: {counter}</h1>
+      <button onClick={() => dispatch({ type: 'INCREMENT' })}>+</button>
+      <button onClick={() => dispatch({ type: 'DECREMENT' })}>-</button>
     </div>
   );
 }
-
-// With other frameworks like Vue, Svelte, or vanilla JS,
-// you would use the same hooks but with that framework's patterns.
-// The underlying store mechanism works with any JavaScript environment.
 ```
 
-### 2. Using the Tauri API Directly
+## Documentation
 
-If you prefer not to use the hooks, you can use the Tauri API directly:
+For more detailed documentation, see:
 
-```javascript
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen } from '@tauri-apps/api/event';
+- [Plugin API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/tauri-plugin-zubridge/README.md)
+- [Frontend API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/tauri/docs/api-reference.md)
+- [Getting Started Guide](https://github.com/goosewobbler/zubridge/blob/main/packages/tauri/docs/getting-started.md)
+- [Backend Contract](https://github.com/goosewobbler/zubridge/blob/main/packages/tauri/docs/backend-process.md)
 
-// Get the initial state
-async function getInitialState() {
-  return await invoke('zubridge.get-initial-state');
-}
+## Example Application
 
-// Dispatch an action
-async function dispatch(actionType, payload = null) {
-  return await invoke('zubridge.dispatch-action', {
-    action: {
-      action_type: actionType,
-      payload,
-    },
-  });
-}
+A complete example application demonstrating the use of `tauri-plugin-zubridge` with a simple counter state:
 
-// Listen for state updates
-let unlistenFn;
-async function setupStateListener(callback) {
-  unlistenFn = await listen('zubridge://state-update', (event) => {
-    console.log('State updated:', event.payload);
-    callback(event.payload);
-  });
-}
-
-// Clean up listener when done
-function cleanup() {
-  if (unlistenFn) unlistenFn();
-}
-
-// Example usage
-document.addEventListener('DOMContentLoaded', async () => {
-  const initialState = await getInitialState();
-  updateUI(initialState);
-
-  await setupStateListener(updateUI);
-
-  document.getElementById('increment-btn').addEventListener('click', () => {
-    dispatch('INCREMENT');
-  });
-
-  document.getElementById('decrement-btn').addEventListener('click', () => {
-    dispatch('DECREMENT');
-  });
-
-  function updateUI(state) {
-    document.getElementById('counter-value').textContent = state.counter;
-    // Update other UI elements based on state
-  }
-});
-```
-
-## Permissions
-
-The plugin requires the following permissions in your capabilities file:
-
-```json
-{
-  "identifier": "tauri:command",
-  "allow": [{ "name": "zubridge.get-initial-state" }, { "name": "zubridge.dispatch-action" }]
-}
-```
+- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-example)
 
 ## License
 
-MIT or Apache-2.0
+MIT
