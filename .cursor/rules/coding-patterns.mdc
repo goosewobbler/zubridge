@@ -1,0 +1,27 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Zubridge Coding Patterns
+
+## Rules
+- Develop functions with a test-driven development mindset, ensuring each low-level function or method intended for reuse performs a single, atomic task, but avoid adding unnecessary abstration layers.
+
+## Promise Handling
+- Always await Promises; use `void` prefix if intentionally not awaiting
+- Avoid floating promises to prevent unhandled rejections
+
+## React Components
+- Avoid default React import; use named imports only
+- Prefer functional components over class components
+- Follow React hooks rules (dependencies array, call only at top level)
+
+## Restricted Patterns
+- Avoid "barrel" files at the root of package subdirectories (like `packages/ui/src/components/Logger/index.ts`). Barrel files at the package root level (like `packages/ui/src/index.ts`) are acceptable.
+- Prefer named export over export default
+
+## Error Handling
+- Use try/catch blocks for async operations that might fail
+- Provide appropriate error messages and fallbacks
+
