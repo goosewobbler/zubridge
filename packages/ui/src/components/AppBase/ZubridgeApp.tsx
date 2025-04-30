@@ -91,7 +91,7 @@ export function ZubridgeApp({
   }, [dispatch, logAction]);
 
   const handleDoubleCounter = useCallback(
-    (method: 'thunk' | 'object') => {
+    (method: 'thunk' | 'object' | 'action') => {
       if (method === 'thunk') {
         logAction('COUNTER:DOUBLE_THUNK', 'Doubling counter via thunk', { currentValue: counter });
         dispatch((getState: () => any, dispatch: any) => {
@@ -156,7 +156,7 @@ export function ZubridgeApp({
           value={counter}
           onIncrement={handleIncrement}
           onDecrement={handleDecrement}
-          onDouble={(method: 'thunk' | 'object') => handleDoubleCounter(method)}
+          onDouble={(method: 'thunk' | 'object' | 'action') => handleDoubleCounter(method)}
           onReset={handleResetCounter}
           isLoading={bridgeStatus === 'initializing'}
         />
@@ -173,7 +173,7 @@ export function ZubridgeApp({
         </div>
 
         {showLogger && (
-          <div className="logger-section mt-6">
+          <div className="mt-6 logger-section">
             <Logger entries={logs} showPayloads={showLoggerPayloads} onClear={clearLogs} />
           </div>
         )}
