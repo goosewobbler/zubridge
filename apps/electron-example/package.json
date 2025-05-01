@@ -37,11 +37,12 @@
     "dev:ui:redux": "cross-env ZUBRIDGE_MODE=redux ELECTRON_ENTRY=./out-redux/main/index.js WATCH_UI=true electron-vite dev",
     "dev:ui:custom": "cross-env ZUBRIDGE_MODE=custom ELECTRON_ENTRY=./out-custom/main/index.js WATCH_UI=true electron-vite dev",
     "build": "pnpm run typecheck && pnpm build:basic && pnpm build:handlers && pnpm build:reducers && pnpm build:redux && pnpm build:custom",
-    "build:basic": "cross-env ZUBRIDGE_MODE=basic electron-vite build && cross-env ZUBRIDGE_MODE=basic electron-builder --config electron-builder.config.ts",
-    "build:handlers": "cross-env ZUBRIDGE_MODE=handlers electron-vite build && cross-env ZUBRIDGE_MODE=handlers electron-builder --config electron-builder.config.ts",
-    "build:reducers": "cross-env ZUBRIDGE_MODE=reducers electron-vite build && cross-env ZUBRIDGE_MODE=reducers electron-builder --config electron-builder.config.ts",
-    "build:redux": "cross-env ZUBRIDGE_MODE=redux electron-vite build && cross-env ZUBRIDGE_MODE=redux electron-builder --config electron-builder.config.ts",
-    "build:custom": "cross-env ZUBRIDGE_MODE=custom electron-vite build && cross-env ZUBRIDGE_MODE=custom electron-builder --config electron-builder.config.ts",
+    "precheck-ui": "node -e \"if (!require('fs').existsSync('../../packages/ui/dist/styles.css')) { console.error('UI styles not found! Make sure @zubridge/ui is built.'); process.exit(1); }\"",
+    "build:basic": "pnpm precheck-ui && cross-env ZUBRIDGE_MODE=basic electron-vite build && cross-env ZUBRIDGE_MODE=basic electron-builder --config electron-builder.config.ts",
+    "build:handlers": "pnpm precheck-ui && cross-env ZUBRIDGE_MODE=handlers electron-vite build && cross-env ZUBRIDGE_MODE=handlers electron-builder --config electron-builder.config.ts",
+    "build:reducers": "pnpm precheck-ui && cross-env ZUBRIDGE_MODE=reducers electron-vite build && cross-env ZUBRIDGE_MODE=reducers electron-builder --config electron-builder.config.ts",
+    "build:redux": "pnpm precheck-ui && cross-env ZUBRIDGE_MODE=redux electron-vite build && cross-env ZUBRIDGE_MODE=redux electron-builder --config electron-builder.config.ts",
+    "build:custom": "pnpm precheck-ui && cross-env ZUBRIDGE_MODE=custom electron-vite build && cross-env ZUBRIDGE_MODE=custom electron-builder --config electron-builder.config.ts",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
