@@ -30,7 +30,7 @@
     "build:plugin": "tsc scripts/vite-ui-watcher-plugin.ts --outDir dist/scripts --module ESNext --moduleResolution bundler --target ESNext --esModuleInterop",
     "build:css": "pnpx @tailwindcss/cli -i ./src/styles/tailwind.css -o ./dist/styles.css --postcss",
     "build:lib": "tsup",
-    "build": "mkdir -p dist && pnpm run build:plugin && pnpm run build:css && pnpm run build:lib",
+    "build": "mkdir -p dist && pnpm run build:css && pnpm run build:plugin && pnpm run build:lib && node -e \"require('fs').existsSync('./dist/styles.css') || process.exit(1)\"",
     "dev": "mkdir -p dist && concurrently \"pnpm run build:css -- --watch\" \"tsup --watch\"",
     "clean": "shx rm -rf .turbo node_modules dist"
   },
