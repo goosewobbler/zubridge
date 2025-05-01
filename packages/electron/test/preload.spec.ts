@@ -70,10 +70,14 @@ describe('preloadBridge', () => {
 
     bridge.handlers.dispatch('INCREMENT', 5);
 
-    expect(ipcRenderer.send).toHaveBeenCalledWith(IpcChannel.DISPATCH, {
-      type: 'INCREMENT',
-      payload: 5,
-    });
+    expect(ipcRenderer.send).toHaveBeenCalledWith(
+      IpcChannel.DISPATCH,
+      expect.objectContaining({
+        type: 'INCREMENT',
+        payload: 5,
+        id: expect.any(String),
+      }),
+    );
   });
 
   it('dispatches action objects correctly', () => {
@@ -81,7 +85,14 @@ describe('preloadBridge', () => {
 
     bridge.handlers.dispatch({ type: 'INCREMENT', payload: 5 });
 
-    expect(ipcRenderer.send).toHaveBeenCalledWith(IpcChannel.DISPATCH, { type: 'INCREMENT', payload: 5 });
+    expect(ipcRenderer.send).toHaveBeenCalledWith(
+      IpcChannel.DISPATCH,
+      expect.objectContaining({
+        type: 'INCREMENT',
+        payload: 5,
+        id: expect.any(String),
+      }),
+    );
   });
 });
 
