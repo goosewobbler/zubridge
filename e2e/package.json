@@ -20,7 +20,7 @@
   "dependencies": {
     "@wdio/electron-utils": "^8.1.0",
     "cross-env": "^7.0.3",
-    "electron": "^35.1.5"
+    "electron": "^36.0.1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

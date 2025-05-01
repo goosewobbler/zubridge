@@ -88,8 +88,8 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3
       electron:
-        specifier: ^35.1.5
-        version: 35.2.2
+        specifier: ^36.0.1
+        version: 36.0.1
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
@@ -110,7 +110,7 @@ importers:
         version: 6.3.4(@types/node@22.15.3)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1)
       wdio-electron-service:
         specifier: ^8.0.1
-        version: 8.1.0(electron@35.2.2)(webdriverio@9.12.7(puppeteer-core@22.15.0))
+        version: 8.1.0(electron@36.0.1)(webdriverio@9.12.7(puppeteer-core@22.15.0))
 
   apps/tauri-example:
     dependencies:
@@ -225,8 +225,8 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3
       electron:
-        specifier: ^35.1.5
-        version: 35.2.2
+        specifier: ^36.0.1
+        version: 36.0.1
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10
@@ -257,7 +257,7 @@ importers:
         version: 5.8.3
       wdio-electron-service:
         specifier: ^8.0.1
-        version: 8.1.0(electron@35.2.2)(webdriverio@9.12.7(puppeteer-core@22.15.0))
+        version: 8.1.0(electron@36.0.1)(webdriverio@9.12.7(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -421,8 +421,8 @@ importers:
         specifier: ^19.1.2
         version: 19.1.3(@types/react@19.1.2)
       concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
+        specifier: ^9.1.2
+        version: 9.1.2
       postcss:
         specifier: ^8.5.3
         version: 8.5.3
@@ -2128,9 +2128,9 @@ packages:
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
-  concurrently@8.2.2:
-    resolution: {integrity: sha512-1dP4gpXFhei8IOtlXRE/T/4H88ElHgTiUzh71YUmtjTEHMSRS2Z/fgOxHSxxusGHogsRfxNq1vyAwxSC+EVyDg==}
-    engines: {node: ^14.13.0 || >=16.0.0}
+  concurrently@9.1.2:
+    resolution: {integrity: sha512-H9MWcoPsYddwbOGM6difjVwVZHl63nwMEwDJG/L7VGtuaJhb12h2caPG2tVPWs7emuYix252iGfqOyrz1GczTQ==}
+    engines: {node: '>=18'}
     hasBin: true
 
   config-file-ts@0.2.8-rc1:
@@ -2237,10 +2237,6 @@ packages:
   data-urls@5.0.0:
     resolution: {integrity: sha512-ZYP5VBHshaDAiVZxjbRVcFJpc+4xGgT0bK3vzy1HLN8jTO975HEbuYzZJcHoQEY5K1a0z8YayJkyVETa08eNTg==}
     engines: {node: '>=18'}
-
-  date-fns@2.30.0:
-    resolution: {integrity: sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==}
-    engines: {node: '>=0.11'}
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
@@ -2431,6 +2427,11 @@ packages:
 
   electron@35.2.2:
     resolution: {integrity: sha512-jZnCOtIgrt28esWP5z/PKndj/vPQ/Zt+cvNRlb/qOGnK/AjW1mASwPMtQ099NlSodf69RR3JrhnZCYbTWeDR4g==}
+    engines: {node: '>= 12.20.55'}
+    hasBin: true
+
+  electron@36.0.1:
+    resolution: {integrity: sha512-78DIXNi4W6ojeMt+O9/z+Miojioh1MW4H3oH+1sXwRpcu98RzxkW1/MjRvP0o0xiE6L1ZkoUkGDGC3E933YBAA==}
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
@@ -4295,9 +4296,6 @@ packages:
 
   spacetrim@0.11.59:
     resolution: {integrity: sha512-lLYsktklSRKprreOm7NXReW8YiX2VBjbgmXYEziOoGf/qsJqAEACaDvoTtUOycwjpaSh+bT8eu0KrJn7UNxiCg==}
-
-  spawn-command@0.0.2:
-    resolution: {integrity: sha512-zC8zGoGkmc8J9ndvml8Xksr1Amk9qBujgbF0JAIWO7kXr43w0h/0GJNM/Vustixu+YE8N/MTrQ7N31FvHUACxQ==}
 
   spdx-correct@3.2.0:
     resolution: {integrity: sha512-kN9dJbvnySHULIluDHy32WHRUu3Og7B9sbY7tsFLctQkIqnMh3hErYgdMjTYuqmcXX+lK5T1lnUt3G7zNswmZA==}
@@ -6902,14 +6900,12 @@ snapshots:
 
   concat-map@0.0.1: {}
 
-  concurrently@8.2.2:
+  concurrently@9.1.2:
     dependencies:
       chalk: 4.1.2
-      date-fns: 2.30.0
       lodash: 4.17.21
       rxjs: 7.8.2
       shell-quote: 1.8.2
-      spawn-command: 0.0.2
       supports-color: 8.1.1
       tree-kill: 1.2.2
       yargs: 17.7.2
@@ -7013,10 +7009,6 @@ snapshots:
     dependencies:
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-
-  date-fns@2.30.0:
-    dependencies:
-      '@babel/runtime': 7.27.1
 
   debug@2.6.9:
     dependencies:
@@ -7249,6 +7241,14 @@ snapshots:
       - supports-color
 
   electron@35.2.2:
+    dependencies:
+      '@electron/get': 2.0.3
+      '@types/node': 22.15.3
+      extract-zip: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  electron@36.0.1:
     dependencies:
       '@electron/get': 2.0.3
       '@types/node': 22.15.3
@@ -9192,8 +9192,6 @@ snapshots:
 
   spacetrim@0.11.59: {}
 
-  spawn-command@0.0.2: {}
-
   spdx-correct@3.2.0:
     dependencies:
       spdx-expression-parse: 3.0.1
@@ -9691,7 +9689,7 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
-  wdio-electron-service@8.1.0(electron@35.2.2)(webdriverio@9.12.7(puppeteer-core@22.15.0)):
+  wdio-electron-service@8.1.0(electron@36.0.1)(webdriverio@9.12.7(puppeteer-core@22.15.0)):
     dependencies:
       '@vitest/spy': 3.1.2
       '@wdio/electron-types': 8.1.0
@@ -9707,7 +9705,7 @@ snapshots:
       tinyspy: 4.0.3
       webdriverio: 9.12.7(puppeteer-core@22.15.0)
     optionalDependencies:
-      electron: 35.2.2
+      electron: 36.0.1
     transitivePeerDependencies:
       - bare-buffer
       - bufferutil
