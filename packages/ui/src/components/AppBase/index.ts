@@ -1,9 +1,9 @@
 // Export the base component
 export { ZubridgeApp } from './ZubridgeApp';
 
-// Export the platform-specific components
-export { ElectronApp } from './hoc/withElectron';
-export { TauriApp } from './hoc/withTauri';
+// Export the platform-specific HOCs
+export { withElectron } from './hoc/withElectron';
+export { withTauri } from './hoc/withTauri';
 
 // Export types
 export type { WindowInfo, WindowType, PlatformHandlers } from './WindowInfo';

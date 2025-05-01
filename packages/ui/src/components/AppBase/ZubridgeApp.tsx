@@ -1,13 +1,12 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, ReactNode } from 'react';
 import { WindowDisplay } from '../WindowDisplay';
 import { Counter } from '../Counter';
 import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
-import { Logger } from '../Logger/Logger';
-import { useLogger } from '../Logger/useLogger';
-import type { WindowInfo, PlatformHandlers, WindowType } from './WindowInfo';
-import { getWindowTitle } from './WindowInfo';
-import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors';
+import { Header } from '../Header';
+import type { WindowInfo, PlatformHandlers, WindowType } from './WindowInfo.js';
+import { getWindowTitle } from './WindowInfo.js';
+import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
 
 export interface ZubridgeAppProps {
   /**
@@ -31,16 +30,37 @@ export interface ZubridgeAppProps {
   platformHandlers: PlatformHandlers;
 
   /**
-   * Whether to show the logger component
-   * @default true for main windows, false for others
+   * Bridge status
    */
-  showLogger?: boolean;
+  bridgeStatus?: 'ready' | 'error' | 'initializing';
 
   /**
-   * Whether to show action payloads in the logger
-   * @default false
+   * Title for the application window
+   * @default 'Zubridge App'
    */
-  showLoggerPayloads?: boolean;
+  windowTitle?: string;
+
+  /**
+   * Application name shown in the header
+   * @default 'Zubridge App'
+   */
+  appName?: string;
+
+  /**
+   * Whether to show window controls (maximize/minimize)
+   * @default true
+   */
+  showWindowControls?: boolean;
+
+  /**
+   * Additional CSS classes to apply to the component
+   */
+  className?: string;
+
+  /**
+   * Child elements to render
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -54,16 +74,18 @@ export function ZubridgeApp({
   store,
   dispatch,
   platformHandlers,
-  showLogger = windowInfo.type === 'main',
-  showLoggerPayloads = false,
+  bridgeStatus: externalBridgeStatus,
+  windowTitle = 'Zubridge App',
+  appName = 'Zubridge App',
+  showWindowControls = true,
+  className = '',
+  children,
 }: ZubridgeAppProps) {
   // Extract data from store using selectors
   const counter = getCounterSelector(store);
   const isDarkMode = getThemeSelector(store);
-  const bridgeStatus = getBridgeStatusSelector(store);
-
-  // Get logger hook
-  const { logs, logAction, clearLogs } = useLogger();
+  // Use external bridge status if provided, otherwise get from store
+  const bridgeStatus = externalBridgeStatus || getBridgeStatusSelector(store);
 
   // Apply theme based on state
   useEffect(() => {
@@ -76,108 +98,108 @@ export function ZubridgeApp({
 
   // Action handlers with logging
   const handleIncrement = useCallback(() => {
-    logAction('COUNTER:INCREMENT', 'Incrementing counter');
     dispatch('COUNTER:INCREMENT');
-  }, [dispatch, logAction]);
+  }, [dispatch]);
 
   const handleDecrement = useCallback(() => {
-    logAction('COUNTER:DECREMENT', 'Decrementing counter');
     dispatch('COUNTER:DECREMENT');
-  }, [dispatch, logAction]);
+  }, [dispatch]);
 
   const handleResetCounter = useCallback(() => {
-    logAction('COUNTER:RESET', 'Resetting counter');
     dispatch('COUNTER:RESET');
-  }, [dispatch, logAction]);
+  }, [dispatch]);
 
   const handleDoubleCounter = useCallback(
     (method: 'thunk' | 'object' | 'action') => {
       if (method === 'thunk') {
-        logAction('COUNTER:DOUBLE_THUNK', 'Doubling counter via thunk', { currentValue: counter });
         dispatch((getState: () => any, dispatch: any) => {
           const currentState = getState();
           const currentValue = getCounterSelector(currentState);
           dispatch('COUNTER:SET', currentValue * 2);
         });
       } else {
-        logAction('COUNTER:DOUBLE_OBJECT', 'Doubling counter via object', { currentValue: counter });
         dispatch({
           type: 'COUNTER:SET',
           payload: counter * 2,
         });
       }
     },
-    [counter, dispatch, logAction],
+    [counter, dispatch],
   );
 
   const handleToggleTheme = useCallback(() => {
-    logAction('THEME:TOGGLE', `Toggling theme to ${isDarkMode ? 'light' : 'dark'}`);
     dispatch('THEME:TOGGLE');
-  }, [dispatch, isDarkMode, logAction]);
+  }, [dispatch]);
 
   // Window management
   const handleCreateWindow = useCallback(async () => {
-    logAction('WINDOW:CREATE', 'Creating new window');
     const result = await platformHandlers.createWindow();
 
     if (result.success) {
-      logAction('WINDOW:CREATE_SUCCESS', 'Window created successfully', { windowId: result.id });
+      // logAction('WINDOW:CREATE_SUCCESS', 'Window created successfully', { windowId: result.id });
     } else {
-      logAction('WINDOW:CREATE_ERROR', 'Failed to create window', {}, 'error');
+      // logAction('WINDOW:CREATE_ERROR', 'Failed to create window', {}, 'error');
     }
-  }, [platformHandlers, logAction]);
+  }, [platformHandlers]);
 
   const handleCloseWindow = useCallback(async () => {
-    logAction('WINDOW:CLOSE', 'Closing window', { windowId: windowInfo.id });
     await platformHandlers.closeWindow();
-  }, [platformHandlers, windowInfo.id, logAction]);
+  }, [platformHandlers]);
 
   const handleQuitApp = useCallback(async () => {
     if (platformHandlers.quitApp) {
-      logAction('APP:QUIT', 'Quitting application');
       await platformHandlers.quitApp();
     }
-  }, [platformHandlers, logAction]);
+  }, [platformHandlers]);
 
   // Get window properties
   const isMainWindow = windowInfo.type === 'main';
   const isRuntimeWindow = windowInfo.type === 'runtime';
 
   return (
-    <div className="zubridge-app-container">
-      <WindowDisplay
+    <div className={`zubridge-app ${className}`}>
+      <Header
+        appName={appName}
+        windowTitle={windowTitle}
         windowId={windowInfo.id}
-        windowTitle={getWindowTitle(windowInfo.type as WindowType, windowInfo)}
-        mode={windowInfo.platform}
+        windowType={windowInfo.type}
         bridgeStatus={bridgeStatus as 'ready' | 'error' | 'initializing'}
-        isRuntimeWindow={isRuntimeWindow}
-      >
-        <Counter
-          value={counter}
-          onIncrement={handleIncrement}
-          onDecrement={handleDecrement}
-          onDouble={(method: 'thunk' | 'object' | 'action') => handleDoubleCounter(method)}
-          onReset={handleResetCounter}
-          isLoading={bridgeStatus === 'initializing'}
-        />
+        showWindowControls={showWindowControls}
+      />
 
-        <div className="theme-section">
-          <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
+      <div className="p-4 main-content">
+        <WindowDisplay
+          windowId={windowInfo.id}
+          windowTitle={getWindowTitle(windowInfo.type as WindowType, windowInfo)}
+          mode={windowInfo.platform}
+          bridgeStatus={bridgeStatus as 'ready' | 'error' | 'initializing'}
+          isRuntimeWindow={isRuntimeWindow}
+        >
+          {children || (
+            <>
+              <Counter
+                value={counter}
+                onIncrement={handleIncrement}
+                onDecrement={handleDecrement}
+                onDouble={(method: 'thunk' | 'object' | 'action') => handleDoubleCounter(method)}
+                onReset={handleResetCounter}
+                isLoading={bridgeStatus === 'initializing'}
+              />
 
-          <WindowActions
-            onCreateWindow={handleCreateWindow}
-            onCloseWindow={handleCloseWindow}
-            onQuitApp={handleQuitApp}
-            isMainWindow={isMainWindow}
-          />
-        </div>
+              <div className="theme-section">
+                <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
 
-        {showLogger && (
-          <div className="mt-6 logger-section">
-            <Logger entries={logs} showPayloads={showLoggerPayloads} onClear={clearLogs} />
-          </div>
-        )}
-      </WindowDisplay>
+                <WindowActions
+                  onCreateWindow={handleCreateWindow}
+                  onCloseWindow={handleCloseWindow}
+                  onQuitApp={handleQuitApp}
+                  isMainWindow={isMainWindow}
+                />
+              </div>
+            </>
+          )}
+        </WindowDisplay>
+      </div>
     </div>
   );
 }

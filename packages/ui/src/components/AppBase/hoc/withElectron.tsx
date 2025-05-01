@@ -1,90 +1,112 @@
-import { useMemo } from 'react';
-import type { WindowType } from '../WindowInfo';
+import { useStore, useDispatch, useBridgeStatus } from '@zubridge/electron';
+import type { PropsWithChildren } from 'react';
 import { ZubridgeApp } from '../ZubridgeApp';
-import { createElectronAdapter } from '../adapters/electron';
-
-// Note: These imports will be available in the consuming app
-// We're just using type information here
-type DispatchFunction = any;
-type StoreType = any;
+import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
 
 /**
  * Props for the ElectronApp component
  */
-export interface ElectronAppProps {
+export interface ElectronAppProps extends PropsWithChildren {
   /**
-   * The window ID
+   * Window information
    */
-  windowId: number;
+  windowInfo?: WindowInfo;
 
   /**
-   * The type of window
+   * Title for the application window
+   * @default 'Electron App'
    */
-  windowType: WindowType;
+  windowTitle?: string;
 
   /**
-   * The mode name (e.g., 'basic', 'handlers', 'reducers')
+   * Application name shown in the header
+   * @default 'Electron App'
    */
-  modeName: string;
+  appName?: string;
 
   /**
-   * Whether to show the logger component
-   * @default true for main windows, false for others
+   * Whether to show window controls (maximize/minimize)
+   * @default true
    */
-  showLogger?: boolean;
+  showWindowControls?: boolean;
 
   /**
-   * Whether to show action payloads in the logger
-   * @default false
+   * Additional CSS classes to apply to the component
    */
-  showLoggerPayloads?: boolean;
-
-  /**
-   * The Zubridge dispatch function
-   * This should be provided by the consuming app
-   */
-  dispatch?: DispatchFunction;
-
-  /**
-   * The Zubridge store
-   * This should be provided by the consuming app
-   */
-  store?: StoreType;
+  className?: string;
 }
 
 /**
  * Higher-order component that wraps ZubridgeApp with Electron-specific functionality
  */
-export function ElectronApp({
-  windowId,
-  windowType,
-  modeName,
-  showLogger,
-  showLoggerPayloads,
-  dispatch,
-  store,
-}: ElectronAppProps) {
-  // Create platform handlers
-  const platformHandlers = useMemo(() => createElectronAdapter(window), []);
+export function withElectron() {
+  return function ElectronApp({
+    children,
+    windowInfo = { id: 'main', type: 'main', platform: 'electron' },
+    windowTitle = 'Electron App',
+    appName = 'Electron App',
+    showWindowControls = true,
+    className = '',
+  }: ElectronAppProps) {
+    // Get store, bridge status, and dispatch from Electron hooks
+    const store = useStore();
+    const dispatch = useDispatch();
+    const bridgeStatus = useBridgeStatus();
 
-  // Verify we have the required props
-  if (!dispatch || !store) {
-    console.error('ElectronApp requires dispatch and store props');
-    return <div>Error: Missing required props</div>;
-  }
+    // Platform handlers for Electron
+    const platformHandlers: PlatformHandlers = {
+      createWindow: async () => {
+        try {
+          if (!window.electron) {
+            throw new Error('Electron API not available');
+          }
+          const result = await window.electron.createWindow();
+          return { success: true, id: result.id };
+        } catch (error) {
+          console.error('Failed to create window:', error);
+          return { success: false, error: String(error) };
+        }
+      },
+      closeWindow: async () => {
+        try {
+          if (!window.electron) {
+            throw new Error('Electron API not available');
+          }
+          await window.electron.closeWindow();
+          return { success: true };
+        } catch (error) {
+          console.error('Failed to close window:', error);
+          return { success: false, error: String(error) };
+        }
+      },
+      quitApp: async () => {
+        try {
+          if (!window.electron) {
+            throw new Error('Electron API not available');
+          }
+          await window.electron.quitApp();
+          return { success: true };
+        } catch (error) {
+          console.error('Failed to quit app:', error);
+          return { success: false, error: String(error) };
+        }
+      },
+    };
 
-  return (
-    <ZubridgeApp
-      windowInfo={{
-        id: windowId,
-        type: windowType,
-        platform: modeName,
-      }}
-      store={store}
-      dispatch={dispatch}
-      platformHandlers={platformHandlers}
-      showLogger={showLogger}
-      showLoggerPayloads={showLoggerPayloads}
-    />
-  );
+    return (
+      <ZubridgeApp
+        store={store}
+        dispatch={dispatch}
+        bridgeStatus={bridgeStatus}
+        windowInfo={windowInfo}
+        platformHandlers={platformHandlers}
+        windowTitle={windowTitle}
+        appName={appName}
+        showWindowControls={showWindowControls}
+        className={className}
+      >
+        {children}
+      </ZubridgeApp>
+    );
+  };
 }

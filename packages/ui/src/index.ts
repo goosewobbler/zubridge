@@ -1,8 +1,14 @@
 // Export all components
-export * from './components';
+export * from './components/AppBase';
+export * from './components/Button';
+export * from './components/Counter';
+export * from './components/Header';
+export * from './components/ThemeToggle';
+export * from './components/WindowActions';
+export * from './components/WindowDisplay';
 
 // Import types to augment Window interface
-import './types';
+import './types.js';
 
 /**
  * Styles are bundled separately as CSS.
