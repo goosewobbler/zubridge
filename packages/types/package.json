@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/types",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "description": "Shared type definitions for Zubridge packages",
   "type": "module",
