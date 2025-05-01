@@ -1,4 +1,3 @@
-import path from 'node:path';
 import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
 
@@ -10,7 +9,7 @@ import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
 import { createBridge } from './bridge.js';
 import { getModeName, getZubridgeMode } from '../utils/mode.js';
-import { getPreloadPath } from '../utils/path.js';
+import { getPreloadPath, getResourcePath } from '../utils/path.js';
 import * as windows from './window.js';
 
 // Debug logger
@@ -33,7 +32,7 @@ debug(`Dev mode: ${isDevMode}`);
 const isTestMode = process.env.TEST === 'true';
 debug(`Test mode: ${isTestMode}`);
 
-const icon = path.join(__dirname, '..', '..', 'resources', 'images', 'icon.png');
+const icon = getResourcePath('images/icon.png');
 
 // Disable GPU acceleration
 if (!isTestMode && process.platform === 'darwin') {
@@ -46,7 +45,7 @@ const modeName = getModeName();
 debug(`Using Zubridge mode: ${modeName}`);
 
 // Ensure we always use the absolute path for the preload script
-const preloadPath = getPreloadPath(__dirname);
+const preloadPath = getPreloadPath();
 debug(`Using preload path: ${preloadPath}`);
 
 // Flag to track when app is explicitly being quit

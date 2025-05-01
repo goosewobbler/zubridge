@@ -1,12 +1,25 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { app } from 'electron';
 
 /**
+ * Get the equivalent of __dirname for the caller's module
+ * @returns The dirname equivalent as a string
+ */
+export const getDirname = (): string => {
+  // Get the URL of the caller using Error stack trace
+  const stackTrace = new Error().stack;
+  const callerFilePath = stackTrace?.split('\n')[2].match(/at.*\((.*):[0-9]+:[0-9]+\)/)?.[1] || import.meta.url;
+
+  // Convert from ES module URL to filesystem path
+  return callerFilePath.startsWith('file:') ? path.dirname(fileURLToPath(callerFilePath)) : callerFilePath;
+};
+
+/**
  * Gets the absolute path to the preload script
- * @param fromDir The directory to resolve the path from
  * @returns The absolute path to the preload script
  */
-export const getPreloadPath = (fromDir: string): string => {
+export const getPreloadPath = (): string => {
   // In production, the app is packaged and the paths are different
   if (app.isPackaged) {
     // In production, the preload script is in the app.asar archive
@@ -18,9 +31,29 @@ export const getPreloadPath = (fromDir: string): string => {
   // In development, use the local path
   const mode = process.env.ZUBRIDGE_MODE || 'basic';
   const outDir = `out-${mode}`;
-  const appRoot = path.resolve(fromDir, '..', '..');
+
+  // Get the directory path using our utility
+  const dirPath = getDirname();
+
+  const appRoot = path.resolve(dirPath, '..', '..');
   const preloadPath = path.resolve(appRoot, outDir, 'preload', 'index.cjs');
 
   console.log(`[Path Utils] Development preload path: ${preloadPath}`);
   return preloadPath;
+};
+
+/**
+ * Gets the path to resources in the app
+ * @param relativePath Path relative to app resources
+ * @returns The absolute path to the resource
+ */
+export const getResourcePath = (relativePath: string): string => {
+  if (app.isPackaged) {
+    // In production, resources are in the resources directory
+    return path.join(process.resourcesPath, relativePath);
+  }
+
+  // In development, they're relative to the project root
+  const dirPath = getDirname();
+  return path.resolve(dirPath, '../..', 'resources', relativePath);
 };

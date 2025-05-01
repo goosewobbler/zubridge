@@ -1,11 +1,15 @@
 import { join, resolve } from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 import type { Plugin } from 'vite';
+
+// Get __dirname equivalent in ES modules
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 console.log('ZUBRIDGE_MODE', process.env.ZUBRIDGE_MODE);
 
