@@ -11,12 +11,26 @@ export * from './components/WindowDisplay';
 import './types.js';
 
 /**
- * Styles are bundled separately as CSS.
- * To use these styles in your application, import them directly:
+ * Styles
+ * ------
+ * This package uses Tailwind CSS for styling. The styles are built and bundled
+ * separately from the components.
  *
- * ```js
- * // Import styles in your entry file
- * import '@zubridge/ui/dist/styles.css';
+ * When using this package, you need to:
+ *
+ * 1. Import the styles in your application:
+ *    ```jsx
+ *    import '@zubridge/ui/dist/styles.css';
+ *    ```
+ *
+ * 2. Make sure the UI package is built before your application by ensuring the
+ *    build order in your workspace. In the CI/build pipeline, the UI package
+ *    should be built before any application that depends on it.
+ *
+ * Note: During development with hot module reloading, the styles may not be available
+ * immediately. You may need to build the UI package first by running:
+ * ```
+ * pnpm --filter @zubridge/ui build
  * ```
  */
 
