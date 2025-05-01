@@ -69,8 +69,15 @@ function getUnscopedPackageName(pkgName: string): string {
 
 // Function to get the FULL package name (scoped if present) from local file
 function getScopedPackageName(simpleName: string): string | null {
-  const pkgJson = readPackageJson(path.join('packages', simpleName, 'package.json'));
-  return pkgJson ? pkgJson.name : null;
+  const pkgJsonPath = path.join('packages', simpleName, 'package.json');
+  if (fs.existsSync(pkgJsonPath)) {
+    const pkgJson = readPackageJson(pkgJsonPath);
+    return pkgJson ? pkgJson.name : null;
+  }
+
+  // For Rust packages, package-versioner is expected to handle them directly
+  // using their appropriate scoped name, so we just use the simple name
+  return simpleName;
 }
 
 // --- Main Logic ---
@@ -139,8 +146,10 @@ async function main() {
     // Get the unscoped name (handles both @zubridge/something and plain names)
     const simpleName = getUnscopedPackageName(pkg);
 
-    // Verify the package exists in the workspace
-    if (fs.existsSync(path.resolve(`packages/${simpleName}/package.json`))) {
+    // Add the package to targets if it exists in the workspace
+    // package-versioner will handle the appropriate package type
+    const packagePath = path.resolve(`packages/${simpleName}`);
+    if (fs.existsSync(packagePath)) {
       targets.push(simpleName);
     } else {
       console.warn(`::warning::Package ${pkg} (simple name: ${simpleName}) not found, skipping`);
@@ -187,12 +196,17 @@ async function main() {
 
   // Add debug logging to show current package versions
   console.log('\n--- Current Package Versions ---');
-  for (const scopedName of scopedTargets) {
-    const simpleName = getUnscopedPackageName(scopedName);
-    const pkgPath = path.join('packages', simpleName, 'package.json');
-    const pkgJson = readPackageJson(pkgPath);
-    if (pkgJson) {
-      console.log(`${pkgJson.name}: ${pkgJson.version}`);
+  for (const simpleName of targets) {
+    // Log package.json version if available
+    const pkgJsonPath = path.join('packages', simpleName, 'package.json');
+    if (fs.existsSync(pkgJsonPath)) {
+      const pkgJson = readPackageJson(pkgJsonPath);
+      if (pkgJson) {
+        console.log(`${pkgJson.name}: ${pkgJson.version}`);
+      }
+    } else {
+      // For packages without package.json (like Rust packages)
+      console.log(`${simpleName}: Version managed by package-versioner`);
     }
   }
   console.log('--- End Current Package Versions ---\n');
@@ -232,7 +246,7 @@ async function main() {
         identifier = releaseVersionInput.substring(3); // e.g., prepatch -> patch
       }
     }
-    packageVersionerCmd += ` --prerelease ${identifier}`;
+    packageVersionerCmd += ` --bump ${identifier} --prerelease`;
   } else {
     console.error(
       `Error: Invalid INPUT_RELEASE_VERSION value: ${releaseVersionInput}. Expected patch, minor, major, or pre*`,
@@ -279,28 +293,20 @@ async function main() {
       console.error(`Error: Could not parse JSON output from package-versioner: ${error.message}`);
       console.error('Full output was:\n' + commandOutput);
 
-      // Fall back to older regex-based parsing as a secondary fallback
-      console.warn('::warning::Attempting to use regex fallback to extract version');
-
-      // Try to find the version in the Updated package.json line
-      const regexUpdated = new RegExp(
-        `Updated package\\.json at .*/packages/${refPkgSimpleName}/package\\.json to version (\\S+)`,
-      );
-      const matchUpdated = commandOutput.match(regexUpdated);
-
-      if (matchUpdated && matchUpdated[1]) {
-        newVersion = matchUpdated[1];
-        console.log(`Using regex fallback: Found version ${newVersion} in output`);
-      } else {
-        // Last resort: read current version
-        const currentPkgJson = readPackageJson(refPkgPath);
+      // Fall back to reading current version for non-Rust packages
+      const pkgJsonPath = path.join('packages', refPkgSimpleName, 'package.json');
+      if (fs.existsSync(pkgJsonPath)) {
+        const currentPkgJson = readPackageJson(pkgJsonPath);
         if (currentPkgJson) {
           newVersion = currentPkgJson.version;
-          console.warn(`::warning::Falling back to current version '${newVersion}' due to parsing error.`);
+          console.warn(`::warning::Falling back to current version '${newVersion}' from package.json due to parsing error.`);
         } else {
-          console.error(`Error: Could not read current version from ${refPkgPath} either.`);
+          console.error(`Error: Could not read current version from ${pkgJsonPath}.`);
           process.exit(1); // Exit if we can't determine a version
         }
+      } else {
+        console.error(`Error: Reference package ${refPkgScopedName} does not have a package.json and JSON parsing failed.`);
+        process.exit(1);
       }
     }
   } else {
@@ -324,16 +330,20 @@ async function main() {
       }
     } catch (error: any) {
       console.error(`Error parsing JSON output: ${error.message}`);
-      console.error('Falling back to reading updated version from package.json');
+      console.error('Falling back to reading updated version from package.json if available');
 
-      // Read the updated version directly from the reference package's file (@zubridge/types)
-      console.log(`Reading updated version from ${refPkgPath}...`);
-      const updatedPkgJson = readPackageJson(refPkgPath);
-      if (updatedPkgJson && updatedPkgJson.version) {
-        newVersion = updatedPkgJson.version;
-        console.log(`Version bumped to: ${newVersion} (from JSON output)`);
+      // Check if reference package has a package.json for fallback
+      if (fs.existsSync(refPkgPath)) {
+        const updatedPkgJson = readPackageJson(refPkgPath);
+        if (updatedPkgJson && updatedPkgJson.version) {
+          newVersion = updatedPkgJson.version;
+          console.log(`Version bumped to: ${newVersion} (from package.json)`);
+        } else {
+          console.error(`Error: Could not read updated version from ${refPkgPath} after package-versioner run.`);
+          process.exit(1);
+        }
       } else {
-        console.error(`Error: Could not read updated version from ${refPkgPath} after package-versioner run.`);
+        console.error(`Error: Reference package ${refPkgScopedName} does not have a package.json for fallback version reading.`);
         process.exit(1);
       }
     }
