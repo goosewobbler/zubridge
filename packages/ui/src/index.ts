@@ -6,8 +6,15 @@ export * from './components/ThemeToggle';
 export * from './components/WindowActions';
 export * from './components/WindowDisplay';
 
-// Export AppBase components
+// Export AppBase components without platform-specific HOCs
 export * from './components/AppBase';
+
+// Export shared hooks
+export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';
+
+// Export component types
+export type { ElectronAppProps } from './components/AppBase/hoc/withElectron';
+export type { TauriAppProps } from './components/AppBase/hoc/withTauri';
 
 // Import types to augment Window interface
 import './types.js';
