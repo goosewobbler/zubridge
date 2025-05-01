@@ -1,0 +1,63 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Zubridge Development Commands
+
+## Root Directory
+
+### Build: build all packages and apps
+pnpm build
+
+### Build: build only the core packages (@zubridge/types, @zubridge/electron, @zubridge/tauri, @zubridge/ui)
+pnpm build:packages
+
+### CI: run the CI build, including all tests
+pnpm run ci
+
+### CI: run the CI build on Linux
+pnpm ci:linux
+
+### CI: display the E2E logs
+pnpm ci:e2e:logs
+
+### Formatting: apply formatting to files
+pnpm format
+
+### Formatting: verify if formatting is correct
+pnpm format:check
+
+### Task Graph: create task graph for CI build
+pnpm graph:e2e
+
+### Test: run all tests for all packages
+pnpm test
+
+### Test: run unit tests for all packages
+pnpm test:unit
+
+### Test: run E2E tests for all packages
+pnpm test:e2e
+
+### Test: run E2E tests for the electron package in basic mode
+pnpm test:e2e:basic
+
+### Test: run E2E tests for the electron package in handlers mode
+pnpm test:e2e:handlers
+
+### Test: run E2E tests for the electron package in reducers mode
+pnpm test:e2e:reducers
+
+### Test: run E2E tests for the electron package in redux mode
+pnpm test:e2e:redux
+
+### Test: run E2E tests for the electron package in custom mode
+pnpm test:e2e:custom
+
+### Clean: fully clean all packages and apps
+pnpm clean
+
+### Clean: delete turborepo cache
+pnpm clean:cache
+

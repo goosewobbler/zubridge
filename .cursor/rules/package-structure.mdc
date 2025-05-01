@@ -1,0 +1,34 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Zubridge Package Structure
+
+The Zubridge project is organized into several key packages:
+
+## Core Packages
+
+- `@zubridge/electron` - The core Electron package is an IPC bridging solution which implements a backend contract to allow compatibility with any custom state management solution, and adapters for popular state management libraries such as Zustand and Redux. The Zustand adapter supports three different Zustand usage patterns, `basic` (Zustand default - on-store action handlers), `handlers` (action handlers separate from store), and `reducers` (Redux-style reducers).
+- `@zubridge/tauri` - The core Tauri package is frontend-only, and implements a backend contract for users to hook their Rust-based state into.  The frontend interface is the same as that of the Electron package.
+
+## Additional Packages
+
+- `@zubridge/tauri-plugin` - Tauri plugin for reducing boilerplate when implementing the backend contract.  This plugin is Rust only, i.e. no frontend component.
+- `@zubridge/types` - Shared types for the core packages.
+- `@zubridge/ui` - Shared UI components used in the apps.  Internal use only.  All new UI components for the apps should be placed in this package.
+
+## Apps
+
+- `apps/electron-example` - Electron example app - this is a multi mode app designed to enable E2E testing of all of the functionality provided by `@zubridge/electron`.
+- `apps/tauri-example` - Tauri example app.  This is built on CI but is currently not tested.  Only use the latest tauri API version in this app.
+- `apps/tauri-v1-example` - Tauri v1 example app.  This is built on CI but is currently not tested.  Only use the tauri v1 API in this app.
+
+## Import Hierarchy
+
+The import hierarchy should be respected:
+- `@zubridge/types` should not import from other packages
+- `@zubridge/ui`, `@zubridge/electron` and `@zubridge/tauri` can import from `@zubridge/types` only
+- Apps can import from all packages
+
+This hierarchy prevents circular dependencies and maintains clear separation of concerns.

@@ -107,13 +107,13 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
     payload?: unknown,
   ): unknown => {
     if (typeof action === 'function') {
-      // Handle thunks
+      // Handle thunks - execute them with the store's getState and our dispatch function
       return (action as Thunk<S>)(store.getState, dispatch);
     }
 
     // Handle string action type with payload
     if (typeof action === 'string') {
-      // Only pass the payload parameter if it's not undefined
+      // Only pass the payload parameter if it's not undefined, and handle promise return value
       return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
     }
 
@@ -126,6 +126,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
       payload: action.payload,
     };
 
+    // Return the promise from dispatch
     return handlers.dispatch(normalizedAction);
   }) as DispatchFunc<S, TActions>;
 
