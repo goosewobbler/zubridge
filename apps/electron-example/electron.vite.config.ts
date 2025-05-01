@@ -107,6 +107,9 @@ export default defineConfig({
         // Add an alias for @zubridge/electron to use a browser-safe version
         '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/index.js'),
         '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
+        // Add aliases for direct imports from UI package
+        '@zubridge/ui-app': resolve(__dirname, '../../packages/ui/dist/components/AppBase'),
+        '@zubridge/ui-electron': resolve(__dirname, '../../packages/ui/dist/components/AppBase/hoc/withElectron'),
       },
     },
     plugins: await getRendererPlugins(),
