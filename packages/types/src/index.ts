@@ -6,6 +6,7 @@ export type Thunk<S> = (getState: StoreApi<S>['getState'], dispatch: Dispatch<S>
 export type Action<T extends string = string> = {
   type: T;
   payload?: unknown;
+  id?: string; // Unique identifier for tracking action acknowledgements
 };
 
 export type AnyState = Record<string, unknown>;
