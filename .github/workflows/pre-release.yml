@@ -50,4 +50,4 @@ jobs:
       github_bot_token: ${{ secrets.GITHUB_TOKEN }}
       npm_token: ${{ secrets.NPM_TOKEN }}
       deploy_key: ${{ secrets.DEPLOY_KEY }}
-      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+      crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
