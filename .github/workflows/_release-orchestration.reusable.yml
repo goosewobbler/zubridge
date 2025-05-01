@@ -34,6 +34,9 @@ on:
       deploy_key:
         description: 'SSH deploy key for pushing to the repository'
         required: true
+      crates_io_token:
+        description: 'Crates.io token for publishing Rust packages'
+        required: true
 
 env:
   GITHUB_TOKEN: ${{ secrets.github_bot_token }}
@@ -89,6 +92,7 @@ jobs:
       github_bot_token: ${{ secrets.github_bot_token }}
       npm_token: ${{ secrets.npm_token }}
       deploy_key: ${{ secrets.deploy_key }}
+      crates_io_token: ${{ secrets.crates_io_token }}
 
   # Post-release tasks
   post_release:
