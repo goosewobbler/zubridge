@@ -3,6 +3,9 @@ import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import { createZustandAdapter, ZustandOptions } from '../adapters/zustand.js';
 import { createReduxAdapter, ReduxOptions } from '../adapters/redux.js';
+import type { CoreBridgeOptions } from '../bridge.js';
+
+type CombinedOptions<S> = (ZustandOptions<S> | ReduxOptions<S>) & Partial<CoreBridgeOptions>;
 
 // WeakMap allows stores to be garbage collected when no longer referenced
 // Use a variable reference so we can replace it in tests
@@ -14,7 +17,7 @@ let stateManagerRegistry = new WeakMap<object, StateManager<any>>();
  */
 export function getStateManager<S extends AnyState>(
   store: StoreApi<S> | Store<S>,
-  options?: ZustandOptions<S> | ReduxOptions<S>,
+  options?: CombinedOptions<S>,
 ): StateManager<S> {
   // Check if we already have a state manager for this store
   if (stateManagerRegistry.has(store)) {

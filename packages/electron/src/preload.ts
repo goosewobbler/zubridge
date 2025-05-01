@@ -1,5 +1,6 @@
 import { ipcRenderer } from 'electron';
 import type { AnyState, Handlers, Action, Thunk } from '@zubridge/types';
+import { v4 as uuidv4 } from 'uuid';
 
 import { IpcChannel } from './constants';
 
@@ -36,7 +37,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           type: action,
           payload: payload,
           // Generate a unique ID for this action to track acknowledgment
-          id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          id: uuidv4(),
         };
 
         // Return a promise that resolves when the action is acknowledged
@@ -56,7 +57,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         // For regular action objects, add a unique ID if not already present
         const actionWithId: Action = {
           ...action,
-          id: action.id || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          id: action.id || uuidv4(),
         };
 
         // Return a promise that resolves when the action is acknowledged
