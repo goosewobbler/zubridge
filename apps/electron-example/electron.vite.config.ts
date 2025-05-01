@@ -51,9 +51,51 @@ const debugPlugin = () => ({
   },
 });
 
+// Resolver plugin for external CSS
+const externalCssResolverPlugin = (): Plugin => {
+  return {
+    name: 'external-css-resolver',
+    // Load hook to intercept and handle CSS imports
+    load(id) {
+      if (id === '@zubridge/ui/styles.css') {
+        const possiblePaths = [
+          // Try to find in node_modules first
+          resolve(__dirname, 'node_modules/@zubridge/ui/dist/styles.css'),
+          // Then in workspace package
+          resolve(__dirname, '../../packages/ui/dist/styles.css'),
+        ];
+
+        // Find the first existing path
+        const cssPath = possiblePaths.find((path) => fs.existsSync(path));
+
+        if (cssPath) {
+          console.log(`[DEBUG] Found UI styles at ${cssPath}`);
+          // Return the content of the CSS file
+          return fs.readFileSync(cssPath, 'utf8');
+        }
+
+        console.warn('[DEBUG] UI styles not found in any location');
+        // Return empty CSS if file not found to prevent build failures
+        return '/* UI styles not found */';
+      }
+
+      return null; // Let Vite handle other imports
+    },
+
+    // Resolve hook to handle the CSS import path
+    resolveId(id) {
+      if (id === '@zubridge/ui/styles.css') {
+        // Return the id unchanged to be handled by our load hook
+        return id;
+      }
+      return null;
+    },
+  };
+};
+
 // Configure renderer plugins based on whether we should watch UI
 const getRendererPlugins = async () => {
-  const plugins = [react() as unknown as Plugin, tailwindcss()];
+  const plugins = [react() as unknown as Plugin, tailwindcss(), externalCssResolverPlugin()];
 
   // Only add the UI watcher plugin if WATCH_UI=true
   if (shouldWatchUI) {
@@ -109,7 +151,7 @@ export default defineConfig({
         '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
         // Add aliases for direct imports from UI package
         '@zubridge/ui-app': resolve(__dirname, '../../packages/ui/dist/components/AppBase'),
-        '@zubridge/ui-electron': resolve(__dirname, '../../packages/ui/dist/components/AppBase/hoc/withElectron'),
+        '@zubridge/ui-electron': resolve(__dirname, '../../packages/ui/dist/electron'),
       },
     },
     plugins: await getRendererPlugins(),

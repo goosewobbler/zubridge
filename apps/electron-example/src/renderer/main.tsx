@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-// Import UI package styles before local styles
-import '@zubridge/ui/dist/styles.css';
+// Import UI package styles
+import '@zubridge/ui/styles.css';
 import './styles/index.css';
 // Import Zubridge components
-import { withElectron } from '@zubridge/ui';
+import { withElectron } from '@zubridge/ui/electron';
 // Import Zubridge hooks
 import { useDispatch } from '@zubridge/electron';
 import { useStore } from './hooks/useStore.js';
