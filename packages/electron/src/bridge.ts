@@ -37,12 +37,22 @@ export function createCoreBridge<State extends AnyState>(
   }
 
   // Handle dispatch events from renderers
-  ipcMain.on(IpcChannel.DISPATCH, (_event: IpcMainEvent, action: Action) => {
+  ipcMain.on(IpcChannel.DISPATCH, (event: IpcMainEvent, action: Action) => {
     try {
       // Process the action through our state manager
       stateManager.processAction(action);
+
+      // Send acknowledgment back to the sender if the action has an ID
+      if (action.id) {
+        event.sender.send(IpcChannel.DISPATCH_ACK, action.id);
+      }
     } catch (error) {
       console.error('Error handling dispatch:', error);
+
+      // Even on error, we should acknowledge the action was processed
+      if (action.id) {
+        event.sender.send(IpcChannel.DISPATCH_ACK, action.id);
+      }
     }
   });
 

@@ -31,12 +31,47 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         // This just prevents an error from being thrown
         return;
       } else if (typeof action === 'string') {
-        ipcRenderer.send(IpcChannel.DISPATCH, {
+        // Create an action object
+        const actionObj: Action = {
           type: action,
           payload: payload,
+          // Generate a unique ID for this action to track acknowledgment
+          id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        };
+
+        // Return a promise that resolves when the action is acknowledged
+        return new Promise<void>((resolve) => {
+          // Set up one-time listener for acknowledgment with this action ID
+          const ackListener = (_: unknown, ackId: string) => {
+            if (ackId === actionObj.id) {
+              ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
+              resolve();
+            }
+          };
+
+          ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
+          ipcRenderer.send(IpcChannel.DISPATCH, actionObj);
         });
       } else {
-        ipcRenderer.send(IpcChannel.DISPATCH, action);
+        // For regular action objects, add a unique ID if not already present
+        const actionWithId: Action = {
+          ...action,
+          id: action.id || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        };
+
+        // Return a promise that resolves when the action is acknowledged
+        return new Promise<void>((resolve) => {
+          // Set up one-time listener for acknowledgment with this action ID
+          const ackListener = (_: unknown, ackId: string) => {
+            if (ackId === actionWithId.id) {
+              ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
+              resolve();
+            }
+          };
+
+          ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
+          ipcRenderer.send(IpcChannel.DISPATCH, actionWithId);
+        });
       }
     },
   };
