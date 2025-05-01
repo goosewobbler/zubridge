@@ -247,3 +247,32 @@ const FilteredList = () => {
   );
 };
 ```
+
+## Async Action Handling
+
+When dispatching actions, the dispatch function now returns a promise that resolves when the action has been processed by the main process. This is particularly useful for sequential operations or when you need to ensure an action has been fully processed before continuing:
+
+```ts
+// Simple async dispatch
+await dispatch('COUNTER:INCREMENT');
+
+// Using in an async function
+const updateCounter = async () => {
+  await dispatch('COUNTER:FETCH_REMOTE');
+  await dispatch('COUNTER:INCREMENT');
+  console.log('Both actions have been processed');
+};
+
+// Using in a thunk
+dispatch(async (getState, dispatch) => {
+  await dispatch('COUNTER:FETCH');
+
+  // The state is guaranteed to be updated by now
+  const currentCount = getState().counter;
+
+  await dispatch('COUNTER:SET', currentCount * 2);
+  return 'Counter doubled';
+});
+```
+
+This promise-based pattern ensures that when you use `await` with a dispatch call, the code will wait until the action has been fully processed and the state has been updated, preventing race conditions in complex state update sequences.
