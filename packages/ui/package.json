@@ -15,8 +15,8 @@
     },
     "./dist/styles.css": "./dist/styles.css",
     "./vite-plugin": {
-      "import": "./dist/scripts/vite-ui-watcher-plugin.js",
-      "types": "./scripts/vite-ui-watcher-plugin.ts"
+      "types": "./scripts/vite-ui-watcher-plugin.ts",
+      "import": "./dist/scripts/vite-ui-watcher-plugin.js"
     },
     "./package.json": "./package.json"
   },
@@ -51,7 +51,9 @@
     "clsx": "^2.1.1"
   },
   "peerDependencies": {
-    "react": "^19.1.0"
+    "react": "^19.1.0",
+    "@zubridge/tauri": "workspace:*",
+    "@zubridge/electron": "workspace:*"
   },
   "publishConfig": {
     "access": "public"
