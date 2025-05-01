@@ -246,7 +246,7 @@ export function createBridgeFromStore<S extends AnyState = AnyState>(
   options?: ZustandOptions<S> | ReduxOptions<S> | CoreBridgeOptions,
 ): BackendBridge<number> {
   // Get or create a state manager for the store
-  const stateManager = getStateManager(store, options as any);
+  const stateManager = getStateManager(store, options);
 
   // Create the bridge using the state manager
   return createCoreBridge(stateManager, windows, options as CoreBridgeOptions);
