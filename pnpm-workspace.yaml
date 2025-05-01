@@ -4,6 +4,7 @@ packages:
   - 'apps/tauri-v1-example'
   - 'e2e'
   - 'packages/electron'
+  - 'packages/middleware/node'
   - 'packages/tauri'
   - 'packages/tauri-plugin'
   - 'packages/types'

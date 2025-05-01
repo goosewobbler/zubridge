@@ -1,0 +1,42 @@
+[package]
+name = "zubridge-middleware"
+version = "0.1.0"
+edition = "2021"
+authors = ["Zubridge Contributors"]
+description = "Middleware framework for Zubridge state management"
+license = "MIT"
+repository = "https://github.com/zubridge/zubridge"
+readme = "README.md"
+keywords = ["zubridge", "middleware", "state-management", "tauri", "electron"]
+categories = ["development-tools", "web-programming"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.32", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rmp-serde = "1.1" # MessagePack serialization
+
+# WebSocket server
+tokio-tungstenite = "0.20"
+futures-util = "0.3"
+
+# Utilities
+log = "0.4"
+thiserror = "1.0"
+async-trait = "0.1"
+uuid = { version = "1.4", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Optional Tauri v2 integration
+tauri = { version = "2.0.0-beta", optional = true }
+
+[features]
+default = []
+tauri = ["dep:tauri"]
+
+[dev-dependencies]
+tokio-test = "0.4"
+env_logger = "0.10"
