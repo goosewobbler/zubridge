@@ -88,6 +88,10 @@
       "dependsOn": ["@zubridge/types#build"],
       "cache": true
     },
+    "@zubridge/ui#build": {
+      "outputs": ["packages/ui/dist/**"],
+      "cache": true
+    },
     "@zubridge/electron#test:unit": {
       "dependsOn": ["@zubridge/electron#build"],
       "cache": true
@@ -108,30 +112,37 @@
     },
     "zubridge-electron-example#build:reducers": {
       "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "zubridge-electron-example#build:handlers": {
       "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "zubridge-electron-example#build:basic": {
       "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "zubridge-electron-example#build:redux": {
       "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "zubridge-electron-example#build:custom": {
       "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "zubridge-tauri-example#build": {
-      "dependsOn": ["@zubridge/tauri#build"],
+      "dependsOn": ["@zubridge/tauri#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "zubridge-tauri-v1-example#build": {
-      "dependsOn": ["@zubridge/tauri#build"],
+      "dependsOn": ["@zubridge/tauri#build", "@zubridge/ui#build"],
+      "inputs": ["packages/ui/dist/**"],
       "cache": true
     },
     "tauri-plugin#build": {
