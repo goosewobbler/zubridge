@@ -398,6 +398,12 @@ importers:
 
   packages/ui:
     dependencies:
+      '@zubridge/electron':
+        specifier: workspace:*
+        version: link:../electron
+      '@zubridge/tauri':
+        specifier: workspace:*
+        version: link:../tauri
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
