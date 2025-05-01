@@ -14,7 +14,7 @@ yarn add @zubridge/ui
 
 ```tsx
 import { Button, Counter, ThemeToggle } from '@zubridge/ui';
-import '@zubridge/ui/dist/styles.css';
+import '@zubridge/ui/styles.css';
 
 function App() {
   return (
@@ -41,7 +41,7 @@ The package includes the following components:
 All components use Tailwind CSS for styling. The package includes a pre-built CSS file you can import:
 
 ```tsx
-import '@zubridge/ui/dist/styles.css';
+import '@zubridge/ui/styles.css';
 ```
 
 ### Adding to Your Project

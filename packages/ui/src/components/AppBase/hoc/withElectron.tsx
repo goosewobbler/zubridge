@@ -1,5 +1,6 @@
-import { useStore, useDispatch, useBridgeStatus } from '@zubridge/electron';
+import { createUseStore, useDispatch } from '@zubridge/electron';
 import type { PropsWithChildren } from 'react';
+import { useState, useEffect } from 'react';
 import { ZubridgeApp } from '../ZubridgeApp';
 import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
 
@@ -40,6 +41,9 @@ export interface ElectronAppProps extends PropsWithChildren {
  * Higher-order component that wraps ZubridgeApp with Electron-specific functionality
  */
 export function withElectron() {
+  // Create a store hook for this component
+  const useStore = createUseStore();
+
   return function ElectronApp({
     children,
     windowInfo = { id: 'main', type: 'main', platform: 'electron' },
@@ -48,10 +52,17 @@ export function withElectron() {
     showWindowControls = true,
     className = '',
   }: ElectronAppProps) {
-    // Get store, bridge status, and dispatch from Electron hooks
+    // Get store and dispatch from Electron hooks
     const store = useStore();
     const dispatch = useDispatch();
-    const bridgeStatus = useBridgeStatus();
+    const [bridgeStatus, setBridgeStatus] = useState<'ready' | 'error' | 'initializing'>('initializing');
+
+    // Update bridge status based on store
+    useEffect(() => {
+      if (store && store.__bridge_status) {
+        setBridgeStatus(store.__bridge_status as 'ready' | 'error' | 'initializing');
+      }
+    }, [store]);
 
     // Platform handlers for Electron
     const platformHandlers: PlatformHandlers = {

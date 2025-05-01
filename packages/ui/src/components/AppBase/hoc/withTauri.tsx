@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState, useEffect } from 'react';
+import React, { PropsWithChildren, useState, useEffect } from 'react';
 import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
 import { ZubridgeApp } from '../ZubridgeApp';
 import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
