@@ -1,7 +1,7 @@
 import { createUseStore, useDispatch } from '@zubridge/electron';
 import type { PropsWithChildren } from 'react';
-import { useState, useEffect } from 'react';
 import { ZubridgeApp } from '../ZubridgeApp';
+import { useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
 
 /**
@@ -55,14 +55,7 @@ export function withElectron() {
     // Get store and dispatch from Electron hooks
     const store = useStore();
     const dispatch = useDispatch();
-    const [bridgeStatus, setBridgeStatus] = useState<'ready' | 'error' | 'initializing'>('initializing');
-
-    // Update bridge status based on store
-    useEffect(() => {
-      if (store && store.__bridge_status) {
-        setBridgeStatus(store.__bridge_status as 'ready' | 'error' | 'initializing');
-      }
-    }, [store]);
+    const bridgeStatus = useBridgeStatus(store);
 
     // Platform handlers for Electron
     const platformHandlers: PlatformHandlers = {

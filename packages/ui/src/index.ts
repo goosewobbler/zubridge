@@ -6,9 +6,6 @@ export * from './components/ThemeToggle';
 export * from './components/WindowActions';
 export * from './components/WindowDisplay';
 
-// Export AppBase components without platform-specific HOCs
-export * from './components/AppBase';
-
 // Export shared hooks
 export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';
 

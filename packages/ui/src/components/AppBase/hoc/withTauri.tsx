@@ -1,6 +1,7 @@
-import React, { PropsWithChildren, useState, useEffect } from 'react';
+import { PropsWithChildren } from 'react';
 import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
 import { ZubridgeApp } from '../ZubridgeApp';
+import { useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
 
 /**
@@ -51,14 +52,7 @@ export function withTauri() {
     // Get store and dispatch from Tauri hooks
     const store = useZubridgeStore();
     const dispatch = useZubridgeDispatch();
-    const [bridgeStatus, setBridgeStatus] = useState<'ready' | 'error' | 'initializing'>('initializing');
-
-    // Update bridge status based on store
-    useEffect(() => {
-      if (store && store.__bridge_status) {
-        setBridgeStatus(store.__bridge_status as 'ready' | 'error' | 'initializing');
-      }
-    }, [store]);
+    const bridgeStatus = useBridgeStatus(store);
 
     // Platform handlers for Tauri
     const platformHandlers: PlatformHandlers = {
