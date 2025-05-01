@@ -13,15 +13,41 @@ function handleError(message: string, exitCode = 1): never {
 // Process arguments
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const targetPackage = args.find((arg) => !arg.startsWith('--'));
 
-// List of crates to publish with their paths
-const cratesToPublish = [
+// Ensure targetPackage is a string (not a Symbol) when used
+const targetPackageStr = targetPackage ? String(targetPackage) : undefined;
+
+// List of known Rust crates to publish with their paths
+const knownCrates = [
   {
     name: 'tauri-plugin-zubridge',
-    path: 'packages/tauri-plugin-zubridge',
+    path: 'packages/tauri-plugin',
+  },
+  {
+    name: 'zubridge-middleware',
+    path: 'packages/middleware',
+    isHybrid: true,
   },
   // Add more crates here if needed
 ];
+
+// Determine which crates to publish
+let cratesToPublish = knownCrates;
+
+// If a target package is specified, only publish that package
+if (targetPackageStr) {
+  cratesToPublish = knownCrates.filter(
+    (crate) =>
+      crate.name === targetPackageStr ||
+      targetPackageStr.endsWith(`/${crate.name}`) ||
+      crate.path.includes(targetPackageStr),
+  );
+
+  if (cratesToPublish.length === 0) {
+    handleError(`No matching crate found for target: ${targetPackageStr}`);
+  }
+}
 
 console.log(`Publishing Rust crates to crates.io...${dryRun ? ' (DRY RUN)' : ''}`);
 
@@ -58,6 +84,12 @@ for (const crate of cratesToPublish) {
     } else {
       execSync(publishCommand, { stdio: 'inherit' });
       console.log(`Successfully published ${crate.name} to crates.io`);
+
+      // If this is a hybrid package with Node bindings, package-versioner has already
+      // updated the version in all components, so we don't need additional logic
+      if (crate.isHybrid) {
+        console.log(`This is a hybrid package - package-versioner has synced all component versions`);
+      }
     }
   } catch (error) {
     handleError(`Failed to publish crate ${crate.name}: ${error}`);

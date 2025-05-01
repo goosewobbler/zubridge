@@ -119,10 +119,17 @@ jobs:
             local pkg_name="$1"
             local pkg_dir_name=$(get_pkg_dir_name "$pkg_name")
             if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
-              return 0 # Exists
-            else
-              return 1 # Doesn't exist
+              return 0 # Exists as direct package
+            elif [[ -d "packages/$pkg_dir_name" ]]; then
+              # If it's a directory, search for nested package.json files one level down
+              for nested_dir in packages/$pkg_dir_name/*/; do
+                if [[ -f "${nested_dir}package.json" ]]; then
+                  return 0 # Exists as nested package
+                fi
+              done
             fi
+
+            return 1 # Doesn't exist
           }
 
           # For dry run, just echo what would happen
@@ -170,12 +177,25 @@ jobs:
               input_pkg_name=$(echo "$input_pkg_name" | xargs) # Trim whitespace
               pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
 
-              # Check if the package exists locally using the dir name
               if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
-                # Add filter for this package
-                # Note: We're using directory paths (./packages/pkgDirName) which our publish.ts
-                # script is set up to handle. It supports both directory paths and package names (@zubridge/pkgName)
+                # Standard package
                 FILTER_CMD="$FILTER_CMD --filter=./packages/$pkg_dir_name"
+              elif [[ -d "packages/$pkg_dir_name" ]]; then
+                # Check for nested package.json files
+                FOUND_NESTED=false
+                for nested_dir in packages/$pkg_dir_name/*/; do
+                  if [[ -f "${nested_dir}package.json" ]]; then
+                    # Found a nested package
+                    nested_path=${nested_dir%/} # Remove trailing slash
+                    FILTER_CMD="$FILTER_CMD --filter=./${nested_path}"
+                    FOUND_NESTED=true
+                  fi
+                done
+
+                if [[ "$FOUND_NESTED" == "false" ]]; then
+                  echo "::error::Error: No package.json found in or under 'packages/$pkg_dir_name'. Aborting publish."
+                  exit 1
+                fi
               else
                 echo "::error::Error: Package directory 'packages/$pkg_dir_name' not found. Aborting publish."
                 exit 1
@@ -186,13 +206,31 @@ jobs:
             # Single package case
             pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
 
-            # Ensure the package directory exists
-            if [ ! -d "./packages/$pkg_dir_name" ]; then
+            # Find all publishable packages, including nested ones
+            if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
+              # Standard package
+              pkg_path="./packages/$pkg_dir_name"
+              pnpx tsx scripts/publish.ts --tag=$TAG --filter=$pkg_path || PUBLISH_EXIT_CODE=$?
+            elif [[ -d "packages/$pkg_dir_name" ]]; then
+              # Check for nested package.json files
+              FOUND_NESTED=false
+              for nested_dir in packages/$pkg_dir_name/*/; do
+                if [[ -f "${nested_dir}package.json" ]]; then
+                  # Found a nested package
+                  nested_path=${nested_dir%/} # Remove trailing slash
+                  pnpx tsx scripts/publish.ts --tag=$TAG --filter=./${nested_path} || PUBLISH_EXIT_CODE=$?
+                  FOUND_NESTED=true
+                fi
+              done
+
+              if [[ "$FOUND_NESTED" == "false" ]]; then
+                echo "::error::Error: No package.json found in or under 'packages/$pkg_dir_name'. Aborting publish."
+                exit 1
+              fi
+            else
               echo "::error::Package directory ./packages/$pkg_dir_name does not exist"
               exit 1
             fi
-
-            pnpx tsx scripts/publish.ts --tag=$TAG --filter=./packages/$pkg_dir_name || PUBLISH_EXIT_CODE=$?
           fi
 
           # Check if we had an "already published" error
@@ -230,7 +268,7 @@ jobs:
 
       # Only publish Rust crates when explicitly selected
       - name: 🦀 Set up Rust
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "@zubridge/middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -238,17 +276,17 @@ jobs:
           override: true
 
       - name: 🔧 Login to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "@zubridge/middleware"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
         run: |
           cargo login ${{ secrets.crates_io_token }}
 
       - name: 📦 Publish Rust crates to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "@zubridge/middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         run: |
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-            pnpx tsx scripts/publish-crates.ts --dry-run
+            pnpx tsx scripts/publish-crates.ts --dry-run "${{ inputs.packages }}"
           else
-            pnpx tsx scripts/publish-crates.ts
+            pnpx tsx scripts/publish-crates.ts "${{ inputs.packages }}"
           fi
 
       - name: 🚀 Push Tags and Commits
