@@ -47,12 +47,6 @@ export interface ZubridgeAppProps {
   appName?: string;
 
   /**
-   * Whether to show window controls (maximize/minimize)
-   * @default true
-   */
-  showWindowControls?: boolean;
-
-  /**
    * Additional CSS classes to apply to the component
    */
   className?: string;
@@ -77,7 +71,6 @@ export function ZubridgeApp({
   bridgeStatus: externalBridgeStatus,
   windowTitle = 'Zubridge App',
   appName = 'Zubridge App',
-  showWindowControls = true,
   className = '',
   children,
 }: ZubridgeAppProps) {
@@ -184,7 +177,6 @@ export function ZubridgeApp({
         windowId={windowInfo.id}
         windowType={windowInfo.type}
         bridgeStatus={bridgeStatus as 'ready' | 'error' | 'initializing'}
-        showWindowControls={showWindowControls}
       />
 
       <div className="p-4 main-content">

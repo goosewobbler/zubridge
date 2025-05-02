@@ -1,5 +1,5 @@
 import { createUseStore, useDispatch } from '@zubridge/electron';
-import type { PropsWithChildren } from 'react';
+import React, { type PropsWithChildren } from 'react';
 import { ZubridgeApp } from '../ZubridgeApp';
 import { useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
@@ -24,13 +24,6 @@ export interface ElectronAppProps extends PropsWithChildren {
    * @default 'Electron App'
    */
   appName?: string;
-
-  /**
-   * Whether to show window controls (maximize/minimize)
-   * @default true
-   */
-  showWindowControls?: boolean;
-
   /**
    * Additional CSS classes to apply to the component
    */
@@ -49,7 +42,6 @@ export function withElectron() {
     windowInfo = { id: 'main', type: 'main', platform: 'electron' },
     windowTitle = 'Electron App',
     appName = 'Electron App',
-    showWindowControls = true,
     className = '',
   }: ElectronAppProps) {
     // Get store and dispatch from Electron hooks
@@ -106,7 +98,6 @@ export function withElectron() {
         platformHandlers={platformHandlers}
         windowTitle={windowTitle}
         appName={appName}
-        showWindowControls={showWindowControls}
         className={className}
       >
         {children}

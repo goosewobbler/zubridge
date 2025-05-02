@@ -26,12 +26,6 @@ export interface TauriAppProps extends PropsWithChildren {
   appName?: string;
 
   /**
-   * Whether to show window controls (maximize/minimize)
-   * @default true
-   */
-  showWindowControls?: boolean;
-
-  /**
    * Additional CSS classes to apply to the component
    */
   className?: string;
@@ -46,7 +40,6 @@ export function withTauri() {
     windowInfo = { id: 'main', type: 'main', platform: 'tauri' },
     windowTitle = 'Tauri App',
     appName = 'Tauri App',
-    showWindowControls = true,
     className = '',
   }: TauriAppProps) {
     // Get store and dispatch from Tauri hooks
@@ -106,7 +99,6 @@ export function withTauri() {
         platformHandlers={platformHandlers}
         windowTitle={windowTitle}
         appName={appName}
-        showWindowControls={showWindowControls}
         className={className}
       >
         {children}
