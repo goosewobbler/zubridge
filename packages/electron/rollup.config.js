@@ -17,6 +17,10 @@ export default [
     output: {
       file: './dist/preload.cjs',
       format: 'cjs',
+      exports: 'auto',
+      globals: {
+        uuid: 'uuid',
+      },
     },
     ...sharedConfig,
   },
