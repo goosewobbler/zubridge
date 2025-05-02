@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/electron",
-  "version": "1.3.0",
+  "version": "2.0.0-next.0",
   "description": "A streamlined state management library for Electron applications using Zustand.",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/electron",
