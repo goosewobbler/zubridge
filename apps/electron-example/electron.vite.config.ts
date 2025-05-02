@@ -62,6 +62,8 @@ const externalCssResolverPlugin = (): Plugin => {
     // Load hook to intercept and handle CSS imports
     load(id) {
       if (id === '@zubridge/ui/styles.css') {
+        console.log('[DEBUG] UI styles requested, searching for CSS file...');
+
         const possiblePaths = [
           // Try to find in node_modules first
           resolve(__dirname, 'node_modules/@zubridge/ui/dist/styles.css'),
@@ -69,18 +71,30 @@ const externalCssResolverPlugin = (): Plugin => {
           resolve(__dirname, '../../packages/ui/dist/styles.css'),
         ];
 
+        // Debug each path
+        possiblePaths.forEach((path) => {
+          const exists = fs.existsSync(path);
+          console.log(`[DEBUG] Checking path: ${path}, exists: ${exists}`);
+        });
+
         // Find the first existing path
         const cssPath = possiblePaths.find((path) => fs.existsSync(path));
 
         if (cssPath) {
           console.log(`[DEBUG] Found UI styles at ${cssPath}`);
-          // Return the content of the CSS file
-          return fs.readFileSync(cssPath, 'utf8');
+          try {
+            const content = fs.readFileSync(cssPath, 'utf8');
+            console.log(`[DEBUG] Read ${content.length} characters from styles.css`);
+            return content;
+          } catch (err) {
+            console.error(`[DEBUG] Error reading CSS file: ${err}`);
+          }
         }
 
-        console.warn('[DEBUG] UI styles not found in any location');
-        // Return empty CSS if file not found to prevent build failures
-        return '/* UI styles not found */';
+        console.warn('[DEBUG] UI styles not found, returning empty CSS');
+
+        // Return an empty CSS file
+        return '/* No styles found */';
       }
 
       return null; // Let Vite handle other imports
