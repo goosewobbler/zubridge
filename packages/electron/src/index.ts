@@ -119,7 +119,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
 
     // For action objects, normalize to standard Action format
     if (typeof action.type !== 'string') {
-      throw new Error(`Invalid action type: ${action.type}. Expected a string.`);
+      throw new Error(`Invalid action type: ${String(action.type)}. Expected a string.`);
     }
     const normalizedAction: Action = {
       type: action.type,
