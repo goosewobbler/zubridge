@@ -33,7 +33,7 @@ function AppWrapper() {
   // Create state for our app
   const [windowType, setWindowType] = useState<WindowType | null>(null);
   const [windowId, setWindowId] = useState<number | null>(null);
-  const [modeName, setModeName] = useState('Unknown');
+  const [modeId, setModeId] = useState('unknown');
 
   // Get Zubridge hooks
   const dispatch = useDispatch();
@@ -53,7 +53,7 @@ function AppWrapper() {
             setWindowId(info.id);
           }
           if (modeInfo) {
-            setModeName(modeInfo.modeName || modeInfo.name || 'Unknown');
+            setModeId((modeInfo.modeName || modeInfo.name || 'unknown').toLowerCase());
           }
         }
       } catch (error) {
@@ -63,6 +63,15 @@ function AppWrapper() {
 
     initApp();
   }, []);
+
+  const modeMap = {
+    basic: 'Zustand Basic',
+    handlers: 'Zustand Handlers',
+    reducers: 'Zustand Reducers',
+    redux: 'Redux',
+    custom: 'Custom',
+  };
+  const modeTitle = modeMap[modeId];
 
   // Show loading screen while getting info
   if (!windowType || windowId === null) {
@@ -75,10 +84,10 @@ function AppWrapper() {
       windowInfo={{
         id: String(windowId),
         type: windowType,
-        platform: modeName,
+        platform: modeId,
       }}
-      windowTitle={`${modeName} - ${windowType} Window`}
-      appName={`Zubridge ${modeName} Mode`}
+      windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
+      appName={`Zubridge - ${modeTitle} Mode`}
     />
   );
 }
