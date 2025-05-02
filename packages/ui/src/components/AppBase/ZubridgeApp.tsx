@@ -84,8 +84,28 @@ export function ZubridgeApp({
   // Extract data from store using selectors
   const counter = getCounterSelector(store);
   const isDarkMode = getThemeSelector(store);
-  // Use external bridge status if provided, otherwise get from store
-  const bridgeStatus = externalBridgeStatus || getBridgeStatusSelector(store);
+
+  // Determine the bridge status - if externalBridgeStatus is provided, use it
+  // Otherwise, try to get it from the store
+  // Default to 'ready' if we can't determine status but we have a store
+  let bridgeStatus: 'ready' | 'error' | 'initializing' = 'initializing';
+  if (externalBridgeStatus) {
+    bridgeStatus = externalBridgeStatus;
+  } else if (store) {
+    const storeStatus = getBridgeStatusSelector(store);
+    // Only assign if it's a valid status string, otherwise use default
+    if (storeStatus === 'ready' || storeStatus === 'error' || storeStatus === 'initializing') {
+      bridgeStatus = storeStatus;
+    } else {
+      // If we have a store but no valid bridge status, assume 'ready'
+      bridgeStatus = 'ready';
+    }
+  }
+
+  // Add console log to track the bridge status
+  console.log('[ZubridgeApp] Bridge status:', bridgeStatus);
+  console.log('[ZubridgeApp] Counter value:', counter);
+  console.log('[ZubridgeApp] Store:', store);
 
   // Apply theme based on state
   useEffect(() => {
