@@ -57,7 +57,7 @@
     "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
-    "electron": "^36.0.1",
+    "electron": "^35.2.1",
     "electron-builder": "^26.0.12",
     "electron-vite": "^3.0.0",
     "postcss": "^8.5.3",
