@@ -1,10 +1,12 @@
 // Global interface extensions
 interface Window {
   // Electron API exposed through contextBridge
-  electron?: {
-    createWindow: () => Promise<{ id: string | number }>;
-    closeWindow: () => Promise<void>;
+  electronAPI?: {
+    createRuntimeWindow: () => Promise<{ success: boolean; windowId: number }>;
+    closeCurrentWindow: () => Promise<void>;
     quitApp: () => Promise<void>;
+    getWindowInfo: () => Promise<{ id: number; type: string }>;
+    getMode: () => Promise<{ modeName: string; name?: string }>;
   };
 
   // Any other global interfaces needed
