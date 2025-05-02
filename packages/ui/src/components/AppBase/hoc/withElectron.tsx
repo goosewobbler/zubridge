@@ -61,11 +61,11 @@ export function withElectron() {
     const platformHandlers: PlatformHandlers = {
       createWindow: async () => {
         try {
-          if (!window.electron) {
+          if (!window.electronAPI) {
             throw new Error('Electron API not available');
           }
-          const result = await window.electron.createWindow();
-          return { success: true, id: result.id };
+          const result = await window.electronAPI.createRuntimeWindow();
+          return { success: true, id: result.windowId };
         } catch (error) {
           console.error('Failed to create window:', error);
           return { success: false, error: String(error) };
@@ -73,10 +73,10 @@ export function withElectron() {
       },
       closeWindow: async () => {
         try {
-          if (!window.electron) {
+          if (!window.electronAPI) {
             throw new Error('Electron API not available');
           }
-          await window.electron.closeWindow();
+          await window.electronAPI.closeCurrentWindow();
           return { success: true };
         } catch (error) {
           console.error('Failed to close window:', error);
@@ -85,10 +85,10 @@ export function withElectron() {
       },
       quitApp: async () => {
         try {
-          if (!window.electron) {
+          if (!window.electronAPI) {
             throw new Error('Electron API not available');
           }
-          await window.electron.quitApp();
+          await window.electronAPI.quitApp();
           return { success: true };
         } catch (error) {
           console.error('Failed to quit app:', error);
