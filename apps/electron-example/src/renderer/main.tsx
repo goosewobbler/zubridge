@@ -30,7 +30,7 @@ function AppWrapper() {
   // Create state for our app
   const [windowType, setWindowType] = useState<WindowType | null>(null);
   const [windowId, setWindowId] = useState<number | null>(null);
-  const [modeId, setModeId] = useState('unknown');
+  const [modeName, setModeName] = useState('unknown');
 
   // Fetch window info on mount
   useEffect(() => {
@@ -46,7 +46,7 @@ function AppWrapper() {
             setWindowId(info.id);
           }
           if (modeInfo) {
-            setModeId((modeInfo.modeName || modeInfo.name || 'unknown').toLowerCase());
+            setModeName((modeInfo.modeName || modeInfo.name || 'unknown').toLowerCase());
           }
         }
       } catch (error) {
@@ -64,7 +64,7 @@ function AppWrapper() {
     redux: 'Redux',
     custom: 'Custom',
   };
-  const modeTitle = modeMap[modeId];
+  const modeTitle = modeMap[modeName];
 
   // Show loading screen while getting info
   if (!windowType || windowId === null) {
@@ -77,7 +77,7 @@ function AppWrapper() {
       windowInfo={{
         id: String(windowId),
         type: windowType,
-        platform: modeId,
+        platform: modeName,
       }}
       windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
       appName={`Zubridge - ${modeTitle} Mode`}
