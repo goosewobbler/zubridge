@@ -16,7 +16,9 @@ const dryRun = args.includes('--dry-run');
 const targetPackage = args.find((arg) => !arg.startsWith('--'));
 
 // Ensure targetPackage is a string (not a Symbol) when used
-const targetPackageStr = targetPackage ? String(targetPackage) : undefined;
+// IMPORTANT: This explicit conversion is necessary to prevent TypeScript warnings
+// about implicit Symbol to string conversion
+const targetPackageStr = typeof targetPackage === 'string' ? targetPackage : String(targetPackage || '');
 
 // List of known Rust crates to publish with their paths
 const knownCrates = [
