@@ -100,7 +100,7 @@ jobs:
           echo "Retrieved NEW_VERSION: $NEW_VERSION"
 
           # Get NPM tag based on version
-          if [[ "$NEW_VERSION" =~ (beta|alpha|rc|pre) ]]; then
+          if [[ "$NEW_VERSION" =~ -(beta|alpha|rc|next|pre)[\.0-9]*$ ]]; then
             TAG="next"
           else
             TAG="latest"
