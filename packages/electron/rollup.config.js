@@ -1,6 +1,12 @@
+import nodeResolve from '@rollup/plugin-node-resolve';
+
 const sharedConfig = {
-  plugins: [],
-  external: ['electron', 'zustand', 'zustand/vanilla', 'uuid'],
+  plugins: [
+    nodeResolve({
+      preferBuiltins: true,
+    }),
+  ],
+  external: ['electron', 'zustand', 'zustand/vanilla'],
 };
 
 export default [
@@ -17,10 +23,6 @@ export default [
     output: {
       file: './dist/preload.cjs',
       format: 'cjs',
-      exports: 'auto',
-      globals: {
-        uuid: 'uuid',
-      },
     },
     ...sharedConfig,
   },
