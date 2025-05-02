@@ -9,7 +9,7 @@ import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
 import { createBridge } from './bridge.js';
 import { getModeName, getZubridgeMode } from '../utils/mode.js';
-import { getPreloadPath, getResourcePath } from '../utils/path.js';
+import { getPreloadPath } from '../utils/path.js';
 import * as windows from './window.js';
 
 // Debug logger
@@ -31,8 +31,6 @@ debug(`Dev mode: ${isDevMode}`);
 // Check if we're in test mode
 const isTestMode = process.env.TEST === 'true';
 debug(`Test mode: ${isTestMode}`);
-
-const icon = getResourcePath('images/icon.png');
 
 // Disable GPU acceleration
 if (!isTestMode && process.platform === 'darwin') {

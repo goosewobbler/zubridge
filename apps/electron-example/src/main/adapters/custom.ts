@@ -10,7 +10,7 @@ export function createCustomAdapter<S>(customStore: StateManager<S>): UnifiedSto
   return {
     getState: () => customStore.getState() as unknown as State,
     getInitialState: () => customStore.getState() as unknown as State,
-    setState: (partial, replace) => {
+    setState: (partial, _replace) => {
       // Using processAction since StateManager doesn't have setState
       if (typeof partial === 'function') {
         const currentState = customStore.getState() as unknown as State;

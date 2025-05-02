@@ -5,9 +5,6 @@ import '@zubridge/ui/styles.css';
 import './styles/index.css';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
-// Import Zubridge hooks
-import { useDispatch } from '@zubridge/electron';
-import { useStore } from './hooks/useStore.js';
 
 // Define the ElectronAPI for TypeScript
 declare global {
@@ -34,10 +31,6 @@ function AppWrapper() {
   const [windowType, setWindowType] = useState<WindowType | null>(null);
   const [windowId, setWindowId] = useState<number | null>(null);
   const [modeId, setModeId] = useState('unknown');
-
-  // Get Zubridge hooks
-  const dispatch = useDispatch();
-  const store = useStore();
 
   // Fetch window info on mount
   useEffect(() => {
