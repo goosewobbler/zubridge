@@ -108,7 +108,23 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
   ): unknown => {
     if (typeof action === 'function') {
       // Handle thunks - execute them with the store's getState and our dispatch function
-      return (action as Thunk<S>)(store.getState, dispatch);
+      // Create a proper async dispatch wrapper that ensures all promises are awaited
+      const asyncSafeDispatch = async (innerAction: any, innerPayload?: unknown) => {
+        // Return the promise from dispatch to allow proper awaiting
+        if (typeof innerAction === 'string') {
+          return innerPayload !== undefined
+            ? handlers.dispatch(innerAction, innerPayload)
+            : handlers.dispatch(innerAction);
+        } else if (typeof innerAction === 'function') {
+          // Handle nested thunks
+          return innerAction(store.getState, asyncSafeDispatch);
+        } else {
+          // Handle action objects
+          return handlers.dispatch(innerAction);
+        }
+      };
+
+      return (action as Thunk<S>)(store.getState, asyncSafeDispatch);
     }
 
     // Handle string action type with payload
