@@ -385,6 +385,161 @@ describe('application loading', () => {
       expect(await finalCounter.getText()).toContain('8');
     });
 
+    it('should properly handle sequential async thunk actions', async () => {
+      console.log('Starting sequential async thunk test');
+
+      // Reset the counter to a known value
+      await resetCounter();
+
+      // Connect to the WebSocket for middleware logging
+      const wsUrl = 'ws://localhost:9000';
+      console.log(`Connecting to middleware WebSocket at ${wsUrl}`);
+
+      // Initialize WebSocket connection variables
+      let actionSequence = [];
+      let socket;
+
+      try {
+        // Create WebSocket connection
+        await browser.executeAsync((wsUrl, done) => {
+          // Declare properties on window
+          (window as any).actionSequence = [];
+          (window as any).socket = new WebSocket(wsUrl);
+
+          (window as any).socket.onopen = () => {
+            console.log('WebSocket connected');
+            done(true);
+          };
+
+          (window as any).socket.onerror = (error: Event) => {
+            console.error('WebSocket error:', error);
+            done(false);
+          };
+
+          // Timeout if connection fails
+          setTimeout(() => {
+            if ((window as any).socket.readyState !== 1) {
+              console.error('WebSocket connection timeout');
+              done(false);
+            }
+          }, 3000);
+
+          (window as any).socket.onmessage = (event: { data: string }) => {
+            try {
+              // For this test, we only care about the sequence of events
+              // We'll just log the action types and timestamps
+              const data = JSON.parse(event.data);
+              if (data.entry_type === 'ActionDispatched' && data.action) {
+                (window as any).actionSequence.push({
+                  type: data.action.action_type,
+                  timestamp: data.timestamp,
+                  context: data.context_id,
+                });
+                console.log(`Action recorded: ${data.action.action_type}`);
+              } else if (data.entry_type === 'StateUpdated') {
+                (window as any).actionSequence.push({
+                  type: 'StateUpdated',
+                  timestamp: data.timestamp,
+                  context: data.context_id,
+                });
+                console.log('State update recorded');
+              }
+            } catch (error) {
+              console.error('Error processing WebSocket message:', error);
+            }
+          };
+        }, wsUrl);
+
+        // Find the async test button
+        const asyncTestButton = await browser.$('button=Test Async Thunk');
+
+        if (!(await asyncTestButton.isExisting())) {
+          console.log('Async test button not found, skipping test');
+          return;
+        }
+
+        console.log('Clicking async test button');
+        await asyncTestButton.click();
+
+        // We need a longer pause to ensure all async operations complete
+        const ASYNC_OPERATION_TIMEOUT = CURRENT_TIMING.BUTTON_CLICK_PAUSE * 10;
+        await browser.pause(ASYNC_OPERATION_TIMEOUT);
+
+        // Retrieve the action sequence from the browser
+        actionSequence = await browser.execute(() => {
+          return (window as any).actionSequence || [];
+        });
+
+        console.log('Retrieved action sequence:', JSON.stringify(actionSequence, null, 2));
+
+        // Verify async operations were performed sequentially
+        // Find all the setValue actions
+        const setValueActions = actionSequence.filter((action: any) => {
+          return typeof action.type === 'string' && action.type.includes('setValue');
+        });
+
+        // Verify we have at least two setValue actions
+        expect(setValueActions.length).toBeGreaterThanOrEqual(2);
+
+        // Now check their context IDs - actions from the same thunk should have related contexts
+        const uniqueContexts = new Set(
+          setValueActions.map((action: any) => {
+            return action.context;
+          }),
+        );
+
+        console.log(`Found ${uniqueContexts.size} unique contexts for setValue actions`);
+
+        // Verify the actions were processed in sequence by checking timestamps
+        let previousTimestamp = null;
+        let isSequential = true;
+
+        for (let i = 0; i < setValueActions.length; i++) {
+          const currentTimestamp = new Date(setValueActions[i].timestamp).getTime();
+
+          if (previousTimestamp !== null) {
+            const timeDiff = currentTimestamp - previousTimestamp;
+            console.log(`Time between actions ${i - 1} and ${i}: ${timeDiff}ms`);
+
+            // In a properly functioning system, the time difference should be significant
+            // because each action should wait for the previous one to complete
+            // We expect at least 1000ms between actions based on the handler implementation
+            if (timeDiff < 1000) {
+              isSequential = false;
+              console.log(`Warning: Actions ${i - 1} and ${i} appear to have executed too close together`);
+            }
+          }
+
+          previousTimestamp = currentTimestamp;
+        }
+
+        // Verify actions executed sequentially
+        expect(isSequential).toBe(true);
+
+        // Verify the final counter value reflects both operations
+        const finalCounter = await browser.$('h2');
+        const counterText = await finalCounter.getText();
+        const counterValue = parseFloat(counterText.replace('Counter: ', ''));
+
+        // The value should have been set twice by the async operations
+        // The exact value isn't predictable since random values are used,
+        // but it should be a non-zero value
+        expect(counterValue).not.toBe(0);
+        console.log(`Final counter value: ${counterValue}`);
+      } catch (error) {
+        console.error('Error during async thunk test:', error);
+        throw error;
+      } finally {
+        // Close the WebSocket connection
+        await browser.execute(() => {
+          if ((window as any).socket && (window as any).socket.readyState === 1) {
+            (window as any).socket.close();
+            console.log('WebSocket connection closed');
+          }
+        });
+      }
+    });
+
     it('should double the counter using an action object', async () => {
       // First, increment to a known value
       await resetCounter();
