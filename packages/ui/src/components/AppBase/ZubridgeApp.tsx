@@ -135,34 +135,32 @@ export function ZubridgeApp({
           const currentValue = getCounterSelector(currentState);
           console.log(`[RENDERER THUNK] Starting with counter value: ${currentValue}`);
 
-          // First async operation - quadruple the value
-          console.log(`[RENDERER THUNK] First operation: Quadrupling counter to ${currentValue * 4}`);
-          await dispatch('COUNTER:SET', currentValue * 4);
+          // First async operation - double the value
+          console.log(`[RENDERER THUNK] First operation: Doubling counter to ${currentValue * 2}`);
+          await dispatch('COUNTER:SET', currentValue * 2);
 
           // Add delay to simulate async work
           await new Promise((resolve) => setTimeout(resolve, delayTime));
 
           // Log intermediate state after first operation
-          const intermediateState1 = getState();
-          const intermediateValue1 = getCounterSelector(intermediateState1);
-          console.log(`[RENDERER THUNK] After first operation: counter value is ${intermediateValue1}`);
+          const intermediateState = getState();
+          const intermediateValue = getCounterSelector(intermediateState);
+          console.log(`[RENDERER THUNK] After first operation: counter value is ${intermediateValue}`);
 
-          // Second async operation - halve the value
-          console.log(`[RENDERER THUNK] Second operation: Halving counter to ${intermediateValue1 / 2}`);
-          await dispatch('COUNTER:SET', intermediateValue1 / 2);
+          // Second async operation - double the value again
+          console.log(`[RENDERER THUNK] Second operation: Doubling counter to ${intermediateValue * 2}`);
+          await dispatch('COUNTER:SET', intermediateValue * 2);
 
           // Add delay to simulate async work
           await new Promise((resolve) => setTimeout(resolve, delayTime));
 
-          // Log intermediate state after second operation
-          const intermediateState2 = getState();
-          const intermediateValue2 = getCounterSelector(intermediateState2);
-          console.log(`[RENDERER THUNK] After second operation: counter value is ${intermediateValue2}`);
+          // Log final state
+          const finalState = getState();
+          const finalValue = getCounterSelector(finalState);
+          console.log(`[RENDERER THUNK] After second operation: counter value is ${finalValue}`);
+          console.log(`[RENDERER THUNK] Test complete: expected ${currentValue * 4}, got ${finalValue}`);
 
-          // Verify the result equals doubling the initial value
-          console.log(`[RENDERER THUNK] Test complete: expected ${currentValue * 2}, got ${intermediateValue2}`);
-
-          return intermediateValue2;
+          return finalValue;
         });
       } else {
         dispatch({
