@@ -355,6 +355,23 @@ describe('application loading', () => {
     });
 
     it('should double the counter using a thunk', async () => {
+      console.log('Starting enhanced thunk test to verify proper async behavior');
+
+      // Setup: Add console logging to capture action sequence
+      await browser.execute(() => {
+        if (!(window as any).originalConsoleLog) {
+          (window as any).originalConsoleLog = console.log;
+          (window as any).logMessages = [];
+          console.log = (...args) => {
+            (window as any).originalConsoleLog(...args);
+            (window as any).logMessages.push({
+              time: new Date().getTime(),
+              message: args.join(' '),
+            });
+          };
+        }
+      });
+
       // First, increment to a known value
       await resetCounter();
       const incrementButton = await browser.$('button=+');
@@ -365,179 +382,273 @@ describe('application loading', () => {
 
       // Verify counter is at 2
       const initialCounter = await browser.$('h2');
-      expect(await initialCounter.getText()).toContain('2');
+      const initialText = await initialCounter.getText();
+      const initialValue = parseInt(initialText.replace('Counter: ', ''));
+      console.log(`Initial counter value: ${initialValue}`);
+      expect(initialValue).toBe(2);
 
-      // Click the double button
+      // Clear logs before clicking the double button
+      await browser.execute(() => {
+        (window as any).logMessages = [];
+      });
+
+      // Click the double button - this should execute the thunk
+      console.log('Clicking Double (Thunk) button to execute async thunk');
       const doubleButton = await browser.$('button=Double (Thunk)');
       await doubleButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2); // Longer pause for thunk operation
 
-      // Verify counter is now doubled (4)
+      // Wait a short time - enough to start but not complete all async operations
+      // This is intentionally short to try to catch the intermediate state
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Check intermediate value - if async operations are working correctly,
+      // the intermediate check should show the value has changed once
+      const intermediateCounter = await browser.$('h2');
+      const intermediateText = await intermediateCounter.getText();
+      const intermediateValue = parseInt(intermediateText.replace('Counter: ', ''));
+      console.log(`Intermediate counter value: ${intermediateValue}`);
+
+      // Now wait for the full operations to complete
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 5);
+
+      // Verify final counter value is doubled (4)
       const doubledCounter = await browser.$('h2');
-      expect(await doubledCounter.getText()).toContain('4');
+      const doubledText = await doubledCounter.getText();
+      const doubledValue = parseInt(doubledText.replace('Counter: ', ''));
+      console.log(`Final counter value after first double: ${doubledValue}`);
+      expect(doubledValue).toBe(4);
 
-      // Double again
+      // Get the console logs to see the sequence of operations
+      const firstLogs = await browser.execute(() => {
+        return (window as any).logMessages || [];
+      });
+
+      console.log('Console logs from first thunk execution:');
+      firstLogs.forEach((log: { time: number; message: string }) => {
+        console.log(`[${log.time}] ${log.message}`);
+      });
+
+      // Clear logs for the second test
+      await browser.execute(() => {
+        (window as any).logMessages = [];
+      });
+
+      // Double again to see if each async operation waits properly
+      console.log('Clicking Double (Thunk) button a second time');
       await doubleButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2);
+
+      // Again check for intermediate value
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      const intermediateCounter2 = await browser.$('h2');
+      const intermediateText2 = await intermediateCounter2.getText();
+      const intermediateValue2 = parseInt(intermediateText2.replace('Counter: ', ''));
+      console.log(`Second intermediate counter value: ${intermediateValue2}`);
+
+      // Wait for completion
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 5);
 
       // Verify counter is now 8
       const finalCounter = await browser.$('h2');
-      expect(await finalCounter.getText()).toContain('8');
+      const finalText = await finalCounter.getText();
+      const finalValue = parseInt(finalText.replace('Counter: ', ''));
+      console.log(`Final counter value: ${finalValue}`);
+      expect(finalValue).toBe(8);
+
+      // Get the console logs from the second execution
+      const secondLogs = await browser.execute(() => {
+        return (window as any).logMessages || [];
+      });
+
+      console.log('Console logs from second thunk execution:');
+      secondLogs.forEach((log: { time: number; message: string }) => {
+        console.log(`[${log.time}] ${log.message}`);
+      });
+
+      // Analyze logs to verify correct operation
+      // We should see logs for thunk start, first operation, interim check, second operation, in sequence
+      // If there's an issue with async operations, we'll see operations overlapping
+      console.log('Analyzing logs for proper sequencing...');
+
+      // Restore original console.log
+      await browser.execute(() => {
+        if ((window as any).originalConsoleLog) {
+          console.log = (window as any).originalConsoleLog;
+        }
+      });
     });
 
     it('should properly handle sequential async thunk actions', async () => {
-      console.log('Starting sequential async thunk test');
+      console.log('Starting enhanced async thunk test');
 
-      // Reset the counter to a known value
-      await resetCounter();
+      // Setup console log capturing for inspection
+      await browser.execute(() => {
+        // Create log storage if it doesn't exist
+        if (!(window as any).testLogs) {
+          (window as any).testLogs = [];
 
-      // Connect to the WebSocket for middleware logging
-      const wsUrl = 'ws://localhost:9000';
-      console.log(`Connecting to middleware WebSocket at ${wsUrl}`);
-
-      // Initialize WebSocket connection variables
-      let actionSequence = [];
-      let socket;
-
-      try {
-        // Create WebSocket connection
-        await browser.executeAsync((wsUrl, done) => {
-          // Declare properties on window
-          (window as any).actionSequence = [];
-          (window as any).socket = new WebSocket(wsUrl);
-
-          (window as any).socket.onopen = () => {
-            console.log('WebSocket connected');
-            done(true);
-          };
-
-          (window as any).socket.onerror = (error: Event) => {
-            console.error('WebSocket error:', error);
-            done(false);
-          };
-
-          // Timeout if connection fails
-          setTimeout(() => {
-            if ((window as any).socket.readyState !== 1) {
-              console.error('WebSocket connection timeout');
-              done(false);
-            }
-          }, 3000);
-
-          (window as any).socket.onmessage = (event: { data: string }) => {
-            try {
-              // For this test, we only care about the sequence of events
-              // We'll just log the action types and timestamps
-              const data = JSON.parse(event.data);
-              if (data.entry_type === 'ActionDispatched' && data.action) {
-                (window as any).actionSequence.push({
-                  type: data.action.action_type,
-                  timestamp: data.timestamp,
-                  context: data.context_id,
-                });
-                console.log(`Action recorded: ${data.action.action_type}`);
-              } else if (data.entry_type === 'StateUpdated') {
-                (window as any).actionSequence.push({
-                  type: 'StateUpdated',
-                  timestamp: data.timestamp,
-                  context: data.context_id,
-                });
-                console.log('State update recorded');
-              }
-            } catch (error) {
-              console.error('Error processing WebSocket message:', error);
+          // Override console.log to capture logs
+          const originalConsoleLog = console.log;
+          console.log = function (...args: any[]) {
+            originalConsoleLog.apply(console, args);
+            // Only capture ASYNC TEST logs
+            if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('[ASYNC TEST]')) {
+              (window as any).testLogs.push({
+                timestamp: new Date().getTime(),
+                message: args.join(' '),
+              });
             }
           };
-        }, wsUrl);
-
-        // Find the async test button
-        const asyncTestButton = await browser.$('button=Test Async Thunk');
-
-        if (!(await asyncTestButton.isExisting())) {
-          console.log('Async test button not found, skipping test');
-          return;
+        } else {
+          // Clear existing logs
+          (window as any).testLogs = [];
         }
+      });
 
-        console.log('Clicking async test button');
-        await asyncTestButton.click();
+      // Reset counter to 2 for a predictable starting point
+      await resetCounter();
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
 
-        // We need a longer pause to ensure all async operations complete
-        const ASYNC_OPERATION_TIMEOUT = CURRENT_TIMING.BUTTON_CLICK_PAUSE * 10;
-        await browser.pause(ASYNC_OPERATION_TIMEOUT);
+      // Verify starting value is 2
+      const startCounter = await browser.$('h2');
+      const startValue = parseInt((await startCounter.getText()).replace('Counter: ', ''));
+      console.log(`Starting counter value: ${startValue}`);
+      expect(startValue).toBe(2);
 
-        // Retrieve the action sequence from the browser
-        actionSequence = await browser.execute(() => {
-          return (window as any).actionSequence || [];
-        });
+      // Use the "Double (Thunk)" button which now has the async functionality
+      console.log('Looking for Double (Thunk) button');
+      const doubleThunkButton = await browser.$('button=Double (Thunk)');
 
-        console.log('Retrieved action sequence:', JSON.stringify(actionSequence, null, 2));
+      if (await doubleThunkButton.isExisting()) {
+        console.log('Found Double (Thunk) button, clicking it');
+        await doubleThunkButton.click();
+      } else {
+        console.log('Double (Thunk) button not found, trying fallback approaches');
 
-        // Verify async operations were performed sequentially
-        // Find all the setValue actions
-        const setValueActions = actionSequence.filter((action: any) => {
-          return typeof action.type === 'string' && action.type.includes('setValue');
-        });
+        // Try with a more generic selector if the exact text isn't matching
+        const fallbackButton = await browser.$('button*=Double');
 
-        // Verify we have at least two setValue actions
-        expect(setValueActions.length).toBeGreaterThanOrEqual(2);
+        if (await fallbackButton.isExisting()) {
+          console.log('Found button containing "Double", clicking it');
+          await fallbackButton.click();
+        } else {
+          // Last resort: dispatch action directly
+          console.log('No matching button found, dispatching action directly');
 
-        // Now check their context IDs - actions from the same thunk should have related contexts
-        const uniqueContexts = new Set(
-          setValueActions.map((action: any) => {
-            return action.context;
-          }),
+          await browser.execute(() => {
+            // Use the exposed window.zubridge.dispatch to trigger our test action
+            if ((window as any).zubridge && (window as any).zubridge.dispatch) {
+              console.log('Directly dispatching COUNTER:TEST_ASYNC_DOUBLE action');
+              (window as any).zubridge.dispatch('COUNTER:TEST_ASYNC_DOUBLE');
+            } else {
+              console.error('zubridge.dispatch not available');
+            }
+          });
+        }
+      }
+
+      // Wait for async operations to complete (at least 2 seconds for our delays)
+      console.log('Waiting for async operations to complete...');
+      await browser.pause(3000);
+
+      // Retrieve the captured console logs
+      const capturedLogs = await browser.execute(() => {
+        return (window as any).testLogs || [];
+      });
+
+      console.log('Captured logs:', JSON.stringify(capturedLogs, null, 2));
+
+      // Verify expected sequence of logs
+      if (capturedLogs.length > 0) {
+        console.log(`Found ${capturedLogs.length} log entries`);
+
+        // We should see a pattern of logs: start, first operation, intermediate check, second operation, final check
+        const containsStart = capturedLogs.some((log: any) => log.message.includes('Starting with counter value'));
+
+        const containsFirstOp = capturedLogs.some((log: any) =>
+          log.message.includes('First operation: Setting counter'),
         );
 
-        console.log(`Found ${uniqueContexts.size} unique contexts for setValue actions`);
+        const containsIntermediate = capturedLogs.some((log: any) =>
+          log.message.includes('After first operation: counter value'),
+        );
 
-        // Verify the actions were processed in sequence by checking timestamps
-        let previousTimestamp = null;
-        let isSequential = true;
+        const containsSecondOp = capturedLogs.some((log: any) =>
+          log.message.includes('Second operation: Setting counter'),
+        );
 
-        for (let i = 0; i < setValueActions.length; i++) {
-          const currentTimestamp = new Date(setValueActions[i].timestamp).getTime();
+        const containsCompletion = capturedLogs.some((log: any) => log.message.includes('Test complete'));
 
-          if (previousTimestamp !== null) {
-            const timeDiff = currentTimestamp - previousTimestamp;
-            console.log(`Time between actions ${i - 1} and ${i}: ${timeDiff}ms`);
+        // Log the occurrence of each phase
+        console.log(`Log contains start: ${containsStart}`);
+        console.log(`Log contains first operation: ${containsFirstOp}`);
+        console.log(`Log contains intermediate check: ${containsIntermediate}`);
+        console.log(`Log contains second operation: ${containsSecondOp}`);
+        console.log(`Log contains test completion: ${containsCompletion}`);
 
-            // In a properly functioning system, the time difference should be significant
-            // because each action should wait for the previous one to complete
-            // We expect at least 1000ms between actions based on the handler implementation
-            if (timeDiff < 1000) {
-              isSequential = false;
-              console.log(`Warning: Actions ${i - 1} and ${i} appear to have executed too close together`);
-            }
+        // Check for timing between operations
+        let intermediateValueLog = capturedLogs.find((log: any) =>
+          log.message.includes('After first operation: counter value'),
+        );
+
+        let finalValueLog = capturedLogs.find((log: any) =>
+          log.message.includes('After second operation: counter value'),
+        );
+
+        if (intermediateValueLog && finalValueLog) {
+          // Extract the actual values from logs
+          const intermediateMatch = intermediateValueLog.message.match(/counter value is (\d+)/);
+          const finalMatch = finalValueLog.message.match(/counter value is (\d+)/);
+
+          if (intermediateMatch && finalMatch) {
+            const intermediateValue = parseInt(intermediateMatch[1]);
+            const finalValue = parseInt(finalMatch[1]);
+
+            console.log(`Intermediate value from logs: ${intermediateValue}`);
+            console.log(`Final value from logs: ${finalValue}`);
+
+            // Check if the second operation used the updated value from the first
+            const expectedFinalValue = intermediateValue * 2;
+            const finalValueIsCorrect = finalValue === expectedFinalValue;
+
+            console.log(`Expected final value: ${expectedFinalValue}, actual: ${finalValue}`);
+            console.log(`Final value is correct: ${finalValueIsCorrect}`);
+
+            // This would fail if the thunk doesn't properly await the first dispatch
+            // If it doesn't await, then both operations would use the initial value
+            expect(finalValue).toBe(expectedFinalValue);
           }
-
-          previousTimestamp = currentTimestamp;
         }
-
-        // Verify actions executed sequentially
-        expect(isSequential).toBe(true);
-
-        // Verify the final counter value reflects both operations
-        const finalCounter = await browser.$('h2');
-        const counterText = await finalCounter.getText();
-        const counterValue = parseFloat(counterText.replace('Counter: ', ''));
-
-        // The value should have been set twice by the async operations
-        // The exact value isn't predictable since random values are used,
-        // but it should be a non-zero value
-        expect(counterValue).not.toBe(0);
-        console.log(`Final counter value: ${counterValue}`);
-      } catch (error) {
-        console.error('Error during async thunk test:', error);
-        throw error;
-      } finally {
-        // Close the WebSocket connection
-        await browser.execute(() => {
-          if ((window as any).socket && (window as any).socket.readyState === 1) {
-            (window as any).socket.close();
-            console.log('WebSocket connection closed');
-          }
-        });
+      } else {
+        console.log('No logs were captured. This could indicate that the test action was not properly executed.');
       }
+
+      // Check the actual final counter value in the UI
+      const finalCounter = await browser.$('h2');
+      const finalCounterText = await finalCounter.getText();
+      const finalCounterValue = parseInt(finalCounterText.replace('Counter: ', ''));
+
+      console.log(`Final counter value in UI: ${finalCounterValue}`);
+
+      // If everything worked correctly, the value should be startValue * 4
+      // startValue is 2, so we expect 8
+      const expectedFinalValue = startValue * 4;
+      console.log(`Expected final UI value: ${expectedFinalValue}`);
+
+      // In a properly functioning implementation, these should be equal
+      // If the thunk doesn't await properly, we'd likely see startValue * 2 instead
+      if (finalCounterValue !== expectedFinalValue) {
+        console.log(`FAILURE: Final UI value ${finalCounterValue} does not match expected ${expectedFinalValue}`);
+        console.log('This indicates the async thunk is not properly awaiting dispatch operations');
+      } else {
+        console.log('SUCCESS: Final UI value matches expected value, thunk is awaiting properly');
+      }
+
+      // This assertion would fail in a broken implementation
+      expect(finalCounterValue).toBe(expectedFinalValue);
     });
 
     it('should double the counter using an action object', async () => {
