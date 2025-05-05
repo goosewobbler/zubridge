@@ -57,8 +57,8 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1
       zustand:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
+        specifier: ^5.0.4
+        version: 5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.4
@@ -88,8 +88,8 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3
       electron:
-        specifier: ^35.1.5
-        version: 35.2.1
+        specifier: ^35.2.2
+        version: 35.2.2
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
@@ -110,7 +110,7 @@ importers:
         version: 6.3.3(@types/node@22.15.3)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1)
       wdio-electron-service:
         specifier: ^8.0.1
-        version: 8.1.0(electron@35.2.1)(webdriverio@9.12.7(puppeteer-core@22.15.0))
+        version: 8.1.0(electron@35.2.2)(webdriverio@9.12.7(puppeteer-core@22.15.0))
 
   apps/tauri-example:
     dependencies:
@@ -130,8 +130,8 @@ importers:
         specifier: ^19.0.0
         version: 19.1.0(react@19.1.0)
       zustand:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
+        specifier: ^5.0.4
+        version: 5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^2.3.1
@@ -182,8 +182,8 @@ importers:
         specifier: ^19.0.0
         version: 19.1.0(react@19.1.0)
       zustand:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
+        specifier: ^5.0.4
+        version: 5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^1.6.3
@@ -225,8 +225,8 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3
       electron:
-        specifier: ^35.1.5
-        version: 35.2.1
+        specifier: ^35.2.2
+        version: 35.2.2
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10
@@ -257,7 +257,7 @@ importers:
         version: 5.8.3
       wdio-electron-service:
         specifier: ^8.0.1
-        version: 8.1.0(electron@35.2.1)(webdriverio@9.12.7(puppeteer-core@22.15.0))
+        version: 8.1.0(electron@35.2.2)(webdriverio@9.12.7(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -271,8 +271,8 @@ importers:
         specifier: '>=12'
         version: 35.2.1
       zustand:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
+        specifier: ^5.0.4
+        version: 5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
@@ -323,8 +323,8 @@ importers:
         specifier: workspace:*
         version: link:../types
       zustand:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
+        specifier: ^5.0.4
+        version: 5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
     devDependencies:
       '@tauri-apps/api':
         specifier: ^2.4.1
@@ -378,8 +378,8 @@ importers:
         specifier: ^5.8.2
         version: 5.8.3
       zustand:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
+        specifier: ^5.0.4
+        version: 5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0)
 
   packages/ui:
     dependencies:
@@ -444,6 +444,10 @@ packages:
     resolution: {integrity: sha512-RJlIHRueQgwWitWgF8OdFYGZX328Ax5BCemNGlqHfplnRT9ESi8JkFlvaVYbS+UubVY6dpv87Fs2u5M29iNFVQ==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/code-frame@7.27.1':
+    resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/compat-data@7.26.8':
     resolution: {integrity: sha512-oH5UPLMWR3L2wEFLnFJ1TZXqHufiTKAiLfqw5zkhS4dKXLJ10yVztfil/twG8EDTA4F/tvVNw9nOl4ZMslB8rQ==}
     engines: {node: '>=6.9.0'}
@@ -482,6 +486,10 @@ packages:
     resolution: {integrity: sha512-Ed61U6XJc3CVRfkERJWDz4dJwKe7iLmmJsbOGu9wSloNSFttHV0I8g6UAgb7qnK5ly5bGLPd4oXZlxCdANBOWQ==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/helper-validator-identifier@7.27.1':
+    resolution: {integrity: sha512-D2hP9eA+Sqx1kBZgzxZh0y1trbuU+JoDkiEwqhQ36nodYqJwyEIhPSdMNd7lOm/4io72luTPWH20Yda0xOuUow==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/helper-validator-option@7.25.9':
     resolution: {integrity: sha512-e/zv1co8pp55dNdEcCynfj9X7nyUKUXoUEwfXqaZt0omVOmDe9oOTdKStH4GmAw6zxMFs50ZayuMfHDKlO7Tfw==}
     engines: {node: '>=6.9.0'}
@@ -515,6 +523,10 @@ packages:
 
   '@babel/runtime@7.27.0':
     resolution: {integrity: sha512-VtPOkrdPHZsKc/clNqyi9WUA8TINkZ4cGk63UUE3u4pmB2k+ZMQRDuIOagv8UVd6j7k0T3+RRIb7beKTebNbcw==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.27.1':
+    resolution: {integrity: sha512-1x3D2xEk2fRo3PAhwQwu5UubzgiVWSXTBfWpVd2Mx2AzRqJuDJCsgaDVZ7HB5iGzDW1Hl1sWN2mFyKjmR9uAog==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.27.0':
@@ -651,6 +663,11 @@ packages:
 
   '@electron/windows-sign@1.2.1':
     resolution: {integrity: sha512-YfASnrhJ+ve6Q43ZiDwmpBgYgi2u0bYjeAVi2tDfN7YWAKO8X9EEOuPGtqbJpPLM6TfAHimghICjWe2eaJ8BAg==}
+    engines: {node: '>=14.14'}
+    hasBin: true
+
+  '@electron/windows-sign@1.2.2':
+    resolution: {integrity: sha512-dfZeox66AvdPtb2lD8OsIIQh12Tp0GNCRUDfBHIKGpbmopZto2/A8nSpYYLoedPIHpqkeblZ/k8OV0Gy7PYuyQ==}
     engines: {node: '>=14.14'}
     hasBin: true
 
@@ -2402,6 +2419,11 @@ packages:
 
   electron@35.2.1:
     resolution: {integrity: sha512-LO4xXLpzkPPUVLvAbdHMlW7N9Z+Qqz+7QsmSWXluTIQMeJk+v7o36nUTZghyA2I1s//tlMvuaCtle6Qo2W0Ktg==}
+    engines: {node: '>= 12.20.55'}
+    hasBin: true
+
+  electron@35.2.2:
+    resolution: {integrity: sha512-jZnCOtIgrt28esWP5z/PKndj/vPQ/Zt+cvNRlb/qOGnK/AjW1mASwPMtQ099NlSodf69RR3JrhnZCYbTWeDR4g==}
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
@@ -4954,8 +4976,8 @@ packages:
   zod@3.23.8:
     resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
-  zustand@5.0.3:
-    resolution: {integrity: sha512-14fwWQtU3pH4dE0dOpdMiWjddcH+QzKIgk1cl8epwSE7yag43k/AD/m4L6+K7DytAOr9gGBe3/EXj9g7cdostg==}
+  zustand@5.0.4:
+    resolution: {integrity: sha512-39VFTN5InDtMd28ZhjLyuTnlytDr9HfwO512Ai4I8ZABCoyAj4F1+sr7sD1jP/+p7k77Iko0Pb5NhgBFDCX0kQ==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -4996,6 +5018,12 @@ snapshots:
   '@babel/code-frame@7.26.2':
     dependencies:
       '@babel/helper-validator-identifier': 7.25.9
+      js-tokens: 4.0.0
+      picocolors: 1.1.1
+
+  '@babel/code-frame@7.27.1':
+    dependencies:
+      '@babel/helper-validator-identifier': 7.27.1
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
@@ -5059,6 +5087,8 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.25.9': {}
 
+  '@babel/helper-validator-identifier@7.27.1': {}
+
   '@babel/helper-validator-option@7.25.9': {}
 
   '@babel/helpers@7.27.0':
@@ -5088,6 +5118,8 @@ snapshots:
   '@babel/runtime@7.27.0':
     dependencies:
       regenerator-runtime: 0.14.1
+
+  '@babel/runtime@7.27.1': {}
 
   '@babel/template@7.27.0':
     dependencies:
@@ -5323,6 +5355,17 @@ snapshots:
       postject: 1.0.0-alpha.6
     transitivePeerDependencies:
       - supports-color
+
+  '@electron/windows-sign@1.2.2':
+    dependencies:
+      cross-dirname: 0.1.0
+      debug: 4.4.0(supports-color@8.1.1)
+      fs-extra: 11.3.0
+      minimist: 1.2.8
+      postject: 1.0.0-alpha.6
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
 
   '@esbuild/aix-ppc64@0.25.3':
     optional: true
@@ -5954,8 +5997,8 @@ snapshots:
 
   '@testing-library/dom@10.4.0':
     dependencies:
-      '@babel/code-frame': 7.26.2
-      '@babel/runtime': 7.27.0
+      '@babel/code-frame': 7.27.1
+      '@babel/runtime': 7.27.1
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       chalk: 4.1.2
@@ -7212,11 +7255,19 @@ snapshots:
       lodash: 4.17.21
       temp: 0.9.4
     optionalDependencies:
-      '@electron/windows-sign': 1.2.1
+      '@electron/windows-sign': 1.2.2
     transitivePeerDependencies:
       - supports-color
 
   electron@35.2.1:
+    dependencies:
+      '@electron/get': 2.0.3
+      '@types/node': 22.15.3
+      extract-zip: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  electron@35.2.2:
     dependencies:
       '@electron/get': 2.0.3
       '@types/node': 22.15.3
@@ -9658,7 +9709,7 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
-  wdio-electron-service@8.1.0(electron@35.2.1)(webdriverio@9.12.7(puppeteer-core@22.15.0)):
+  wdio-electron-service@8.1.0(electron@35.2.2)(webdriverio@9.12.7(puppeteer-core@22.15.0)):
     dependencies:
       '@vitest/spy': 3.1.2
       '@wdio/electron-types': 8.1.0
@@ -9674,7 +9725,7 @@ snapshots:
       tinyspy: 4.0.3
       webdriverio: 9.12.7(puppeteer-core@22.15.0)
     optionalDependencies:
-      electron: 35.2.1
+      electron: 35.2.2
     transitivePeerDependencies:
       - bare-buffer
       - bufferutil
@@ -9877,7 +9928,7 @@ snapshots:
 
   zod@3.23.8: {}
 
-  zustand@5.0.3(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0):
+  zustand@5.0.4(@types/react@19.1.2)(immer@10.1.1)(react@19.1.0):
     optionalDependencies:
       '@types/react': 19.1.2
       immer: 10.1.1
