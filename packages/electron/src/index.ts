@@ -106,10 +106,10 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
   const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
 
   // Create a dispatch function that will handle both generic and typed actions
-  const dispatch = ((
+  const dispatch = (async (
     action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
     payload?: unknown,
-  ): unknown => {
+  ): Promise<unknown> => {
     // Debug helper function
     const debugLog = (message: string) => {
       if (typeof window !== 'undefined' && (window as any).ZUBRIDGE_DEBUG) {
@@ -132,6 +132,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
             // Return the promise from dispatch to allow proper awaiting
             if (typeof innerAction === 'string') {
               debugLog(`asyncSafeDispatch: dispatching string action "${innerAction}"`);
+              // Use a single variable to store the result to avoid multiple dispatch calls
               const result =
                 innerPayload !== undefined
                   ? await handlers.dispatch(innerAction, innerPayload)
@@ -141,12 +142,14 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
             } else if (typeof innerAction === 'function') {
               // Handle nested thunks
               debugLog('asyncSafeDispatch: executing nested thunk');
+              // Ensure we await the nested thunk completion
               const result = await innerAction(store.getState, asyncSafeDispatch);
               debugLog('asyncSafeDispatch: nested thunk completed');
               return result;
             } else if (innerAction && typeof innerAction === 'object') {
               // Handle action objects
               debugLog(`asyncSafeDispatch: dispatching object action "${innerAction.type}"`);
+              // Store in a single variable to avoid multiple dispatch calls
               const result = await handlers.dispatch(innerAction);
               debugLog(`asyncSafeDispatch: action "${innerAction.type}" completed`);
               return result;
@@ -161,7 +164,8 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
           }
         };
 
-        return (action as Thunk<S>)(store.getState, asyncSafeDispatch);
+        // Make sure to return the awaited result from the thunk execution
+        return await (action as Thunk<S>)(store.getState, asyncSafeDispatch);
       }
 
       // Handle string action type with payload
@@ -194,7 +198,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
       console.error('Error in dispatch:', err);
       return undefined;
     }
-  }) as DispatchFunc<S, TActions>;
+  }) as unknown as DispatchFunc<S, TActions>;
 
   return dispatch;
 };
