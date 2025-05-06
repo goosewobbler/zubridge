@@ -175,6 +175,9 @@ describe('useDispatch', () => {
     // Verify it returns a promise that hasn't resolved yet
     expect(promise).toBeInstanceOf(Promise);
 
+    // We need to flush the microtask queue to ensure our promise is processed
+    await Promise.resolve();
+
     // Ensure dispatch was called with the right arguments
     expect(mockHandlers.dispatch).toHaveBeenCalledWith('INCREMENT', 5);
 
@@ -204,6 +207,9 @@ describe('useDispatch', () => {
     const awaitPromise = dispatch(action).then(() => {
       expect(promiseResolved).toBe(true);
     });
+
+    // We need to flush the microtask queue to ensure our promise is processed
+    await Promise.resolve();
 
     // Verify dispatch was called with the normalized action
     expect(mockHandlers.dispatch).toHaveBeenCalledWith({
