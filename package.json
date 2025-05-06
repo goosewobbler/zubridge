@@ -8,7 +8,7 @@
     "build": "turbo run build",
     "build:packages": "turbo run build:packages",
     "ci": "DEBUG=zubridge:* turbo run test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom",
-    "ci-linux": "turbo run test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom --concurrency=1",
+    "ci-linux": "DEBUG=zubridge:* turbo run test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom --concurrency=1",
     "ci:e2e:logs": "cat ./e2e/wdio-logs-electron-example-basic/*.log || cat ./e2e/wdio-logs-electron-example-handlers/*.log || cat ./e2e/wdio-logs-electron-example-reducers/*.log || cat ./e2e/wdio-logs-electron-example-redux/*.log || cat ./e2e/wdio-logs-electron-example-custom/*.log",
     "format": "prettier -w .",
     "format:check": "prettier -c .",
