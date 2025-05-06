@@ -387,6 +387,11 @@ describe('application loading', () => {
       console.log(`Initial counter value: ${initialValue}`);
       expect(initialValue).toBe(2);
 
+      // Enable extra debug logging in the thunk
+      await browser.execute(() => {
+        console.log('[TEST] Enhanced debug logging enabled');
+      });
+
       // Clear logs before clicking the double button
       await browser.execute(() => {
         (window as any).logMessages = [];
@@ -397,21 +402,37 @@ describe('application loading', () => {
       const doubleButton = await browser.$('button=Double (Thunk)');
       await doubleButton.click();
 
+      // Get real-time logs after clicking
+      const initialLogs = await browser.execute(() => (window as any).logMessages || []);
+      console.log('Initial logs after clicking thunk button:');
+      initialLogs.forEach((log: { time: number; message: string }) => {
+        console.log(`[${log.time}] ${log.message}`);
+      });
+
       // Wait a short time - enough to start but not complete all async operations
       // This is intentionally short to try to catch the intermediate state
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
 
-      // Check intermediate value - if async operations are working correctly,
-      // the intermediate check should show the value has changed once
+      // Check intermediate value - the behavior should be:
+      // 1. First operation multiplies by 4 (8)
+      // 2. Second operation divides by 2 (4)
       const intermediateCounter = await browser.$('h2');
       const intermediateText = await intermediateCounter.getText();
       const intermediateValue = parseInt(intermediateText.replace('Counter: ', ''));
       console.log(`Intermediate counter value: ${intermediateValue}`);
 
+      // Get middle-point logs
+      const midLogs = await browser.execute(() => (window as any).logMessages || []);
+      console.log('Logs at intermediate point:');
+      midLogs.forEach((log: { time: number; message: string }) => {
+        console.log(`[${log.time}] ${log.message}`);
+      });
+
       // Now wait for the full operations to complete
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 5);
 
-      // Verify final counter value is doubled (2*2=4)
+      // Verify final counter value
+      // The sequence should be: 2 -> 8 -> 4, so expect 4
       const doubledCounter = await browser.$('h2');
       const doubledText = await doubledCounter.getText();
       const doubledValue = parseInt(doubledText.replace('Counter: ', ''));
@@ -447,7 +468,7 @@ describe('application loading', () => {
       // Wait for completion
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 5);
 
-      // Verify counter is now doubled again (4*2=8)
+      // Verify counter is doubled with same pattern (4 -> 16 -> 8)
       const finalCounter = await browser.$('h2');
       const finalText = await finalCounter.getText();
       const finalValue = parseInt(finalText.replace('Counter: ', ''));
