@@ -356,6 +356,37 @@ describe('application loading', () => {
       expect(await counterElement3.getText()).toContain('0');
     });
 
+    it('should double the counter using an action object', async () => {
+      // First, increment to a known value
+      await resetCounter();
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialCounter = await browser.$('h2');
+      expect(await initialCounter.getText()).toContain('2');
+
+      // Click the double button
+      const doubleButton = await browser.$('button=Double (Object)');
+      await doubleButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2);
+
+      // Verify counter is now doubled (4)
+      const doubledCounter = await browser.$('h2');
+      expect(await doubledCounter.getText()).toContain('4');
+
+      // Double again
+      await doubleButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2);
+
+      // Verify counter is now 8
+      const finalCounter = await browser.$('h2');
+      expect(await finalCounter.getText()).toContain('8');
+    });
+
     it('should double the counter using a thunk', async () => {
       // First, increment to a known value
       await resetCounter();
@@ -470,38 +501,7 @@ describe('application loading', () => {
       expect(finalValue).toBe(8);
     });
 
-    it('should double the counter using an action object', async () => {
-      // First, increment to a known value
-      await resetCounter();
-      const incrementButton = await browser.$('button=+');
-      await incrementButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-
-      // Verify counter is at 2
-      const initialCounter = await browser.$('h2');
-      expect(await initialCounter.getText()).toContain('2');
-
-      // Click the double button
-      const doubleButton = await browser.$('button=Double (Object)');
-      await doubleButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2);
-
-      // Verify counter is now doubled (4)
-      const doubledCounter = await browser.$('h2');
-      expect(await doubledCounter.getText()).toContain('4');
-
-      // Double again
-      await doubleButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2);
-
-      // Verify counter is now 8
-      const finalCounter = await browser.$('h2');
-      expect(await finalCounter.getText()).toContain('8');
-    });
-
-    it('should fully await thunk completion before performing subsequent actions', async () => {
+    it('should fully await renderer thunk completion before performing subsequent actions in the same window', async () => {
       // Reset counter to start fresh
       await resetCounter();
 
@@ -523,7 +523,7 @@ describe('application loading', () => {
       // 4. If properly awaited, final value should be 5 (4+1)
       // If not properly awaited, we'd see 9 (8+1) or some other unexpected value
 
-      console.log('Starting awaitable thunk test sequence');
+      console.log('Starting awaitable renderer thunk test sequence');
 
       // Start the thunk
       console.log('Triggering renderer thunk...');
@@ -540,27 +540,38 @@ describe('application loading', () => {
 
       // Check the final counter value
       const finalValue = await getCounterValue();
-      console.log(`Final counter value after thunk+increment: ${finalValue}`);
+      console.log(`Final counter value after renderer thunk+increment: ${finalValue}`);
 
       // If the thunk is properly awaited, we should see:
       // 2 -> thunk (8 -> 4) -> increment (5)
       expect(finalValue).toBe(5);
+    });
 
-      // Also verify with main process thunk
-      console.log('Resetting counter for main process thunk test');
+    it('should fully await main process thunk completion before performing subsequent actions in the same window', async () => {
+      // Reset counter to start fresh
       await resetCounter();
 
-      // Increment to 2 again
+      // Increment to a known value (2)
+      const incrementButton = await browser.$('button=+');
       await incrementButton.click();
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
 
       // Verify counter is at 2
-      const secondInitialValue = await getCounterValue();
-      expect(secondInitialValue).toBe(2);
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
 
-      // Now do the same sequence with the main process thunk
+      // Create a sequence of actions to verify awaiting behavior:
+      // 1. Start the main process thunk (which will do: 2 -> 8 -> 4)
+      // 2. Immediately queue an increment action
+      // 3. The increment should only happen after the thunk completes
+      // 4. If properly awaited, final value should be 5 (4+1)
+      // If not properly awaited, we'd see 9 (8+1) or some other unexpected value
+
+      console.log('Starting awaitable main process thunk test sequence');
+
+      // Start the thunk
       console.log('Triggering main process thunk...');
       const mainThunkButton = await browser.$('button=Double (Main Thunk)');
       await mainThunkButton.click();
@@ -569,16 +580,157 @@ describe('application loading', () => {
       console.log('Immediately queuing increment action...');
       await incrementButton.click();
 
-      // Wait for everything to complete
+      // Now let's wait long enough for everything to complete
       console.log('Waiting for all actions to complete...');
       await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.BUTTON_CLICK_PAUSE);
 
       // Check the final counter value
-      const mainProcessFinalValue = await getCounterValue();
-      console.log(`Final counter value after main thunk+increment: ${mainProcessFinalValue}`);
+      const finalValue = await getCounterValue();
+      console.log(`Final counter value after main process thunk+increment: ${finalValue}`);
 
-      // Should again be 5 if properly awaited
-      expect(mainProcessFinalValue).toBe(5);
+      // If the thunk is properly awaited, we should see:
+      // 2 -> thunk (8 -> 4) -> increment (5)
+      expect(finalValue).toBe(5);
+    });
+
+    it('should await main process thunk completion even when actions are dispatched from different windows', async () => {
+      console.log('Starting cross-window main process thunk test');
+
+      // Reset counter to start fresh
+      await resetCounter();
+
+      // Increment to a known value (2)
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Create a new window for cross-window testing
+      console.log('Creating a second window for cross-window testing');
+      const createWindowButton = await browser.$('button=Create Window');
+      await createWindowButton.click();
+      await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+
+      // Verify we have 3 windows total
+      expect(windowHandles.length).toBeGreaterThanOrEqual(3);
+
+      // Start sequence in main window
+      console.log('Starting main process thunk in main window...');
+      const mainThunkButton = await browser.$('button=Double (Main Thunk)');
+      await mainThunkButton.click();
+
+      // After a small delay, switch to second window and click increment
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      console.log('Switching to second window...');
+      await switchToWindow(1);
+
+      // Verify window switch was successful
+      const secondWindowValue = await getCounterValue();
+      console.log(`Second window counter value: ${secondWindowValue}`);
+      // Value might be 2 or 8 (intermediate) depending on timing
+
+      // Click increment in second window while main process thunk is running
+      console.log('Clicking increment in second window...');
+      const secondWindowIncrementButton = await getButtonInCurrentWindow('increment');
+      await secondWindowIncrementButton.click();
+
+      // Wait for all operations to complete
+      console.log('Waiting for all cross-window operations to complete...');
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.STATE_SYNC_PAUSE);
+
+      // Check final value in second window - should be 5 if properly awaited
+      const secondWindowFinalValue = await getCounterValue();
+      console.log(`Second window final value: ${secondWindowFinalValue}`);
+      expect(secondWindowFinalValue).toBe(5);
+
+      // Switch back to first window and verify same value
+      console.log('Switching back to main window to verify sync...');
+      await switchToWindow(0);
+      await browser.pause(CURRENT_TIMING.STATE_SYNC_PAUSE);
+
+      const mainWindowFinalValue = await getCounterValue();
+      console.log(`Main window final value: ${mainWindowFinalValue}`);
+      expect(mainWindowFinalValue).toBe(5);
+
+      // Clean up the window we created
+      console.log('Cleaning up extra window');
+      await closeAllRemainingWindows();
+    });
+
+    it('should await renderer thunk completion even when actions are dispatched from different windows', async () => {
+      console.log('Starting cross-window renderer thunk test');
+
+      // Reset counter to start fresh
+      await resetCounter();
+
+      // Increment to a known value (2)
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Create a new window for cross-window testing
+      console.log('Creating a second window for cross-window testing');
+      const createWindowButton = await browser.$('button=Create Window');
+      await createWindowButton.click();
+      await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+
+      // Verify we have 3 windows total
+      expect(windowHandles.length).toBeGreaterThanOrEqual(3);
+
+      // Start sequence in main window
+      console.log('Starting renderer thunk in main window...');
+      const rendererThunkButton = await browser.$('button=Double (Renderer Thunk)');
+      await rendererThunkButton.click();
+
+      // After a small delay, switch to second window and click increment
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      console.log('Switching to second window...');
+      await switchToWindow(1);
+
+      // Verify window switch was successful
+      const secondWindowValue = await getCounterValue();
+      console.log(`Second window counter value: ${secondWindowValue}`);
+      // Value might be 2 or 8 (intermediate) depending on timing
+
+      // Click increment in second window while renderer thunk is running
+      console.log('Clicking increment in second window...');
+      const secondWindowIncrementButton = await getButtonInCurrentWindow('increment');
+      await secondWindowIncrementButton.click();
+
+      // Wait for all operations to complete
+      console.log('Waiting for all cross-window operations to complete...');
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.STATE_SYNC_PAUSE);
+
+      // Check final value in second window - should be 5 if properly awaited
+      const secondWindowFinalValue = await getCounterValue();
+      console.log(`Second window final value: ${secondWindowFinalValue}`);
+      expect(secondWindowFinalValue).toBe(5);
+
+      // Switch back to first window and verify same value
+      console.log('Switching back to main window to verify sync...');
+      await switchToWindow(0);
+      await browser.pause(CURRENT_TIMING.STATE_SYNC_PAUSE);
+
+      const mainWindowFinalValue = await getCounterValue();
+      console.log(`Main window final value: ${mainWindowFinalValue}`);
+      expect(mainWindowFinalValue).toBe(5);
+
+      // Clean up the window we created
+      console.log('Cleaning up extra window');
+      await closeAllRemainingWindows();
     });
   });
 
