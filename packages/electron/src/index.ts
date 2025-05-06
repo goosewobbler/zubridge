@@ -105,113 +105,157 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
   // Ensure we have a store for these handlers
   const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
 
-  // Track thunk execution to ensure sequential processing
-  let lastPromise: Promise<any> = Promise.resolve();
+  // -----------------------------------------------------------------------
+  // Action Queue Implementation
+  // -----------------------------------------------------------------------
+  // This queue ensures that all actions (including those from thunks) are
+  // processed in sequence, preventing race conditions when multiple actions
+  // are dispatched in quick succession or when thunks perform async operations.
+  // -----------------------------------------------------------------------
+
+  // Tracks the Promise chain of all actions, ensuring sequential processing
+  let actionQueue = Promise.resolve();
+
+  /**
+   * Helper to log debug messages when debugging is enabled
+   */
+  const logDebug = (message: string) => {
+    if (typeof window !== 'undefined' && (window as any).ZUBRIDGE_DEBUG) {
+      debug.log('core', `[ZUBRIDGE_DISPATCH_DEBUG] ${message}`);
+    }
+  };
+
+  /**
+   * Creates a safe dispatch function for use inside thunks
+   * This ensures all nested dispatches are also properly queued
+   */
+  const createDispatchForThunk = (getState: () => S) => {
+    /**
+     * Helper function to get a readable action type for logging
+     */
+    const getActionTypeForLogging = (action: any): string => {
+      if (typeof action === 'string') {
+        return action;
+      }
+
+      if (typeof action === 'object' && action?.type) {
+        return action.type;
+      }
+
+      return typeof action;
+    };
+
+    const thunkDispatch = async (innerAction: any, innerPayload?: unknown): Promise<unknown> => {
+      try {
+        const actionType = getActionTypeForLogging(innerAction);
+        logDebug(`thunkDispatch called with: ${actionType}`);
+
+        // String action type with optional payload
+        if (typeof innerAction === 'string') {
+          logDebug(`thunkDispatch: dispatching string action "${innerAction}"`);
+          const result =
+            innerPayload !== undefined
+              ? await handlers.dispatch(innerAction, innerPayload)
+              : await handlers.dispatch(innerAction);
+          logDebug(`thunkDispatch: action "${innerAction}" completed`);
+          return result;
+        }
+
+        // Nested thunk
+        else if (typeof innerAction === 'function') {
+          logDebug('thunkDispatch: executing nested thunk');
+          const result = await innerAction(getState, thunkDispatch);
+          logDebug('thunkDispatch: nested thunk completed');
+          return result;
+        }
+
+        // Action object
+        else if (innerAction && typeof innerAction === 'object') {
+          logDebug(`thunkDispatch: dispatching object action "${innerAction.type}"`);
+          const result = await handlers.dispatch(innerAction);
+          logDebug(`thunkDispatch: action "${innerAction.type}" completed`);
+          return result;
+        }
+
+        // Invalid action
+        else {
+          logDebug(`thunkDispatch: received invalid action type: ${typeof innerAction}`);
+          return Promise.resolve();
+        }
+      } catch (error) {
+        logDebug(`thunkDispatch ERROR: ${error}`);
+        console.error('Error in thunkDispatch:', error);
+        throw error;
+      }
+    };
+
+    return thunkDispatch;
+  };
+
+  /**
+   * Process an action, ensuring it waits for previous actions to complete
+   */
+  const processAction = async (
+    action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
+    payload?: unknown,
+  ): Promise<unknown> => {
+    try {
+      // Function: Execute thunk with store's getState and our dispatch function
+      if (typeof action === 'function') {
+        logDebug('Executing thunk function');
+        const thunkDispatch = createDispatchForThunk(store.getState);
+        return await (action as Thunk<S>)(store.getState, thunkDispatch);
+      }
+
+      // String action type with optional payload
+      if (typeof action === 'string') {
+        logDebug(`Dispatching string action "${action}"`);
+        return payload !== undefined ? await handlers.dispatch(action, payload) : await handlers.dispatch(action);
+      }
+
+      // Action object: normalize to standard Action format
+      if (typeof action === 'object' && action !== null && typeof action.type === 'string') {
+        const normalizedAction: Action = {
+          type: action.type,
+          payload: action.payload,
+        };
+
+        logDebug(`Dispatching object action "${normalizedAction.type}"`);
+        return await handlers.dispatch(normalizedAction);
+      }
+
+      // Invalid action
+      const errorMessage = `Invalid action or thunk: ${action}`;
+      logDebug(`ERROR: ${errorMessage}`);
+      console.error(errorMessage);
+      return undefined;
+    } catch (err) {
+      const errorMessage = `Error in dispatch: ${err}`;
+      logDebug(`ERROR: ${errorMessage}`);
+      console.error('Error in dispatch:', err);
+
+      // Re-throw errors in the async context
+      throw err;
+    }
+  };
 
   // Create a dispatch function that will handle both generic and typed actions
   const dispatch = (async (
     action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
     payload?: unknown,
   ): Promise<unknown> => {
-    // Debug helper function
-    const debugLog = (message: string) => {
-      if (typeof window !== 'undefined' && (window as any).ZUBRIDGE_DEBUG) {
-        debug.log('core', `[ZUBRIDGE_DISPATCH_DEBUG] ${message}`);
-      }
-    };
+    // Add this action to the queue, ensuring it only executes after all previous actions
+    // have completed. This maintains order even with async operations.
+    const actionPromise = actionQueue.then(() => processAction(action, payload));
 
-    // Create a new promise that will wait for any previous operations to complete
-    const currentPromise = lastPromise.then(async () => {
-      try {
-        if (typeof action === 'function') {
-          // Handle thunks - execute them with the store's getState and our dispatch function
-          debugLog('Executing thunk function');
+    // Update our queue to include this new action
+    actionQueue = actionPromise.catch(() => {
+      // Catch errors here to prevent breaking the chain, but don't handle them
+      // Let the returned promise propagate the error to the caller
+    }) as Promise<void>;
 
-          // Create a proper async dispatch wrapper that ensures all promises are awaited
-          const asyncSafeDispatch = async (innerAction: any, innerPayload?: unknown): Promise<unknown> => {
-            try {
-              debugLog(
-                `asyncSafeDispatch called with: ${typeof innerAction === 'string' ? innerAction : typeof innerAction}`,
-              );
-
-              // Return the promise from dispatch to allow proper awaiting
-              if (typeof innerAction === 'string') {
-                debugLog(`asyncSafeDispatch: dispatching string action "${innerAction}"`);
-                // Use a single variable to store the result to avoid multiple dispatch calls
-                const result =
-                  innerPayload !== undefined
-                    ? await handlers.dispatch(innerAction, innerPayload)
-                    : await handlers.dispatch(innerAction);
-                debugLog(`asyncSafeDispatch: action "${innerAction}" completed`);
-                return result;
-              } else if (typeof innerAction === 'function') {
-                // Handle nested thunks
-                debugLog('asyncSafeDispatch: executing nested thunk');
-                // Ensure we await the nested thunk completion
-                const result = await innerAction(store.getState, asyncSafeDispatch);
-                debugLog('asyncSafeDispatch: nested thunk completed');
-                return result;
-              } else if (innerAction && typeof innerAction === 'object') {
-                // Handle action objects
-                debugLog(`asyncSafeDispatch: dispatching object action "${innerAction.type}"`);
-                // Store in a single variable to avoid multiple dispatch calls
-                const result = await handlers.dispatch(innerAction);
-                debugLog(`asyncSafeDispatch: action "${innerAction.type}" completed`);
-                return result;
-              } else {
-                debugLog(`asyncSafeDispatch: received invalid action type: ${typeof innerAction}`);
-                return Promise.resolve();
-              }
-            } catch (error) {
-              debugLog(`asyncSafeDispatch ERROR: ${error}`);
-              console.error('Error in asyncSafeDispatch:', error);
-              throw error;
-            }
-          };
-
-          // Make sure to return the awaited result from the thunk execution
-          return await (action as Thunk<S>)(store.getState, asyncSafeDispatch);
-        }
-
-        // Handle string action type with payload
-        if (typeof action === 'string') {
-          // Only pass the payload parameter if it's not undefined, and handle promise return value
-          debugLog(`Dispatching string action "${action}"`);
-          return payload !== undefined ? await handlers.dispatch(action, payload) : await handlers.dispatch(action);
-        }
-
-        // For action objects, normalize to standard Action format
-        if (typeof action === 'object' && action !== null && typeof action.type === 'string') {
-          const normalizedAction: Action = {
-            type: action.type,
-            payload: action.payload,
-          };
-
-          // Return the promise from dispatch
-          debugLog(`Dispatching object action "${normalizedAction.type}"`);
-          return await handlers.dispatch(normalizedAction);
-        }
-
-        // Handle invalid actions
-        const errorMessage = `Invalid action or thunk: ${action}`;
-        debugLog(`ERROR: ${errorMessage}`);
-        console.error(errorMessage);
-        return undefined;
-      } catch (err) {
-        const errorMessage = `Error in dispatch: ${err}`;
-        debugLog(`ERROR: ${errorMessage}`);
-        console.error('Error in dispatch:', err);
-
-        // Re-throw errors in the async context
-        throw err;
-      }
-    });
-
-    // Update the lastPromise to include this operation
-    lastPromise = currentPromise;
-
-    // Return the promise for the current operation
-    return currentPromise;
+    // Return the promise for this specific action
+    return actionPromise;
   }) as unknown as DispatchFunc<S, TActions>;
 
   return dispatch;
