@@ -6,19 +6,6 @@ import './styles/index.css';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
 
-// Define the ElectronAPI for TypeScript
-declare global {
-  interface Window {
-    electronAPI?: {
-      createRuntimeWindow: () => Promise<{ success: boolean; windowId?: number }>;
-      closeCurrentWindow: () => void;
-      quitApp: () => void;
-      getWindowInfo: () => Promise<{ id: number; type: string }>;
-      getMode: () => Promise<{ modeName?: string; name?: string }>;
-    };
-  }
-}
-
 // Create the Electron app component
 const ElectronApp = withElectron();
 

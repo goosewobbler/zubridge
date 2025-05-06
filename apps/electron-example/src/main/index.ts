@@ -2,9 +2,11 @@ import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
 
 import { isDev } from '@zubridge/electron';
+import { createDispatch } from '@zubridge/electron/main';
 import type { WrapperOrWebContents } from '@zubridge/types';
 import 'wdio-electron-service/main';
 
+import { createMainProcessThunk } from './actions.js';
 import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
 import { createBridge } from './bridge.js';
@@ -300,6 +302,8 @@ app
       const { mainWindow } = windows.getWindowRefs();
       mainWindow?.focus();
 
+      const dispatch = createDispatch(store);
+
       // Set up the handler for closeCurrentWindow
       debug('Setting up IPC handlers');
       ipcMain.handle('closeCurrentWindow', async (event) => {
@@ -412,6 +416,20 @@ app
         isAppQuitting = true;
         app.quit();
         return true;
+      });
+
+      // Set up the handler for the main process thunk
+      ipcMain.handle('counter:execute-main-thunk', async () => {
+        debug('Received IPC request to execute main process thunk');
+
+        try {
+          const thunk = createMainProcessThunk();
+          const result = await dispatch(thunk);
+          return { success: true, result };
+        } catch (error) {
+          console.error('[MAIN] Error executing main process thunk:', error);
+          return { success: false, error: String(error) };
+        }
       });
 
       debug('App initialization complete, waiting for events');

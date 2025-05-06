@@ -8,7 +8,7 @@ import { incrementCounter, decrementCounter, setCounter, resetCounter } from './
 // Import theme handlers
 import { toggleTheme, setTheme } from './features/theme/index.js';
 // Import the state type
-import type { BaseState } from '../../types/index.js';
+import type { BaseState } from '../../types.js';
 import type { ActionHandlers } from './features/index.js';
 
 /**

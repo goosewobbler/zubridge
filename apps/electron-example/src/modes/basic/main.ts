@@ -5,7 +5,7 @@ import type { WrapperOrWebContents } from '@zubridge/types';
 
 import { attachCounterHandlers } from './features/counter/index.js';
 import { attachThemeHandlers } from './features/theme/index.js';
-import type { BaseState } from '../../types/index.js';
+import type { BaseState } from '../../types.js';
 
 /**
  * Creates a bridge using the basic approach

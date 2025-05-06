@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
 import 'wdio-electron-service/preload';
 
-import type { State } from '../types/index.js';
+import type { State } from '../types.js';
 
 console.log('[Preload] Script initializing');
 
@@ -55,6 +55,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createRuntimeWindow: () => {
     console.log('[Preload] Invoking create-runtime-window');
     return ipcRenderer.invoke('create-runtime-window');
+  },
+});
+
+// Expose counter API
+contextBridge.exposeInMainWorld('counter', {
+  executeMainThunk: () => {
+    return ipcRenderer.invoke('counter:execute-main-thunk');
   },
 });
 

@@ -1,4 +1,4 @@
-import type { BaseState } from '../../../types/index.js';
+import type { BaseState } from '../../../types.js';
 
 /**
  * Types for the basic mode state

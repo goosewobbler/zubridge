@@ -1,4 +1,4 @@
-import type { BaseState } from '../../../types/index.js';
+import type { BaseState } from '../../../types.js';
 import type { Handler } from '@zubridge/types';
 
 /**
