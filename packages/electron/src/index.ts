@@ -196,7 +196,9 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
       const errorMessage = `Error in dispatch: ${err}`;
       debugLog(`ERROR: ${errorMessage}`);
       console.error('Error in dispatch:', err);
-      return undefined;
+
+      // Re-throw errors in the async context
+      throw err;
     }
   }) as unknown as DispatchFunc<S, TActions>;
 
