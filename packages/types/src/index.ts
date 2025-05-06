@@ -85,9 +85,9 @@ export type MainZustandBridge = <S extends AnyState, Store extends StoreApi<S>>(
 ) => ZustandBridge;
 
 export type Dispatch<S> = {
-  (action: string, payload?: unknown): void;
-  (action: Action): void;
-  (action: Thunk<S>): void;
+  (action: string, payload?: unknown): Promise<any>;
+  (action: Action): Promise<any>;
+  (action: Thunk<S>): Promise<any>;
 };
 
 interface BaseHandler<S> {
@@ -115,16 +115,16 @@ export type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialStat
  */
 export type DispatchFunc<S, TActions extends Record<string, any> = Record<string, any>> = {
   // Handle thunks
-  (action: Thunk<S>): unknown;
+  (action: Thunk<S>): Promise<any>;
 
   // Handle string action types with optional payload
-  (action: string, payload?: unknown): unknown;
+  (action: string, payload?: unknown): Promise<any>;
 
   // Handle strongly typed action objects
-  <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): unknown;
+  <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): Promise<any>;
 
   // Handle generic action objects
-  (action: Action): unknown;
+  (action: Action): Promise<any>;
 };
 
 // Shared state manager interface that can be implemented by different backends
