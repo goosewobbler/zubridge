@@ -370,8 +370,8 @@ describe('application loading', () => {
       expect(initialValue).toBe(2);
 
       // Click the double button - this should execute the thunk
-      console.log('Clicking Double (Thunk) button to execute async thunk');
-      const doubleButton = await browser.$('button=Double (Thunk)');
+      console.log('Clicking Double (Renderer Thunk) button to execute async thunk');
+      const doubleButton = await browser.$('button=Double (Renderer Thunk)');
       await doubleButton.click();
 
       // Wait a short time - enough to start but not complete all async operations
@@ -395,13 +395,70 @@ describe('application loading', () => {
       expect(intermediateValue).toBe(4);
 
       // Double again to see if each async operation waits properly
-      console.log('Clicking Double (Thunk) button a second time');
+      console.log('Clicking Double (Renderer Thunk) button a second time');
       await doubleButton.click();
 
       // Again check for intermediate value
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
       intermediateValue = await getCounterValue();
       console.log(`Second intermediate counter value: ${intermediateValue}`);
+      expect(intermediateValue).toBe(16);
+
+      // Wait for completion
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
+
+      // Verify counter is doubled with same pattern (4 -> 16 -> 8)
+      const finalValue = await getCounterValue();
+      console.log(`Final counter value: ${finalValue}`);
+      expect(finalValue).toBe(8);
+    });
+
+    it('should double the counter using a main process thunk', async () => {
+      // First, increment to a known value
+      await resetCounter();
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Click the main process thunk button
+      console.log('Clicking Double (Main Thunk) button to execute main process thunk');
+      const mainThunkButton = await browser.$('button=Double (Main Thunk)');
+      await mainThunkButton.click();
+
+      // Wait a short time - enough to start but not complete all async operations
+      // This is intentionally short to try to catch the intermediate state
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Check intermediate value - the behavior should be:
+      // 1. First operation multiplies by 4 (8)
+      // 2. Second operation divides by 2 (4)
+      let intermediateValue = await getCounterValue();
+      console.log(`Intermediate counter value (main thunk): ${intermediateValue}`);
+      expect(intermediateValue).toBe(8);
+
+      // Now wait for the full operations to complete
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
+
+      // Verify final counter value
+      // The sequence should be: 2 -> 8 -> 4, so expect 4
+      intermediateValue = await getCounterValue();
+      console.log(`Final counter value after main thunk double: ${intermediateValue}`);
+      expect(intermediateValue).toBe(4);
+
+      // Double again to see if each async operation waits properly
+      console.log('Clicking Double (Main Thunk) button a second time');
+      await mainThunkButton.click();
+
+      // Again check for intermediate value
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      intermediateValue = await getCounterValue();
+      console.log(`Second intermediate counter value (main thunk): ${intermediateValue}`);
       expect(intermediateValue).toBe(16);
 
       // Wait for completion
@@ -442,6 +499,86 @@ describe('application loading', () => {
       // Verify counter is now 8
       const finalCounter = await browser.$('h2');
       expect(await finalCounter.getText()).toContain('8');
+    });
+
+    it('should fully await thunk completion before performing subsequent actions', async () => {
+      // Reset counter to start fresh
+      await resetCounter();
+
+      // Increment to a known value (2)
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Create a sequence of actions to verify awaiting behavior:
+      // 1. Start the renderer thunk (which will do: 2 -> 8 -> 4)
+      // 2. Immediately queue an increment action
+      // 3. The increment should only happen after the thunk completes
+      // 4. If properly awaited, final value should be 5 (4+1)
+      // If not properly awaited, we'd see 9 (8+1) or some other unexpected value
+
+      console.log('Starting awaitable thunk test sequence');
+
+      // Start the thunk
+      console.log('Triggering renderer thunk...');
+      const doubleButton = await browser.$('button=Double (Renderer Thunk)');
+      await doubleButton.click();
+
+      // Immediately queue an increment action
+      console.log('Immediately queuing increment action...');
+      await incrementButton.click();
+
+      // Now let's wait long enough for everything to complete
+      console.log('Waiting for all actions to complete...');
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Check the final counter value
+      const finalValue = await getCounterValue();
+      console.log(`Final counter value after thunk+increment: ${finalValue}`);
+
+      // If the thunk is properly awaited, we should see:
+      // 2 -> thunk (8 -> 4) -> increment (5)
+      expect(finalValue).toBe(5);
+
+      // Also verify with main process thunk
+      console.log('Resetting counter for main process thunk test');
+      await resetCounter();
+
+      // Increment to 2 again
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const secondInitialValue = await getCounterValue();
+      expect(secondInitialValue).toBe(2);
+
+      // Now do the same sequence with the main process thunk
+      console.log('Triggering main process thunk...');
+      const mainThunkButton = await browser.$('button=Double (Main Thunk)');
+      await mainThunkButton.click();
+
+      // Immediately queue an increment action
+      console.log('Immediately queuing increment action...');
+      await incrementButton.click();
+
+      // Wait for everything to complete
+      console.log('Waiting for all actions to complete...');
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+
+      // Check the final counter value
+      const mainProcessFinalValue = await getCounterValue();
+      console.log(`Final counter value after main thunk+increment: ${mainProcessFinalValue}`);
+
+      // Should again be 5 if properly awaited
+      expect(mainProcessFinalValue).toBe(5);
     });
   });
 
