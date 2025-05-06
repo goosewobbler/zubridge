@@ -34,30 +34,52 @@ export function createDispatch<S extends AnyState>(
       ? (storeOrManager as StateManager<S>)
       : getStateManager(storeOrManager as StoreApi<S> | Store<S>, options);
 
-  const dispatch: Dispatch<S> = (actionOrThunk: Thunk<S> | Action | string, payload?: unknown): any => {
+  const dispatch: Dispatch<S> = (actionOrThunk: Thunk<S> | Action | string, payload?: unknown): Promise<any> => {
     try {
       if (typeof actionOrThunk === 'function') {
         // Handle thunks
         debug('core', 'Executing thunk function');
-        return (actionOrThunk as Thunk<S>)(() => stateManager.getState() as S, dispatch);
-      } else if (typeof actionOrThunk === 'string') {
-        // Handle string action types with payload
-        debug('core', `Dispatching string action: ${actionOrThunk}`);
-        stateManager.processAction({
-          type: actionOrThunk,
-          payload,
+        const thunkFn = actionOrThunk as Thunk<S>;
+
+        // Execute the thunk with getState and dispatch and ensure Promise is returned
+        const result = thunkFn(() => stateManager.getState() as S, dispatch);
+
+        // Ensure we return a Promise that resolves with the thunk's result
+        return Promise.resolve(result).catch((err) => {
+          debug('core', 'Error in thunk:', err);
+          console.error('Error in thunk:', err);
+          throw err; // Re-throw to maintain the error chain
         });
-      } else if (actionOrThunk && typeof actionOrThunk === 'object') {
-        // Handle action objects
-        debug('core', `Dispatching action object: ${actionOrThunk.type}`);
-        stateManager.processAction(actionOrThunk as Action);
       } else {
-        debug('core', 'Invalid action or thunk:', actionOrThunk);
-        console.error('Invalid action or thunk:', actionOrThunk);
+        // Handle regular actions
+        try {
+          if (typeof actionOrThunk === 'string') {
+            // Handle string action types with payload
+            debug('core', `Dispatching string action: ${actionOrThunk}`);
+            stateManager.processAction({
+              type: actionOrThunk,
+              payload,
+            });
+          } else if (actionOrThunk && typeof actionOrThunk === 'object') {
+            // Handle action objects
+            debug('core', `Dispatching action object: ${actionOrThunk.type}`);
+            stateManager.processAction(actionOrThunk as Action);
+          } else {
+            debug('core', 'Invalid action or thunk:', actionOrThunk);
+            console.error('Invalid action or thunk:', actionOrThunk);
+          }
+
+          return Promise.resolve();
+        } catch (actionError) {
+          debug('core', 'Error in dispatch action:', actionError);
+          console.error('Error in dispatch:', actionError);
+          return Promise.reject(actionError);
+        }
       }
     } catch (err) {
       debug('core', 'Error in dispatch:', err);
       console.error('Error in dispatch:', err);
+      return Promise.reject(err);
     }
   };
 
