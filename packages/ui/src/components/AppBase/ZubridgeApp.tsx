@@ -136,8 +136,8 @@ export function ZubridgeApp({
           console.log(`[RENDERER THUNK] Starting with counter value: ${currentValue}`);
 
           // First async operation - double the value
-          console.log(`[RENDERER THUNK] First operation: Doubling counter to ${currentValue * 2}`);
-          await dispatch('COUNTER:SET', currentValue * 2);
+          console.log(`[RENDERER THUNK] First operation: Quadrupling counter to ${currentValue * 4}`);
+          await dispatch('COUNTER:SET', currentValue * 4);
 
           // Add delay to simulate async work
           await new Promise((resolve) => setTimeout(resolve, delayTime));
@@ -148,8 +148,8 @@ export function ZubridgeApp({
           console.log(`[RENDERER THUNK] After first operation: counter value is ${intermediateValue}`);
 
           // Second async operation - double the value again
-          console.log(`[RENDERER THUNK] Second operation: Doubling counter to ${intermediateValue * 2}`);
-          await dispatch('COUNTER:SET', intermediateValue * 2);
+          console.log(`[RENDERER THUNK] Second operation: Halving counter to ${intermediateValue * 2}`);
+          await dispatch('COUNTER:SET', intermediateValue / 2);
 
           // Add delay to simulate async work
           await new Promise((resolve) => setTimeout(resolve, delayTime));
@@ -158,7 +158,7 @@ export function ZubridgeApp({
           const finalState = getState();
           const finalValue = getCounterSelector(finalState);
           console.log(`[RENDERER THUNK] After second operation: counter value is ${finalValue}`);
-          console.log(`[RENDERER THUNK] Test complete: expected ${currentValue * 4}, got ${finalValue}`);
+          console.log(`[RENDERER THUNK] Test complete: expected ${currentValue * 2}, got ${finalValue}`);
 
           return finalValue;
         });
