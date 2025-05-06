@@ -53,9 +53,11 @@ export function createDispatch<S extends AnyState>(
         stateManager.processAction(actionOrThunk as Action);
       } else {
         debug('core', 'Invalid action or thunk:', actionOrThunk);
+        console.error('Invalid action or thunk:', actionOrThunk);
       }
     } catch (err) {
       debug('core', 'Error in dispatch:', err);
+      console.error('Error in dispatch:', err);
     }
   };
 

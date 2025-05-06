@@ -45,6 +45,7 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
         store.dispatch(action as any);
       } catch (error) {
         debug('adapters', 'Error processing Redux action:', error);
+        console.error('Error processing Redux action:', error);
       }
     },
   };

@@ -81,6 +81,7 @@ export function createZustandAdapter<S extends AnyState>(
         }
       } catch (error) {
         debug('adapters', 'Error processing action:', error);
+        console.error('Error processing action:', error);
       }
     },
   };

@@ -160,7 +160,18 @@ describe('bridge.ts', () => {
 
       if (dispatchHandler) {
         const action: Action = { type: 'INCREMENT' };
-        dispatchHandler({} as any, action);
+        // Create a mock event with sender property
+        const mockEvent = {
+          sender: {
+            id: 123,
+            send: vi.fn(),
+          },
+        };
+
+        // Call the handler with the mock event and action
+        dispatchHandler(mockEvent as any, action);
+
+        // Verify that processAction was called with the action
         expect(stateManager.processAction).toHaveBeenCalledWith(action);
       }
     });
@@ -240,16 +251,21 @@ describe('bridge.ts', () => {
       expect(mockTracker.cleanup).toHaveBeenCalled();
     });
 
-    it('should clean up resources when destroy is called', () => {
+    it('should clean up resources when destroy is called', async () => {
       const stateManager = createMockStateManager();
       const unsubscribeMock = vi.fn();
       vi.mocked(stateManager.subscribe).mockReturnValue(unsubscribeMock);
 
       const bridge = createCoreBridge(stateManager);
-      bridge.destroy();
+      await bridge.destroy();
 
       expect(unsubscribeMock).toHaveBeenCalled();
-      expect(ipcMain.removeHandler).toHaveBeenCalledWith(IpcChannel.GET_STATE);
+
+      // Verify that removeHandler was called with the expected channel
+      // Use snapshot of real/last call to compare
+      const removeHandlerCalls = vi.mocked(ipcMain.removeHandler).mock.calls;
+      expect(removeHandlerCalls.length).toBeGreaterThan(0);
+      expect(removeHandlerCalls[0][0]).toBe(IpcChannel.GET_STATE);
     });
 
     // Tests for error handling in dispatch handler (lines 43-44)

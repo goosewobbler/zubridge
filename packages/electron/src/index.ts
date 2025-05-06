@@ -113,71 +113,87 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
     // Debug helper function
     const debugLog = (message: string) => {
       if (typeof window !== 'undefined' && (window as any).ZUBRIDGE_DEBUG) {
-        console.log(`[ZUBRIDGE_DISPATCH_DEBUG] ${message}`);
+        debug.log('core', `[ZUBRIDGE_DISPATCH_DEBUG] ${message}`);
       }
     };
 
-    if (typeof action === 'function') {
-      // Handle thunks - execute them with the store's getState and our dispatch function
-      debugLog('Executing thunk function');
+    try {
+      if (typeof action === 'function') {
+        // Handle thunks - execute them with the store's getState and our dispatch function
+        debugLog('Executing thunk function');
 
-      // Create a proper async dispatch wrapper that ensures all promises are awaited
-      const asyncSafeDispatch = async (innerAction: any, innerPayload?: unknown): Promise<unknown> => {
-        debugLog(
-          `asyncSafeDispatch called with: ${typeof innerAction === 'string' ? innerAction : typeof innerAction}`,
-        );
+        // Create a proper async dispatch wrapper that ensures all promises are awaited
+        const asyncSafeDispatch = async (innerAction: any, innerPayload?: unknown): Promise<unknown> => {
+          try {
+            debugLog(
+              `asyncSafeDispatch called with: ${typeof innerAction === 'string' ? innerAction : typeof innerAction}`,
+            );
 
-        // Return the promise from dispatch to allow proper awaiting
-        if (typeof innerAction === 'string') {
-          debugLog(`asyncSafeDispatch: dispatching string action "${innerAction}"`);
-          const result =
-            innerPayload !== undefined
-              ? await handlers.dispatch(innerAction, innerPayload)
-              : await handlers.dispatch(innerAction);
-          debugLog(`asyncSafeDispatch: action "${innerAction}" completed`);
-          return result;
-        } else if (typeof innerAction === 'function') {
-          // Handle nested thunks
-          debugLog('asyncSafeDispatch: executing nested thunk');
-          const result = await innerAction(store.getState, asyncSafeDispatch);
-          debugLog('asyncSafeDispatch: nested thunk completed');
-          return result;
-        } else if (innerAction && typeof innerAction === 'object') {
-          // Handle action objects
-          debugLog(`asyncSafeDispatch: dispatching object action "${innerAction.type}"`);
-          const result = await handlers.dispatch(innerAction);
-          debugLog(`asyncSafeDispatch: action "${innerAction.type}" completed`);
-          return result;
-        } else {
-          debugLog(`asyncSafeDispatch: received invalid action type: ${typeof innerAction}`);
-          return Promise.resolve();
-        }
-      };
+            // Return the promise from dispatch to allow proper awaiting
+            if (typeof innerAction === 'string') {
+              debugLog(`asyncSafeDispatch: dispatching string action "${innerAction}"`);
+              const result =
+                innerPayload !== undefined
+                  ? await handlers.dispatch(innerAction, innerPayload)
+                  : await handlers.dispatch(innerAction);
+              debugLog(`asyncSafeDispatch: action "${innerAction}" completed`);
+              return result;
+            } else if (typeof innerAction === 'function') {
+              // Handle nested thunks
+              debugLog('asyncSafeDispatch: executing nested thunk');
+              const result = await innerAction(store.getState, asyncSafeDispatch);
+              debugLog('asyncSafeDispatch: nested thunk completed');
+              return result;
+            } else if (innerAction && typeof innerAction === 'object') {
+              // Handle action objects
+              debugLog(`asyncSafeDispatch: dispatching object action "${innerAction.type}"`);
+              const result = await handlers.dispatch(innerAction);
+              debugLog(`asyncSafeDispatch: action "${innerAction.type}" completed`);
+              return result;
+            } else {
+              debugLog(`asyncSafeDispatch: received invalid action type: ${typeof innerAction}`);
+              return Promise.resolve();
+            }
+          } catch (error) {
+            debugLog(`asyncSafeDispatch ERROR: ${error}`);
+            console.error('Error in asyncSafeDispatch:', error);
+            throw error;
+          }
+        };
 
-      debugLog('Passing asyncSafeDispatch to thunk');
-      // Execute the thunk with our async-safe dispatch function
-      return (action as Thunk<S>)(store.getState, asyncSafeDispatch);
+        return (action as Thunk<S>)(store.getState, asyncSafeDispatch);
+      }
+
+      // Handle string action type with payload
+      if (typeof action === 'string') {
+        // Only pass the payload parameter if it's not undefined, and handle promise return value
+        debugLog(`Dispatching string action "${action}"`);
+        return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
+      }
+
+      // For action objects, normalize to standard Action format
+      if (typeof action === 'object' && action !== null && typeof action.type === 'string') {
+        const normalizedAction: Action = {
+          type: action.type,
+          payload: action.payload,
+        };
+
+        // Return the promise from dispatch
+        debugLog(`Dispatching object action "${normalizedAction.type}"`);
+        return handlers.dispatch(normalizedAction);
+      }
+
+      // Handle invalid actions
+      const errorMessage = `Invalid action or thunk: ${action}`;
+      debugLog(`ERROR: ${errorMessage}`);
+      console.error(errorMessage);
+      return undefined;
+    } catch (err) {
+      const errorMessage = `Error in dispatch: ${err}`;
+      debugLog(`ERROR: ${errorMessage}`);
+      console.error('Error in dispatch:', err);
+      return undefined;
     }
-
-    // Handle string action type with payload
-    if (typeof action === 'string') {
-      // Only pass the payload parameter if it's not undefined, and handle promise return value
-      debugLog(`Dispatching string action "${action}"`);
-      return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
-    }
-
-    // For action objects, normalize to standard Action format
-    if (typeof action.type !== 'string') {
-      throw new Error(`Invalid action type: ${String(action.type)}. Expected a string.`);
-    }
-    const normalizedAction: Action = {
-      type: action.type,
-      payload: action.payload,
-    };
-
-    // Return the promise from dispatch
-    debugLog(`Dispatching object action "${normalizedAction.type}"`);
-    return handlers.dispatch(normalizedAction);
   }) as DispatchFunc<S, TActions>;
 
   return dispatch;

@@ -96,6 +96,7 @@ export function createCoreBridge<State extends AnyState>(
       }
     } catch (error) {
       debug('core', 'Error handling dispatch:', error);
+      console.error('Error handling dispatch:', error);
 
       // Even on error, we should acknowledge the action was processed
       if (action.id) {
@@ -114,6 +115,7 @@ export function createCoreBridge<State extends AnyState>(
       return state;
     } catch (error) {
       debug('core', 'Error handling getState:', error);
+      console.error('Error handling getState:', error);
       return {};
     }
   });
@@ -167,6 +169,7 @@ export function createCoreBridge<State extends AnyState>(
       }
     } catch (error) {
       debug('core', 'Error in state subscription handler:', error);
+      console.error('Error in state subscription handler:', error);
     }
   });
 
