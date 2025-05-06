@@ -46,7 +46,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         // For thunks, we don't do anything in the preload
         // The renderer implementation will handle executing them
         // This just prevents an error from being thrown
-        return;
+        return Promise.resolve();
       } else if (typeof action === 'string') {
         // Create an action object
         const actionObj: Action = {
