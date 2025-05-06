@@ -7,6 +7,7 @@ import { Header } from '../Header';
 import type { WindowInfo, PlatformHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
+import { CounterMethod } from '../../types';
 
 export interface ZubridgeAppProps {
   /**
@@ -123,7 +124,7 @@ export function ZubridgeApp({
   }, [dispatch]);
 
   const handleDoubleCounter = useCallback(
-    (method: 'thunk' | 'object' | 'action') => {
+    (method: CounterMethod) => {
       if (method === 'thunk') {
         // Create a thunk that simulates the testAsyncDouble behavior
         // but executes in the renderer process
@@ -162,6 +163,8 @@ export function ZubridgeApp({
 
           return finalValue;
         });
+      } else if (method === 'main-thunk') {
+        window.counter?.executeMainThunk();
       } else {
         dispatch({
           type: 'COUNTER:SET',
@@ -225,7 +228,7 @@ export function ZubridgeApp({
                 value={counter}
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
-                onDouble={(method: 'thunk' | 'object' | 'action') => handleDoubleCounter(method)}
+                onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
                 onReset={handleResetCounter}
                 isLoading={bridgeStatus === 'initializing'}
               />
