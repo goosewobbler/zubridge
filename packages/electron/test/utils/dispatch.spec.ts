@@ -53,19 +53,19 @@ describe('createDispatch utility', () => {
   });
 
   describe('createDispatch with StateManager', () => {
-    it('should create a dispatch function that processes actions', () => {
+    it('should create a dispatch function that processes actions', async () => {
       const dispatch = createDispatch(stateManager);
       const action: Action = { type: 'TEST_ACTION', payload: 42 };
 
-      dispatch(action);
+      await dispatch(action);
 
       expect(stateManager.processAction).toHaveBeenCalledWith(action);
     });
 
-    it('should handle string actions with separate payload', () => {
+    it('should handle string actions with separate payload', async () => {
       const dispatch = createDispatch(stateManager);
 
-      dispatch('TEST_ACTION', 42);
+      await dispatch('TEST_ACTION', 42);
 
       expect(stateManager.processAction).toHaveBeenCalledWith({
         type: 'TEST_ACTION',
@@ -73,16 +73,18 @@ describe('createDispatch utility', () => {
       });
     });
 
-    it('should handle thunks', () => {
+    it('should handle thunks', async () => {
       const dispatch = createDispatch(stateManager);
       const thunkFn = vi.fn((getState, dispatch) => {
         const state = getState();
         expect(state).toEqual({ counter: 0 });
         dispatch('NESTED_ACTION', 99);
+        return 'thunk-result';
       });
 
-      dispatch(thunkFn);
+      const result = await dispatch(thunkFn);
 
+      expect(result).toBe('thunk-result');
       expect(thunkFn).toHaveBeenCalled();
       expect(stateManager.getState).toHaveBeenCalled();
       expect(stateManager.processAction).toHaveBeenCalledWith({
@@ -91,18 +93,18 @@ describe('createDispatch utility', () => {
       });
     });
 
-    it('should log errors for invalid actions', () => {
+    it('should log errors for invalid actions', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const dispatch = createDispatch(stateManager);
 
       // @ts-ignore - Testing invalid input
-      dispatch(null);
+      await dispatch(null);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Invalid action or thunk:', null);
       consoleErrorSpy.mockRestore();
     });
 
-    it('should catch and log errors during dispatch', () => {
+    it('should catch and log errors during dispatch', async () => {
       stateManager.processAction = vi.fn().mockImplementation(() => {
         throw new Error('Test error');
       });
@@ -110,7 +112,14 @@ describe('createDispatch utility', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const dispatch = createDispatch(stateManager);
 
-      dispatch({ type: 'ERROR_ACTION' });
+      // Use await and try/catch to handle the Promise rejection
+      try {
+        await dispatch({ type: 'ERROR_ACTION' });
+        // This line should not be reached
+        expect(true).toBe(false);
+      } catch (error) {
+        // Expected to throw, continue with assertions
+      }
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error in dispatch:', expect.any(Error));
       consoleErrorSpy.mockRestore();
@@ -118,10 +127,10 @@ describe('createDispatch utility', () => {
   });
 
   describe('createDispatch with Store', () => {
-    it('should create a dispatch function for Zustand store', () => {
+    it('should create a dispatch function for Zustand store', async () => {
       const dispatch = createDispatch(zustandStore);
 
-      dispatch({ type: 'TEST_ACTION', payload: 42 });
+      await dispatch({ type: 'TEST_ACTION', payload: 42 });
 
       expect(getStateManagerSpy).toHaveBeenCalledWith(zustandStore, undefined);
       expect(stateManager.processAction).toHaveBeenCalledWith({
@@ -130,10 +139,10 @@ describe('createDispatch utility', () => {
       });
     });
 
-    it('should create a dispatch function for Redux store', () => {
+    it('should create a dispatch function for Redux store', async () => {
       const dispatch = createDispatch(reduxStore);
 
-      dispatch({ type: 'TEST_ACTION', payload: 42 });
+      await dispatch({ type: 'TEST_ACTION', payload: 42 });
 
       expect(getStateManagerSpy).toHaveBeenCalledWith(reduxStore, undefined);
       expect(stateManager.processAction).toHaveBeenCalledWith({
@@ -142,11 +151,11 @@ describe('createDispatch utility', () => {
       });
     });
 
-    it('should pass options to getStateManager', () => {
+    it('should pass options to getStateManager', async () => {
       const options = { handlers: { CUSTOM: vi.fn() } };
       const dispatch = createDispatch(zustandStore, options);
 
-      dispatch('CUSTOM');
+      await dispatch('CUSTOM');
 
       expect(getStateManagerSpy).toHaveBeenCalledWith(zustandStore, options);
     });
