@@ -8,8 +8,9 @@ interface Window {
     getWindowInfo: () => Promise<{ id: number; type: string }>;
     getMode: () => Promise<{ modeName: string; name?: string }>;
   };
-
-  // Any other global interfaces needed
+  counter?: {
+    executeMainThunk: () => Promise<{ success: boolean; result?: number }>;
+  };
 }
 
 // Add module declarations for external modules

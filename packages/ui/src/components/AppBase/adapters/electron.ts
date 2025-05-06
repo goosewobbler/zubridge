@@ -1,26 +1,6 @@
 import type { PlatformHandlers } from '../WindowInfo';
 
 /**
- * Type definition for the global ElectronAPI
- */
-export interface ElectronAPI {
-  createRuntimeWindow: () => Promise<{ success: boolean; windowId: number }>;
-  closeCurrentWindow: () => Promise<void>;
-  quitApp: () => Promise<void>;
-  getWindowInfo: () => Promise<{ id: number; type: string }>;
-  getMode: () => Promise<{ modeName: string }>;
-}
-
-/**
- * Type augmentation to add electronAPI to Window
- */
-declare global {
-  interface Window {
-    electronAPI?: ElectronAPI;
-  }
-}
-
-/**
  * Creates platform-specific handlers for Electron
  *
  * @param window - The global window object
