@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import { ZustandOptions } from '../adapters/zustand.js';
 import { ReduxOptions } from '../adapters/redux.js';
 import { getStateManager } from './stateManagerRegistry.js';
+import { debug } from './debug.js';
 
 /**
  * Creates a dispatch function for the given store
@@ -25,6 +26,8 @@ export function createDispatch<S extends AnyState>(
   storeOrManager: StoreApi<S> | Store<S> | StateManager<S>,
   options?: ZustandOptions<S> | ReduxOptions<S>,
 ): Dispatch<S> {
+  debug('core', 'Creating dispatch function', { hasOptions: !!options });
+
   // Get or create a state manager for the store or use the provided one
   const stateManager: StateManager<S> =
     'processAction' in storeOrManager
@@ -35,21 +38,24 @@ export function createDispatch<S extends AnyState>(
     try {
       if (typeof actionOrThunk === 'function') {
         // Handle thunks
+        debug('core', 'Executing thunk function');
         return (actionOrThunk as Thunk<S>)(() => stateManager.getState() as S, dispatch);
       } else if (typeof actionOrThunk === 'string') {
         // Handle string action types with payload
+        debug('core', `Dispatching string action: ${actionOrThunk}`);
         stateManager.processAction({
           type: actionOrThunk,
           payload,
         });
       } else if (actionOrThunk && typeof actionOrThunk === 'object') {
         // Handle action objects
+        debug('core', `Dispatching action object: ${actionOrThunk.type}`);
         stateManager.processAction(actionOrThunk as Action);
       } else {
-        console.error('Invalid action or thunk:', actionOrThunk);
+        debug('core', 'Invalid action or thunk:', actionOrThunk);
       }
     } catch (err) {
-      console.error('Error in dispatch:', err);
+      debug('core', 'Error in dispatch:', err);
     }
   };
 

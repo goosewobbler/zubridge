@@ -1,4 +1,5 @@
 import type { Action, AnyState } from '@zubridge/types';
+import { debug } from './utils/debug.js';
 
 /**
  * Interface that defines a Zubridge Middleware instance from @zubridge/middleware
@@ -41,9 +42,10 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
     // Process actions before they reach the store
     beforeProcessAction: async (action: Action) => {
       try {
+        debug('core', 'Applying middleware.processAction to action:', action);
         await middleware.processAction(action);
       } catch (error) {
-        console.error('Error in zubridge middleware processAction:', error);
+        debug('core', 'Error in zubridge middleware processAction:', error);
       }
       return action;
     },
@@ -51,9 +53,10 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
     // Update middleware state after state changes
     afterStateChange: async (state: AnyState) => {
       try {
+        debug('core', 'Applying middleware.setState with updated state');
         await middleware.setState(state);
       } catch (error) {
-        console.error('Error in zubridge middleware setState:', error);
+        debug('core', 'Error in zubridge middleware setState:', error);
       }
     },
 
@@ -61,9 +64,10 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
     onBridgeDestroy: async () => {
       if (middleware.destroy) {
         try {
+          debug('core', 'Destroying middleware instance');
           await middleware.destroy();
         } catch (error) {
-          console.error('Error destroying zubridge middleware:', error);
+          debug('core', 'Error destroying zubridge middleware:', error);
         }
       }
     },

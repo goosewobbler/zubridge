@@ -6,7 +6,7 @@
   "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/electron",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/cjs/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -18,7 +18,7 @@
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest --coverage --watch=false",
     "test:dev": "vitest --coverage",
-    "typecheck": "tsc --noEmi"
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -31,45 +31,36 @@
     "redux"
   ],
   "exports": {
-    ".": [
-      {
-        "import": {
-          "types": "./dist/index.d.ts",
-          "default": "./dist/index.js"
-        },
-        "require": {
-          "types": "./dist/index.d.cts",
-          "default": "./dist/index.cjs"
-        }
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       },
-      "./dist/index.cjs"
-    ],
-    "./main": [
-      {
-        "import": {
-          "types": "./dist/main.d.ts",
-          "default": "./dist/main.js"
-        },
-        "require": {
-          "types": "./dist/main.d.cts",
-          "default": "./dist/main.cjs"
-        }
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./main": {
+      "import": {
+        "types": "./dist/main.d.ts",
+        "default": "./dist/main.js"
       },
-      "./dist/main.cjs"
-    ],
-    "./preload": [
-      {
-        "import": {
-          "types": "./dist/preload.d.ts",
-          "default": "./dist/preload.js"
-        },
-        "require": {
-          "types": "./dist/preload.d.cts",
-          "default": "./dist/preload.cjs"
-        }
+      "require": {
+        "types": "./dist/main.d.cts",
+        "default": "./dist/main.cjs"
+      }
+    },
+    "./preload": {
+      "import": {
+        "types": "./dist/preload.d.ts",
+        "default": "./dist/preload.js"
       },
-      "./dist/preload.cjs"
-    ]
+      "require": {
+        "types": "./dist/preload.d.cts",
+        "default": "./dist/preload.cjs"
+      }
+    }
   },
   "peerDependencies": {
     "electron": ">=12",
@@ -106,14 +97,15 @@
     "vitest": "^3.0.5"
   },
   "files": [
-    "dist/*",
-    "docs/*",
-    "main/*",
-    "preload/*",
+    "dist/**/*",
+    "preload/**/*",
+    "main/**/*",
     "README.md"
   ],
   "dependencies": {
+    "@types/debug": "^4.1.12",
     "@zubridge/types": "workspace:*",
+    "debug": "^4.4.0",
     "uuid": "^11.1.0",
     "zustand": "^5.0.3"
   }

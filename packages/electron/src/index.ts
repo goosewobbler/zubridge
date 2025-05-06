@@ -2,9 +2,13 @@ import type { AnyState, Handlers } from '@zubridge/types';
 import { useStore, type StoreApi } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
 import type { Action, Thunk, ExtractState, ReadonlyStoreApi, DispatchFunc } from '@zubridge/types';
+import { debugUtils } from './utils/debug.js';
 
 // Export types
 export type * from '@zubridge/types';
+
+// Export debugging utilities
+export const debug = debugUtils;
 
 // Add type declaration for window.zubridge
 declare global {
@@ -106,30 +110,59 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
     action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
     payload?: unknown,
   ): unknown => {
+    // Debug helper function
+    const debugLog = (message: string) => {
+      if (typeof window !== 'undefined' && (window as any).ZUBRIDGE_DEBUG) {
+        console.log(`[ZUBRIDGE_DISPATCH_DEBUG] ${message}`);
+      }
+    };
+
     if (typeof action === 'function') {
       // Handle thunks - execute them with the store's getState and our dispatch function
+      debugLog('Executing thunk function');
+
       // Create a proper async dispatch wrapper that ensures all promises are awaited
-      const asyncSafeDispatch = async (innerAction: any, innerPayload?: unknown) => {
+      const asyncSafeDispatch = async (innerAction: any, innerPayload?: unknown): Promise<unknown> => {
+        debugLog(
+          `asyncSafeDispatch called with: ${typeof innerAction === 'string' ? innerAction : typeof innerAction}`,
+        );
+
         // Return the promise from dispatch to allow proper awaiting
         if (typeof innerAction === 'string') {
-          return innerPayload !== undefined
-            ? handlers.dispatch(innerAction, innerPayload)
-            : handlers.dispatch(innerAction);
+          debugLog(`asyncSafeDispatch: dispatching string action "${innerAction}"`);
+          const result =
+            innerPayload !== undefined
+              ? await handlers.dispatch(innerAction, innerPayload)
+              : await handlers.dispatch(innerAction);
+          debugLog(`asyncSafeDispatch: action "${innerAction}" completed`);
+          return result;
         } else if (typeof innerAction === 'function') {
           // Handle nested thunks
-          return innerAction(store.getState, asyncSafeDispatch);
-        } else {
+          debugLog('asyncSafeDispatch: executing nested thunk');
+          const result = await innerAction(store.getState, asyncSafeDispatch);
+          debugLog('asyncSafeDispatch: nested thunk completed');
+          return result;
+        } else if (innerAction && typeof innerAction === 'object') {
           // Handle action objects
-          return handlers.dispatch(innerAction);
+          debugLog(`asyncSafeDispatch: dispatching object action "${innerAction.type}"`);
+          const result = await handlers.dispatch(innerAction);
+          debugLog(`asyncSafeDispatch: action "${innerAction.type}" completed`);
+          return result;
+        } else {
+          debugLog(`asyncSafeDispatch: received invalid action type: ${typeof innerAction}`);
+          return Promise.resolve();
         }
       };
 
+      debugLog('Passing asyncSafeDispatch to thunk');
+      // Execute the thunk with our async-safe dispatch function
       return (action as Thunk<S>)(store.getState, asyncSafeDispatch);
     }
 
     // Handle string action type with payload
     if (typeof action === 'string') {
       // Only pass the payload parameter if it's not undefined, and handle promise return value
+      debugLog(`Dispatching string action "${action}"`);
       return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
     }
 
@@ -143,6 +176,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
     };
 
     // Return the promise from dispatch
+    debugLog(`Dispatching object action "${normalizedAction.type}"`);
     return handlers.dispatch(normalizedAction);
   }) as DispatchFunc<S, TActions>;
 
