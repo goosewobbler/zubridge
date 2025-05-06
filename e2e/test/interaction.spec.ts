@@ -12,6 +12,7 @@ const TIMING = {
     WINDOW_CHANGE_PAUSE: 200, // Time to wait after window creation/deletion
     WINDOW_WAIT_TIMEOUT: 3000, // Maximum time to wait for window operations
     WINDOW_WAIT_INTERVAL: 150, // How often to check window availability
+    THUNK_WAIT_TIME: 2000, // Time to wait for thunk to complete
   },
 
   // Timing adjustments for Linux (slower CI environment)
@@ -22,6 +23,7 @@ const TIMING = {
     WINDOW_CHANGE_PAUSE: 350,
     WINDOW_WAIT_TIMEOUT: 5000,
     WINDOW_WAIT_INTERVAL: 200,
+    THUNK_WAIT_TIME: 2000,
   },
 };
 
@@ -355,23 +357,6 @@ describe('application loading', () => {
     });
 
     it('should double the counter using a thunk', async () => {
-      console.log('Starting enhanced thunk test to verify proper async behavior');
-
-      // Setup: Add console logging to capture action sequence
-      await browser.execute(() => {
-        if (!(window as any).originalConsoleLog) {
-          (window as any).originalConsoleLog = console.log;
-          (window as any).logMessages = [];
-          console.log = (...args) => {
-            (window as any).originalConsoleLog(...args);
-            (window as any).logMessages.push({
-              time: new Date().getTime(),
-              message: args.join(' '),
-            });
-          };
-        }
-      });
-
       // First, increment to a known value
       await resetCounter();
       const incrementButton = await browser.$('button=+');
@@ -381,33 +366,13 @@ describe('application loading', () => {
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
 
       // Verify counter is at 2
-      const initialCounter = await browser.$('h2');
-      const initialText = await initialCounter.getText();
-      const initialValue = parseInt(initialText.replace('Counter: ', ''));
-      console.log(`Initial counter value: ${initialValue}`);
+      const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
-
-      // Enable extra debug logging in the thunk
-      await browser.execute(() => {
-        console.log('[TEST] Enhanced debug logging enabled');
-      });
-
-      // Clear logs before clicking the double button
-      await browser.execute(() => {
-        (window as any).logMessages = [];
-      });
 
       // Click the double button - this should execute the thunk
       console.log('Clicking Double (Thunk) button to execute async thunk');
       const doubleButton = await browser.$('button=Double (Thunk)');
       await doubleButton.click();
-
-      // Get real-time logs after clicking
-      const initialLogs = await browser.execute(() => (window as any).logMessages || []);
-      console.log('Initial logs after clicking thunk button:');
-      initialLogs.forEach((log: { time: number; message: string }) => {
-        console.log(`[${log.time}] ${log.message}`);
-      });
 
       // Wait a short time - enough to start but not complete all async operations
       // This is intentionally short to try to catch the intermediate state
@@ -416,43 +381,18 @@ describe('application loading', () => {
       // Check intermediate value - the behavior should be:
       // 1. First operation multiplies by 4 (8)
       // 2. Second operation divides by 2 (4)
-      const intermediateCounter = await browser.$('h2');
-      const intermediateText = await intermediateCounter.getText();
-      const intermediateValue = parseInt(intermediateText.replace('Counter: ', ''));
+      let intermediateValue = await getCounterValue();
       console.log(`Intermediate counter value: ${intermediateValue}`);
-
-      // Get middle-point logs
-      const midLogs = await browser.execute(() => (window as any).logMessages || []);
-      console.log('Logs at intermediate point:');
-      midLogs.forEach((log: { time: number; message: string }) => {
-        console.log(`[${log.time}] ${log.message}`);
-      });
+      expect(intermediateValue).toBe(8);
 
       // Now wait for the full operations to complete
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 5);
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
 
       // Verify final counter value
       // The sequence should be: 2 -> 8 -> 4, so expect 4
-      const doubledCounter = await browser.$('h2');
-      const doubledText = await doubledCounter.getText();
-      const doubledValue = parseInt(doubledText.replace('Counter: ', ''));
-      console.log(`Final counter value after first double: ${doubledValue}`);
-      expect(doubledValue).toBe(4);
-
-      // Get the console logs from the first execution
-      const firstLogs = await browser.execute(() => {
-        return (window as any).logMessages || [];
-      });
-
-      console.log('Console logs from first thunk execution:');
-      firstLogs.forEach((log: { time: number; message: string }) => {
-        console.log(`[${log.time}] ${log.message}`);
-      });
-
-      // Clear logs for the second test
-      await browser.execute(() => {
-        (window as any).logMessages = [];
-      });
+      intermediateValue = await getCounterValue();
+      console.log(`Final counter value after first double: ${intermediateValue}`);
+      expect(intermediateValue).toBe(4);
 
       // Double again to see if each async operation waits properly
       console.log('Clicking Double (Thunk) button a second time');
@@ -460,42 +400,17 @@ describe('application loading', () => {
 
       // Again check for intermediate value
       await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-      const intermediateCounter2 = await browser.$('h2');
-      const intermediateText2 = await intermediateCounter2.getText();
-      const intermediateValue2 = parseInt(intermediateText2.replace('Counter: ', ''));
-      console.log(`Second intermediate counter value: ${intermediateValue2}`);
+      intermediateValue = await getCounterValue();
+      console.log(`Second intermediate counter value: ${intermediateValue}`);
+      expect(intermediateValue).toBe(16);
 
       // Wait for completion
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 5);
+      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
 
       // Verify counter is doubled with same pattern (4 -> 16 -> 8)
-      const finalCounter = await browser.$('h2');
-      const finalText = await finalCounter.getText();
-      const finalValue = parseInt(finalText.replace('Counter: ', ''));
+      const finalValue = await getCounterValue();
       console.log(`Final counter value: ${finalValue}`);
       expect(finalValue).toBe(8);
-
-      // Get the console logs from the second execution
-      const secondLogs = await browser.execute(() => {
-        return (window as any).logMessages || [];
-      });
-
-      console.log('Console logs from second thunk execution:');
-      secondLogs.forEach((log: { time: number; message: string }) => {
-        console.log(`[${log.time}] ${log.message}`);
-      });
-
-      // Analyze logs to verify correct operation
-      // We should see logs for thunk start, first operation, interim check, second operation, in sequence
-      // If there's an issue with async operations, we'll see operations overlapping
-      console.log('Analyzing logs for proper sequencing...');
-
-      // Restore original console.log
-      await browser.execute(() => {
-        if ((window as any).originalConsoleLog) {
-          console.log = (window as any).originalConsoleLog;
-        }
-      });
     });
 
     it('should double the counter using an action object', async () => {
