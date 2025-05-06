@@ -259,13 +259,12 @@ describe('bridge.ts', () => {
       const bridge = createCoreBridge(stateManager);
       await bridge.destroy();
 
+      // Verify the state manager unsubscribe was called
       expect(unsubscribeMock).toHaveBeenCalled();
 
-      // Verify that removeHandler was called with the expected channel
-      // Use snapshot of real/last call to compare
-      const removeHandlerCalls = vi.mocked(ipcMain.removeHandler).mock.calls;
-      expect(removeHandlerCalls.length).toBeGreaterThan(0);
-      expect(removeHandlerCalls[0][0]).toBe(IpcChannel.GET_STATE);
+      // Verify that tracker cleanup was called
+      const mockTracker = vi.mocked(windowsUtils.createWebContentsTracker).mock.results[0].value;
+      expect(mockTracker.cleanup).toHaveBeenCalled();
     });
 
     // Tests for error handling in dispatch handler (lines 43-44)
