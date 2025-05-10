@@ -24,15 +24,15 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
 
   // Timing adjustments for Linux (slower CI env)
   linux: {
-    WINDOW_SWITCH_PAUSE: 500,
-    STATE_SYNC_PAUSE: 1000,
+    WINDOW_SWITCH_PAUSE: 200,
+    STATE_SYNC_PAUSE: 500,
     BUTTON_CLICK_PAUSE: 50,
-    WINDOW_CHANGE_PAUSE: 1000,
+    WINDOW_CHANGE_PAUSE: 200,
     WINDOW_WAIT_TIMEOUT: 10000,
     WINDOW_WAIT_INTERVAL: 500,
-    THUNK_WAIT_TIME: 3000,
+    THUNK_WAIT_TIME: 2000,
   },
 };
 
 // Determine which timing configuration to use based on platform
-export const TIMING: TimingConfig = PLATFORM_TIMING[process.platform] || PLATFORM_TIMING.base;
+export const TIMING: TimingConfig = PLATFORM_TIMING.base;
