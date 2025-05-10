@@ -2,10 +2,10 @@ import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import type { BackendBridge, AnyState, Dispatch, WrapperOrWebContents } from '@zubridge/types';
 import { createCoreBridge, createBridgeFromStore, CoreBridgeOptions } from './bridge.js';
-import { createDispatch } from './utils/dispatch.js';
+import { createDispatch } from './main/dispatch.js';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
-import { removeStateManager } from './utils/stateManagerRegistry.js';
+import { removeStateManager } from './lib/stateManagerRegistry.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 
 /**
@@ -108,4 +108,4 @@ export function createReduxBridge<S extends AnyState>(
  */
 export const mainZustandBridge = createZustandBridge;
 
-export { createDispatch } from './utils/dispatch';
+export { createDispatch } from './main/dispatch.js';
