@@ -1,12 +1,14 @@
 import type { StoreApi } from 'zustand';
 import type { WebContents } from 'electron';
 
-export type Thunk<S> = (getState: StoreApi<S>['getState'], dispatch: Dispatch<S>) => void;
+export type Thunk<S> = (getState: () => Promise<S>, dispatch: Dispatch<S>) => void;
 
 export type Action<T extends string = string> = {
   type: T;
   payload?: unknown;
   id?: string; // Unique identifier for tracking action acknowledgements
+  __thunkParentId?: string; // Parent thunk ID if action is part of a thunk
+  __sourceWindowId?: number; // Source window ID where the action originated
 };
 
 export type AnyState = Record<string, unknown>;
