@@ -1,5 +1,5 @@
 import { type StoreApi } from 'zustand';
-import type { BaseState } from '../../../../types/index.js';
+import type { BaseState } from '../../../../types.js';
 
 /**
  * Attaches the counter handlers to the state object

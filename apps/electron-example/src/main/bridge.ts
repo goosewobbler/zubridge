@@ -3,7 +3,7 @@ import type { ZustandBridge } from '@zubridge/electron/main';
 import type { Store as ReduxStore } from 'redux';
 
 import { getZubridgeMode } from '../utils/mode.js';
-import type { BaseState } from '../types/index.js';
+import type { BaseState } from '../types.js';
 import type { WrapperOrWebContents } from '@zubridge/types';
 
 /**
