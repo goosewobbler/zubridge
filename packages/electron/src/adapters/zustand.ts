@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/types';
-import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handler-resolution.js';
+import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
 import { debug } from '../utils/debug.js';
 
 /**

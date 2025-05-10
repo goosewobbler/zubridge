@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../../src/utils/handler-resolution.js';
+import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../../src/utils/handlers.js';
 import type { Handler } from '@zubridge/types';
 
-describe('Handler Resolution Utilities', () => {
+describe('Handler Utilities', () => {
   describe('findCaseInsensitiveMatch', () => {
     it('should find exact matches', () => {
       const handlers = {

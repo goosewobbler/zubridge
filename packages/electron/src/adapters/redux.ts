@@ -1,6 +1,6 @@
 import type { Store } from 'redux';
 import type { AnyState, Action, Handler, StateManager } from '@zubridge/types';
-import { resolveHandler } from '../utils/handler-resolution.js';
+import { resolveHandler } from '../utils/handlers.js';
 import { debug } from '../utils/debug.js';
 
 /**
