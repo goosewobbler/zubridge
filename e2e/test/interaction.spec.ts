@@ -1,6 +1,18 @@
 import { expect } from '@wdio/globals';
 import { it, describe, before, beforeEach } from 'mocha';
 import { browser } from 'wdio-electron-service';
+import {
+  setupTestEnvironment,
+  windowHandles,
+  refreshWindowHandles,
+  waitUntilWindowsAvailable,
+  switchToWindow,
+  getButtonInCurrentWindow,
+  getCounterValue,
+  incrementCounterAndVerify,
+  resetCounter,
+} from '../utils/windowUtils';
+import { waitForCounterChange, clickAndWaitForCounterChange } from '../utils/waitForCounterChange';
 
 // Platform-specific timing configurations
 const TIMING = {
@@ -33,282 +45,22 @@ const CURRENT_TIMING = PLATFORM === 'linux' ? TIMING.linux : TIMING.base;
 
 console.log(`Using timing configuration for platform: ${PLATFORM}`);
 
-// Store windows by index rather than by title since all windows have the same title
-const windowHandles: string[] = [];
-
 // Names of core windows for easier reference in tests
 // UPDATED: Reduced to only Main and DirectWebContents windows
 // TODO: Add BrowserView and WebContentsView windows when we have fixed the Webdriver connection issues
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
 const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
 
-// Helper to refresh window handles
-const refreshWindowHandles = async () => {
-  try {
-    const handles = await browser.getWindowHandles();
-
-    // Clear old handles
-    windowHandles.length = 0;
-
-    // Store handles in order they're discovered
-    for (const handle of handles) {
-      try {
-        await browser.switchToWindow(handle);
-        await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-        windowHandles.push(handle);
-        console.log(`Found window ${windowHandles.length - 1} with handle: ${handle}`);
-      } catch (error) {
-        console.error(`Failed to switch to window ${handle}:`, error);
-        // Don't add this handle as it might be a closing window
-      }
-    }
-
-    console.log(`Total windows: ${windowHandles.length}`);
-    return handles.length;
-  } catch (error) {
-    console.error('Error refreshing window handles:', error);
-    // Return the existing count if we fail to get new handles
-    return windowHandles.length;
-  }
-};
-
-// Wait for a specific number of windows to be available
-const waitUntilWindowsAvailable = async (desiredWindows: number) =>
-  await browser.waitUntil(
-    async () => {
-      try {
-        const windowCount = await refreshWindowHandles();
-        console.log(`Current window count: ${windowCount}, desired: ${desiredWindows}`);
-        return windowCount === desiredWindows;
-      } catch (error) {
-        console.error('Error checking window count:', error);
-        // If we're waiting for 0 windows, consider it successful since an error might occur if all windows are closed
-        return desiredWindows === 0;
-      }
-    },
-    {
-      timeout: CURRENT_TIMING.WINDOW_WAIT_TIMEOUT,
-      timeoutMsg: `Expected ${desiredWindows} windows to be available`,
-      interval: CURRENT_TIMING.WINDOW_WAIT_INTERVAL,
-    },
-  );
-
-// Helper to switch to window by index (0 = main window, 1+ = child windows)
-const switchToWindow = async (index: number) => {
-  try {
-    await refreshWindowHandles();
-    if (index >= 0 && index < windowHandles.length) {
-      const handle = windowHandles[index];
-      try {
-        await browser.switchToWindow(handle);
-        await browser.pause(CURRENT_TIMING.WINDOW_SWITCH_PAUSE);
-        return true;
-      } catch (error) {
-        console.error(`Failed to switch to window at index ${index} with handle ${handle}:`, error);
-        // Window might have been closed
-        return false;
-      }
-    } else {
-      console.log(`Cannot switch to window index ${index}, only ${windowHandles.length} windows available`);
-      return false;
-    }
-  } catch (error) {
-    console.error('Error in switchToWindow:', error);
-    return false;
-  }
-};
-
-// Helper to close all windows except the core windows
-const closeAllRemainingWindows = async () => {
-  try {
-    // Refresh window handles to get latest state
-    await refreshWindowHandles();
-    await browser.pause(CURRENT_TIMING.WINDOW_SWITCH_PAUSE);
-
-    // If we already have just CORE_WINDOW_COUNT windows, we're done
-    if (windowHandles.length <= CORE_WINDOW_COUNT) {
-      console.log(`Already have ${CORE_WINDOW_COUNT} or fewer windows, no cleanup needed`);
-      return;
-    }
-
-    // First try to close via Electron API directly for reliability
-    await browser.electron.execute((electron, coreCount) => {
-      const windows = electron.BrowserWindow.getAllWindows();
-      // Keep only the core windows
-      for (let i = coreCount; i < windows.length; i++) {
-        try {
-          console.log(`Direct close of window index ${i} with ID ${windows[i].id}`);
-          windows[i].close();
-        } catch (err) {
-          console.error(`Error closing window at index ${i}:`, err);
-        }
-      }
-    }, CORE_WINDOW_COUNT);
-
-    // Give windows time to close
-    await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE * 2);
-    await refreshWindowHandles();
-
-    // If we still have more than CORE_WINDOW_COUNT windows, try to close them one by one
-    if (windowHandles.length > CORE_WINDOW_COUNT) {
-      // Close any child windows in reverse order (to avoid index shifting)
-      // Start from the last window and keep the core windows
-      for (let i = windowHandles.length - 1; i >= CORE_WINDOW_COUNT; i--) {
-        console.log(`Attempting to close window at index ${i}`);
-
-        try {
-          // Try to switch to the window first to ensure it exists
-          const switchSucceeded = await switchToWindow(i);
-          if (!switchSucceeded) {
-            console.log(`Could not switch to window ${i}, skipping close operation`);
-            continue;
-          }
-
-          // Try to get the close button
-          try {
-            const closeButton = await getButtonInCurrentWindow('close');
-            await closeButton.click();
-          } catch (error) {
-            console.log(`Could not find close button in window ${i}, using direct API`);
-            // If button not found, close directly via API
-            await browser.electron.execute((electron, idx) => {
-              const windows = electron.BrowserWindow.getAllWindows();
-              if (idx < windows.length) {
-                windows[idx].close();
-              }
-            }, i);
-          }
-
-          // Give window time to close
-          await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE);
-        } catch (error) {
-          console.error(`Error during window ${i} close operation:`, error);
-        }
-      }
-    }
-
-    // Final check - force refresh and try to ensure we have only core windows
-    await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE);
-    await refreshWindowHandles();
-
-    // Try to ensure we're on the main window
-    if (windowHandles.length > 0) {
-      await switchToWindow(0);
-    }
-  } catch (error) {
-    console.error('Error during window cleanup:', error);
-    // Try to ensure we're on the main window as a fallback
-    try {
-      await refreshWindowHandles();
-      if (windowHandles.length > 0) {
-        await switchToWindow(0);
-      }
-    } catch (finalError) {
-      console.error('Final error in cleanup:', finalError);
-    }
-  }
-};
-
-// Helper function to get button based on window type
-const getButtonInCurrentWindow = async (buttonType: 'increment' | 'decrement' | 'create' | 'close') => {
-  // All windows have the same button selector patterns
-  switch (buttonType) {
-    case 'increment':
-      return await browser.$('button=+');
-    case 'decrement':
-      return await browser.$('button=-');
-    case 'create':
-      return await browser.$('button=Create Window');
-    case 'close':
-      return await browser.$('button=Close Window');
-    default:
-      throw new Error(`Unknown button type: ${buttonType}`);
-  }
-};
-
-// Helper to get counter value from current window
-const getCounterValue = async () => {
-  // Wait for the counter element to be present and have stable value
-  await browser.waitUntil(
-    async () => {
-      const counterElement = await browser.$('h2');
-      return await counterElement.isExisting();
-    },
-    {
-      timeout: CURRENT_TIMING.WINDOW_WAIT_TIMEOUT,
-      timeoutMsg: 'Counter element not found',
-      interval: CURRENT_TIMING.WINDOW_WAIT_INTERVAL / 2,
-    },
-  );
-
-  const counterElement = await browser.$('h2');
-  const counterText = await counterElement.getText();
-  return parseInt(counterText.replace('Counter: ', ''));
-};
-
-// Helper for incrementing counter and ensuring the value changes
-const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {
-  let currentValue = await getCounterValue();
-  const incrementButton = await getButtonInCurrentWindow('increment');
-
-  while (currentValue < targetValue) {
-    console.log(`Incrementing counter from ${currentValue} to ${targetValue}`);
-    await incrementButton.click();
-
-    // Wait for counter to update
-    await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-
-    // Check if the value changed
-    const newValue = await getCounterValue();
-    if (newValue === currentValue) {
-      console.log('Counter did not increment, clicking again');
-      await incrementButton.click();
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE * 2); // Longer pause if the value didn't change
-    }
-
-    currentValue = await getCounterValue();
-  }
-
-  return currentValue;
-};
-
-// Helper to reset counter to zero
-const resetCounter = async () => {
-  // First get the current counter value
-  const counterElement = await browser.$('h2');
-  const counterText = await counterElement.getText();
-  const currentCount = parseInt(counterText.replace('Counter: ', ''));
-
-  // Use decrement button to reset to zero
-  if (currentCount > 0) {
-    const decrementButton = await browser.$('button=-');
-    // Click the decrement button as many times as needed
-    for (let i = 0; i < currentCount; i++) {
-      await decrementButton.click();
-      // Small wait to ensure state update
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-    }
-  }
-
-  // Verify we're at zero
-  const newCounterElement = await browser.$('h2');
-  const newCounterText = await newCounterElement.getText();
-  return parseInt(newCounterText.replace('Counter: ', ''));
-};
-
 describe('application loading', () => {
   before(async () => {
-    await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
+    await waitUntilWindowsAvailable(CORE_WINDOW_COUNT, CURRENT_TIMING);
   });
 
   beforeEach(async () => {
     console.log('Running beforeEach setup...');
     try {
-      await closeAllRemainingWindows();
-      // Ensure we have exactly CORE_WINDOW_COUNT windows
-      await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
-      // Ensure focus is on the main window
-      await switchToWindow(0);
+      // Use a single function to set up the test environment
+      await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
       console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
@@ -403,45 +155,22 @@ describe('application loading', () => {
       // Click the double button - this should execute the thunk
       console.log('Clicking Double (Renderer Thunk) button to execute async thunk');
       const doubleButton = await browser.$('button=Double (Renderer Thunk)');
-      await doubleButton.click();
-
-      // Wait a short time - enough to start but not complete all async operations
-      // This is intentionally short to try to catch the intermediate state
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-
       // Check intermediate value - the behavior should be:
-      // 1. First operation multiplies by 4 (8)
-      // 2. Second operation divides by 2 (4)
-      let intermediateValue = await getCounterValue();
+      // 1. First operation multiplies by 2 (4)
+      // 2. Second operation multiplies by 2 (8)
+      let intermediateValue = await clickAndWaitForCounterChange(doubleButton);
+      console.log(`Intermediate counter value: ${intermediateValue}`);
+      expect(intermediateValue).toBe(4);
+
+      intermediateValue = await waitForCounterChange();
       console.log(`Intermediate counter value: ${intermediateValue}`);
       expect(intermediateValue).toBe(8);
 
-      // Now wait for the full operations to complete
-      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
-
       // Verify final counter value
-      // The sequence should be: 2 -> 8 -> 4, so expect 4
-      intermediateValue = await getCounterValue();
-      console.log(`Final counter value after first double: ${intermediateValue}`);
-      expect(intermediateValue).toBe(4);
-
-      // Double again to see if each async operation waits properly
-      console.log('Clicking Double (Renderer Thunk) button a second time');
-      await doubleButton.click();
-
-      // Again check for intermediate value
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-      intermediateValue = await getCounterValue();
-      console.log(`Second intermediate counter value: ${intermediateValue}`);
-      expect(intermediateValue).toBe(16);
-
-      // Wait for completion
-      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
-
-      // Verify counter is doubled with same pattern (4 -> 16 -> 8)
-      const finalValue = await getCounterValue();
+      // The sequence should be: 2 -> 4 -> 8 -> 4, so expect 4
+      const finalValue = await waitForCounterChange();
       console.log(`Final counter value: ${finalValue}`);
-      expect(finalValue).toBe(8);
+      expect(finalValue).toBe(4);
     });
 
     it('should double the counter using a main process thunk', async () => {
@@ -460,45 +189,23 @@ describe('application loading', () => {
       // Click the main process thunk button
       console.log('Clicking Double (Main Thunk) button to execute main process thunk');
       const mainThunkButton = await browser.$('button=Double (Main Thunk)');
-      await mainThunkButton.click();
-
-      // Wait a short time - enough to start but not complete all async operations
-      // This is intentionally short to try to catch the intermediate state
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
 
       // Check intermediate value - the behavior should be:
-      // 1. First operation multiplies by 4 (8)
-      // 2. Second operation divides by 2 (4)
-      let intermediateValue = await getCounterValue();
+      // 1. First operation multiplies by 2 (4)
+      // 2. Second operation multiplies by 2 (8)
+      let intermediateValue = await clickAndWaitForCounterChange(mainThunkButton);
+      console.log(`Intermediate counter value (main thunk): ${intermediateValue}`);
+      expect(intermediateValue).toBe(4);
+
+      intermediateValue = await waitForCounterChange();
       console.log(`Intermediate counter value (main thunk): ${intermediateValue}`);
       expect(intermediateValue).toBe(8);
 
-      // Now wait for the full operations to complete
-      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
-
       // Verify final counter value
-      // The sequence should be: 2 -> 8 -> 4, so expect 4
-      intermediateValue = await getCounterValue();
-      console.log(`Final counter value after main thunk double: ${intermediateValue}`);
-      expect(intermediateValue).toBe(4);
-
-      // Double again to see if each async operation waits properly
-      console.log('Clicking Double (Main Thunk) button a second time');
-      await mainThunkButton.click();
-
-      // Again check for intermediate value
-      await browser.pause(CURRENT_TIMING.BUTTON_CLICK_PAUSE);
-      intermediateValue = await getCounterValue();
-      console.log(`Second intermediate counter value (main thunk): ${intermediateValue}`);
-      expect(intermediateValue).toBe(16);
-
-      // Wait for completion
-      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME);
-
-      // Verify counter is doubled with same pattern (4 -> 16 -> 8)
-      const finalValue = await getCounterValue();
+      // The sequence should be: 2 -> 4 -> 8 -> 4, so expect 4
+      const finalValue = await waitForCounterChange();
       console.log(`Final counter value: ${finalValue}`);
-      expect(finalValue).toBe(8);
+      expect(finalValue).toBe(4);
     });
 
     it('should fully await renderer thunk completion before performing subsequent actions in the same window', async () => {
@@ -514,36 +221,30 @@ describe('application loading', () => {
 
       // Verify counter is at 2
       const initialValue = await getCounterValue();
+      console.log(`Initial counter value: ${initialValue}`);
       expect(initialValue).toBe(2);
-
-      // Create a sequence of actions to verify awaiting behavior:
-      // 1. Start the renderer thunk (which will do: 2 -> 8 -> 4)
-      // 2. Immediately queue an increment action
-      // 3. The increment should only happen after the thunk completes
-      // 4. If properly awaited, final value should be 5 (4+1)
-      // If not properly awaited, we'd see 9 (8+1) or some other unexpected value
-
-      console.log('Starting awaitable renderer thunk test sequence');
 
       // Start the thunk
       console.log('Triggering renderer thunk...');
-      const doubleButton = await browser.$('button=Double (Renderer Thunk)');
-      await doubleButton.click();
+      const rendererThunkButton = await browser.$('button=Double (Renderer Thunk)');
 
-      // Immediately queue an increment action
-      console.log('Immediately queuing increment action...');
-      await incrementButton.click();
+      // Check intermediate state
+      // kick off the thunk and wait for the first intermediate value
+      const intermediateValue = await clickAndWaitForCounterChange(rendererThunkButton);
+      expect(intermediateValue).toBe(4);
 
-      // Now let's wait long enough for everything to complete
-      console.log('Waiting for all actions to complete...');
-      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      // interrupt the thunk with an increment
+      const intermediateValue2 = await clickAndWaitForCounterChange(incrementButton);
 
-      // Check the final counter value
-      const finalValue = await getCounterValue();
-      console.log(`Final counter value after renderer thunk+increment: ${finalValue}`);
+      // verify the increment action was deferred and the thunk continued processing
+      expect(intermediateValue2).toBe(8);
 
-      // If the thunk is properly awaited, we should see:
-      // 2 -> thunk (8 -> 4) -> increment (5)
+      // wait for the thunk to complete
+      const finalThunkValue = await waitForCounterChange();
+      expect(finalThunkValue).toBe(4);
+
+      // wait for the increment action to complete
+      const finalValue = await waitForCounterChange();
       expect(finalValue).toBe(5);
     });
 
@@ -562,34 +263,27 @@ describe('application loading', () => {
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
 
-      // Create a sequence of actions to verify awaiting behavior:
-      // 1. Start the main process thunk (which will do: 2 -> 8 -> 4)
-      // 2. Immediately queue an increment action
-      // 3. The increment should only happen after the thunk completes
-      // 4. If properly awaited, final value should be 5 (4+1)
-      // If not properly awaited, we'd see 9 (8+1) or some other unexpected value
-
-      console.log('Starting awaitable main process thunk test sequence');
-
       // Start the thunk
       console.log('Triggering main process thunk...');
       const mainThunkButton = await browser.$('button=Double (Main Thunk)');
-      await mainThunkButton.click();
 
-      // Immediately queue an increment action
-      console.log('Immediately queuing increment action...');
-      await incrementButton.click();
+      // Check intermediate state
+      // kick off the thunk and wait for the first intermediate value
+      const intermediateValue = await clickAndWaitForCounterChange(mainThunkButton);
+      expect(intermediateValue).toBe(4);
 
-      // Now let's wait long enough for everything to complete
-      console.log('Waiting for all actions to complete...');
-      await browser.pause(CURRENT_TIMING.THUNK_WAIT_TIME + CURRENT_TIMING.BUTTON_CLICK_PAUSE);
+      // interrupt the thunk with an increment
+      const intermediateValue2 = await clickAndWaitForCounterChange(incrementButton);
 
-      // Check the final counter value
-      const finalValue = await getCounterValue();
-      console.log(`Final counter value after main process thunk+increment: ${finalValue}`);
+      // verify the increment action was deferred and the thunk continued processing
+      expect(intermediateValue2).toBe(8);
 
-      // If the thunk is properly awaited, we should see:
-      // 2 -> thunk (8 -> 4) -> increment (5)
+      // wait for the thunk to complete
+      const finalThunkValue = await waitForCounterChange();
+      expect(finalThunkValue).toBe(4);
+
+      // wait for the increment action to complete
+      const finalValue = await waitForCounterChange();
       expect(finalValue).toBe(5);
     });
 
@@ -633,7 +327,7 @@ describe('application loading', () => {
       // Verify window switch was successful
       const secondWindowValue = await getCounterValue();
       console.log(`Second window counter value: ${secondWindowValue}`);
-      // Value might be 2 or 8 (intermediate) depending on timing
+      // Value might be 2 or 4 (intermediate) depending on timing
 
       // Click increment in second window while main process thunk is running
       console.log('Clicking increment in second window...');
@@ -660,7 +354,7 @@ describe('application loading', () => {
 
       // Clean up the window we created
       console.log('Cleaning up extra window');
-      await closeAllRemainingWindows();
+      await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
     });
 
     it('should await renderer thunk completion even when actions are dispatched from different windows', async () => {
@@ -703,7 +397,7 @@ describe('application loading', () => {
       // Verify window switch was successful
       const secondWindowValue = await getCounterValue();
       console.log(`Second window counter value: ${secondWindowValue}`);
-      // Value might be 2 or 8 (intermediate) depending on timing
+      // Value might be 2 or 4 (intermediate) depending on timing
 
       // Click increment in second window while renderer thunk is running
       console.log('Clicking increment in second window...');
@@ -730,7 +424,7 @@ describe('application loading', () => {
 
       // Clean up the window we created
       console.log('Cleaning up extra window');
-      await closeAllRemainingWindows();
+      await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
     });
   });
 
@@ -744,7 +438,7 @@ describe('application loading', () => {
       await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE * 3);
 
       // Wait for new window and switch to it (there should now be 3 windows)
-      await waitUntilWindowsAvailable(3);
+      await waitUntilWindowsAvailable(3, CURRENT_TIMING);
       const windows = await browser.electron.execute((electron) => {
         return electron.BrowserWindow.getAllWindows().length;
       });
@@ -878,7 +572,7 @@ describe('application loading', () => {
       const switched = await switchToWindow(2);
       if (!switched) {
         console.warn('Could not switch to new window (index 2), skipping verification');
-        await closeAllRemainingWindows();
+        await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
         return;
       }
 
@@ -901,7 +595,7 @@ describe('application loading', () => {
         }
       });
       await browser.pause(CURRENT_TIMING.WINDOW_CHANGE_PAUSE * 2);
-      await waitUntilWindowsAvailable(2); // Expect 2 windows after cleanup
+      await waitUntilWindowsAvailable(2, CURRENT_TIMING); // Expect 2 windows after cleanup
     });
 
     it('should create multiple windows and maintain state across all of them', async () => {
@@ -1012,10 +706,7 @@ describe('application loading', () => {
 
       // Clean up - use our improved closeAllRemainingWindows function
       console.log('Cleaning up all windows');
-      await closeAllRemainingWindows();
-
-      // Switch back to main window to ensure we're in a good state
-      await switchToWindow(0);
+      await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
     });
 
     it('should maintain sync between child windows and main window after parent window is closed', async () => {
@@ -1039,7 +730,7 @@ describe('application loading', () => {
       await switchToWindow(0); // Ensure focus on main
       const createButton1 = await getButtonInCurrentWindow('create');
       await createButton1.click();
-      await waitUntilWindowsAvailable(3); // Wait for handle
+      await waitUntilWindowsAvailable(3, CURRENT_TIMING); // Wait for handle
       await browser.pause(CURRENT_TIMING.STATE_SYNC_PAUSE); // Allow UI to settle
       console.log('Child window created.');
 
@@ -1048,7 +739,7 @@ describe('application loading', () => {
       await switchToWindow(2); // Switch to child window (index 2)
       const createButton2 = await getButtonInCurrentWindow('create');
       await createButton2.click();
-      await waitUntilWindowsAvailable(4); // Wait for handle
+      await waitUntilWindowsAvailable(4, CURRENT_TIMING); // Wait for handle
       await browser.pause(CURRENT_TIMING.STATE_SYNC_PAUSE); // Allow UI to settle
       console.log('Grandchild window created.');
       // --- End window creation modification ---
@@ -1172,7 +863,7 @@ describe('application loading', () => {
 
       // Clean up is handled by beforeEach for the next test
       // console.log('Final cleanup');
-      // await closeAllRemainingWindows();
+      // await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
     });
 
     it('should sync state between all core window types', async () => {
@@ -1331,12 +1022,7 @@ describe('application loading', () => {
 
       // Clean up all the runtime windows we created
       console.log('Cleaning up runtime windows');
-      await closeAllRemainingWindows();
-
-      // Verify cleanup worked
-      await refreshWindowHandles();
-      console.log(`Final window count: ${windowHandles.length}, expected: ${CORE_WINDOW_COUNT}`);
-      expect(windowHandles.length).toBe(CORE_WINDOW_COUNT);
+      await setupTestEnvironment(CORE_WINDOW_COUNT, CURRENT_TIMING);
     });
   });
 });
