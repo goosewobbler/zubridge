@@ -11,7 +11,7 @@ export interface TimingConfig {
 
 // Platform-specific timing configurations
 export const PLATFORM_TIMING: Record<string, TimingConfig> = {
-  // Base timing values
+  // Base timing values (used for macOS / Windows)
   base: {
     WINDOW_SWITCH_PAUSE: 100,
     STATE_SYNC_PAUSE: 250, // Time to wait for state to sync between windows
@@ -21,7 +21,18 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_WAIT_INTERVAL: 150, // How often to check window availability
     THUNK_WAIT_TIME: 2000, // Time to wait for thunk to complete
   },
+
+  // Timing adjustments for Linux (slower CI env)
+  linux: {
+    WINDOW_SWITCH_PAUSE: 200,
+    STATE_SYNC_PAUSE: 500,
+    BUTTON_CLICK_PAUSE: 50,
+    WINDOW_CHANGE_PAUSE: 200,
+    WINDOW_WAIT_TIMEOUT: 10000,
+    WINDOW_WAIT_INTERVAL: 500,
+    THUNK_WAIT_TIME: 2000,
+  },
 };
 
 // Determine which timing configuration to use based on platform
-export const TIMING: TimingConfig = PLATFORM_TIMING.base;
+export const TIMING: TimingConfig = PLATFORM_TIMING[process.platform] || PLATFORM_TIMING.base;
