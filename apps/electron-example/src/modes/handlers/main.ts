@@ -29,17 +29,14 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
  * Creates a bridge using the handlers approach
  * In this approach, we provide separate action handlers
  */
-export const createHandlersBridge = <S extends BaseState, Store extends StoreApi<S>>(
-  store: Store,
-  windows: WrapperOrWebContents[],
-): ZustandBridge => {
+export const createHandlersBridge = <S extends BaseState, Store extends StoreApi<S>>(store: Store): ZustandBridge => {
   console.log('[Handlers Mode] Creating bridge with separate handlers');
 
   // Define action handlers
   const handlers = createHandlers(store);
 
   // Create bridge with handlers
-  return createZustandBridge<S>(store, windows, {
+  return createZustandBridge<S>(store, {
     handlers,
   });
 };

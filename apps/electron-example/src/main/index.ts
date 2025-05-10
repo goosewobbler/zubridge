@@ -102,38 +102,38 @@ app
     await initStore();
     debug('Store initialized');
 
-    // Create the bridge, passing all windows/views for synchronization
-    debug('Creating bridge with windows');
-
-    // Use a more general array that accepts different window/view types
-    const windowsAndViews: WrapperOrWebContents[] = [];
-
-    if (initialMainWindow) {
-      debug(`Adding main window ID: ${initialMainWindow.id}`);
-      windowsAndViews.push(initialMainWindow);
-    }
-
-    if (initialDirectWebContentsWindow) {
-      debug(`Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
-      windowsAndViews.push(initialDirectWebContentsWindow);
-    }
-
-    if (browserView) {
-      debug(`Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
-      windowsAndViews.push(browserView);
-    }
-
-    if (webContentsView) {
-      debug(`Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
-      windowsAndViews.push(webContentsView);
-    }
-
-    debug(`Passing ${windowsAndViews.length} windows/views to bridge`);
-
+    // Create the bridge
+    debug('Creating bridge');
     try {
       debug('Before bridge creation');
-      const bridge = await createBridge(store, windowsAndViews);
+      const bridge = await createBridge(store);
       debug('Bridge created successfully');
+
+      // Create a more general array that accepts different window/view types
+      const windowsAndViews: WrapperOrWebContents[] = [];
+
+      if (initialMainWindow) {
+        debug(`Adding main window ID: ${initialMainWindow.id}`);
+        windowsAndViews.push(initialMainWindow);
+      }
+
+      if (initialDirectWebContentsWindow) {
+        debug(`Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
+        windowsAndViews.push(initialDirectWebContentsWindow);
+      }
+
+      if (browserView) {
+        debug(`Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
+        windowsAndViews.push(browserView);
+      }
+
+      if (webContentsView) {
+        debug(`Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
+        windowsAndViews.push(webContentsView);
+      }
+
+      debug(`Subscribing ${windowsAndViews.length} windows/views to the bridge`);
+      bridge.subscribe(windowsAndViews);
 
       // Create the system tray
       debug('Creating system tray');
