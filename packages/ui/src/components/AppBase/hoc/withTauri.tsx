@@ -2,7 +2,7 @@ import { PropsWithChildren } from 'react';
 import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
 import { ZubridgeApp } from '../ZubridgeApp';
 import { useBridgeStatus } from '../hooks/useBridgeStatus';
-import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
+import type { ActionHandlers, WindowInfo } from '../WindowInfo';
 
 /**
  * Props for the TauriApp component
@@ -48,7 +48,7 @@ export function withTauri() {
     const bridgeStatus = useBridgeStatus(store);
 
     // Platform handlers for Tauri
-    const platformHandlers: PlatformHandlers = {
+    const actionHandlers: ActionHandlers = {
       createWindow: async () => {
         try {
           // Import dynamically to avoid issues with SSR
@@ -96,7 +96,7 @@ export function withTauri() {
         dispatch={dispatch}
         bridgeStatus={bridgeStatus}
         windowInfo={windowInfo}
-        platformHandlers={platformHandlers}
+        actionHandlers={actionHandlers as ActionHandlers}
         windowTitle={windowTitle}
         appName={appName}
         className={className}

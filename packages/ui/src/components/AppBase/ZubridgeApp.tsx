@@ -4,10 +4,10 @@ import { Counter } from '../Counter';
 import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
-import type { WindowInfo, PlatformHandlers, WindowType } from './WindowInfo.js';
+import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
-import { CounterMethod } from '../../types';
+import { CounterMethod } from '../../types.js';
 
 export interface ZubridgeAppProps {
   /**
@@ -26,9 +26,9 @@ export interface ZubridgeAppProps {
   dispatch: any;
 
   /**
-   * Platform-specific handlers
+   * Platform-specific action handlers
    */
-  platformHandlers: PlatformHandlers;
+  actionHandlers: ActionHandlers;
 
   /**
    * Bridge status
@@ -68,7 +68,7 @@ export function ZubridgeApp({
   windowInfo,
   store,
   dispatch,
-  platformHandlers,
+  actionHandlers,
   bridgeStatus: externalBridgeStatus,
   windowTitle = 'Zubridge App',
   appName = 'Zubridge App',
@@ -126,53 +126,27 @@ export function ZubridgeApp({
   const handleDoubleCounter = useCallback(
     (method: CounterMethod) => {
       if (method === 'thunk') {
-        // Create a thunk that simulates the testAsyncDouble behavior
-        // but executes in the renderer process
-        dispatch(async (getState: () => any, dispatch: any) => {
-          const delayTime = 500; // milliseconds
-
-          // Log initial state
-          const currentState = getState();
-          const currentValue = getCounterSelector(currentState);
-          console.log(`[RENDERER THUNK] Starting with counter value: ${currentValue}`);
-
-          // First async operation - double the value
-          console.log(`[RENDERER THUNK] First operation: Quadrupling counter to ${currentValue * 4}`);
-          await dispatch('COUNTER:SET', currentValue * 4);
-
-          // Add delay to simulate async work
-          await new Promise((resolve) => setTimeout(resolve, delayTime));
-
-          // Log intermediate state after first operation
-          const intermediateState = getState();
-          const intermediateValue = getCounterSelector(intermediateState);
-          console.log(`[RENDERER THUNK] After first operation: counter value is ${intermediateValue}`);
-
-          // Second async operation - double the value again
-          console.log(`[RENDERER THUNK] Second operation: Halving counter to ${intermediateValue * 2}`);
-          await dispatch('COUNTER:SET', intermediateValue / 2);
-
-          // Add delay to simulate async work
-          await new Promise((resolve) => setTimeout(resolve, delayTime));
-
-          // Log final state
-          const finalState = getState();
-          const finalValue = getCounterSelector(finalState);
-          console.log(`[RENDERER THUNK] After second operation: counter value is ${finalValue}`);
-          console.log(`[RENDERER THUNK] Test complete: expected ${currentValue * 2}, got ${finalValue}`);
-
-          return finalValue;
-        });
+        // Use the actionHandlers thunk if available
+        if (actionHandlers.doubleCounter) {
+          console.log(`[DEBUG] Using shared thunk for method: ${method}`);
+          return dispatch(actionHandlers.doubleCounter(counter));
+        }
       } else if (method === 'main-thunk') {
-        window.counter?.executeMainThunk();
+        console.log(`[DEBUG] Starting ${method} execution`);
+        const result = window.counter?.executeMainThunk();
+        console.log(`[DEBUG] ${method} returned:`, result);
+        return result;
       } else {
-        dispatch({
+        console.log(`[DEBUG] Dispatching regular action for ${method}`);
+        const result = dispatch({
           type: 'COUNTER:SET',
           payload: counter * 2,
         });
+        console.log(`[DEBUG] Regular action dispatch returned:`, result);
+        return result;
       }
     },
-    [counter, dispatch],
+    [counter, dispatch, actionHandlers],
   );
 
   const handleToggleTheme = useCallback(() => {
@@ -181,24 +155,24 @@ export function ZubridgeApp({
 
   // Window management
   const handleCreateWindow = useCallback(async () => {
-    const result = await platformHandlers.createWindow();
+    const result = await actionHandlers.createWindow();
 
     if (result.success) {
       // logAction('WINDOW:CREATE_SUCCESS', 'Window created successfully', { windowId: result.id });
     } else {
       // logAction('WINDOW:CREATE_ERROR', 'Failed to create window', {}, 'error');
     }
-  }, [platformHandlers]);
+  }, [actionHandlers]);
 
   const handleCloseWindow = useCallback(async () => {
-    await platformHandlers.closeWindow();
-  }, [platformHandlers]);
+    await actionHandlers.closeWindow();
+  }, [actionHandlers]);
 
   const handleQuitApp = useCallback(async () => {
-    if (platformHandlers.quitApp) {
-      await platformHandlers.quitApp();
+    if (actionHandlers.quitApp) {
+      await actionHandlers.quitApp();
     }
-  }, [platformHandlers]);
+  }, [actionHandlers]);
 
   // Get window properties
   const isMainWindow = windowInfo.type === 'main';

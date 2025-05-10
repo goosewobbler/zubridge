@@ -1,8 +1,8 @@
 import { createUseStore, useDispatch } from '@zubridge/electron';
-import React, { type PropsWithChildren } from 'react';
+import React, { type PropsWithChildren, type ReactNode } from 'react';
 import { ZubridgeApp } from '../ZubridgeApp';
 import { useBridgeStatus } from '../hooks/useBridgeStatus';
-import type { PlatformHandlers, WindowInfo } from '../WindowInfo';
+import type { ActionHandlers, WindowInfo } from '../WindowInfo';
 
 /**
  * Props for the ElectronApp component
@@ -28,6 +28,16 @@ export interface ElectronAppProps extends PropsWithChildren {
    * Additional CSS classes to apply to the component
    */
   className?: string;
+
+  /**
+   * Child elements to render
+   */
+  children?: ReactNode;
+
+  /**
+   * Custom action handlers
+   */
+  actionHandlers?: ActionHandlers;
 }
 
 /**
@@ -43,6 +53,7 @@ export function withElectron() {
     windowTitle = 'Electron App',
     appName = 'Electron App',
     className = '',
+    actionHandlers,
   }: ElectronAppProps) {
     // Get store and dispatch from Electron hooks
     const store = useStore();
@@ -50,44 +61,6 @@ export function withElectron() {
     const bridgeStatus = useBridgeStatus(store);
 
     // Platform handlers for Electron
-    const platformHandlers: PlatformHandlers = {
-      createWindow: async () => {
-        try {
-          if (!window.electronAPI) {
-            throw new Error('Electron API not available');
-          }
-          const result = await window.electronAPI.createRuntimeWindow();
-          return { success: true, id: result.windowId };
-        } catch (error) {
-          console.error('Failed to create window:', error);
-          return { success: false, error: String(error) };
-        }
-      },
-      closeWindow: async () => {
-        try {
-          if (!window.electronAPI) {
-            throw new Error('Electron API not available');
-          }
-          await window.electronAPI.closeCurrentWindow();
-          return { success: true };
-        } catch (error) {
-          console.error('Failed to close window:', error);
-          return { success: false, error: String(error) };
-        }
-      },
-      quitApp: async () => {
-        try {
-          if (!window.electronAPI) {
-            throw new Error('Electron API not available');
-          }
-          await window.electronAPI.quitApp();
-          return { success: true };
-        } catch (error) {
-          console.error('Failed to quit app:', error);
-          return { success: false, error: String(error) };
-        }
-      },
-    };
 
     return (
       <ZubridgeApp
@@ -95,7 +68,7 @@ export function withElectron() {
         dispatch={dispatch}
         bridgeStatus={bridgeStatus}
         windowInfo={windowInfo}
-        platformHandlers={platformHandlers}
+        actionHandlers={actionHandlers as ActionHandlers}
         windowTitle={windowTitle}
         appName={appName}
         className={className}
