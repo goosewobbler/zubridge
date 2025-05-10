@@ -12,7 +12,13 @@
       "cache": true
     },
     "build:packages": {
-      "dependsOn": ["@zubridge/types#build", "@zubridge/electron#build", "@zubridge/tauri#build", "@zubridge/ui#build"],
+      "dependsOn": [
+        "@zubridge/types#build",
+        "@zubridge/electron#build",
+        "@zubridge/tauri#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build"
+      ],
       "cache": true
     },
     "build:electron-examples": {
@@ -85,6 +91,10 @@
       "cache": true
     },
     "@zubridge/tauri#build": {
+      "dependsOn": ["@zubridge/types#build"],
+      "cache": true
+    },
+    "@zubridge/apps-shared#build": {
       "dependsOn": ["@zubridge/types#build"],
       "cache": true
     },

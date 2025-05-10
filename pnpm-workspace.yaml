@@ -3,6 +3,7 @@ packages:
   - 'apps/tauri-example'
   - 'apps/tauri-v1-example'
   - 'e2e'
+  - 'packages/apps-shared'
   - 'packages/electron'
   - 'packages/middleware/node'
   - 'packages/tauri'
