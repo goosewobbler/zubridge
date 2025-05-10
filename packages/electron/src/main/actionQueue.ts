@@ -167,12 +167,20 @@ export class ActionQueueManager {
       }
     }
 
-    // If action is from a window with active thunks, don't defer
-    // This allows a window to continue executing its own actions during its thunk
+    // If a window has active thunks, we should defer all non-thunk actions from that window
+    // This ensures proper sequencing of actions
     const windowHasActiveThunks = thunkTracker.hasActiveThunksForWindow(sourceWindowId);
     if (windowHasActiveThunks) {
-      this.log(`Not deferring action ${action.type} - from window ${sourceWindowId} with active thunks`);
-      return false;
+      // Only allow actions that are explicitly part of a thunk
+      if (action.__thunkParentId) {
+        this.log(`Not deferring action ${action.type} - has thunk parent ${action.__thunkParentId}`);
+        return false;
+      } else {
+        this.log(
+          `Deferring action ${action.type} - from window ${sourceWindowId} with active thunks but not part of a thunk`,
+        );
+        return true;
+      }
     }
 
     // Get active thunks for logging
@@ -256,7 +264,9 @@ export class ActionQueueManager {
     }
 
     // Add to queue
-    this.log(`Enqueueing action: ${action.type} from window ${sourceWindowId}`);
+    this.log(
+      `Enqueueing action: ${action.type} (id: ${action.id}) from window ${sourceWindowId}${parentThunkId ? `, parent thunk: ${parentThunkId}` : ''}`,
+    );
     this.actionQueue.push({
       action,
       sourceWindowId,
@@ -268,13 +278,18 @@ export class ActionQueueManager {
     const shouldDefer = this.shouldDeferAction(action, sourceWindowId);
 
     if (shouldDefer) {
-      this.log(`Deferring action ${action.type} (${action.id}) - will process when thunks complete`);
+      this.log(`🔄 DEFERRED action ${action.type} (${action.id}) - will process when thunks complete`);
       this.log(`Current queue length: ${this.actionQueue.length}`);
+
+      // Log active thunks for debugging
+      const activeThunks = thunkTracker.getActiveThunks();
+      this.log(
+        `Active thunks preventing immediate execution: ${activeThunks.map((t) => `${t.id} (window ${t.sourceWindowId})`).join(', ')}`,
+      );
       return;
     }
 
-    this.log(`Not deferring action ${action.type} - no active thunks`);
-    this.log(`Processing action ${action.type} immediately`);
+    this.log(`✅ IMMEDIATE processing of action ${action.type} (${action.id}) - no blocking thunks`);
 
     // Process the queue
     this.processQueue();
