@@ -6,7 +6,7 @@ import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
-import { getStateManager } from './utils/stateManagerRegistry.js';
+import { getStateManager } from './lib/stateManagerRegistry.js';
 import {
   getWebContents,
   isDestroyed,
@@ -18,6 +18,17 @@ import {
 import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 import { debug } from './utils/debug.js';
+import { actionQueue } from './main/actionQueue.js';
+import { getThunkTracker, ThunkState } from './lib/thunkTracker.js';
+
+// Get the global ThunkTracker
+const thunkTracker = getThunkTracker(true);
+
+// Extend the Action type to include source window ID for internal use
+interface ActionWithSource extends Action {
+  __sourceWindowId?: number;
+  parentId?: string;
+}
 
 export interface CoreBridgeOptions {
   // Middleware hooks
@@ -41,7 +52,7 @@ export function createCoreBridge<State extends AnyState>(
   debug('core', 'Creating CoreBridge with options:', options);
 
   // Tracker for WebContents using WeakMap for automatic garbage collection
-  const tracker: WebContentsTracker = createWebContentsTracker();
+  const windowTracker: WebContentsTracker = createWebContentsTracker();
 
   // Process options with middleware if provided
   let processedOptions = options;
@@ -59,71 +70,281 @@ export function createCoreBridge<State extends AnyState>(
     const initialWebContents = prepareWebContents(initialWrappers);
     debug('core', `Initializing with ${initialWebContents.length} WebContents`);
     for (const webContents of initialWebContents) {
-      tracker.track(webContents);
+      windowTracker.track(webContents);
     }
   }
 
-  // Handle dispatch events from renderers
-  ipcMain.on(IpcChannel.DISPATCH, async (event: IpcMainEvent, action: Action) => {
+  // Add a getter method to the window tracker for retrieving WebContents by ID
+  const getWindowById = (id: number): WebContents | undefined => {
+    const allContents = windowTracker.getActiveWebContents();
+    return allContents.find((contents) => contents.id === id);
+  };
+
+  // Set up the action processor for the bridge action queue
+  actionQueue.setActionProcessor(async (action: Action) => {
     try {
-      debug('ipc', `Received action from renderer ${event.sender.id}:`, action);
+      const actionWithSource = action as ActionWithSource;
+
+      // Check if this is a thunk-related action
+      const isThunkChild = 'parentId' in action && action.parentId !== undefined;
+      if (isThunkChild) {
+        console.log(
+          `[BRIDGE DEBUG] Processing child action of thunk ${(action as ActionWithSource).parentId}: ${action.type}`,
+        );
+      }
 
       // Apply middleware before processing action
       if (processedOptions?.beforeProcessAction) {
         debug('core', 'Applying beforeProcessAction middleware');
-        action = await processedOptions.beforeProcessAction(action, event.sender.id);
+        try {
+          action = await processedOptions.beforeProcessAction(action, actionWithSource.__sourceWindowId);
+        } catch (middlewareError) {
+          console.error('[BRIDGE DEBUG] Error in beforeProcessAction middleware:', middlewareError);
+        }
       }
 
       const startTime = performance.now();
 
       // Process the action through our state manager
       debug('core', 'Processing action through state manager');
-      stateManager.processAction(action);
+      console.log(`[BRIDGE DEBUG] Processing action through state manager: ${action.type} (ID: ${action.id})`);
+
+      if (!stateManager) {
+        console.error('[BRIDGE DEBUG] State manager is undefined or null');
+        return;
+      }
+
+      if (!stateManager.processAction) {
+        console.error('[BRIDGE DEBUG] State manager missing processAction method');
+        return;
+      }
+
+      try {
+        console.log(`[BRIDGE DEBUG] Processing action ${action.type} (ID: ${action.id})`);
+        // Always await the action processing to ensure it's done before sending the acknowledgment
+        await stateManager.processAction(action);
+        console.log(`[BRIDGE DEBUG] Action processing successful: ${action.type}`);
+      } catch (processError) {
+        console.error('[BRIDGE DEBUG] Error in stateManager.processAction:', processError);
+      }
 
       const processingTime = performance.now() - startTime;
       debug('core', `Action processed in ${processingTime.toFixed(2)}ms`);
+      console.log(
+        `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) processed in ${processingTime.toFixed(2)}ms`,
+      );
 
       // Apply middleware after processing action
       if (processedOptions?.afterProcessAction) {
         debug('core', 'Applying afterProcessAction middleware');
-        await processedOptions.afterProcessAction(action, processingTime, event.sender.id);
+        try {
+          await processedOptions.afterProcessAction(action, processingTime, actionWithSource.__sourceWindowId);
+        } catch (middlewareError) {
+          console.error('[BRIDGE DEBUG] Error in afterProcessAction middleware:', middlewareError);
+        }
       }
 
-      // Send acknowledgment back to the sender if the action has an ID
-      if (action.id) {
+      // Send acknowledgment back to the sender if the action has an ID and source window
+      if (action.id && actionWithSource.__sourceWindowId) {
         debug('ipc', `Sending acknowledgment for action ${action.id}`);
-        event.sender.send(IpcChannel.DISPATCH_ACK, action.id);
+        console.log(`[BRIDGE DEBUG] Sending acknowledgment for action ${action.id}`);
+        try {
+          const windowId = actionWithSource.__sourceWindowId;
+          const contents = getWindowById(windowId);
+
+          if (contents && !isDestroyed(contents)) {
+            // Get current thunk state to piggyback with acknowledgment
+            const thunkState = thunkTracker.getActiveThunksSummary();
+
+            console.log(`[BRIDGE DEBUG] Including thunk state (version ${thunkState.version}) with acknowledgment`);
+            console.log(`[BRIDGE DEBUG] Active thunks: ${thunkState.thunks.length}`);
+
+            // Send acknowledgment with thunk state
+            contents.send(IpcChannel.DISPATCH_ACK, {
+              actionId: action.id,
+              thunkState,
+            });
+
+            console.log(`[BRIDGE DEBUG] Acknowledgment sent for action ${action.id} to window ${windowId}`);
+          } else {
+            console.error(`[BRIDGE DEBUG] Cannot send acknowledgment - WebContents destroyed or not found`);
+          }
+        } catch (ackError) {
+          console.error('[BRIDGE DEBUG] Error sending acknowledgment:', ackError);
+        }
       }
     } catch (error) {
+      console.error('[BRIDGE DEBUG] Error in action processor:', error);
+    }
+  });
+
+  // Handle dispatch events from renderers
+  ipcMain.on(IpcChannel.DISPATCH, (event: IpcMainEvent, data: any) => {
+    try {
+      debug('ipc', `Received action data from renderer ${event.sender.id}:`, data);
+
+      // Extract the action from the wrapper object
+      const { action, parentId } = data || {};
+
+      if (!action || typeof action !== 'object') {
+        console.error('[BRIDGE DEBUG] Invalid action received:', data);
+        return;
+      }
+
+      console.log(`[BRIDGE DEBUG] Received action from renderer ${event.sender.id}:`, {
+        type: action.type,
+        id: action.id,
+        payload: action.payload,
+        parentId: parentId,
+      });
+
+      if (!action.type) {
+        console.error('[BRIDGE DEBUG] Action missing type:', data);
+        return;
+      }
+
+      // Add the source window ID to the action for acknowledgment purposes
+      const actionWithSource: ActionWithSource = {
+        ...action,
+        __sourceWindowId: event.sender.id,
+        parentId: parentId,
+      };
+
+      // Queue the action for processing
+      actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId);
+    } catch (error) {
       debug('core', 'Error handling dispatch:', error);
-      console.error('Error handling dispatch:', error);
+      console.error('[BRIDGE DEBUG] Error handling dispatch:', error);
 
       // Even on error, we should acknowledge the action was processed
-      if (action.id) {
-        debug('ipc', `Sending acknowledgment for action ${action.id} despite error`);
-        event.sender.send(IpcChannel.DISPATCH_ACK, action.id);
+      try {
+        const { action } = data || {};
+        if (action?.id) {
+          debug('ipc', `Sending acknowledgment for action ${action.id} despite error`);
+          console.log(`[BRIDGE DEBUG] Sending acknowledgment for action ${action.id} despite error`);
+          if (!isDestroyed(event.sender)) {
+            // Match the structure of the successful acknowledgment case
+            event.sender.send(IpcChannel.DISPATCH_ACK, {
+              actionId: action.id,
+              thunkState: { version: 0, thunks: [] },
+            });
+            console.log(`[BRIDGE DEBUG] Error acknowledgment sent for action ${action.id}`);
+          }
+        }
+      } catch (ackError) {
+        console.error('[BRIDGE DEBUG] Error sending error acknowledgment:', ackError);
       }
     }
   });
 
   // Handle getState requests from renderers
-  ipcMain.handle(IpcChannel.GET_STATE, () => {
+  ipcMain.handle(IpcChannel.GET_STATE, (event) => {
     try {
       debug('ipc', 'Handling getState request');
-      const state = sanitizeState(stateManager.getState());
+      console.log(`[BRIDGE DEBUG] Handling getState request from renderer ${event.sender.id}`);
+
+      if (!stateManager) {
+        console.error('[BRIDGE DEBUG] State manager is undefined or null in getState handler');
+        return {};
+      }
+
+      if (!stateManager.getState) {
+        console.error('[BRIDGE DEBUG] State manager missing getState method');
+        return {};
+      }
+
+      const rawState = stateManager.getState();
+      console.log(
+        `[BRIDGE DEBUG] Raw state retrieved:`,
+        typeof rawState === 'object' ? Object.keys(rawState) : typeof rawState,
+      );
+
+      const state = sanitizeState(rawState);
       debug('ipc', 'Returning sanitized state');
+      console.log(`[BRIDGE DEBUG] Returning sanitized state to renderer ${event.sender.id}`);
+
       return state;
     } catch (error) {
       debug('core', 'Error handling getState:', error);
-      console.error('Error handling getState:', error);
+      console.error('[BRIDGE DEBUG] Error handling getState:', error);
       return {};
+    }
+  });
+
+  // Handle thunk registration from renderers
+  ipcMain.on(IpcChannel.REGISTER_THUNK, (event: IpcMainEvent, data: any) => {
+    try {
+      const { thunkId, parentId } = data;
+      const sourceWindowId = event.sender.id;
+
+      console.log(
+        `[BRIDGE DEBUG] Registering thunk ${thunkId} from window ${sourceWindowId}${parentId ? ` with parent ${parentId}` : ''}`,
+      );
+
+      // Register with the thunk tracker
+      const thunkHandle = thunkTracker.registerThunk(parentId);
+
+      // Make sure IDs match - when the IDs don't match, we need to use the renderer's ID
+      if (thunkHandle.thunkId !== thunkId) {
+        console.log(
+          `[BRIDGE DEBUG] Generated thunk ID ${thunkHandle.thunkId} doesn't match renderer ID ${thunkId}, using renderer ID`,
+        );
+        // We need to add the thunk with the renderer's ID to the thunk tracker
+        thunkTracker.registerThunkWithId(thunkId, parentId);
+        // We should also complete the automatically generated thunk to avoid leaks
+        thunkTracker.markThunkCompleted(thunkHandle.thunkId);
+        // Set the source window ID and mark as executing on the renderer's thunk ID
+        const rendererThunkHandle = {
+          thunkId,
+          markExecuting: () => thunkTracker.markThunkExecuting(thunkId),
+          markCompleted: (result?: unknown) => thunkTracker.markThunkCompleted(thunkId, result),
+          markFailed: (error: Error) => thunkTracker.markThunkFailed(thunkId, error),
+          addChildThunk: (childId: string) => thunkTracker.addChildThunk(thunkId, childId),
+          childCompleted: (childId: string) => thunkTracker.childCompleted(thunkId, childId),
+          addAction: (actionId: string) => thunkTracker.addAction(thunkId, actionId),
+          setSourceWindowId: (windowId: number) => thunkTracker.setSourceWindowId(thunkId, windowId),
+        };
+
+        // Set the source window ID and mark as executing
+        rendererThunkHandle.setSourceWindowId(sourceWindowId);
+        rendererThunkHandle.markExecuting();
+      } else {
+        // Set the source window ID and mark as executing
+        thunkHandle.setSourceWindowId(sourceWindowId);
+        thunkHandle.markExecuting();
+      }
+    } catch (error) {
+      console.error('[BRIDGE DEBUG] Error handling thunk registration:', error);
+    }
+  });
+
+  // Handle thunk completion from renderers
+  ipcMain.on(IpcChannel.COMPLETE_THUNK, (event: IpcMainEvent, data: any) => {
+    try {
+      const { thunkId } = data;
+      console.log(`[BRIDGE DEBUG] Received thunk completion notification for ${thunkId}`);
+
+      if (!thunkId) {
+        console.error('[BRIDGE DEBUG] Missing thunkId in thunk completion notification');
+        return;
+      }
+
+      // Mark the thunk as completed in the tracker
+      const wasActive = thunkTracker.isThunkActive(thunkId);
+      thunkTracker.markThunkCompleted(thunkId);
+      console.log(`[BRIDGE DEBUG] Thunk ${thunkId} marked as completed (was active: ${wasActive})`);
+
+      // The ThunkTracker will notify ActionQueueManager via state change listener
+      console.log('[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener');
+    } catch (error) {
+      console.error('[BRIDGE DEBUG] Error handling thunk completion:', error);
     }
   });
 
   // Subscribe to state manager changes and broadcast to subscribed windows
   const stateManagerUnsubscribe = stateManager.subscribe(async (state: AnyState) => {
     try {
-      const activeIds = tracker.getActiveIds();
+      const activeIds = windowTracker.getActiveIds();
       debug('core', `State changed, broadcasting to ${activeIds.length} active windows`);
 
       if (activeIds.length === 0) {
@@ -142,7 +363,7 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Get active WebContents from our tracker
-      const activeWebContents = tracker.getActiveWebContents();
+      const activeWebContents = windowTracker.getActiveWebContents();
 
       // Send updates to all active WebContents that were explicitly subscribed
       for (const webContents of activeWebContents) {
@@ -194,7 +415,7 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Track the WebContents
-      if (tracker.track(webContents)) {
+      if (windowTracker.track(webContents)) {
         debug('windows', `Subscribed WebContents ${webContents.id}`);
         addedWebContents.push(webContents);
 
@@ -225,7 +446,7 @@ export function createCoreBridge<State extends AnyState>(
       unsubscribe: () => {
         debug('core', `Unsubscribing ${addedWebContents.length} WebContents`);
         for (const webContents of addedWebContents) {
-          tracker.untrack(webContents);
+          windowTracker.untrack(webContents);
         }
       },
     };
@@ -236,7 +457,7 @@ export function createCoreBridge<State extends AnyState>(
     if (!unwrappers) {
       // If no wrappers are provided, unsubscribe all
       debug('core', 'Unsubscribing all WebContents');
-      tracker.cleanup();
+      windowTracker.cleanup();
       return;
     }
 
@@ -248,20 +469,43 @@ export function createCoreBridge<State extends AnyState>(
         continue;
       }
       debug('windows', `Unsubscribing WebContents ${webContents.id}`);
-      tracker.untrack(webContents);
+      windowTracker.untrack(webContents);
     }
   };
 
   // Get IDs of subscribed windows
   const getSubscribedWindows = (): number[] => {
-    const activeIds = tracker.getActiveIds();
+    const activeIds = windowTracker.getActiveIds();
     debug('windows', `Currently subscribed windows: ${activeIds.join(', ') || 'none'}`);
     return activeIds;
   };
 
+  // Handle registering and accessing WebContents IDs
+  ipcMain.handle(IpcChannel.GET_WINDOW_ID, (event) => {
+    return event.sender.id;
+  });
+
+  // Handle requests for current global thunk state
+  ipcMain.handle(IpcChannel.GET_THUNK_STATE, () => {
+    try {
+      const thunkState = thunkTracker.getActiveThunksSummary();
+      console.log(
+        `[BRIDGE DEBUG] Returning thunk state with version ${thunkState.version} and ${thunkState.thunks.length} active thunks`,
+      );
+      return thunkState;
+    } catch (error) {
+      console.error('[BRIDGE DEBUG] Error getting thunk state:', error);
+      return { version: 1, thunks: [] };
+    }
+  });
+
   // Cleanup function for removing listeners
   const destroy = async () => {
     debug('core', 'Destroying CoreBridge');
+
+    // Clean up the IPC handlers
+    ipcMain.removeHandler(IpcChannel.GET_WINDOW_ID);
+    ipcMain.removeHandler(IpcChannel.GET_THUNK_STATE);
 
     // Apply bridge destroy hook if provided
     if (processedOptions?.onBridgeDestroy) {
@@ -274,7 +518,7 @@ export function createCoreBridge<State extends AnyState>(
     stateManagerUnsubscribe();
 
     debug('core', 'Cleaning up tracked WebContents');
-    tracker.cleanup();
+    windowTracker.cleanup();
 
     debug('core', 'CoreBridge destroyed');
   };
