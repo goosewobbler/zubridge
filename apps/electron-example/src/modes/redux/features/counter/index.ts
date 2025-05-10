@@ -1,5 +1,5 @@
 import { createAction } from '@reduxjs/toolkit';
-import type { AnyAction } from '@reduxjs/toolkit';
+import type { UnknownAction } from '@reduxjs/toolkit';
 
 // Define the initial state as a direct number value (matching other modes)
 const initialState = 0;
@@ -7,11 +7,11 @@ const initialState = 0;
 // Define action creators with explicit action types
 export const increment = createAction('COUNTER:INCREMENT');
 export const decrement = createAction('COUNTER:DECREMENT');
-export const setValue = createAction<number>('COUNTER:SET');
+export const setValue = createAction('COUNTER:SET');
 export const reset = createAction('COUNTER:RESET');
 
 // Traditional reducer function that handles our specific action types directly
-export const counterReducer = (state = initialState, action: AnyAction) => {
+export const counterReducer = (state = initialState, action: UnknownAction) => {
   switch (action.type) {
     case 'COUNTER:INCREMENT':
       console.log('[Redux Reducer] Incrementing counter');
@@ -28,13 +28,6 @@ export const counterReducer = (state = initialState, action: AnyAction) => {
     default:
       return state;
   }
-};
-
-// Thunk to double the counter
-export const doubleCounter = () => (dispatch, getState) => {
-  const currentValue = getState().counter;
-  console.log(`[Redux Thunk] Doubling counter from ${currentValue} to ${currentValue * 2}`);
-  dispatch(setValue(currentValue * 2));
 };
 
 // Export the reducer as the default export to match other modes pattern

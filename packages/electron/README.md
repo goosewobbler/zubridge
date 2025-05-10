@@ -56,10 +56,11 @@ Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
 ## Documentation
 
 - [Getting Started Guide](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/getting-started.md) - Step-by-step guide to setting up Zubridge in your Electron app
-- [API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/api-reference.md) - Complete API documentation
+- [Advanced Usage](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md) - Advanced features including multi-window support, custom handlers, and more
 - [Main Process](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/main-process.md) - Setting up and using Zubridge in the main process
 - [Renderer Process](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/renderer-process.md) - Setting up and using Zubridge in the renderer process
 - [Backend Contract](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/backend-contract.md) - Understanding the IPC contract between processes
+- [API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/api-reference.md) - Complete API documentation
 
 ## Example Applications
 

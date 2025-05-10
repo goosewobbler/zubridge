@@ -1,5 +1,11 @@
+import nodeResolve from '@rollup/plugin-node-resolve';
+
 const sharedConfig = {
-  plugins: [],
+  plugins: [
+    nodeResolve({
+      preferBuiltins: true,
+    }),
+  ],
   external: ['electron', 'zustand', 'zustand/vanilla'],
 };
 

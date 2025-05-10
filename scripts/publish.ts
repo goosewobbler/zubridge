@@ -57,16 +57,49 @@ function findPackagesToPublish(): string[] {
   // Get directories in the packages folder
   const packageDirs = fs.readdirSync(packagesDir);
 
-  // Create a map of package names to directories
+  // Create a map of package names to their relative paths from the project root
   const packageMap: Record<string, string> = {};
+
+  // Find all package.json files - package-versioner handles the relationships
+  // between parent and nested packages, so we just need to find the publishable packages
   for (const dir of packageDirs) {
-    const packageJsonPath = path.join(packagesDir, dir, 'package.json');
+    const packageDirPath = path.join(packagesDir, dir);
+
+    // Skip if not a directory
+    if (!fs.statSync(packageDirPath).isDirectory()) continue;
+
+    // Check for package.json at the root level of this package
+    const packageJsonPath = path.join(packageDirPath, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
       try {
         const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        packageMap[packageJson.name] = dir;
+        // Only register packages that have a name and should be published
+        if (packageJson.name && !packageJson.private) {
+          packageMap[packageJson.name] = `packages/${dir}`;
+        }
       } catch (err) {
         console.warn(`Could not parse package.json in ${dir}: ${err}`);
+      }
+    }
+
+    // Check for nested package.json files - these are already handled by package-versioner
+    // for version syncing, but we still need to find them for publishing
+    const nestedDirs = fs
+      .readdirSync(packageDirPath)
+      .filter((subdir) => fs.statSync(path.join(packageDirPath, subdir)).isDirectory());
+
+    for (const nestedDir of nestedDirs) {
+      const nestedPackageJsonPath = path.join(packageDirPath, nestedDir, 'package.json');
+      if (fs.existsSync(nestedPackageJsonPath)) {
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(nestedPackageJsonPath, 'utf8'));
+          // Only register packages that have a name and should be published
+          if (packageJson.name && !packageJson.private) {
+            packageMap[packageJson.name] = `packages/${dir}/${nestedDir}`;
+          }
+        } catch (err) {
+          console.warn(`Could not parse package.json in ${dir}/${nestedDir}: ${err}`);
+        }
       }
     }
   }
@@ -77,45 +110,50 @@ function findPackagesToPublish(): string[] {
     const packagesToPublishSet = new Set<string>();
 
     for (const filter of filterPackages) {
-      // Handle paths like ./packages/electron
-      if (filter.startsWith('./packages/') || filter.startsWith('packages/')) {
-        const dirName = filter.replace(/^\.?\/packages\//, '');
-        if (packageDirs.includes(dirName)) {
-          packagesToPublishSet.add(dirName);
+      // Ensure filter is a string
+      const filterStr = String(filter);
+
+      // Handle paths like ./packages/electron or ./packages/middleware/node
+      if (filterStr.startsWith('./packages/') || filterStr.startsWith('packages/')) {
+        const relativePath = filterStr.replace(/^\.?\//, '');
+        if (fs.existsSync(relativePath)) {
+          packagesToPublishSet.add(relativePath);
         } else {
-          handleError(`Package directory "${dirName}" not found in packages folder`);
+          handleError(`Package directory "${relativePath}" not found`);
         }
       }
-      // Handle package names like @zubridge/electron
-      else if (filter.startsWith('@zubridge/')) {
-        const packageName = filter;
-        const dirName = packageMap[packageName];
-        if (dirName) {
-          packagesToPublishSet.add(dirName);
+      // Handle package names like @zubridge/electron or @zubridge/middleware
+      else if (filterStr.startsWith('@zubridge/')) {
+        const packageName = filterStr;
+        const relativePath = packageMap[packageName];
+        if (relativePath) {
+          packagesToPublishSet.add(relativePath);
         } else {
-          handleError(`Package "${packageName}" not found in packages folder`);
+          handleError(`Package "${packageName}" not found in any package.json`);
         }
       }
-      // Handle simple directory names like 'electron'
+      // Handle simple directory names like 'electron' or 'middleware'
       else {
-        if (packageDirs.includes(filter)) {
-          packagesToPublishSet.add(filter);
+        // First try to match as directory
+        const directMatch = `packages/${filterStr}`;
+        if (fs.existsSync(directMatch)) {
+          packagesToPublishSet.add(directMatch);
         } else {
-          // Only use exact matches for package names
-          const matchingPackages = Object.keys(packageMap).filter((name) => name === filter);
+          // Try to match as package name
+          const matchingPackages = Object.keys(packageMap).filter((name) => name === filterStr);
           if (matchingPackages.length > 0) {
             for (const pkg of matchingPackages) {
               packagesToPublishSet.add(packageMap[pkg]);
             }
           } else {
-            handleError(`Package "${filter}" not found in packages folder. Only exact matches are allowed.`);
+            handleError(`Package "${filterStr}" not found. Only exact matches are allowed.`);
           }
         }
       }
     }
 
     console.log('Publishing requested packages:');
-    return Array.from(packagesToPublishSet).map((dir) => path.join('packages', dir));
+    return Array.from(packagesToPublishSet);
   }
 
   // If no filter specified, don't publish anything by default - require explicit selection

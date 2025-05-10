@@ -1,11 +1,12 @@
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import type { BackendBridge, AnyState, Dispatch, WrapperOrWebContents } from '@zubridge/types';
-import { createCoreBridge, createBridgeFromStore } from './bridge.js';
-import { createDispatch } from './utils/dispatch.js';
+import { createCoreBridge, createBridgeFromStore, CoreBridgeOptions } from './bridge.js';
+import { createDispatch } from './main/dispatch.js';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
-import { removeStateManager } from './utils/stateManagerRegistry.js';
+import { removeStateManager } from './lib/stateManagerRegistry.js';
+import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 
 /**
  * Export the core bridge creation function for custom implementations
@@ -13,9 +14,14 @@ import { removeStateManager } from './utils/stateManagerRegistry.js';
 export { createCoreBridge };
 
 /**
- * Re-export adapter options types
+ * Re-export adapter options types and middleware options
  */
-export type { ZustandOptions, ReduxOptions };
+export type { ZustandOptions, ReduxOptions, CoreBridgeOptions, ZubridgeMiddleware };
+
+/**
+ * Export middleware helper
+ */
+export { createMiddlewareOptions };
 
 /**
  * Interface for a bridge that connects a Zustand store to the main process
@@ -33,11 +39,10 @@ export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBri
  */
 export function createZustandBridge<S extends AnyState>(
   store: StoreApi<S>,
-  windows?: WrapperOrWebContents[],
-  options?: ZustandOptions<S>,
+  options?: ZustandOptions<S> & CoreBridgeOptions,
 ): ZustandBridge<S> {
   // Create the core bridge with the store
-  const coreBridge = createBridgeFromStore(store, windows, options);
+  const coreBridge = createBridgeFromStore(store, options);
 
   // Create the dispatch function with the same store
   const dispatchFn = createDispatch(store, options);
@@ -72,11 +77,10 @@ export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridg
  */
 export function createReduxBridge<S extends AnyState>(
   store: Store<S>,
-  windows?: WrapperOrWebContents[],
-  options?: ReduxOptions<S>,
+  options?: ReduxOptions<S> & CoreBridgeOptions,
 ): ReduxBridge<S> {
   // Create the core bridge with the store
-  const coreBridge = createBridgeFromStore(store, windows, options);
+  const coreBridge = createBridgeFromStore(store, options);
 
   // Create the dispatch function with the same store
   const dispatchFn = createDispatch(store, options);
@@ -102,4 +106,4 @@ export function createReduxBridge<S extends AnyState>(
  */
 export const mainZustandBridge = createZustandBridge;
 
-export { createDispatch } from './utils/dispatch';
+export { createDispatch } from './main/dispatch.js';

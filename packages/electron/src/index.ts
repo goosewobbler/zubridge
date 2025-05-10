@@ -2,9 +2,14 @@ import type { AnyState, Handlers } from '@zubridge/types';
 import { useStore, type StoreApi } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
 import type { Action, Thunk, ExtractState, ReadonlyStoreApi, DispatchFunc } from '@zubridge/types';
+import { debugUtils } from './utils/debug.js';
+import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Export types
 export type * from '@zubridge/types';
+
+// Export debugging utilities
+export const debug = debugUtils;
 
 // Add type declaration for window.zubridge
 declare global {
@@ -101,14 +106,30 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
   // Ensure we have a store for these handlers
   const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
 
-  // Create a dispatch function that will handle both generic and typed actions
-  const dispatch = ((
-    action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
-    payload?: unknown,
-  ): unknown => {
+  // Create a function to dispatch actions and thunks
+  const dispatch = (action: string | Action | Thunk<S>, payload?: unknown, parentId?: string): Promise<any> => {
+    console.log(
+      '[useDispatch] Called with action:',
+      typeof action === 'string' ? action : (action as any).type || 'thunk',
+    );
+
+    // Check if window.zubridge is properly initialized
+    if (!window.zubridge) {
+      console.error('[useDispatch] Fatal error: window.zubridge is undefined!');
+      return Promise.reject(new Error('window.zubridge is undefined'));
+    }
+
+    // Check if window.zubridge.dispatch exists
+    if (!window.zubridge.dispatch) {
+      console.error('[useDispatch] Fatal error: window.zubridge.dispatch is undefined!');
+      return Promise.reject(new Error('window.zubridge.dispatch is undefined'));
+    }
+
     if (typeof action === 'function') {
       // Handle thunks - execute them with the store's getState and our dispatch function
-      return (action as Thunk<S>)(store.getState, dispatch);
+      console.log('[useDispatch] Calling thunk:', action);
+      const thunkProcessor = getThunkProcessor();
+      return thunkProcessor.executeThunk(action as Thunk<S>, store.getState, parentId);
     }
 
     // Handle string action type with payload
@@ -128,7 +149,7 @@ export const useDispatch = <S extends AnyState = AnyState, TActions extends Reco
 
     // Return the promise from dispatch
     return handlers.dispatch(normalizedAction);
-  }) as DispatchFunc<S, TActions>;
+  };
 
   return dispatch;
 };

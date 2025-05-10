@@ -5,16 +5,13 @@ import type { WrapperOrWebContents } from '@zubridge/types';
 
 import { attachCounterHandlers } from './features/counter/index.js';
 import { attachThemeHandlers } from './features/theme/index.js';
-import type { BaseState } from '../../types/index.js';
+import type { BaseState } from '../../types.js';
 
 /**
  * Creates a bridge using the basic approach
  * In this approach, handlers are attached to the store object
  */
-export const createBasicBridge = <S extends BaseState, Store extends StoreApi<S>>(
-  store: Store,
-  windows: WrapperOrWebContents[],
-): ZustandBridge => {
+export const createBasicBridge = <S extends BaseState, Store extends StoreApi<S>>(store: Store): ZustandBridge => {
   console.log('[Basic Mode] Creating bridge with store-based handlers');
 
   // Attach handlers to the store with generic type parameter
@@ -22,5 +19,5 @@ export const createBasicBridge = <S extends BaseState, Store extends StoreApi<S>
   attachThemeHandlers<S>(store);
 
   // Create bridge without explicit handlers or reducer
-  return createZustandBridge<S>(store, windows);
+  return createZustandBridge<S>(store);
 };

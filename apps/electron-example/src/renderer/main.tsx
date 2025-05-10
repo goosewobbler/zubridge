@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-// Import UI package styles before local styles
-import '@zubridge/ui/dist/styles.css';
+// Import UI package styles
+import '@zubridge/ui/styles.css';
 import './styles/index.css';
-import { MainApp } from './App.main.js';
-import { RuntimeApp } from './App.runtime.js';
+// Import Zubridge components
+import { withElectron } from '@zubridge/ui/electron';
+// Import shared utilities
+import { createDoubleCounterThunk, type ThunkContext } from '@zubridge/apps-shared';
+
+// Create the Electron app component
+const ElectronApp = withElectron();
 
 // Define possible window types
 type WindowType = 'main' | 'secondary' | 'runtime';
@@ -14,23 +19,23 @@ function AppWrapper() {
   // Create state for our app
   const [windowType, setWindowType] = useState<WindowType | null>(null);
   const [windowId, setWindowId] = useState<number | null>(null);
-  const [modeName, setModeName] = useState('Unknown');
+  const [modeName, setModeName] = useState('unknown');
 
   // Fetch window info on mount
   useEffect(() => {
     const initApp = async () => {
       try {
-        // Get window info using the renamed API
+        // Get window info using the Electron API
         if (window.electronAPI) {
           const info = await window.electronAPI.getWindowInfo();
           const modeInfo = await window.electronAPI.getMode();
 
           if (info) {
-            setWindowType(info.type);
+            setWindowType(info.type as WindowType);
             setWindowId(info.id);
           }
           if (modeInfo) {
-            setModeName(modeInfo.modeName);
+            setModeName((modeInfo.modeName || modeInfo.name || 'unknown').toLowerCase());
           }
         }
       } catch (error) {
@@ -41,17 +46,80 @@ function AppWrapper() {
     initApp();
   }, []);
 
+  const modeMap = {
+    basic: 'Zustand Basic',
+    handlers: 'Zustand Handlers',
+    reducers: 'Zustand Reducers',
+    redux: 'Redux',
+    custom: 'Custom',
+  };
+  const modeTitle = modeMap[modeName];
+
+  // Create thunk context
+  const thunkContext: ThunkContext = {
+    environment: 'renderer',
+    logPrefix: `RENDERER-${windowType?.toUpperCase() || 'UNKNOWN'}`,
+  };
+
   // Show loading screen while getting info
   if (!windowType || windowId === null) {
     return <div>Loading Window Info...</div>;
   }
 
-  // Render the appropriate component based on window type
-  if (windowType === 'runtime') {
-    return <RuntimeApp windowId={windowId} modeName={modeName} />;
-  } else {
-    return <MainApp windowId={windowId} modeName={modeName} windowType={windowType} />;
-  }
+  // Create handlers
+  const actionHandlers = {
+    createWindow: async () => {
+      try {
+        if (!window.electronAPI) {
+          throw new Error('Electron API not available');
+        }
+        const result = await window.electronAPI.createRuntimeWindow();
+        return { success: true, id: result.windowId };
+      } catch (error) {
+        console.error('Failed to create window:', error);
+        return { success: false, error: String(error) };
+      }
+    },
+    closeWindow: async () => {
+      try {
+        if (!window.electronAPI) {
+          throw new Error('Electron API not available');
+        }
+        await window.electronAPI.closeCurrentWindow();
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to close window:', error);
+        return { success: false, error: String(error) };
+      }
+    },
+    quitApp: async () => {
+      try {
+        if (!window.electronAPI) {
+          throw new Error('Electron API not available');
+        }
+        await window.electronAPI.quitApp();
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to quit app:', error);
+        return { success: false, error: String(error) };
+      }
+    },
+    doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
+  };
+
+  // Render the ElectronApp component with the window info
+  return (
+    <ElectronApp
+      windowInfo={{
+        id: String(windowId),
+        type: windowType,
+        platform: modeName,
+      }}
+      windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
+      appName={`Zubridge - ${modeTitle} Mode`}
+      actionHandlers={actionHandlers}
+    />
+  );
 }
 
 // Get the DOM container element

@@ -1,13 +1,15 @@
 import React from 'react';
-import { Button } from '../Button';
 import clsx from 'clsx';
+
+import { Button } from '../Button';
+import { CounterMethod } from '../../types';
 
 interface CounterProps {
   value: number;
   onIncrement: () => void;
   onDecrement: () => void;
   onReset: () => void;
-  onDouble: (method: 'thunk' | 'action' | 'object') => void;
+  onDouble: (method: CounterMethod) => void;
   isLoading?: boolean;
   className?: string;
 }
@@ -31,7 +33,7 @@ export const Counter: React.FC<CounterProps> = ({
       <div>
         <h2 className="mb-4 text-2xl font-bold">Counter: {isLoading ? '...' : value}</h2>
         <div className="flex flex-col items-center gap-3 max-w-[theme(--container-width)] mx-auto">
-          <div className="flex w-full justify-between gap-3" style={{ width: '300px' }}>
+          <div className="flex justify-between w-full gap-3" style={{ width: '300px' }}>
             <Button
               onClick={onDecrement}
               disabled={isLoading}
@@ -52,10 +54,18 @@ export const Counter: React.FC<CounterProps> = ({
           <Button
             onClick={() => onDouble('thunk')}
             disabled={isLoading}
-            aria-label="Double counter using thunk"
+            aria-label="Double counter using renderer thunk"
             className="w-full"
           >
-            Double (Thunk)
+            Double (Renderer Thunk)
+          </Button>
+          <Button
+            onClick={() => onDouble('main-thunk')}
+            disabled={isLoading}
+            aria-label="Double counter using main process thunk"
+            className="w-full"
+          >
+            Double (Main Thunk)
           </Button>
           <Button
             onClick={() => onDouble('object')}

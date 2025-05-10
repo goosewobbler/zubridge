@@ -24,6 +24,7 @@ on:
         type: choice
         options:
           - '@zubridge/electron'
+          - '@zubridge/middleware'
           - '@zubridge/tauri'
           - '@zubridge/types'
           - 'tauri-plugin-zubridge'

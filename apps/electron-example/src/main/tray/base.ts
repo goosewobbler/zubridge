@@ -6,9 +6,10 @@ import { isDev } from '@zubridge/electron';
 import type { StoreApi } from 'zustand';
 import type { Dispatch } from '@zubridge/types';
 import type { State } from '../../types/index.js';
+import { getResourcePath } from '../../utils/path.js';
 
-// Expected icon paths for development and production
-const devIconPath = path.join(__dirname, '..', '..', 'resources', 'electron-logo.png');
+// Get icon paths using our utility functions
+const devIconPath = getResourcePath('electron-logo.png');
 const prodIconPath = path.join(process.resourcesPath, 'electron-logo.png');
 
 let finalTrayIconPath: string | null = null;

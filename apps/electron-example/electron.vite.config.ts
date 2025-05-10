@@ -1,11 +1,15 @@
 import { join, resolve } from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 import type { Plugin } from 'vite';
+
+// Get __dirname equivalent in ES modules
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 console.log('ZUBRIDGE_MODE', process.env.ZUBRIDGE_MODE);
 
@@ -51,9 +55,65 @@ const debugPlugin = () => ({
   },
 });
 
+// Resolver plugin for external CSS
+const externalCssResolverPlugin = (): Plugin => {
+  return {
+    name: 'external-css-resolver',
+    // Load hook to intercept and handle CSS imports
+    load(id) {
+      if (id === '@zubridge/ui/styles.css') {
+        console.log('[DEBUG] UI styles requested, searching for CSS file...');
+
+        const possiblePaths = [
+          // Try to find in node_modules first
+          resolve(__dirname, 'node_modules/@zubridge/ui/dist/styles.css'),
+          // Then in workspace package
+          resolve(__dirname, '../../packages/ui/dist/styles.css'),
+        ];
+
+        // Debug each path
+        possiblePaths.forEach((path) => {
+          const exists = fs.existsSync(path);
+          console.log(`[DEBUG] Checking path: ${path}, exists: ${exists}`);
+        });
+
+        // Find the first existing path
+        const cssPath = possiblePaths.find((path) => fs.existsSync(path));
+
+        if (cssPath) {
+          console.log(`[DEBUG] Found UI styles at ${cssPath}`);
+          try {
+            const content = fs.readFileSync(cssPath, 'utf8');
+            console.log(`[DEBUG] Read ${content.length} characters from styles.css`);
+            return content;
+          } catch (err) {
+            console.error(`[DEBUG] Error reading CSS file: ${err}`);
+          }
+        }
+
+        console.warn('[DEBUG] UI styles not found, returning empty CSS');
+
+        // Return an empty CSS file
+        return '/* No styles found */';
+      }
+
+      return null; // Let Vite handle other imports
+    },
+
+    // Resolve hook to handle the CSS import path
+    resolveId(id) {
+      if (id === '@zubridge/ui/styles.css') {
+        // Return the id unchanged to be handled by our load hook
+        return id;
+      }
+      return null;
+    },
+  };
+};
+
 // Configure renderer plugins based on whether we should watch UI
 const getRendererPlugins = async () => {
-  const plugins = [react() as unknown as Plugin, tailwindcss()];
+  const plugins = [react() as unknown as Plugin, tailwindcss(), externalCssResolverPlugin()];
 
   // Only add the UI watcher plugin if WATCH_UI=true
   if (shouldWatchUI) {
@@ -107,6 +167,9 @@ export default defineConfig({
         // Add an alias for @zubridge/electron to use a browser-safe version
         '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/index.js'),
         '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
+        // Add aliases for direct imports from UI package
+        '@zubridge/ui-app': resolve(__dirname, '../../packages/ui/dist/components/AppBase'),
+        '@zubridge/ui-electron': resolve(__dirname, '../../packages/ui/dist/electron'),
       },
     },
     plugins: await getRendererPlugins(),

@@ -26,7 +26,7 @@ export interface WindowInfo {
 /**
  * Base handlers that must be implemented for each platform
  */
-export interface PlatformHandlers {
+export interface ActionHandlers {
   /**
    * Create a new window
    */
@@ -41,6 +41,11 @@ export interface PlatformHandlers {
    * Quit the application (optional - only for main windows)
    */
   quitApp?: () => Promise<{ success: boolean }>;
+
+  /**
+   * Double counter thunk implementation
+   */
+  doubleCounter?: (counter: number) => any;
 }
 
 /**

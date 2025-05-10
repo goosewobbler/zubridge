@@ -1,5 +1,5 @@
 import { create, type StoreApi } from 'zustand';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 
 /**
  * Gets or creates the basic store

@@ -1,12 +1,14 @@
 import type { StoreApi } from 'zustand';
 import type { WebContents } from 'electron';
 
-export type Thunk<S> = (getState: StoreApi<S>['getState'], dispatch: Dispatch<S>) => void;
+export type Thunk<S> = (getState: () => Promise<S>, dispatch: Dispatch<S>) => void;
 
 export type Action<T extends string = string> = {
   type: T;
   payload?: unknown;
   id?: string; // Unique identifier for tracking action acknowledgements
+  __thunkParentId?: string; // Parent thunk ID if action is part of a thunk
+  __sourceWindowId?: number; // Source window ID where the action originated
 };
 
 export type AnyState = Record<string, unknown>;
@@ -85,9 +87,9 @@ export type MainZustandBridge = <S extends AnyState, Store extends StoreApi<S>>(
 ) => ZustandBridge;
 
 export type Dispatch<S> = {
-  (action: string, payload?: unknown): void;
-  (action: Action): void;
-  (action: Thunk<S>): void;
+  (action: string, payload?: unknown): Promise<any>;
+  (action: Action): Promise<any>;
+  (action: Thunk<S>): Promise<any>;
 };
 
 interface BaseHandler<S> {
@@ -115,16 +117,16 @@ export type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialStat
  */
 export type DispatchFunc<S, TActions extends Record<string, any> = Record<string, any>> = {
   // Handle thunks
-  (action: Thunk<S>): unknown;
+  (action: Thunk<S>): Promise<any>;
 
   // Handle string action types with optional payload
-  (action: string, payload?: unknown): unknown;
+  (action: string, payload?: unknown): Promise<any>;
 
   // Handle strongly typed action objects
-  <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): unknown;
+  <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): Promise<any>;
 
   // Handle generic action objects
-  (action: Action): unknown;
+  (action: Action): Promise<any>;
 };
 
 // Shared state manager interface that can be implemented by different backends
