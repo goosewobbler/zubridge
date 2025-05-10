@@ -4,64 +4,44 @@ import { preloadBridge } from '@zubridge/electron/preload';
 import 'wdio-electron-service/preload';
 
 import type { State } from '../types.js';
+import { AppIpcChannel } from '../constants.js';
 
 console.log('[Preload] Script initializing');
 
+// Get handlers from the preload bridge
 const { handlers } = preloadBridge<State>();
 
-// Add debugging to handlers
-const wrappedHandlers = {
-  ...handlers,
-  dispatch: (action: any, payload?: any) => {
-    console.log('[Preload] Dispatching to main process:', action, payload);
-    return handlers.dispatch(action, payload);
-  },
-  getState: async () => {
-    console.log('[Preload] Getting state from main process');
-    const state = await handlers.getState();
-    console.log('[Preload] Received state:', state);
-    return state;
-  },
-  subscribe: (callback: any) => {
-    console.log('[Preload] Setting up subscription');
-    return handlers.subscribe((state) => {
-      console.log('[Preload] Subscription update received');
-      callback(state);
-    });
-  },
-};
-
-// Expose Zubridge handlers
-contextBridge.exposeInMainWorld('zubridge', wrappedHandlers);
+// Expose Zubridge handlers directly without wrapping
+contextBridge.exposeInMainWorld('zubridge', handlers);
 
 // Expose window control API
 contextBridge.exposeInMainWorld('electronAPI', {
   closeCurrentWindow: () => {
     console.log('[Preload] Invoking closeCurrentWindow');
-    return ipcRenderer.invoke('closeCurrentWindow');
+    return ipcRenderer.invoke(AppIpcChannel.CLOSE_CURRENT_WINDOW);
   },
   getWindowInfo: () => {
     console.log('[Preload] Invoking get-window-info');
-    return ipcRenderer.invoke('get-window-info');
+    return ipcRenderer.invoke(AppIpcChannel.GET_WINDOW_INFO);
   },
   getMode: () => {
     console.log('[Preload] Invoking getMode');
-    return ipcRenderer.invoke('get-mode');
+    return ipcRenderer.invoke(AppIpcChannel.GET_MODE);
   },
   quitApp: () => {
     console.log('[Preload] Invoking quitApp');
-    return ipcRenderer.invoke('quitApp');
+    return ipcRenderer.invoke(AppIpcChannel.QUIT_APP);
   },
   createRuntimeWindow: () => {
     console.log('[Preload] Invoking create-runtime-window');
-    return ipcRenderer.invoke('create-runtime-window');
+    return ipcRenderer.invoke(AppIpcChannel.CREATE_RUNTIME_WINDOW);
   },
 });
 
 // Expose counter API
 contextBridge.exposeInMainWorld('counter', {
   executeMainThunk: () => {
-    return ipcRenderer.invoke('counter:execute-main-thunk');
+    return ipcRenderer.invoke(AppIpcChannel.EXECUTE_MAIN_THUNK);
   },
 });
 
@@ -70,7 +50,7 @@ window.addEventListener('DOMContentLoaded', () => {
   console.log('[Preload] DOM content loaded');
   setTimeout(() => {
     console.log('[Preload] Sending window-created signal');
-    ipcRenderer.invoke('window-created').catch((err) => {
+    ipcRenderer.invoke(AppIpcChannel.WINDOW_CREATED).catch((err) => {
       console.error('[Preload] Error signaling window creation:', err);
     });
   }, 200);

@@ -5,6 +5,8 @@ import '@zubridge/ui/styles.css';
 import './styles/index.css';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
+// Import shared utilities
+import { createDoubleCounterThunk, type ThunkContext } from '@zubridge/apps-shared';
 
 // Create the Electron app component
 const ElectronApp = withElectron();
@@ -53,10 +55,57 @@ function AppWrapper() {
   };
   const modeTitle = modeMap[modeName];
 
+  // Create thunk context
+  const thunkContext: ThunkContext = {
+    environment: 'renderer',
+    logPrefix: `RENDERER-${windowType?.toUpperCase() || 'UNKNOWN'}`,
+  };
+
   // Show loading screen while getting info
   if (!windowType || windowId === null) {
     return <div>Loading Window Info...</div>;
   }
+
+  // Create handlers
+  const actionHandlers = {
+    createWindow: async () => {
+      try {
+        if (!window.electronAPI) {
+          throw new Error('Electron API not available');
+        }
+        const result = await window.electronAPI.createRuntimeWindow();
+        return { success: true, id: result.windowId };
+      } catch (error) {
+        console.error('Failed to create window:', error);
+        return { success: false, error: String(error) };
+      }
+    },
+    closeWindow: async () => {
+      try {
+        if (!window.electronAPI) {
+          throw new Error('Electron API not available');
+        }
+        await window.electronAPI.closeCurrentWindow();
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to close window:', error);
+        return { success: false, error: String(error) };
+      }
+    },
+    quitApp: async () => {
+      try {
+        if (!window.electronAPI) {
+          throw new Error('Electron API not available');
+        }
+        await window.electronAPI.quitApp();
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to quit app:', error);
+        return { success: false, error: String(error) };
+      }
+    },
+    doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
+  };
 
   // Render the ElectronApp component with the window info
   return (
@@ -68,6 +117,7 @@ function AppWrapper() {
       }}
       windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
       appName={`Zubridge - ${modeTitle} Mode`}
+      actionHandlers={actionHandlers}
     />
   );
 }
