@@ -1,14 +1,19 @@
 import { getCounterValue } from './windowUtils';
+import { TIMING } from '../constants';
 import { browser } from 'wdio-electron-service';
 
 /**
  * Waits for the counter value to change from its initial value.
- * @param {number} [timeout=3000] - How long to wait for a change (ms)
- * @param {number} [interval=100] - How often to check (ms)
+ * @param {number} [timeout] - How long to wait for a change (ms)
+ * @param {number} [interval] - How often to check (ms)
  * @returns {Promise<number>} - Resolves with the new value once it changes
  */
-export async function waitForCounterChange(timeout = 3000, interval = 100, initialValue: number): Promise<number> {
-  if (!initialValue) {
+export async function waitForCounterChange(
+  timeout = TIMING.THUNK_WAIT_TIME,
+  interval = 100,
+  initialValue?: number,
+): Promise<number> {
+  if (initialValue === undefined) {
     initialValue = await getCounterValue();
   }
   let newValue = initialValue;
@@ -32,13 +37,14 @@ export async function waitForCounterChange(timeout = 3000, interval = 100, initi
 
 /**
  * Clicks a button and waits for the counter value to change from its initial value.
- * @param {number} [timeout=3000] - How long to wait for a change (ms)
- * @param {number} [interval=100] - How often to check (ms)
+ * @param {WebdriverIO.Element} button - The button element to click
+ * @param {number} [timeout] - How long to wait for a change (ms)
+ * @param {number} [interval] - How often to check (ms)
  * @returns {Promise<number>} - Resolves with the new value once it changes
  */
 export async function clickAndWaitForCounterChange(
   button: WebdriverIO.Element,
-  timeout = 3000,
+  timeout = TIMING.THUNK_WAIT_TIME,
   interval = 10,
 ): Promise<number> {
   const initialValue = await getCounterValue();

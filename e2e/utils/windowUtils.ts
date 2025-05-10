@@ -1,5 +1,6 @@
 // Utility functions for E2E window and counter management
 import { browser } from 'wdio-electron-service';
+import { TimingConfig, TIMING } from '../constants';
 
 // Store windows by index rather than by title since all windows have the same title
 export const windowHandles: string[] = [];
@@ -32,9 +33,8 @@ export const refreshWindowHandles = async () => {
 /**
  * Waits until the desired number of windows are available
  * @param {number} desiredWindows - Number of windows to wait for
- * @param {object} timing - Timing configuration object
  */
-export const waitUntilWindowsAvailable = async (desiredWindows: number, timing: any) => {
+export const waitUntilWindowsAvailable = async (desiredWindows: number) => {
   let lastCount = 0;
 
   try {
@@ -51,9 +51,9 @@ export const waitUntilWindowsAvailable = async (desiredWindows: number, timing: 
         }
       },
       {
-        timeout: timing.WINDOW_WAIT_TIMEOUT,
+        timeout: TIMING.WINDOW_WAIT_TIMEOUT,
         timeoutMsg: `Expected ${desiredWindows} windows, found ${lastCount}`,
-        interval: timing.WINDOW_WAIT_INTERVAL,
+        interval: TIMING.WINDOW_WAIT_INTERVAL,
       },
     );
     return true;
@@ -99,17 +99,6 @@ export const getButtonInCurrentWindow = async (buttonType: 'increment' | 'decrem
 };
 
 export const getCounterValue = async () => {
-  // await browser.waitUntil(
-  //   async () => {
-  //     const counterElement = await browser.$('h2');
-  //     return await counterElement.isExisting();
-  //   },
-  //   {
-  //     timeout: 3000,
-  //     timeoutMsg: 'Counter element not found',
-  //     interval: 75,
-  //   },
-  // );
   const counterElement = await browser.$('h2');
   const counterText = await counterElement.getText();
   return parseInt(counterText.replace('Counter: ', ''));
@@ -152,9 +141,9 @@ export const resetCounter = async () => {
  * Makes sure we have exactly coreWindowCount windows and focuses on the main window
  *
  * @param {number} coreWindowCount - Number of core windows required (typically 2)
- * @param {object} timing - Timing configuration for waits
+ * @param {TimingConfig} timing - Timing configuration for waits
  */
-export const setupTestEnvironment = async (coreWindowCount: number, timing: any): Promise<void> => {
+export const setupTestEnvironment = async (coreWindowCount: number): Promise<void> => {
   await refreshWindowHandles();
 
   // Check if we need to handle extra or missing windows
@@ -163,7 +152,7 @@ export const setupTestEnvironment = async (coreWindowCount: number, timing: any)
     await createMissingCoreWindows(coreWindowCount);
   } else if (windowHandles.length > coreWindowCount) {
     // Close excess windows
-    await closeExcessWindows(coreWindowCount, timing);
+    await closeExcessWindows(coreWindowCount);
   }
 
   // Final verification
@@ -217,7 +206,7 @@ async function createMissingCoreWindows(targetCount: number): Promise<void> {
 /**
  * Closes excess windows beyond the core count
  */
-async function closeExcessWindows(coreCount: number, timing: any): Promise<void> {
+async function closeExcessWindows(coreCount: number): Promise<void> {
   // We have too many windows - close the excess ones
   if (windowHandles.length <= coreCount) return;
 
@@ -233,7 +222,7 @@ async function closeExcessWindows(coreCount: number, timing: any): Promise<void>
       }
     }, coreCount);
 
-    await browser.pause(timing.WINDOW_CHANGE_PAUSE);
+    await browser.pause(TIMING.WINDOW_CHANGE_PAUSE);
 
     // Backup approach: close one by one using WebdriverIO
     await refreshWindowHandles();
