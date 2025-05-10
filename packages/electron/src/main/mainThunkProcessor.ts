@@ -9,9 +9,6 @@ export class MainThunkProcessor {
   // State manager to process actions
   private stateManager?: StateManager<any>;
 
-  // Source window ID if applicable
-  private sourceWindowId?: number;
-
   constructor(private debugLogging = false) {
     if (debugLogging) console.log('[MAIN_THUNK] Initialized');
   }
@@ -20,19 +17,11 @@ export class MainThunkProcessor {
    * Initialize with required dependencies
    * This should be called before each dispatch operation with the current context
    */
-  public initialize(options: { stateManager: StateManager<any>; sourceWindowId?: number }): void {
+  public initialize(options: { stateManager: StateManager<any> }): void {
     this.stateManager = options.stateManager;
 
-    if (options.sourceWindowId !== undefined) {
-      this.sourceWindowId = options.sourceWindowId;
-    }
-
     if (this.debugLogging) {
-      console.log(
-        `[MAIN_THUNK] Initialized with state manager${
-          options.sourceWindowId !== undefined ? ` and source window ID ${options.sourceWindowId}` : ''
-        }`,
-      );
+      console.log('[MAIN_THUNK] Initialized with state manager');
     }
   }
 
@@ -54,11 +43,6 @@ export class MainThunkProcessor {
     // Register thunk with tracker
     const thunkId = uuidv4();
     const thunkHandle = thunkTracker.registerThunk(parentId || undefined);
-
-    // Set source window ID if available
-    if (this.sourceWindowId !== undefined) {
-      thunkHandle.setSourceWindowId(this.sourceWindowId);
-    }
 
     // Mark as executing
     thunkHandle.markExecuting();
@@ -83,10 +67,8 @@ export class MainThunkProcessor {
           (actionObj as any).__thunkParentId = thunkHandle.thunkId;
         }
 
-        // Add origin window if available
-        if (this.sourceWindowId !== undefined) {
-          (actionObj as any).__sourceWindowId = this.sourceWindowId;
-        }
+        // Mark the action as originating from the main process
+        (actionObj as any).__isFromMainProcess = true;
 
         // Process the action
         this.stateManager!.processAction(actionObj);
@@ -134,10 +116,8 @@ export class MainThunkProcessor {
     const actionObj: Action =
       typeof action === 'string' ? { type: action, payload, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
 
-    // Add source window ID if available
-    if (this.sourceWindowId !== undefined) {
-      (actionObj as any).__sourceWindowId = this.sourceWindowId;
-    }
+    // Mark action as originating from the main process
+    (actionObj as any).__isFromMainProcess = true;
 
     this.stateManager.processAction(actionObj);
   }
