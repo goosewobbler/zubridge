@@ -111,10 +111,6 @@ export class RendererThunkProcessor {
       }
     }
 
-    console.log('[RENDERER_THUNK] Thunk registrar:', this.thunkRegistrar);
-    console.log('[RENDERER_THUNK] Current window ID:', this.currentWindowId);
-    console.log('[RENDERER_THUNK] Action sender:', this.actionSender);
-
     try {
       // Create a dispatch function for this thunk that tracks each action
       const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
