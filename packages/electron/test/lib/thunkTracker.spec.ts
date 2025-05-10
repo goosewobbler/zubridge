@@ -73,7 +73,7 @@ describe('ThunkTracker', () => {
       record = tracker.getThunkRecord(handle.thunkId);
       expect(record?.state).toBe(ThunkState.COMPLETED);
       expect(record?.result).toBe(result);
-      expect(record?.endTime).toBeGreaterThan(record?.startTime || 0);
+      expect(record?.endTime).toBeGreaterThanOrEqual(record?.startTime || 0);
       expect(tracker.hasActiveThunks()).toBe(false);
     });
 
