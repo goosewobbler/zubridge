@@ -1,4 +1,6 @@
-<img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png"/>
+<img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" onerror="this.style.display='none';document.getElementById('tauri-fallback-title').style.display='block'"/>
+
+<h1 id="tauri-fallback-title" style="display:none">Zubridge Tauri</h1>
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity for Tauri_
 

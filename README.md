@@ -1,6 +1,8 @@
 <picture>
-  <img alt="zubridge hero image" src="./resources/zubridge-hero.png"/>
+  <img alt="zubridge hero image" src="./resources/zubridge-hero.png" onerror="this.style.display='none';document.getElementById('fallback-title').style.display='block'"/>
 </picture>
+
+<h1 id="fallback-title" style="display:none">Zubridge</h1>
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity_
 
