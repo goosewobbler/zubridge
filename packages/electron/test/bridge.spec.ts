@@ -500,7 +500,6 @@ describe('bridge.ts', () => {
       const store = createMockZustandStore();
       const stateManager = createMockStateManager();
       const options: ZustandOptions<AnyState> = {
-        exposeState: true,
         handlers: {
           testAction: vi.fn(),
         },

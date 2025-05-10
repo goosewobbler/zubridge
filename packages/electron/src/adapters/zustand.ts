@@ -7,7 +7,6 @@ import { debug } from '../utils/debug.js';
  * Options for the Zustand bridge and adapter
  */
 export interface ZustandOptions<S extends AnyState> {
-  exposeState?: boolean;
   handlers?: Record<string, Handler>;
   reducer?: RootReducer<S>;
 }

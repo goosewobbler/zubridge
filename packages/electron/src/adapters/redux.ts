@@ -7,7 +7,6 @@ import { debug } from '../utils/debug.js';
  * Options for the Redux adapter
  */
 export interface ReduxOptions<S extends AnyState> {
-  exposeState?: boolean;
   handlers?: Record<string, Handler>;
 }
 

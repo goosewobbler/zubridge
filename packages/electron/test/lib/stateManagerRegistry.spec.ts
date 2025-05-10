@@ -61,7 +61,7 @@ describe('StateManagerRegistry', () => {
   describe('getStateManager', () => {
     it('should create a Zustand adapter for Zustand stores', () => {
       const zustandStore = createMockZustandStore();
-      const options = { exposeState: true };
+      const options = {};
 
       const stateManager = getStateManager(zustandStore, options);
 
