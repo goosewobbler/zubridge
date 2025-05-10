@@ -28,7 +28,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
     };
 
     try {
-      const delayTime = 1500; // milliseconds
+      const delayTime = 500; // milliseconds
 
       // Log initial state
       console.log(`${logPrefix} Starting with counter value: ${initialCounter}`);
