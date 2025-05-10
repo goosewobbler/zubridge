@@ -46,7 +46,6 @@ export interface CoreBridgeOptions {
  */
 export function createCoreBridge<State extends AnyState>(
   stateManager: StateManager<State>,
-  initialWrappers?: WrapperOrWebContents[],
   options?: CoreBridgeOptions,
 ): BackendBridge<number> {
   debug('core', 'Creating CoreBridge with options:', options);
@@ -63,15 +62,6 @@ export function createCoreBridge<State extends AnyState>(
       ...options,
       ...middlewareOptions,
     };
-  }
-
-  // Initialize with initial wrappers
-  if (initialWrappers) {
-    const initialWebContents = prepareWebContents(initialWrappers);
-    debug('core', `Initializing with ${initialWebContents.length} WebContents`);
-    for (const webContents of initialWebContents) {
-      windowTracker.track(webContents);
-    }
   }
 
   // Add a getter method to the window tracker for retrieving WebContents by ID
@@ -532,7 +522,6 @@ export function createCoreBridge<State extends AnyState>(
  */
 export function createBridgeFromStore<S extends AnyState = AnyState>(
   store: StoreApi<S> | Store<S>,
-  windows?: WrapperOrWebContents[],
   options?: ZustandOptions<S> | ReduxOptions<S> | CoreBridgeOptions,
 ): BackendBridge<number> {
   debug('adapters', 'Creating bridge from store');
@@ -542,5 +531,5 @@ export function createBridgeFromStore<S extends AnyState = AnyState>(
   debug('adapters', `Got state manager for store (type: ${typeof store})`);
 
   // Create a core bridge with this state manager
-  return createCoreBridge(stateManager, windows, options as CoreBridgeOptions);
+  return createCoreBridge(stateManager, options as CoreBridgeOptions);
 }

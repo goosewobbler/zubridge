@@ -39,11 +39,10 @@ export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBri
  */
 export function createZustandBridge<S extends AnyState>(
   store: StoreApi<S>,
-  windows?: WrapperOrWebContents[],
   options?: ZustandOptions<S> & CoreBridgeOptions,
 ): ZustandBridge<S> {
   // Create the core bridge with the store
-  const coreBridge = createBridgeFromStore(store, windows, options);
+  const coreBridge = createBridgeFromStore(store, options);
 
   // Create the dispatch function with the same store
   const dispatchFn = createDispatch(store, options);
@@ -78,11 +77,10 @@ export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridg
  */
 export function createReduxBridge<S extends AnyState>(
   store: Store<S>,
-  windows?: WrapperOrWebContents[],
   options?: ReduxOptions<S> & CoreBridgeOptions,
 ): ReduxBridge<S> {
   // Create the core bridge with the store
-  const coreBridge = createBridgeFromStore(store, windows, options);
+  const coreBridge = createBridgeFromStore(store, options);
 
   // Create the dispatch function with the same store
   const dispatchFn = createDispatch(store, options);
