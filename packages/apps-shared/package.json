@@ -9,8 +9,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "clean": "shx rm -rf dist",
-    "lint": "eslint src",
+    "clean": "shx rm -rf dist node_modules",
     "dev": "tsc --watch"
   },
   "dependencies": {
