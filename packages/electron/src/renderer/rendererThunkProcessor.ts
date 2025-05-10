@@ -145,7 +145,7 @@ export class RendererThunkProcessor {
         // Create a promise that will resolve when this action completes
         const actionPromise = new Promise<Action>((resolve) => {
           // Store the callback to be called when action acknowledgment is received
-          this.actionCompletionCallbacks.set(actionObj.id, (result) => {
+          this.actionCompletionCallbacks.set(actionObj.id as string, (result) => {
             if (this.debugLogging)
               console.log(`[RENDERER_THUNK] Action ${actionObj.id} completion callback called with result`, result);
             resolve(result || actionObj);
@@ -276,13 +276,5 @@ const globalThunkProcessor = new RendererThunkProcessor(true);
  * Get the global singleton thunk processor
  */
 export const getThunkProcessor = (): RendererThunkProcessor => {
-  console.log('[RENDERER_THUNK] Getting thunk processor');
-  console.log('[RENDERER_THUNK] Local action sender:', globalThunkProcessor.actionSender);
-
-  if (typeof window !== 'undefined') {
-    console.log('[RENDERER_THUNK] Window is defined');
-    // Return the local processor, which will delegate to preload's exposed processor
-  }
-
   return globalThunkProcessor;
 };
