@@ -9,7 +9,6 @@ import {
   switchToWindow,
   getButtonInCurrentWindow,
   getCounterValue,
-  incrementCounterAndVerify,
   resetCounter,
 } from '../utils/windowUtils';
 import { TIMING } from '../constants';
@@ -60,7 +59,7 @@ describe('Thunk Execution and Behavior', () => {
       // Check intermediate value - the behavior should be:
       // 1. First operation multiplies by 2 (4)
       // 2. Second operation multiplies by 2 (8)
-      let intermediateValue = await clickAndWaitForCounterChange(doubleButton);
+      let intermediateValue = await clickAndWaitForCounterChange(doubleButton as unknown as WebdriverIO.Element);
       console.log(`Intermediate counter value: ${intermediateValue}`);
       expect(intermediateValue).toBe(4);
 
@@ -95,7 +94,7 @@ describe('Thunk Execution and Behavior', () => {
       // Check intermediate value - the behavior should be:
       // 1. First operation multiplies by 2 (4)
       // 2. Second operation multiplies by 2 (8)
-      let intermediateValue = await clickAndWaitForCounterChange(mainThunkButton);
+      let intermediateValue = await clickAndWaitForCounterChange(mainThunkButton as unknown as WebdriverIO.Element);
       console.log(`Intermediate counter value (main thunk): ${intermediateValue}`);
       expect(intermediateValue).toBe(4);
 
@@ -134,11 +133,13 @@ describe('Thunk Execution and Behavior', () => {
 
       // Check intermediate state
       // kick off the thunk and wait for the first intermediate value
-      const intermediateValue = await clickAndWaitForCounterChange(rendererThunkButton);
+      const intermediateValue = await clickAndWaitForCounterChange(
+        rendererThunkButton as unknown as WebdriverIO.Element,
+      );
       expect(intermediateValue).toBe(4);
 
       // interrupt the thunk with an increment
-      const intermediateValue2 = await clickAndWaitForCounterChange(incrementButton);
+      const intermediateValue2 = await clickAndWaitForCounterChange(incrementButton as unknown as WebdriverIO.Element);
 
       // verify the increment action was deferred and the thunk continued processing
       expect(intermediateValue2).toBe(8);
@@ -173,11 +174,11 @@ describe('Thunk Execution and Behavior', () => {
 
       // Check intermediate state
       // kick off the thunk and wait for the first intermediate value
-      const intermediateValue = await clickAndWaitForCounterChange(mainThunkButton);
+      const intermediateValue = await clickAndWaitForCounterChange(mainThunkButton as unknown as WebdriverIO.Element);
       expect(intermediateValue).toBe(4);
 
       // interrupt the thunk with an increment
-      const intermediateValue2 = await clickAndWaitForCounterChange(incrementButton);
+      const intermediateValue2 = await clickAndWaitForCounterChange(incrementButton as unknown as WebdriverIO.Element);
 
       // verify the increment action was deferred and the thunk continued processing
       expect(intermediateValue2).toBe(8);
@@ -331,6 +332,108 @@ describe('Thunk Execution and Behavior', () => {
       // Clean up the window we created
       console.log('Cleaning up extra window');
       await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
+  });
+
+  describe('async action handling in thunks', () => {
+    it('should properly wait for async actions to complete in renderer process thunks', async () => {
+      // Reset counter to start fresh
+      await resetCounter();
+
+      // Increment to a known value (2)
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Click the Double button which now uses COUNTER:SET:SLOW in its sequence
+      console.log('[ASYNC TEST] Clicking Double button which uses SLOW action in its sequence');
+      const doubleButton = await browser.$('button=Double (Renderer Slow Thunk)');
+
+      // The first change should happen quickly (regular COUNTER:SET)
+      console.log('[ASYNC TEST] Waiting for first counter change (should be fast)');
+      const value1 = await clickAndWaitForCounterChange(doubleButton as unknown as WebdriverIO.Element, 8000, 100);
+      const timeAfterFirstChange = new Date();
+      console.log(`[ASYNC TEST] First value change: ${value1} at ${timeAfterFirstChange.toISOString()}`);
+      expect(value1).toBe(4);
+
+      // The second change should take ~2500ms because of the SLOW action
+      console.log('[ASYNC TEST] Waiting for second counter change (should take ~2500ms)');
+      const timeBeforeSecondChange = new Date();
+      const value2 = await waitForCounterChange(8000, 100); // Extended timeout for slow action
+      const timeAfterSecondChange = new Date();
+
+      const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
+      console.log(`[ASYNC TEST] Second value change: ${value2} at ${timeAfterSecondChange.toISOString()}`);
+      console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
+
+      // Verify the value is 8 (doubled again)
+      expect(value2).toBe(8);
+
+      // The slow action should have taken at least 2000ms
+      // This is a key verification of our fix - without the fix, the action would complete immediately
+      expect(secondChangeDuration).toBeGreaterThan(2000);
+
+      // Final operation - halve the counter
+      console.log('[ASYNC TEST] Waiting for third counter change');
+      const value3 = await waitForCounterChange(8000, 100);
+      console.log(`[ASYNC TEST] Third value change: ${value3}`);
+      expect(value3).toBe(4);
+    });
+
+    it('should properly wait for async actions to complete in main process thunks', async () => {
+      // Reset counter to start fresh
+      await resetCounter();
+
+      // Increment to a known value (2)
+      const incrementButton = await browser.$('button=+');
+      await incrementButton.click();
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Click the Double button which now uses COUNTER:SET:SLOW in its sequence
+      console.log('[ASYNC TEST] Clicking Double button which uses SLOW action in its sequence');
+      const doubleButton = await browser.$('button=Double (Main Slow Thunk)');
+
+      // The first change should happen quickly (regular COUNTER:SET)
+      console.log('[ASYNC TEST] Waiting for first counter change (should be fast)');
+      const value1 = await clickAndWaitForCounterChange(doubleButton as unknown as WebdriverIO.Element, 8000, 100);
+      const timeAfterFirstChange = new Date();
+      console.log(`[ASYNC TEST] First value change: ${value1} at ${timeAfterFirstChange.toISOString()}`);
+      expect(value1).toBe(4);
+
+      // The second change should take ~2500ms because of the SLOW action
+      console.log('[ASYNC TEST] Waiting for second counter change (should take ~2500ms)');
+      const timeBeforeSecondChange = new Date();
+      const value2 = await waitForCounterChange(8000, 100); // Extended timeout for slow action
+      const timeAfterSecondChange = new Date();
+
+      const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
+      console.log(`[ASYNC TEST] Second value change: ${value2} at ${timeAfterSecondChange.toISOString()}`);
+      console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
+
+      // Verify the value is 8 (doubled again)
+      expect(value2).toBe(8);
+
+      // The slow action should have taken at least 2000ms
+      // This is a key verification of our fix - without the fix, the action would complete immediately
+      expect(secondChangeDuration).toBeGreaterThan(2000);
+
+      // Final operation - halve the counter
+      console.log('[ASYNC TEST] Waiting for third counter change');
+      const value3 = await waitForCounterChange(8000, 100);
+      console.log(`[ASYNC TEST] Third value change: ${value3}`);
+      expect(value3).toBe(4);
     });
   });
 });
