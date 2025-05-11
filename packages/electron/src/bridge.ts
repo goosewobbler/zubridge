@@ -12,14 +12,15 @@ import {
   isDestroyed,
   safelySendToWindow,
   createWebContentsTracker,
-  prepareWebContents,
   WebContentsTracker,
 } from './utils/windows.js';
 import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 import { debug } from './utils/debug.js';
 import { actionQueue } from './main/actionQueue.js';
-import { getThunkTracker, ThunkState } from './lib/thunkTracker.js';
+import { getThunkTracker } from './lib/thunkTracker.js';
+import { getMainThunkProcessor } from './main/mainThunkProcessor.js';
+import { MainThunkProcessor } from './main/mainThunkProcessor.js';
 
 // Get the global ThunkTracker
 const thunkTracker = getThunkTracker(true);
@@ -38,6 +39,13 @@ export interface CoreBridgeOptions {
   beforeStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   afterStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   onBridgeDestroy?: () => Promise<void> | void;
+
+  /**
+   * Maximum time (in milliseconds) to wait for an action to complete before auto-resolving
+   * Used for actions that might contain async operations without proper acknowledgment
+   * Default: 10000 (10 seconds)
+   */
+  actionCompletionTimeoutMs?: number;
 }
 
 /**
@@ -49,6 +57,9 @@ export function createCoreBridge<State extends AnyState>(
   options?: CoreBridgeOptions,
 ): BackendBridge<number> {
   debug('core', 'Creating CoreBridge with options:', options);
+
+  // Get the action completion timeout from options or use default
+  const actionCompletionTimeoutMs = options?.actionCompletionTimeoutMs;
 
   // Tracker for WebContents using WeakMap for automatic garbage collection
   const windowTracker: WebContentsTracker = createWebContentsTracker();
@@ -64,11 +75,29 @@ export function createCoreBridge<State extends AnyState>(
     };
   }
 
+  // Get the main thunk processor with the timeout (create a new instance if needed)
+  // This ensures we don't need to update an existing processor's config
+  const mainThunkProcessor = (() => {
+    // Get the singleton instance
+    const existingProcessor = getMainThunkProcessor();
+
+    // Only pass the timeout if it's defined
+    if (actionCompletionTimeoutMs !== undefined) {
+      // Create a new instance with the timeout
+      return new MainThunkProcessor(true, actionCompletionTimeoutMs);
+    }
+
+    // Use the existing processor
+    return existingProcessor;
+  })();
+
   // Add a getter method to the window tracker for retrieving WebContents by ID
   const getWindowById = (id: number): WebContents | undefined => {
     const allContents = windowTracker.getActiveWebContents();
     return allContents.find((contents) => contents.id === id);
   };
+
+  // Register IPC handlers for the bridge
 
   // Set up the action processor for the bridge action queue
   actionQueue.setActionProcessor(async (action: Action) => {
@@ -408,6 +437,21 @@ export function createCoreBridge<State extends AnyState>(
       if (windowTracker.track(webContents)) {
         debug('windows', `Subscribed WebContents ${webContents.id}`);
         addedWebContents.push(webContents);
+
+        // Expose configuration to the window
+        if (actionCompletionTimeoutMs !== undefined) {
+          webContents
+            .executeJavaScript(
+              `
+            window.__ZUBRIDGE_CONFIG = window.__ZUBRIDGE_CONFIG || {};
+            window.__ZUBRIDGE_CONFIG.actionCompletionTimeoutMs = ${actionCompletionTimeoutMs};
+            console.log("[BRIDGE] Configuration exposed to window:", window.__ZUBRIDGE_CONFIG);
+          `,
+            )
+            .catch((error) => {
+              console.error('[BRIDGE] Error exposing configuration to window:', error);
+            });
+        }
 
         // Send initial state
         const currentState = sanitizeState(stateManager.getState());

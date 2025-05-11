@@ -39,7 +39,7 @@ export function createDispatch<S extends AnyState>(
       ? (storeOrManager as StateManager<S>)
       : getStateManager(storeOrManager as StoreApi<S> | Store<S>, options);
 
-  // Initialize the main thunk processor
+  // Initialize the main thunk processor once during creation of the dispatch function
   mainThunkProcessor.initialize({
     stateManager,
   });
@@ -65,14 +65,12 @@ export function createDispatch<S extends AnyState>(
 
             // Execute the thunk
             try {
-              // Initialize the processor for this dispatch
-              mainThunkProcessor.initialize({
-                stateManager,
-              });
-
+              // Execute the thunk without re-initializing the processor
               const result = await mainThunkProcessor.executeThunk(thunkFunction, getState, parentId);
+              debug('core', 'Thunk execution completed successfully');
               resolve(result);
             } catch (thunkError) {
+              debug('core', 'Error during thunk execution:', thunkError);
               reject(thunkError);
             }
           } catch (err) {
@@ -103,11 +101,6 @@ export function createDispatch<S extends AnyState>(
           } else {
             throw new Error(`Invalid action type: ${typeof actionOrThunk}`);
           }
-
-          // Initialize the processor for this dispatch
-          mainThunkProcessor.initialize({
-            stateManager,
-          });
 
           // Mark the action as originating from the main process
           (actionObj as any).__isFromMainProcess = true;

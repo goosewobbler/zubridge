@@ -1,6 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch } from '@zubridge/types';
 
+// Default timeout for action completion (10 seconds)
+const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
+
 // Add a declaration for our exposed interface
 declare global {
   interface Window {
@@ -34,8 +37,18 @@ export class RendererThunkProcessor {
   // Map of action IDs to their resolution functions
   private actionCompletionCallbacks = new Map<string, (result: any) => void>();
 
-  constructor(private debugLogging = false) {
-    if (debugLogging) console.log('[RENDERER_THUNK] Initialized');
+  // Map to track timeouts for action completion
+  private actionTimeouts = new Map<string, NodeJS.Timeout>();
+
+  // Configuration options
+  private actionCompletionTimeoutMs: number;
+
+  constructor(
+    private debugLogging = false,
+    actionCompletionTimeoutMs?: number,
+  ) {
+    this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
+    if (debugLogging) console.log('[RENDERER_THUNK] Initialized with timeout:', this.actionCompletionTimeoutMs);
   }
 
   /**
@@ -47,12 +60,21 @@ export class RendererThunkProcessor {
     thunkRegistrar: (thunkId: string, parentId?: string) => Promise<void>;
     thunkCompleter: (thunkId: string) => Promise<void>;
     actionCompletionHandler?: (actionId: string, callback: (result: any) => void) => () => void;
+    actionCompletionTimeoutMs?: number;
   }): void {
     console.log('[RENDERER_THUNK] Initializing with options:', options);
     this.currentWindowId = options.windowId;
     this.actionSender = options.actionSender;
     this.thunkRegistrar = options.thunkRegistrar;
     this.thunkCompleter = options.thunkCompleter;
+
+    // Update timeout configuration if provided - use direct assignment
+    if (options.actionCompletionTimeoutMs !== undefined) {
+      this.actionCompletionTimeoutMs = options.actionCompletionTimeoutMs;
+      if (this.debugLogging) {
+        console.log('[RENDERER_THUNK] Updated timeout:', this.actionCompletionTimeoutMs);
+      }
+    }
 
     console.log('[RENDERER_THUNK] Action sender:', this.actionSender);
 
@@ -68,14 +90,39 @@ export class RendererThunkProcessor {
       console.log(`[RENDERER_THUNK] Action completed: ${actionId}`);
     }
 
-    // Remove from pending dispatches
-    this.pendingDispatches.delete(actionId);
+    // Clear any pending timeout for this action
+    const timeout = this.actionTimeouts.get(actionId);
+    if (timeout) {
+      if (this.debugLogging) {
+        console.log(`[RENDERER_THUNK] Clearing timeout for action ${actionId}`);
+      }
+      clearTimeout(timeout);
+      this.actionTimeouts.delete(actionId);
+    }
 
     // Call any completion callbacks waiting on this action
+    // This must happen BEFORE removing from pending dispatches
+    // to ensure any getState calls know it's done
     const callback = this.actionCompletionCallbacks.get(actionId);
     if (callback) {
+      if (this.debugLogging) {
+        console.log(`[RENDERER_THUNK] Executing completion callback for action ${actionId}`);
+      }
       callback(result);
       this.actionCompletionCallbacks.delete(actionId);
+    } else if (this.debugLogging) {
+      console.log(`[RENDERER_THUNK] No completion callback found for action ${actionId}`);
+    }
+
+    // Now remove from pending dispatches after callback completes
+    this.pendingDispatches.delete(actionId);
+    if (this.debugLogging) {
+      console.log(
+        `[RENDERER_THUNK] Removed ${actionId} from pending dispatches, remaining: ${this.pendingDispatches.size}`,
+      );
+      if (this.pendingDispatches.size > 0) {
+        console.log(`[RENDERER_THUNK] Remaining dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
+      }
     }
   }
 
@@ -114,7 +161,9 @@ export class RendererThunkProcessor {
     try {
       // Create a dispatch function for this thunk that tracks each action
       const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
-        console.log('[RENDERER_THUNK] Dispatching action:', action);
+        if (this.debugLogging) {
+          console.log('[RENDERER_THUNK] Dispatching action:', action);
+        }
 
         // Handle nested thunks
         if (typeof action === 'function') {
@@ -135,7 +184,8 @@ export class RendererThunkProcessor {
         if (this.debugLogging)
           console.log(`[RENDERER_THUNK] Thunk ${thunkId} dispatching action ${actionObj.type} (${actionObj.id})`);
 
-        // Add to pending dispatches
+        // Add to pending dispatches BEFORE creating the promise to ensure
+        // getState can find it immediately
         this.pendingDispatches.add(actionObj.id);
         if (this.debugLogging)
           console.log(
@@ -150,20 +200,68 @@ export class RendererThunkProcessor {
               console.log(`[RENDERER_THUNK] Action ${actionObj.id} completion callback called with result`, result);
             resolve(result || actionObj);
           });
+
           if (this.debugLogging) console.log(`[RENDERER_THUNK] Set completion callback for action ${actionObj.id}`);
+
+          // Set up a safety timeout in case we don't receive an acknowledgment
+          if (this.debugLogging) {
+            console.log(`[RENDERER_THUNK] Setting up safety timeout for action ${actionObj.id}`);
+          }
+
+          const safetyTimeout = setTimeout(() => {
+            // If we still have a pending callback for this action, resolve it
+            if (this.actionCompletionCallbacks.has(actionObj.id as string)) {
+              if (this.debugLogging) {
+                console.log(
+                  `[RENDERER_THUNK] Safety timeout triggered for action ${actionObj.id} after ${this.actionCompletionTimeoutMs}ms`,
+                );
+              }
+              this.completeAction(actionObj.id as string, actionObj);
+            }
+          }, this.actionCompletionTimeoutMs);
+
+          // Store the timeout so we can clear it if we get an acknowledgment
+          this.actionTimeouts.set(actionObj.id as string, safetyTimeout);
         });
 
         // Send the action to the main process
-        console.log('[RENDERER_THUNK] Sending action to main process:', actionObj);
-        console.log('[RENDERER_THUNK] Thunk ID:', thunkId);
-        console.log('[RENDERER_THUNK] Action sender:', this.actionSender);
+        if (this.debugLogging) {
+          console.log('[RENDERER_THUNK] Sending action to main process:', actionObj);
+          console.log('[RENDERER_THUNK] Thunk ID:', thunkId);
+        }
 
         if (this.actionSender) {
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Sending action ${actionObj.id} to main process`);
-          await this.actionSender(actionObj, thunkId as any);
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Action ${actionObj.id} sent to main process`);
+          try {
+            if (this.debugLogging) console.log(`[RENDERER_THUNK] Sending action ${actionObj.id} to main process`);
+            await this.actionSender(actionObj, thunkId as any);
+            if (this.debugLogging) console.log(`[RENDERER_THUNK] Action ${actionObj.id} sent to main process`);
+          } catch (error) {
+            // If sending fails, clear any pending timeout
+            const timeout = this.actionTimeouts.get(actionObj.id as string);
+            if (timeout) {
+              clearTimeout(timeout);
+              this.actionTimeouts.delete(actionObj.id as string);
+            }
+
+            // Remove from pending and reject
+            this.pendingDispatches.delete(actionObj.id);
+            this.actionCompletionCallbacks.delete(actionObj.id as string);
+            throw error;
+          }
         } else {
           if (this.debugLogging) console.log(`[RENDERER_THUNK] ERROR: No actionSender available for thunk ${thunkId}`);
+
+          // Clear any pending timeout
+          const timeout = this.actionTimeouts.get(actionObj.id as string);
+          if (timeout) {
+            clearTimeout(timeout);
+            this.actionTimeouts.delete(actionObj.id as string);
+          }
+
+          // If no sender is available, remove from pending and resolve with original action
+          this.pendingDispatches.delete(actionObj.id);
+          this.actionCompletionCallbacks.delete(actionObj.id as string);
+          return actionObj;
         }
 
         if (this.debugLogging) console.log(`[RENDERER_THUNK] Waiting for action ${actionObj.id} to complete`);
@@ -173,11 +271,26 @@ export class RendererThunkProcessor {
 
       // Create a getState function that waits for pending dispatches
       const getState = async (): Promise<S> => {
+        // Helper function to get the current state safely
+        const getCurrentState = async (): Promise<S> => {
+          if (typeof getOriginalState !== 'function') {
+            return getOriginalState;
+          }
+
+          const state = getOriginalState();
+          if (state instanceof Promise) {
+            return await state;
+          }
+
+          return state;
+        };
+
         if (this.pendingDispatches.size === 0) {
           // No pending dispatches, return state immediately
-          if (this.debugLogging)
+          if (this.debugLogging) {
             console.log(`[RENDERER_THUNK] getState: No pending dispatches, returning state immediately`);
-          return getOriginalState instanceof Promise ? await getOriginalState : getOriginalState();
+          }
+          return getCurrentState();
         }
 
         if (this.debugLogging) {
@@ -187,28 +300,39 @@ export class RendererThunkProcessor {
           console.log(`[RENDERER_THUNK] Pending dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
         }
 
-        // Wait for pending dispatches to complete
-        return new Promise<S>((resolve) => {
-          const checkQueue = () => {
-            if (this.pendingDispatches.size === 0) {
-              // No more pending dispatches, resolve with current state
-              if (this.debugLogging) {
-                console.log('[RENDERER_THUNK] All dispatches complete, returning state');
+        // Create promises for all pending dispatches
+        const pendingPromises = Array.from(this.pendingDispatches).map(
+          (actionId) =>
+            new Promise<void>((resolve) => {
+              // If we already have a callback for this action, wrap it to also resolve our promise
+              const existingCallback = this.actionCompletionCallbacks.get(actionId);
+              if (existingCallback) {
+                this.actionCompletionCallbacks.set(actionId, (result) => {
+                  existingCallback(result);
+                  resolve();
+                });
+              } else {
+                // Otherwise, register a new callback just for our promise
+                this.actionCompletionCallbacks.set(actionId, () => {
+                  resolve();
+                });
               }
+            }),
+        );
 
-              Promise.resolve(getOriginalState()).then(resolve);
-            } else {
-              // Check again after a short delay
-              if (this.debugLogging) {
-                console.log(`[RENDERER_THUNK] Still waiting for ${this.pendingDispatches.size} dispatches to complete`);
-                console.log(`[RENDERER_THUNK] Pending IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
-              }
-              setTimeout(checkQueue, 10);
-            }
-          };
+        if (this.debugLogging) {
+          console.log(`[RENDERER_THUNK] Waiting for ${pendingPromises.length} action promises to resolve`);
+        }
 
-          checkQueue();
-        });
+        // Wait for all pending dispatches to complete
+        await Promise.all(pendingPromises);
+
+        if (this.debugLogging) {
+          console.log('[RENDERER_THUNK] All dispatches complete, returning state');
+        }
+
+        // Return the current state
+        return getCurrentState();
       };
 
       if (this.debugLogging) console.log(`[RENDERER_THUNK] Executing thunk function for ${thunkId}`);
@@ -269,11 +393,11 @@ export class RendererThunkProcessor {
   }
 }
 
-// Create a global singleton instance
+// Create a singleton instance
 const globalThunkProcessor = new RendererThunkProcessor(true);
 
 /**
- * Get the global singleton thunk processor
+ * Get the global renderer thunk processor
  */
 export const getThunkProcessor = (): RendererThunkProcessor => {
   return globalThunkProcessor;

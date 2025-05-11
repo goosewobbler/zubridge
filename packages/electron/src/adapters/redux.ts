@@ -4,6 +4,13 @@ import { resolveHandler } from '../utils/handlers.js';
 import { debug } from '../utils/debug.js';
 
 /**
+ * Helper to check if a value is a Promise
+ */
+function isPromise(value: unknown): value is Promise<unknown> {
+  return !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
+}
+
+/**
  * Options for the Redux adapter
  */
 export interface ReduxOptions<S extends AnyState> {
@@ -22,7 +29,7 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
   return {
     getState: () => store.getState(),
     subscribe: (listener) => store.subscribe(() => listener(store.getState())),
-    processAction: (action: Action) => {
+    processAction: async (action: Action) => {
       try {
         debug('adapters', 'Redux adapter processing action:', action);
 
@@ -33,7 +40,23 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
           const handler = resolveHandler(options.handlers, action.type);
           if (handler) {
             debug('adapters', `Found custom handler for action type: ${action.type}`);
-            handler(action.payload);
+            debug('adapters', `Executing handler for ${action.type}, time: ${new Date().toISOString()}`);
+            const startTime = new Date().getTime();
+            const result = handler(action.payload);
+
+            // If the handler returns a Promise, await it
+            if (isPromise(result)) {
+              debug('adapters', `Handler for ${action.type} returned a Promise, awaiting completion`);
+              await result;
+              const endTime = new Date().getTime();
+              debug(
+                'adapters',
+                `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
+              );
+            } else {
+              const endTime = new Date().getTime();
+              debug('adapters', `Sync handler for ${action.type} completed in ${endTime - startTime}ms`);
+            }
             return;
           }
         }

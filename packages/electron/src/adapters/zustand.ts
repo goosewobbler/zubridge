@@ -4,6 +4,13 @@ import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../
 import { debug } from '../utils/debug.js';
 
 /**
+ * Helper to check if a value is a Promise
+ */
+function isPromise(value: unknown): value is Promise<unknown> {
+  return !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
+}
+
+/**
  * Options for the Zustand bridge and adapter
  */
 export interface ZustandOptions<S extends AnyState> {
@@ -23,7 +30,7 @@ export function createZustandAdapter<S extends AnyState>(
   return {
     getState: () => store.getState(),
     subscribe: (listener) => store.subscribe(listener),
-    processAction: (action) => {
+    processAction: async (action) => {
       try {
         debug('adapters', 'Zustand adapter processing action:', action);
 
@@ -34,7 +41,25 @@ export function createZustandAdapter<S extends AnyState>(
           const handler = resolveHandler(options.handlers, action.type);
           if (handler) {
             debug('adapters', `Found custom handler for action type: ${action.type}`);
-            handler(action.payload);
+            // Await the handler's execution - it might be async
+            debug('adapters', `Executing handler for ${action.type}, time: ${new Date().toISOString()}`);
+            const startTime = new Date().getTime();
+            const result = handler(action.payload);
+
+            // If the handler returns a Promise, await it
+            if (isPromise(result)) {
+              debug('adapters', `Handler for ${action.type} returned a Promise, awaiting completion`);
+              await result;
+              const endTime = new Date().getTime();
+              debug(
+                'adapters',
+                `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
+              );
+            } else {
+              const endTime = new Date().getTime();
+              debug('adapters', `Sync handler for ${action.type} completed in ${endTime - startTime}ms`);
+            }
+
             return;
           }
         }
@@ -63,7 +88,12 @@ export function createZustandAdapter<S extends AnyState>(
 
           if (methodMatch && typeof methodMatch[1] === 'function') {
             debug('adapters', `Found direct method match in store state: ${methodMatch[0]}`);
-            methodMatch[1](action.payload);
+            // Call the method and await if it returns a Promise
+            const result = methodMatch[1](action.payload);
+            if (isPromise(result)) {
+              debug('adapters', `Method ${methodMatch[0]} returned a Promise, awaiting completion`);
+              await result;
+            }
             return;
           }
 
@@ -72,7 +102,12 @@ export function createZustandAdapter<S extends AnyState>(
           const nestedStateHandler = findNestedHandler<Function>(state, action.type);
           if (nestedStateHandler) {
             debug('adapters', `Found nested handler in store state for: ${action.type}`);
-            nestedStateHandler(action.payload);
+            // Call the handler and await if it returns a Promise
+            const result = nestedStateHandler(action.payload);
+            if (isPromise(result)) {
+              debug('adapters', `Nested handler for ${action.type} returned a Promise, awaiting completion`);
+              await result;
+            }
             return;
           }
 

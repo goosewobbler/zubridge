@@ -1,6 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch, StateManager } from '@zubridge/types';
 import { getThunkTracker } from '../lib/thunkTracker.js';
+import { IpcChannel } from '../constants.js';
+import { BrowserWindow } from 'electron';
+
+// Default timeout for action completion (10 seconds)
+const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
 
 /**
  * Handles thunk execution in the main process
@@ -9,8 +14,24 @@ export class MainThunkProcessor {
   // State manager to process actions
   private stateManager?: StateManager<any>;
 
-  constructor(private debugLogging = false) {
-    if (debugLogging) console.log('[MAIN_THUNK] Initialized');
+  // Map to track action promises for potentially async actions
+  private pendingActionPromises = new Map<
+    string,
+    {
+      resolve: (value: any) => void;
+      promise: Promise<any>;
+    }
+  >();
+
+  // Configuration options
+  private actionCompletionTimeoutMs: number;
+
+  constructor(
+    private debugLogging = false,
+    actionCompletionTimeoutMs?: number,
+  ) {
+    this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
+    if (debugLogging) console.log('[MAIN_THUNK] Initialized with timeout:', this.actionCompletionTimeoutMs);
   }
 
   /**
@@ -22,6 +43,64 @@ export class MainThunkProcessor {
 
     if (this.debugLogging) {
       console.log('[MAIN_THUNK] Initialized with state manager');
+    }
+  }
+
+  /**
+   * Send acknowledgment for a completed action
+   */
+  private sendActionAcknowledgment(actionId: string, sourceWindowId?: number): void {
+    if (!sourceWindowId) {
+      if (this.debugLogging) {
+        console.log(`[MAIN_THUNK] No source window ID for action ${actionId}, cannot send acknowledgment`);
+      }
+      return;
+    }
+
+    try {
+      // Get the window by ID
+      const window = BrowserWindow.fromId(sourceWindowId);
+      if (!window || window.isDestroyed()) {
+        if (this.debugLogging) {
+          console.log(`[MAIN_THUNK] Window ${sourceWindowId} not found or destroyed, cannot send acknowledgment`);
+        }
+        return;
+      }
+
+      // Get thunk state to include with the acknowledgment
+      const thunkTracker = getThunkTracker(this.debugLogging);
+      const thunkState = thunkTracker.getActiveThunksSummary();
+
+      if (this.debugLogging) {
+        console.log(`[MAIN_THUNK] Sending acknowledgment for action ${actionId} to window ${sourceWindowId}`);
+        console.log(
+          `[MAIN_THUNK] Including thunk state (version ${thunkState.version}) with ${thunkState.thunks.length} active thunks`,
+        );
+      }
+
+      // Send the acknowledgment via IPC
+      window.webContents.send(IpcChannel.DISPATCH_ACK, {
+        actionId,
+        thunkState,
+      });
+    } catch (error) {
+      console.error(`[MAIN_THUNK] Error sending acknowledgment for action ${actionId}:`, error);
+    }
+  }
+
+  /**
+   * Completes a pending action and sends acknowledgment
+   */
+  public completeAction(actionId: string): void {
+    const pendingAction = this.pendingActionPromises.get(actionId);
+    if (pendingAction) {
+      if (this.debugLogging) {
+        console.log(`[MAIN_THUNK] Completing pending action ${actionId}`);
+      }
+      pendingAction.resolve(actionId);
+      this.pendingActionPromises.delete(actionId);
+    } else if (this.debugLogging) {
+      console.log(`[MAIN_THUNK] No pending action found for ${actionId}`);
     }
   }
 
@@ -70,11 +149,57 @@ export class MainThunkProcessor {
         // Mark the action as originating from the main process
         (actionObj as any).__isFromMainProcess = true;
 
+        if (this.debugLogging) {
+          console.log(
+            `[MAIN_THUNK] Processing action ${actionObj.type} (${actionObj.id}) as part of thunk ${thunkHandle.thunkId}`,
+          );
+        }
+
+        // Create a promise that will resolve when the action has been fully processed
+        const actionPromise = new Promise((resolve) => {
+          // Store the promise resolver in our map
+          this.pendingActionPromises.set(actionObj.id!, {
+            resolve,
+            promise: Promise.resolve(),
+          });
+
+          if (this.debugLogging) {
+            console.log(`[MAIN_THUNK] Created pending promise for action ${actionObj.id}`);
+          }
+
+          // Add a safety timeout to handle cases where acknowledgment might not be sent
+          setTimeout(() => {
+            // If the action hasn't been completed yet, complete it
+            if (this.pendingActionPromises.has(actionObj.id!)) {
+              if (this.debugLogging) {
+                console.log(
+                  `[MAIN_THUNK] Auto-completing action ${actionObj.id} after timeout (${this.actionCompletionTimeoutMs}ms)`,
+                );
+              }
+              this.completeAction(actionObj.id!);
+
+              // Send acknowledgment for the action
+              this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
+            }
+          }, this.actionCompletionTimeoutMs);
+        });
+
         // Process the action
         this.stateManager!.processAction(actionObj);
 
-        // Track the action (actionObj.id is guaranteed to be defined at this point)
+        // Track the action
         thunkHandle.addAction(actionObj.id!);
+
+        if (this.debugLogging) {
+          console.log(`[MAIN_THUNK] Action ${actionObj.type} (${actionObj.id}) started, awaiting completion`);
+        }
+
+        // Wait for the action to complete before returning
+        await actionPromise;
+
+        if (this.debugLogging) {
+          console.log(`[MAIN_THUNK] Action ${actionObj.type} (${actionObj.id}) completed`);
+        }
 
         return actionObj;
       };

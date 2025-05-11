@@ -5,6 +5,7 @@ import type { Action, AnyState, Dispatch, Handlers, Thunk } from '@zubridge/type
 import { IpcChannel } from './constants.js';
 import { debug } from './utils/debug.js';
 import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
+import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Extended handlers interface to support parent-child relationship tracking
 interface ExtendedDispatch<S> {
@@ -27,7 +28,37 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
   let initialized = false;
 
   // Get or create the thunk processor
-  const thunkProcessor = getThunkProcessor();
+  const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
+    // Get the default processor
+    const defaultProcessor = getThunkProcessor();
+
+    // Try to get config from the window
+    let actionCompletionTimeoutMs: number | undefined;
+    try {
+      if (typeof window !== 'undefined' && (window as any).__ZUBRIDGE_CONFIG) {
+        actionCompletionTimeoutMs = (window as any).__ZUBRIDGE_CONFIG.actionCompletionTimeoutMs;
+      }
+
+      // Fallback to process.env if available
+      if (actionCompletionTimeoutMs === undefined && process.env.ZUBRIDGE_ACTION_TIMEOUT) {
+        actionCompletionTimeoutMs = parseInt(process.env.ZUBRIDGE_ACTION_TIMEOUT, 10);
+      }
+
+      // If we have a timeout, create a new processor with it
+      if (actionCompletionTimeoutMs !== undefined) {
+        console.log(`[PRELOAD] Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
+        return new RendererThunkProcessor(true, actionCompletionTimeoutMs);
+      }
+    } catch (error) {
+      console.log('[PRELOAD] Error configuring thunk processor, using default');
+    }
+
+    // Use the default processor if no custom timeout
+    return defaultProcessor;
+  };
+
+  // Get a properly configured thunk processor
+  const thunkProcessor = getThunkProcessorWithConfig();
 
   // Set up the acknowledgment listener
   const listenForAcknowledgments = () => {
