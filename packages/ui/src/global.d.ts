@@ -10,6 +10,7 @@ interface Window {
   };
   counter?: {
     executeMainThunk: () => Promise<{ success: boolean; result?: number }>;
+    executeMainThunkSlow: () => Promise<{ success: boolean; result?: number }>;
   };
 }
 

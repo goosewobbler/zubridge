@@ -7,7 +7,7 @@ export interface BaseProps {
 }
 
 // Counter method
-export type CounterMethod = 'thunk' | 'object' | 'action' | 'main-thunk';
+export type CounterMethod = 'thunk' | 'object' | 'action' | 'main-thunk' | 'slow-thunk' | 'main-slow-thunk';
 
 // Button variants
 export type ButtonVariant = 'primary' | 'secondary' | 'reset' | 'create' | 'close';

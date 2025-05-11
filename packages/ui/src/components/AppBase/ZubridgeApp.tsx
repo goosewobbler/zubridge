@@ -131,9 +131,20 @@ export function ZubridgeApp({
           console.log(`[DEBUG] Using shared thunk for method: ${method}`);
           return dispatch(actionHandlers.doubleCounter(counter));
         }
+      } else if (method === 'slow-thunk') {
+        // Use the slow thunk if available
+        if (actionHandlers.doubleCounterSlow) {
+          console.log(`[DEBUG] Using shared slow thunk for method: ${method}`);
+          return dispatch(actionHandlers.doubleCounterSlow(counter));
+        }
       } else if (method === 'main-thunk') {
         console.log(`[DEBUG] Starting ${method} execution`);
         const result = window.counter?.executeMainThunk();
+        console.log(`[DEBUG] ${method} returned:`, result);
+        return result;
+      } else if (method === 'main-slow-thunk') {
+        console.log(`[DEBUG] Starting ${method} execution`);
+        const result = window.counter?.executeMainThunkSlow();
         console.log(`[DEBUG] ${method} returned:`, result);
         return result;
       } else {

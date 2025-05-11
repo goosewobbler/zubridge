@@ -46,6 +46,11 @@ export interface ActionHandlers {
    * Double counter thunk implementation
    */
   doubleCounter?: (counter: number) => any;
+
+  /**
+   * Double counter slow thunk implementation
+   */
+  doubleCounterSlow?: (counter: number) => any;
 }
 
 /**
