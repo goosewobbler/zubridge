@@ -90,6 +90,8 @@ jobs:
         shell: bash
         id: npm_publish
         continue-on-error: true
+        # Skip NPM publish for Rust-only packages
+        if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) }}
         run: |
           # Get the new version from the previous step's output
           NEW_VERSION="${{ steps.versioning.outputs.new_version }}"
@@ -256,9 +258,9 @@ jobs:
           # Or preferably, modify publish.ts to accept version as an argument
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
 
-      - name: 🔍 Verify published packages
+      - name: 🔍 Verify published NPM packages
         shell: bash
-        if: ${{ inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed' }}
+        if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         run: bash .github/workflows/scripts/verify-published.sh
         env:
           # Pass necessary variables to the script environment
@@ -269,7 +271,7 @@ jobs:
 
       # Only publish Rust crates when explicitly selected
       - name: 🦀 Set up Rust
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "@zubridge/middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -277,18 +279,30 @@ jobs:
           override: true
 
       - name: 🔧 Login to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "@zubridge/middleware"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: |
           cargo login ${{ secrets.crates_io_token }}
 
       - name: 📦 Publish Rust crates to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge", "@zubridge/middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) }}
         run: |
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            echo "DRY RUN: Would publish Rust crates to crates.io"
             pnpx tsx scripts/publish-crates.ts --dry-run "${{ inputs.packages }}"
           else
             pnpx tsx scripts/publish-crates.ts "${{ inputs.packages }}"
           fi
+
+      - name: 🔍 Verify published Rust crates
+        shell: bash
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
+        run: bash .github/workflows/scripts/verify-crates-published.sh
+        env:
+          # Pass necessary variables to the script environment
+          INPUT_PACKAGES: ${{ inputs.packages }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
+          # GITHUB_WORKSPACE is automatically available
 
       - name: 🚀 Push Tags and Commits
         id: push_tags

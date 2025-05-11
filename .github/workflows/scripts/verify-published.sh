@@ -20,6 +20,21 @@ echo "Packages Input: $PACKAGES_INPUT"
 echo "Dry Run: $DRY_RUN"
 echo "Version to Verify: $NEW_VERSION"
 
+# Function to check if a package is Rust-only
+is_rust_only_package() {
+  local pkg_dir=$1
+  if [[ "$pkg_dir" == "tauri-plugin" ]]; then
+    return 0 # True, is Rust-only
+  fi
+  return 1 # False, not Rust-only
+}
+
+# Skip verification for Rust-only packages
+if is_rust_only_package "$PACKAGES_INPUT"; then
+  echo "Package $PACKAGES_INPUT is a Rust-only package. Skipping NPM verification."
+  exit 0
+fi
+
 # --- Helper Functions ---
 # Get full package name from directory name
 get_pkg_name_from_dir() {
@@ -92,6 +107,13 @@ if [[ "$PACKAGES_INPUT" == *","* ]]; then
   IFS=',' read -ra PKG_LIST <<< "$PACKAGES_INPUT"
   for pkg_dir in "${PKG_LIST[@]}"; do
     pkg_dir_trimmed=$(echo "$pkg_dir" | xargs)
+
+    # Skip Rust-only packages
+    if is_rust_only_package "$pkg_dir_trimmed"; then
+      echo "Skipping Rust-only package: $pkg_dir_trimmed"
+      continue
+    fi
+
     # Check if directory exists and get package name
     if check_pkg_dir_exists "$pkg_dir_trimmed"; then
       pkg_name=$(get_pkg_name_from_dir "$pkg_dir_trimmed")
@@ -106,7 +128,7 @@ if [[ "$PACKAGES_INPUT" == *","* ]]; then
     fi
   done
 else
-  # Single package directory
+  # Single package directory - already checked for Rust-only at the start
   if check_pkg_dir_exists "$PACKAGES_INPUT"; then
     pkg_name=$(get_pkg_name_from_dir "$PACKAGES_INPUT")
     if [[ -n "$pkg_name" ]]; then

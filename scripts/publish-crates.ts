@@ -24,10 +24,12 @@ const targetPackageStr = typeof targetPackage === 'string' ? targetPackage : Str
 const knownCrates = [
   {
     name: 'tauri-plugin-zubridge',
+    dirName: 'tauri-plugin', // Directory name under packages/
     path: 'packages/tauri-plugin',
   },
   {
     name: 'zubridge-middleware',
+    dirName: 'middleware', // Directory name under packages/
     path: 'packages/middleware',
     isHybrid: true,
   },
@@ -39,19 +41,26 @@ let cratesToPublish = knownCrates;
 
 // If a target package is specified, only publish that package
 if (targetPackageStr) {
+  // Convert input to string explicitly everywhere
+  const inputStr = String(targetPackageStr);
+  console.log(`Looking for crates matching: ${inputStr}`);
+
   cratesToPublish = knownCrates.filter(
     (crate) =>
-      crate.name === targetPackageStr ||
-      targetPackageStr.endsWith(`/${crate.name}`) ||
-      crate.path.includes(targetPackageStr),
+      crate.name === inputStr ||
+      crate.dirName === inputStr ||
+      inputStr.endsWith(`/${crate.name}`) ||
+      crate.path.includes(inputStr),
   );
 
   if (cratesToPublish.length === 0) {
-    handleError(`No matching crate found for target: ${targetPackageStr}`);
+    handleError(`No matching crate found for target: ${inputStr}`);
   }
 }
 
 console.log(`Publishing Rust crates to crates.io...${dryRun ? ' (DRY RUN)' : ''}`);
+console.log(`Target package: ${targetPackageStr || 'All crates'}`);
+console.log('Crates to publish:', cratesToPublish.map((c) => `${c.name} (${c.path})`).join(', '));
 
 // For each crate, check if it exists and publish it
 for (const crate of cratesToPublish) {
@@ -63,7 +72,7 @@ for (const crate of cratesToPublish) {
     handleError(`Cargo.toml not found at ${cargoTomlPath}`);
   }
 
-  console.log(`\nPublishing crate: ${crate.name}`);
+  console.log(`\nPublishing crate: ${crate.name} from directory: ${crate.path}`);
   try {
     // Change directory to the crate path
     process.chdir(cratePath);
