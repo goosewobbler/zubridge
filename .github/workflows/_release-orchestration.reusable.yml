@@ -20,7 +20,7 @@ on:
         default: false
         type: boolean
       packages:
-        description: 'Package(s) to release (all or specific package)'
+        description: 'Package directory name(s) to release (electron, tauri, etc)'
         required: false
         type: string
         default: 'all'

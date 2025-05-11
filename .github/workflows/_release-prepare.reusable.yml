@@ -16,7 +16,7 @@ on:
         required: true
         type: string
       packages:
-        description: 'Package(s) to release (comma-separated)'
+        description: 'Package directory name(s) to release (comma-separated)'
         required: false
         type: string
         default: ''
@@ -71,8 +71,9 @@ jobs:
           node-version: '20'
 
       - name: 🔍 Validate packages
-        if: ${{ inputs.packages != '' }}
         shell: bash
+        env:
+          PACKAGES: ${{ inputs.packages }}
         run: |
           echo "Validating packages: ${{ inputs.packages }}"
 
@@ -83,25 +84,32 @@ jobs:
           FOUND_PACKAGES=()
           NOT_FOUND_PACKAGES=()
 
-          # Check each package name against the package.json files
-          for pkg_name in "${PKG_LIST[@]}"; do
-            pkg_name=$(echo "$pkg_name" | xargs) # Trim whitespace
-            FOUND=false
+          # Check each package directory exists
+          for pkg_dir in "${PKG_LIST[@]}"; do
+            pkg_dir=$(echo "$pkg_dir" | xargs) # Trim whitespace
 
-            # Look through all package.json files in the packages directory
-            for pkg_dir in packages/*; do
-              if [ -f "$pkg_dir/package.json" ]; then
-                PKG_JSON_NAME=$(jq -r '.name' "$pkg_dir/package.json")
-                if [[ "$PKG_JSON_NAME" == "$pkg_name" ]]; then
-                  FOUND=true
-                  FOUND_PACKAGES+=("$PKG_JSON_NAME")
-                  break
+            if [ -d "packages/$pkg_dir" ]; then
+              # Directory exists, check if it has a package.json
+              if [ -f "packages/$pkg_dir/package.json" ]; then
+                PKG_JSON_NAME=$(jq -r '.name' "packages/$pkg_dir/package.json")
+                FOUND_PACKAGES+=("$pkg_dir ($PKG_JSON_NAME)")
+              else
+                # Look for nested package.json files
+                FOUND_NESTED=false
+                for nested_dir in packages/$pkg_dir/*/; do
+                  if [[ -f "${nested_dir}package.json" ]]; then
+                    nested_pkg_name=$(jq -r '.name' "${nested_dir}package.json")
+                    FOUND_PACKAGES+=("$pkg_dir (nested: $nested_pkg_name)")
+                    FOUND_NESTED=true
+                  fi
+                done
+
+                if [ "$FOUND_NESTED" = false ]; then
+                  NOT_FOUND_PACKAGES+=("$pkg_dir (directory exists but no package.json found)")
                 fi
               fi
-            done
-
-            if [ "$FOUND" = false ]; then
-              NOT_FOUND_PACKAGES+=("$pkg_name")
+            else
+              NOT_FOUND_PACKAGES+=("$pkg_dir (directory not found)")
             fi
           done
 
@@ -113,7 +121,7 @@ jobs:
           if [ ${#NOT_FOUND_PACKAGES[@]} -gt 0 ]; then
             echo "::error::The following packages were not found:"
             printf "  - %s\n" "${NOT_FOUND_PACKAGES[@]}"
-            echo "Please check the package names and try again."
+            echo "Please check the package directories and try again."
             exit 1
           fi
 

@@ -20,13 +20,25 @@ echo "Packages Input: $PACKAGES_INPUT"
 echo "Dry Run: $DRY_RUN"
 echo "Version to Verify: $NEW_VERSION"
 
-# --- Helper Function ---
-check_pkg_exists_locally() {
-  local raw_pkg_name=$1
-  local simple_pkg_name=$(echo "$raw_pkg_name" | sed 's#^@zubridge/##')
+# --- Helper Functions ---
+# Get full package name from directory name
+get_pkg_name_from_dir() {
+  local pkg_dir=$1
   # Check relative to GITHUB_WORKSPACE if set, otherwise current dir
   local base_path="${GITHUB_WORKSPACE:-.}"
-  if [[ -f "$base_path/packages/$simple_pkg_name/package.json" ]]; then
+  if [[ -f "$base_path/packages/$pkg_dir/package.json" ]]; then
+    jq -r '.name' "$base_path/packages/$pkg_dir/package.json"
+  else
+    echo ""
+  fi
+}
+
+# Check if package directory exists
+check_pkg_dir_exists() {
+  local pkg_dir=$1
+  # Check relative to GITHUB_WORKSPACE if set, otherwise current dir
+  local base_path="${GITHUB_WORKSPACE:-.}"
+  if [[ -f "$base_path/packages/$pkg_dir/package.json" ]]; then
     return 0 # Exists
   else
     return 1 # Doesn't exist
@@ -76,23 +88,35 @@ echo "Determining packages to verify..."
 
 # Parse specific packages list
 if [[ "$PACKAGES_INPUT" == *","* ]]; then
-  # Custom list
+  # Custom list of package directories
   IFS=',' read -ra PKG_LIST <<< "$PACKAGES_INPUT"
-  for pkg_raw in "${PKG_LIST[@]}"; do
-    pkg_raw_trimmed=$(echo "$pkg_raw" | xargs)
-    # Ensure it's scoped and exists locally
-    if [[ "$pkg_raw_trimmed" == @zubridge/* ]] && check_pkg_exists_locally "$pkg_raw_trimmed"; then
-      PACKAGES_TO_VERIFY+=("$pkg_raw_trimmed")
+  for pkg_dir in "${PKG_LIST[@]}"; do
+    pkg_dir_trimmed=$(echo "$pkg_dir" | xargs)
+    # Check if directory exists and get package name
+    if check_pkg_dir_exists "$pkg_dir_trimmed"; then
+      pkg_name=$(get_pkg_name_from_dir "$pkg_dir_trimmed")
+      if [[ -n "$pkg_name" ]]; then
+        PACKAGES_TO_VERIFY+=("$pkg_name")
+        echo "Will verify package $pkg_name from directory $pkg_dir_trimmed"
+      else
+        echo "::warning::Could not determine package name for directory: $pkg_dir_trimmed"
+      fi
     else
-      echo "::warning::Skipping verification for non-existent/non-scoped package: $pkg_raw_trimmed"
+      echo "::warning::Package directory not found: packages/$pkg_dir_trimmed"
     fi
   done
 else
-  # Single package
-  if [[ "$PACKAGES_INPUT" == @zubridge/* ]] && check_pkg_exists_locally "$PACKAGES_INPUT"; then
-    PACKAGES_TO_VERIFY+=("$PACKAGES_INPUT")
+  # Single package directory
+  if check_pkg_dir_exists "$PACKAGES_INPUT"; then
+    pkg_name=$(get_pkg_name_from_dir "$PACKAGES_INPUT")
+    if [[ -n "$pkg_name" ]]; then
+      PACKAGES_TO_VERIFY+=("$pkg_name")
+      echo "Will verify package $pkg_name from directory $PACKAGES_INPUT"
+    else
+      echo "::warning::Could not determine package name for directory: $PACKAGES_INPUT"
+    fi
   else
-    echo "::warning::Skipping verification for non-existent/non-scoped package: $PACKAGES_INPUT"
+    echo "::warning::Package directory not found: packages/$PACKAGES_INPUT"
   fi
 fi
 

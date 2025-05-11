@@ -41,14 +41,14 @@ function getUnscopedPackageName(pkgName: string): string {
   return pkgName.includes('/') ? pkgName.split('/')[1] : pkgName;
 }
 
-// Get full scoped package name
+// Get full scoped package name from directory name
 function getScopedPackageName(simpleName: string): string | null {
   const pkgJsonPath = path.join('packages', simpleName, 'package.json');
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = readPackageJson(pkgJsonPath);
     return pkgJson ? pkgJson.name : null;
   }
-  return simpleName;
+  return null;
 }
 
 async function main() {
@@ -87,13 +87,12 @@ async function main() {
     : [packagesInput.trim()];
 
   const targets: string[] = [];
-  for (const pkg of packageList) {
-    const simpleName = getUnscopedPackageName(pkg);
-    const packagePath = path.resolve(`packages/${simpleName}`);
+  for (const pkgDir of packageList) {
+    const packagePath = path.resolve(`packages/${pkgDir}`);
     if (fs.existsSync(packagePath)) {
-      targets.push(simpleName);
+      targets.push(pkgDir);
     } else {
-      console.warn(`Warning: Package ${pkg} not found, skipping`);
+      console.warn(`Warning: Package directory ${pkgDir} not found, skipping`);
     }
   }
 
@@ -104,10 +103,10 @@ async function main() {
 
   // Get scoped target names
   const scopedTargets = targets
-    .map(simpleName => getScopedPackageName(simpleName))
+    .map(dirName => getScopedPackageName(dirName))
     .filter(Boolean) as string[];
 
-  console.log(`Using specified targets: ${targets.join(', ')}`);
+  console.log(`Using specified directories: ${targets.join(', ')}`);
   console.log(`Effective scoped targets: ${scopedTargets.join(', ')}`);
 
   // Reference package for version calculation

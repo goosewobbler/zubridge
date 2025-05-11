@@ -21,7 +21,7 @@ on:
         required: true
         type: string
       packages:
-        description: 'Packages to release (specific packages, or a comma-separated list)'
+        description: 'Package directory name(s) to release (specific directories, or a comma-separated list)'
         required: false
         type: string
     secrets:
@@ -107,22 +107,26 @@ jobs:
           fi
           echo "Using NPM tag: $TAG"
 
-          # Helper function to get package directory name from possibly scoped package name
-          get_pkg_dir_name() {
-            local pkg_name="$1"
-            # Strip @zubridge/ prefix if present
-            echo "$pkg_name" | sed 's#^@zubridge/##'
+          # Helper function to get package name from directory name
+          get_pkg_name() {
+            local pkg_dir="$1"
+            # Read the package name from package.json
+            if [[ -f "packages/$pkg_dir/package.json" ]]; then
+              jq -r '.name' "packages/$pkg_dir/package.json"
+            else
+              echo "::error::Package.json not found for directory: packages/$pkg_dir"
+              exit 1
+            fi
           }
 
-          # Helper function to check if package exists in packages directory
-          check_pkg_exists() {
-            local pkg_name="$1"
-            local pkg_dir_name=$(get_pkg_dir_name "$pkg_name")
-            if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
+          # Helper function to check if package directory exists
+          check_pkg_dir_exists() {
+            local pkg_dir="$1"
+            if [[ -f "packages/$pkg_dir/package.json" ]]; then
               return 0 # Exists as direct package
-            elif [[ -d "packages/$pkg_dir_name" ]]; then
+            elif [[ -d "packages/$pkg_dir" ]]; then
               # If it's a directory, search for nested package.json files one level down
-              for nested_dir in packages/$pkg_dir_name/*/; do
+              for nested_dir in packages/$pkg_dir/*/; do
                 if [[ -f "${nested_dir}package.json" ]]; then
                   return 0 # Exists as nested package
                 fi
@@ -137,28 +141,26 @@ jobs:
             echo "DRY RUN: Would publish packages to NPM with tag '$TAG'"
 
             if [[ "${{ inputs.packages }}" == *","* ]]; then
-              # For custom package list (potentially scoped)
+              # For custom package list (directory names)
               IFS=',' read -ra PKG_LIST <<< "${{ inputs.packages }}"
               hasPublishedPackages=false
-              for input_pkg_name in "${PKG_LIST[@]}"; do
-                input_pkg_name=$(echo "$input_pkg_name" | xargs) # Trim whitespace
-                if check_pkg_exists "$input_pkg_name"; then
-                   pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
-                   echo "Would publish $pkg_dir_name package with tag $TAG"
+              for pkg_dir in "${PKG_LIST[@]}"; do
+                pkg_dir=$(echo "$pkg_dir" | xargs) # Trim whitespace
+                if check_pkg_dir_exists "$pkg_dir"; then
+                   pkg_name=$(get_pkg_name "$pkg_dir")
+                   echo "Would publish $pkg_dir package ($pkg_name) with tag $TAG"
                    hasPublishedPackages=true
                 else
-                   pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
                    # Standardized warning/error format
-                   echo "::warning::[DRY RUN] Package $input_pkg_name (path: packages/$pkg_dir_name) not found in packages directory."
+                   echo "::warning::[DRY RUN] Package directory 'packages/$pkg_dir' not found."
                 fi
               done
             else
-              if check_pkg_exists "${{ inputs.packages }}"; then
-                 pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
-                 echo "Would publish $pkg_dir_name package with tag $TAG"
+              if check_pkg_dir_exists "${{ inputs.packages }}"; then
+                 pkg_name=$(get_pkg_name "${{ inputs.packages }}")
+                 echo "Would publish ${{ inputs.packages }} package ($pkg_name) with tag $TAG"
               else
-                 pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
-                 echo "::warning::[DRY RUN] Package ${{ inputs.packages }} (path: packages/$pkg_dir_name) not found in packages directory."
+                 echo "::warning::[DRY RUN] Package directory 'packages/${{ inputs.packages }}' not found."
               fi
             fi
 
@@ -173,17 +175,16 @@ jobs:
             # Handle custom package list
             FILTER_CMD=""
             IFS=',' read -ra PKG_LIST <<< "${{ inputs.packages }}"
-            for input_pkg_name in "${PKG_LIST[@]}"; do
-              input_pkg_name=$(echo "$input_pkg_name" | xargs) # Trim whitespace
-              pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
+            for pkg_dir in "${PKG_LIST[@]}"; do
+              pkg_dir=$(echo "$pkg_dir" | xargs) # Trim whitespace
 
-              if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
+              if [[ -f "packages/$pkg_dir/package.json" ]]; then
                 # Standard package
-                FILTER_CMD="$FILTER_CMD --filter=./packages/$pkg_dir_name"
-              elif [[ -d "packages/$pkg_dir_name" ]]; then
+                FILTER_CMD="$FILTER_CMD --filter=./packages/$pkg_dir"
+              elif [[ -d "packages/$pkg_dir" ]]; then
                 # Check for nested package.json files
                 FOUND_NESTED=false
-                for nested_dir in packages/$pkg_dir_name/*/; do
+                for nested_dir in packages/$pkg_dir/*/; do
                   if [[ -f "${nested_dir}package.json" ]]; then
                     # Found a nested package
                     nested_path=${nested_dir%/} # Remove trailing slash
@@ -193,28 +194,28 @@ jobs:
                 done
 
                 if [[ "$FOUND_NESTED" == "false" ]]; then
-                  echo "::error::Error: No package.json found in or under 'packages/$pkg_dir_name'. Aborting publish."
+                  echo "::error::Error: No package.json found in or under 'packages/$pkg_dir'. Aborting publish."
                   exit 1
                 fi
               else
-                echo "::error::Error: Package directory 'packages/$pkg_dir_name' not found. Aborting publish."
+                echo "::error::Error: Package directory 'packages/$pkg_dir' not found. Aborting publish."
                 exit 1
               fi
             done
             pnpx tsx scripts/publish.ts --tag=$TAG $FILTER_CMD || PUBLISH_EXIT_CODE=$?
           else
             # Single package case
-            pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
+            pkg_dir="${{ inputs.packages }}"
 
             # Find all publishable packages, including nested ones
-            if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
+            if [[ -f "packages/$pkg_dir/package.json" ]]; then
               # Standard package
-              pkg_path="./packages/$pkg_dir_name"
+              pkg_path="./packages/$pkg_dir"
               pnpx tsx scripts/publish.ts --tag=$TAG --filter=$pkg_path || PUBLISH_EXIT_CODE=$?
-            elif [[ -d "packages/$pkg_dir_name" ]]; then
+            elif [[ -d "packages/$pkg_dir" ]]; then
               # Check for nested package.json files
               FOUND_NESTED=false
-              for nested_dir in packages/$pkg_dir_name/*/; do
+              for nested_dir in packages/$pkg_dir/*/; do
                 if [[ -f "${nested_dir}package.json" ]]; then
                   # Found a nested package
                   nested_path=${nested_dir%/} # Remove trailing slash
@@ -224,11 +225,11 @@ jobs:
               done
 
               if [[ "$FOUND_NESTED" == "false" ]]; then
-                echo "::error::Error: No package.json found in or under 'packages/$pkg_dir_name'. Aborting publish."
+                echo "::error::Error: No package.json found in or under 'packages/$pkg_dir'. Aborting publish."
                 exit 1
               fi
             else
-              echo "::error::Package directory ./packages/$pkg_dir_name does not exist"
+              echo "::error::Package directory ./packages/$pkg_dir does not exist"
               exit 1
             fi
           fi
