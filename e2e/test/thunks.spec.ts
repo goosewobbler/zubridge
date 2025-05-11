@@ -372,12 +372,12 @@ describe('Thunk Execution and Behavior', () => {
       console.log(`[ASYNC TEST] Second value change: ${value2} at ${timeAfterSecondChange.toISOString()}`);
       console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
 
-      // Verify the value is 8 (doubled again)
-      expect(value2).toBe(8);
-
       // The slow action should have taken at least 2000ms
       // This is a key verification of our fix - without the fix, the action would complete immediately
       expect(secondChangeDuration).toBeGreaterThan(2000);
+
+      // Verify the value is 8 (doubled again)
+      expect(value2).toBe(8);
 
       // Final operation - halve the counter
       console.log('[ASYNC TEST] Waiting for third counter change');
@@ -422,12 +422,12 @@ describe('Thunk Execution and Behavior', () => {
       console.log(`[ASYNC TEST] Second value change: ${value2} at ${timeAfterSecondChange.toISOString()}`);
       console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
 
-      // Verify the value is 8 (doubled again)
-      expect(value2).toBe(8);
-
       // The slow action should have taken at least 2000ms
       // This is a key verification of our fix - without the fix, the action would complete immediately
       expect(secondChangeDuration).toBeGreaterThan(2000);
+
+      // Verify the value is 8 (doubled again)
+      expect(value2).toBe(8);
 
       // Final operation - halve the counter
       console.log('[ASYNC TEST] Waiting for third counter change');
