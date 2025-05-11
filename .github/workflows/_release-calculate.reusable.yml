@@ -74,7 +74,11 @@ jobs:
             # Packages specified, use the first one
             FIRST_PACKAGE_FULL_NAME=$(echo "$INPUT_PACKAGES" | cut -d',' -f1 | xargs) # Get first package, trim whitespace
             # Extract simple name (e.g., 'electron' from '@zubridge/electron' or 'electron' from 'electron')
-            FIRST_PACKAGE_SIMPLE_NAME=$(echo "$FIRST_PACKAGE_FULL_NAME" | sed 's|.*/||')
+            if [ "$FIRST_PACKAGE_FULL_NAME" == "tauri-plugin-zubridge" ]; then
+              FIRST_PACKAGE_SIMPLE_NAME="tauri-plugin"
+            else
+              FIRST_PACKAGE_SIMPLE_NAME=$(echo "$FIRST_PACKAGE_FULL_NAME" | sed 's|.*/||')
+            fi
             PKG_JSON_PATH="packages/${FIRST_PACKAGE_SIMPLE_NAME}/package.json"
             echo "Packages specified. Using first package for version: ${FIRST_PACKAGE_FULL_NAME} -> ${PKG_JSON_PATH}"
           else
@@ -146,8 +150,8 @@ jobs:
           NEXT_BRANCH_NAME=""
 
           if [ "${BRANCH_TYPE}" == 'feature' ]; then
-            # For feature branches, target the CURRENT feature branch line
-            TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${CURRENT_FEATURE_MAJOR_VERSION}.x"
+            # For feature branches, target the NEXT feature branch line
+            TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
             echo "target_branch=${TARGET_BRANCH_NAME}"
             echo "target_branch=${TARGET_BRANCH_NAME}" >> $GITHUB_OUTPUT
           else
