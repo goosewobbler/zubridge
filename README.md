@@ -1,17 +1,21 @@
 <picture>
-  <img alt="zubridge hero image" src="./resources/zubridge-hero.png"/>
+  <img alt="zubridge hero image" src="./resources/zubridge-hero.png" onerror="this.style.display='none';document.getElementById('fallback-title').style.display='block'"/>
 </picture>
+
+<h1 id="fallback-title" style="display:none">Zubridge</h1>
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity_
 
-`@zubridge/electron`: <a href="https://www.npmjs.com/package/@zubridge/electron" alt="NPM Version">
-<img src="https://img.shields.io/npm/v/@zubridge/electron" /></a>
-<a href="https://www.npmjs.com/package/@zubridge/electron" alt="NPM Downloads">
+<a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM"><img src="https://img.shields.io/badge/@zubridge/electron-9feaf9" />
+<img src="https://img.shields.io/npm/v/@zubridge/electron" />
 <img src="https://img.shields.io/npm/dw/@zubridge/electron" /></a> \
-`@zubridge/tauri`: <a href="https://www.npmjs.com/package/@zubridge/tauri" alt="NPM Version">
-<img src="https://img.shields.io/npm/v/@zubridge/tauri" /></a>
-<a href="https://www.npmjs.com/package/@zubridge/tauri" alt="NPM Downloads">
-<img src="https://img.shields.io/npm/dw/@zubridge/tauri" /></a>
+<a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM"><img src="https://img.shields.io/badge/@zubridge/tauri-ffc131" />
+<img src="https://img.shields.io/npm/v/@zubridge/tauri" />
+<img src="https://img.shields.io/npm/dw/@zubridge/tauri" /></a> \
+<img src="https://img.shields.io/badge/tauri-plugin-ffc131" />
+<a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Tauri-Plugin-Zubridge on Crates.io">
+<img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" /></a>
+<img src="https://img.shields.io/crates/d/tauri-plugin-zubridge" /></a>
 
 ### Why
 

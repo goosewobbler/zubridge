@@ -1,4 +1,8 @@
-<img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png"/>
+<picture>
+  <img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" onerror="this.style.display='none';document.getElementById('fallback-title').style.display='block'"/>
+</picture>
+
+<h1 id="fallback-title" style="display:none">Zubridge Tauri Plugin</h1>
 
 _Cross-platform state without boundaries: The official Tauri plugin for Zubridge_
 
