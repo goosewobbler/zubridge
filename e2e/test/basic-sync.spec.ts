@@ -3,17 +3,13 @@ import { it, describe, before, beforeEach } from 'mocha';
 import { browser } from 'wdio-electron-service';
 import {
   setupTestEnvironment,
-  windowHandles,
-  refreshWindowHandles,
   waitUntilWindowsAvailable,
   switchToWindow,
   getButtonInCurrentWindow,
   getCounterValue,
-  incrementCounterAndVerify,
   resetCounter,
 } from '../utils/windowUtils';
 import { TIMING } from '../constants';
-import { waitForCounterChange, clickAndWaitForCounterChange } from '../utils/waitForCounterChange';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 

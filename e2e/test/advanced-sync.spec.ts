@@ -13,7 +13,6 @@ import {
   resetCounter,
 } from '../utils/windowUtils';
 import { TIMING } from '../constants';
-import { waitForCounterChange, clickAndWaitForCounterChange } from '../utils/waitForCounterChange';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
