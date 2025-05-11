@@ -281,7 +281,7 @@ jobs:
       - name: 🔧 Login to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: |
-          cargo login ${{ secrets.crates_io_token }}
+          echo '${{ secrets.crates_io_token }}' | cargo login
 
       - name: 📦 Publish Rust crates to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) }}
