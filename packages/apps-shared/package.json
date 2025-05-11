@@ -10,6 +10,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "shx rm -rf dist node_modules",
+    "clean:output": "shx rm -rf dist",
     "dev": "tsc --watch"
   },
   "dependencies": {
