@@ -18,7 +18,9 @@ export async function waitForCounterChange(
   }
   let newValue = initialValue;
 
-  console.log(`Waiting for counter value to change from ${initialValue}`);
+  console.log(
+    `Waiting for counter value to change from ${initialValue} with timeout ${timeout} and interval ${interval}`,
+  );
 
   await browser.waitUntil(
     async () => {
