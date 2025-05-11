@@ -4,7 +4,7 @@ import { BrowserWindow, app, ipcMain } from 'electron';
 import { isDev } from '@zubridge/electron';
 import { createDispatch } from '@zubridge/electron/main';
 import type { WrapperOrWebContents } from '@zubridge/types';
-import { createDoubleCounterThunk, type ThunkContext } from '@zubridge/apps-shared';
+import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
 import 'wdio-electron-service/main';
 
 import { store, initStore } from './store.js';
@@ -441,6 +441,31 @@ app
           return { success: true, result };
         } catch (error) {
           console.error('[MAIN] Error executing main process thunk:', error);
+          return { success: false, error: String(error) };
+        }
+      });
+
+      // Set up the handler for the main process slow thunk
+      ipcMain.handle(AppIpcChannel.EXECUTE_MAIN_THUNK_SLOW, async () => {
+        debug('Received IPC request to execute main process slow thunk');
+
+        try {
+          // Create a context for the main process thunk
+          const thunkContext: ThunkContext = {
+            environment: 'main',
+            logPrefix: 'MAIN_PROCESS_SLOW',
+          };
+
+          // Get the current counter value from store
+          const currentState = store.getState();
+          const counter = currentState.counter || 0;
+
+          // Create the slow thunk with context
+          const thunk = createDoubleCounterSlowThunk(counter, thunkContext);
+          const result = await dispatch(thunk);
+          return { success: true, result };
+        } catch (error) {
+          console.error('[MAIN] Error executing main process slow thunk:', error);
           return { success: false, error: String(error) };
         }
       });

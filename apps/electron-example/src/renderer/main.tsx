@@ -6,7 +6,7 @@ import './styles/index.css';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
 // Import shared utilities
-import { createDoubleCounterThunk, type ThunkContext } from '@zubridge/apps-shared';
+import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
 
 // Create the Electron app component
 const ElectronApp = withElectron();
@@ -105,6 +105,7 @@ function AppWrapper() {
       }
     },
     doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
+    doubleCounterSlow: (counter: number) => createDoubleCounterSlowThunk(counter, thunkContext),
   };
 
   // Render the ElectronApp component with the window info

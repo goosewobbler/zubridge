@@ -4,7 +4,13 @@ import type { StoreApi } from 'zustand';
 import type { ZustandBridge } from '@zubridge/electron/main';
 
 // Import counter handlers
-import { incrementCounter, decrementCounter, setCounter, resetCounter } from './features/counter/index.js';
+import {
+  incrementCounter,
+  decrementCounter,
+  setCounter,
+  setCounterSlow,
+  resetCounter,
+} from './features/counter/index.js';
 // Import theme handlers
 import { toggleTheme, setTheme } from './features/theme/index.js';
 // Import the state type
@@ -19,6 +25,7 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
     'COUNTER:INCREMENT': incrementCounter(store),
     'COUNTER:DECREMENT': decrementCounter(store),
     'COUNTER:SET': setCounter(store),
+    'COUNTER:SET:SLOW': setCounterSlow(store),
     'COUNTER:RESET': resetCounter(store),
     'THEME:TOGGLE': toggleTheme(store),
     'THEME:SET': setTheme(store),

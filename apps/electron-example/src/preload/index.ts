@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld('counter', {
   executeMainThunk: () => {
     return ipcRenderer.invoke(AppIpcChannel.EXECUTE_MAIN_THUNK);
   },
+  executeMainThunkSlow: () => {
+    return ipcRenderer.invoke(AppIpcChannel.EXECUTE_MAIN_THUNK_SLOW);
+  },
 });
 
 // Signal window creation when DOM content is loaded
