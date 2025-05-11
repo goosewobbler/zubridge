@@ -96,6 +96,7 @@
     },
     "@zubridge/apps-shared#build": {
       "dependsOn": ["@zubridge/types#build"],
+      "outputs": ["packages/apps-shared/dist/**"],
       "cache": true
     },
     "@zubridge/ui#build": {
