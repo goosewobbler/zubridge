@@ -80,6 +80,7 @@ const config = {
       },
     },
   ],
+  maxInstances: 1,
   waitforTimeout: 15000,
   connectionRetryCount: 10,
   connectionRetryTimeout: 30000,
