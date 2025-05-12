@@ -96,11 +96,11 @@
     },
     "@zubridge/apps-shared#build": {
       "dependsOn": ["@zubridge/types#build"],
-      "outputs": ["packages/apps-shared/dist/**"],
+      "outputs": ["dist/**"],
       "cache": true
     },
     "@zubridge/ui#build": {
-      "outputs": ["packages/ui/dist/**"],
+      "outputs": ["dist/**"],
       "cache": true
     },
     "@zubridge/electron#test:unit": {
