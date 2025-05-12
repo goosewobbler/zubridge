@@ -9,14 +9,14 @@
   "style": "dist/styles.css",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     },
     "./dist/styles.css": "./dist/styles.css",
     "./vite-plugin": {
-      "import": "./dist/scripts/vite-ui-watcher-plugin.js",
-      "types": "./scripts/vite-ui-watcher-plugin.ts"
+      "types": "./scripts/vite-ui-watcher-plugin.ts",
+      "import": "./dist/scripts/vite-ui-watcher-plugin.js"
     },
     "./package.json": "./package.json"
   },
