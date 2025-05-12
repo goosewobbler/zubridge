@@ -274,7 +274,7 @@ jobs:
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable 18 months ago
+          toolchain: stable 6 months ago
 
       - name: 🔧 Login to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
