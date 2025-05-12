@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       packages:
-        description: 'Package(s) to release (comma-separated, leave blank for all)'
+        description: 'Package directory name(s) to release (comma-separated, leave blank for all)'
         required: false
         type: string
         default: ''
@@ -67,24 +67,18 @@ jobs:
           INPUT_PACKAGES: ${{ inputs.packages }}
         run: |
           PKG_JSON_PATH=""
-          FIRST_PACKAGE_SIMPLE_NAME=""
+          FIRST_PACKAGE_DIR_NAME=""
 
           # Determine the package.json to use as the source of truth
           if [ -n "$INPUT_PACKAGES" ]; then
             # Packages specified, use the first one
-            FIRST_PACKAGE_FULL_NAME=$(echo "$INPUT_PACKAGES" | cut -d',' -f1 | xargs) # Get first package, trim whitespace
-            # Extract simple name (e.g., 'electron' from '@zubridge/electron' or 'electron' from 'electron')
-            if [ "$FIRST_PACKAGE_FULL_NAME" == "tauri-plugin-zubridge" ]; then
-              FIRST_PACKAGE_SIMPLE_NAME="tauri-plugin"
-            else
-              FIRST_PACKAGE_SIMPLE_NAME=$(echo "$FIRST_PACKAGE_FULL_NAME" | sed 's|.*/||')
-            fi
-            PKG_JSON_PATH="packages/${FIRST_PACKAGE_SIMPLE_NAME}/package.json"
-            echo "Packages specified. Using first package for version: ${FIRST_PACKAGE_FULL_NAME} -> ${PKG_JSON_PATH}"
+            FIRST_PACKAGE_DIR_NAME=$(echo "$INPUT_PACKAGES" | cut -d',' -f1 | xargs) # Get first package, trim whitespace
+            PKG_JSON_PATH="packages/${FIRST_PACKAGE_DIR_NAME}/package.json"
+            echo "Packages specified. Using package directory for version: ${FIRST_PACKAGE_DIR_NAME} -> ${PKG_JSON_PATH}"
           else
             # No packages specified, use default source
-            FIRST_PACKAGE_SIMPLE_NAME="electron" # Default package name
-            PKG_JSON_PATH="packages/${FIRST_PACKAGE_SIMPLE_NAME}/package.json"
+            FIRST_PACKAGE_DIR_NAME="electron" # Default package name
+            PKG_JSON_PATH="packages/${FIRST_PACKAGE_DIR_NAME}/package.json"
             echo "No specific packages specified. Using default for version: ${PKG_JSON_PATH}"
           fi
 
@@ -133,7 +127,7 @@ jobs:
           echo "feature-major-version=${FEATURE_MAJOR_VERSION}" >>"${GITHUB_OUTPUT}"
           echo "current-feature-major-version=${CURRENT_FEATURE_MAJOR_VERSION}" >>"${GITHUB_OUTPUT}"
           # Output the simple package name used
-          echo "package_name=${FIRST_PACKAGE_SIMPLE_NAME}" >>"${GITHUB_OUTPUT}"
+          echo "package_name=${FIRST_PACKAGE_DIR_NAME}" >>"${GITHUB_OUTPUT}"
 
       - name: 🎯 Define target branch names
         id: define_branches

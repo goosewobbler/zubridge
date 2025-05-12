@@ -21,7 +21,7 @@ on:
         required: true
         type: string
       packages:
-        description: 'Packages to release (specific packages, or a comma-separated list)'
+        description: 'Package directory name(s) to release (specific directories, or a comma-separated list)'
         required: false
         type: string
     secrets:
@@ -90,6 +90,8 @@ jobs:
         shell: bash
         id: npm_publish
         continue-on-error: true
+        # Skip NPM publish for Rust-only packages
+        if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) }}
         run: |
           # Get the new version from the previous step's output
           NEW_VERSION="${{ steps.versioning.outputs.new_version }}"
@@ -100,29 +102,40 @@ jobs:
           echo "Retrieved NEW_VERSION: $NEW_VERSION"
 
           # Get NPM tag based on version
-          if [[ "$NEW_VERSION" =~ (beta|alpha|rc|pre) ]]; then
+          if [[ "$NEW_VERSION" =~ -(beta|alpha|rc|next|pre)[\.0-9]*$ ]]; then
             TAG="next"
           else
             TAG="latest"
           fi
           echo "Using NPM tag: $TAG"
 
-          # Helper function to get package directory name from possibly scoped package name
-          get_pkg_dir_name() {
-            local pkg_name="$1"
-            # Strip @zubridge/ prefix if present
-            echo "$pkg_name" | sed 's#^@zubridge/##'
+          # Helper function to get package name from directory name
+          get_pkg_name() {
+            local pkg_dir="$1"
+            # Read the package name from package.json
+            if [[ -f "packages/$pkg_dir/package.json" ]]; then
+              jq -r '.name' "packages/$pkg_dir/package.json"
+            else
+              echo "::error::Package.json not found for directory: packages/$pkg_dir"
+              exit 1
+            fi
           }
 
-          # Helper function to check if package exists in packages directory
-          check_pkg_exists() {
-            local pkg_name="$1"
-            local pkg_dir_name=$(get_pkg_dir_name "$pkg_name")
-            if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
-              return 0 # Exists
-            else
-              return 1 # Doesn't exist
+          # Helper function to check if package directory exists
+          check_pkg_dir_exists() {
+            local pkg_dir="$1"
+            if [[ -f "packages/$pkg_dir/package.json" ]]; then
+              return 0 # Exists as direct package
+            elif [[ -d "packages/$pkg_dir" ]]; then
+              # If it's a directory, search for nested package.json files one level down
+              for nested_dir in packages/$pkg_dir/*/; do
+                if [[ -f "${nested_dir}package.json" ]]; then
+                  return 0 # Exists as nested package
+                fi
+              done
             fi
+
+            return 1 # Doesn't exist
           }
 
           # For dry run, just echo what would happen
@@ -130,28 +143,26 @@ jobs:
             echo "DRY RUN: Would publish packages to NPM with tag '$TAG'"
 
             if [[ "${{ inputs.packages }}" == *","* ]]; then
-              # For custom package list (potentially scoped)
+              # For custom package list (directory names)
               IFS=',' read -ra PKG_LIST <<< "${{ inputs.packages }}"
               hasPublishedPackages=false
-              for input_pkg_name in "${PKG_LIST[@]}"; do
-                input_pkg_name=$(echo "$input_pkg_name" | xargs) # Trim whitespace
-                if check_pkg_exists "$input_pkg_name"; then
-                   pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
-                   echo "Would publish $pkg_dir_name package with tag $TAG"
+              for pkg_dir in "${PKG_LIST[@]}"; do
+                pkg_dir=$(echo "$pkg_dir" | xargs) # Trim whitespace
+                if check_pkg_dir_exists "$pkg_dir"; then
+                   pkg_name=$(get_pkg_name "$pkg_dir")
+                   echo "Would publish $pkg_dir package ($pkg_name) with tag $TAG"
                    hasPublishedPackages=true
                 else
-                   pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
                    # Standardized warning/error format
-                   echo "::warning::[DRY RUN] Package $input_pkg_name (path: packages/$pkg_dir_name) not found in packages directory."
+                   echo "::warning::[DRY RUN] Package directory 'packages/$pkg_dir' not found."
                 fi
               done
             else
-              if check_pkg_exists "${{ inputs.packages }}"; then
-                 pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
-                 echo "Would publish $pkg_dir_name package with tag $TAG"
+              if check_pkg_dir_exists "${{ inputs.packages }}"; then
+                 pkg_name=$(get_pkg_name "${{ inputs.packages }}")
+                 echo "Would publish ${{ inputs.packages }} package ($pkg_name) with tag $TAG"
               else
-                 pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
-                 echo "::warning::[DRY RUN] Package ${{ inputs.packages }} (path: packages/$pkg_dir_name) not found in packages directory."
+                 echo "::warning::[DRY RUN] Package directory 'packages/${{ inputs.packages }}' not found."
               fi
             fi
 
@@ -166,33 +177,63 @@ jobs:
             # Handle custom package list
             FILTER_CMD=""
             IFS=',' read -ra PKG_LIST <<< "${{ inputs.packages }}"
-            for input_pkg_name in "${PKG_LIST[@]}"; do
-              input_pkg_name=$(echo "$input_pkg_name" | xargs) # Trim whitespace
-              pkg_dir_name=$(get_pkg_dir_name "$input_pkg_name")
+            for pkg_dir in "${PKG_LIST[@]}"; do
+              pkg_dir=$(echo "$pkg_dir" | xargs) # Trim whitespace
 
-              # Check if the package exists locally using the dir name
-              if [[ -f "packages/$pkg_dir_name/package.json" ]]; then
-                # Add filter for this package
-                # Note: We're using directory paths (./packages/pkgDirName) which our publish.ts
-                # script is set up to handle. It supports both directory paths and package names (@zubridge/pkgName)
-                FILTER_CMD="$FILTER_CMD --filter=./packages/$pkg_dir_name"
+              if [[ -f "packages/$pkg_dir/package.json" ]]; then
+                # Standard package
+                FILTER_CMD="$FILTER_CMD --filter=./packages/$pkg_dir"
+              elif [[ -d "packages/$pkg_dir" ]]; then
+                # Check for nested package.json files
+                FOUND_NESTED=false
+                for nested_dir in packages/$pkg_dir/*/; do
+                  if [[ -f "${nested_dir}package.json" ]]; then
+                    # Found a nested package
+                    nested_path=${nested_dir%/} # Remove trailing slash
+                    FILTER_CMD="$FILTER_CMD --filter=./${nested_path}"
+                    FOUND_NESTED=true
+                  fi
+                done
+
+                if [[ "$FOUND_NESTED" == "false" ]]; then
+                  echo "::error::Error: No package.json found in or under 'packages/$pkg_dir'. Aborting publish."
+                  exit 1
+                fi
               else
-                echo "::error::Error: Package directory 'packages/$pkg_dir_name' not found. Aborting publish."
+                echo "::error::Error: Package directory 'packages/$pkg_dir' not found. Aborting publish."
                 exit 1
               fi
             done
             pnpx tsx scripts/publish.ts --tag=$TAG $FILTER_CMD || PUBLISH_EXIT_CODE=$?
           else
             # Single package case
-            pkg_dir_name=$(get_pkg_dir_name "${{ inputs.packages }}")
+            pkg_dir="${{ inputs.packages }}"
 
-            # Ensure the package directory exists
-            if [ ! -d "./packages/$pkg_dir_name" ]; then
-              echo "::error::Package directory ./packages/$pkg_dir_name does not exist"
+            # Find all publishable packages, including nested ones
+            if [[ -f "packages/$pkg_dir/package.json" ]]; then
+              # Standard package
+              pkg_path="./packages/$pkg_dir"
+              pnpx tsx scripts/publish.ts --tag=$TAG --filter=$pkg_path || PUBLISH_EXIT_CODE=$?
+            elif [[ -d "packages/$pkg_dir" ]]; then
+              # Check for nested package.json files
+              FOUND_NESTED=false
+              for nested_dir in packages/$pkg_dir/*/; do
+                if [[ -f "${nested_dir}package.json" ]]; then
+                  # Found a nested package
+                  nested_path=${nested_dir%/} # Remove trailing slash
+                  pnpx tsx scripts/publish.ts --tag=$TAG --filter=./${nested_path} || PUBLISH_EXIT_CODE=$?
+                  FOUND_NESTED=true
+                fi
+              done
+
+              if [[ "$FOUND_NESTED" == "false" ]]; then
+                echo "::error::Error: No package.json found in or under 'packages/$pkg_dir'. Aborting publish."
+                exit 1
+              fi
+            else
+              echo "::error::Package directory ./packages/$pkg_dir does not exist"
               exit 1
             fi
-
-            pnpx tsx scripts/publish.ts --tag=$TAG --filter=./packages/$pkg_dir_name || PUBLISH_EXIT_CODE=$?
           fi
 
           # Check if we had an "already published" error
@@ -217,9 +258,9 @@ jobs:
           # Or preferably, modify publish.ts to accept version as an argument
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
 
-      - name: 🔍 Verify published packages
+      - name: 🔍 Verify published NPM packages
         shell: bash
-        if: ${{ inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed' }}
+        if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         run: bash .github/workflows/scripts/verify-published.sh
         env:
           # Pass necessary variables to the script environment
@@ -230,7 +271,7 @@ jobs:
 
       # Only publish Rust crates when explicitly selected
       - name: 🦀 Set up Rust
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -238,18 +279,30 @@ jobs:
           override: true
 
       - name: 🔧 Login to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && inputs.dry_run != 'true' && steps.npm_publish.outputs.publish_status != 'failed' }}
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: |
-          cargo login ${{ secrets.crates_io_token }}
+          echo '${{ secrets.crates_io_token }}' | cargo login
 
       - name: 📦 Publish Rust crates to crates.io
-        if: ${{ contains(fromJson('["tauri-plugin-zubridge"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) }}
         run: |
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-            pnpx tsx scripts/publish-crates.ts --dry-run
+            echo "DRY RUN: Would publish Rust crates to crates.io"
+            pnpx tsx scripts/publish-crates.ts --dry-run "${{ inputs.packages }}"
           else
-            pnpx tsx scripts/publish-crates.ts
+            pnpx tsx scripts/publish-crates.ts "${{ inputs.packages }}"
           fi
+
+      - name: 🔍 Verify published Rust crates
+        shell: bash
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
+        run: bash .github/workflows/scripts/verify-crates-published.sh
+        env:
+          # Pass necessary variables to the script environment
+          INPUT_PACKAGES: ${{ inputs.packages }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
+          # GITHUB_WORKSPACE is automatically available
 
       - name: 🚀 Push Tags and Commits
         id: push_tags

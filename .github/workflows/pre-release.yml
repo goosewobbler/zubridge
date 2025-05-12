@@ -22,15 +22,16 @@ on:
           - premajor
           - prerelease
       packages:
-        description: 'Package(s) to release'
+        description: 'Package directory to release'
         required: true
-        default: '@zubridge/electron'
+        default: 'electron'
         type: choice
         options:
-          - '@zubridge/electron'
-          - '@zubridge/tauri'
-          - '@zubridge/types'
-          - 'tauri-plugin-zubridge'
+          - electron
+          - middleware
+          - tauri
+          - types
+          - tauri-plugin
       dry_run:
         description: 'Do not touch or write anything. Show the commands.'
         required: false

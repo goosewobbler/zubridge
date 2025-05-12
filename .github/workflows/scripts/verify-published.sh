@@ -20,17 +20,81 @@ echo "Packages Input: $PACKAGES_INPUT"
 echo "Dry Run: $DRY_RUN"
 echo "Version to Verify: $NEW_VERSION"
 
-# --- Helper Function ---
-check_pkg_exists_locally() {
-  local raw_pkg_name=$1
-  local simple_pkg_name=$(echo "$raw_pkg_name" | sed 's#^@zubridge/##')
+# Function to check if a package is Rust-only
+is_rust_only_package() {
+  local pkg_dir=$1
+  if [[ "$pkg_dir" == "tauri-plugin" ]]; then
+    return 0 # True, is Rust-only
+  fi
+  return 1 # False, not Rust-only
+}
+
+# Skip verification for Rust-only packages
+if is_rust_only_package "$PACKAGES_INPUT"; then
+  echo "Package $PACKAGES_INPUT is a Rust-only package. Skipping NPM verification."
+  exit 0
+fi
+
+# --- Helper Functions ---
+# Get full package name from directory name
+get_pkg_name_from_dir() {
+  local pkg_dir=$1
   # Check relative to GITHUB_WORKSPACE if set, otherwise current dir
   local base_path="${GITHUB_WORKSPACE:-.}"
-  if [[ -f "$base_path/packages/$simple_pkg_name/package.json" ]]; then
+  if [[ -f "$base_path/packages/$pkg_dir/package.json" ]]; then
+    jq -r '.name' "$base_path/packages/$pkg_dir/package.json"
+  else
+    echo ""
+  fi
+}
+
+# Check if package directory exists
+check_pkg_dir_exists() {
+  local pkg_dir=$1
+  # Check relative to GITHUB_WORKSPACE if set, otherwise current dir
+  local base_path="${GITHUB_WORKSPACE:-.}"
+  if [[ -f "$base_path/packages/$pkg_dir/package.json" ]]; then
     return 0 # Exists
   else
     return 1 # Doesn't exist
   fi
+}
+
+# Function to verify a package on npm with retries
+verify_package_on_npm() {
+  local pkg=$1
+  local version=$2
+  local max_attempts=5
+  local attempt=1
+  local initial_wait=15
+  local wait_time=$initial_wait
+
+  echo "Starting verification of $pkg@$version (will retry up to $max_attempts times)"
+
+  while [ $attempt -le $max_attempts ]; do
+    echo "Attempt $attempt/$max_attempts: Verifying $pkg@$version..."
+
+    # Use pnpm view with --json to get structured output
+    pnpm_output=$(pnpm view "$pkg@$version" version --json 2>/dev/null) || true
+
+    if [[ "$pnpm_output" == "\"$version\"" ]]; then
+      echo "✅ $pkg@$version verified successfully on attempt $attempt"
+      return 0
+    else
+      if [ $attempt -lt $max_attempts ]; then
+        echo "Package $pkg@$version not found on NPM yet. Waiting ${wait_time}s before retry..."
+        sleep $wait_time
+        # Increase wait time for next attempt (exponential backoff)
+        wait_time=$((wait_time * 2))
+        attempt=$((attempt + 1))
+      else
+        echo "::error::Failed to verify $pkg@$version after $max_attempts attempts"
+        return 1
+      fi
+    fi
+  done
+
+  return 1
 }
 
 # --- Determine Packages to Verify ---
@@ -39,23 +103,42 @@ echo "Determining packages to verify..."
 
 # Parse specific packages list
 if [[ "$PACKAGES_INPUT" == *","* ]]; then
-  # Custom list
+  # Custom list of package directories
   IFS=',' read -ra PKG_LIST <<< "$PACKAGES_INPUT"
-  for pkg_raw in "${PKG_LIST[@]}"; do
-    pkg_raw_trimmed=$(echo "$pkg_raw" | xargs)
-    # Ensure it's scoped and exists locally
-    if [[ "$pkg_raw_trimmed" == @zubridge/* ]] && check_pkg_exists_locally "$pkg_raw_trimmed"; then
-      PACKAGES_TO_VERIFY+=("$pkg_raw_trimmed")
+  for pkg_dir in "${PKG_LIST[@]}"; do
+    pkg_dir_trimmed=$(echo "$pkg_dir" | xargs)
+
+    # Skip Rust-only packages
+    if is_rust_only_package "$pkg_dir_trimmed"; then
+      echo "Skipping Rust-only package: $pkg_dir_trimmed"
+      continue
+    fi
+
+    # Check if directory exists and get package name
+    if check_pkg_dir_exists "$pkg_dir_trimmed"; then
+      pkg_name=$(get_pkg_name_from_dir "$pkg_dir_trimmed")
+      if [[ -n "$pkg_name" ]]; then
+        PACKAGES_TO_VERIFY+=("$pkg_name")
+        echo "Will verify package $pkg_name from directory $pkg_dir_trimmed"
+      else
+        echo "::warning::Could not determine package name for directory: $pkg_dir_trimmed"
+      fi
     else
-      echo "::warning::Skipping verification for non-existent/non-scoped package: $pkg_raw_trimmed"
+      echo "::warning::Package directory not found: packages/$pkg_dir_trimmed"
     fi
   done
 else
-  # Single package
-  if [[ "$PACKAGES_INPUT" == @zubridge/* ]] && check_pkg_exists_locally "$PACKAGES_INPUT"; then
-    PACKAGES_TO_VERIFY+=("$PACKAGES_INPUT")
+  # Single package directory - already checked for Rust-only at the start
+  if check_pkg_dir_exists "$PACKAGES_INPUT"; then
+    pkg_name=$(get_pkg_name_from_dir "$PACKAGES_INPUT")
+    if [[ -n "$pkg_name" ]]; then
+      PACKAGES_TO_VERIFY+=("$pkg_name")
+      echo "Will verify package $pkg_name from directory $PACKAGES_INPUT"
+    else
+      echo "::warning::Could not determine package name for directory: $PACKAGES_INPUT"
+    fi
   else
-    echo "::warning::Skipping verification for non-existent/non-scoped package: $PACKAGES_INPUT"
+    echo "::warning::Package directory not found: packages/$PACKAGES_INPUT"
   fi
 fi
 
@@ -74,8 +157,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   for pkg in "${PACKAGES_TO_VERIFY[@]}"; do
     echo "  - $pkg@$NEW_VERSION"
   done
-  echo "DRY RUN: Would wait 10s for NPM to index the packages"
-  echo "DRY RUN: Would check each package exists on NPM with the expected version"
+  echo "DRY RUN: Would check each package on NPM with exponential backoff retries"
   echo "--- Verification Script End (Dry Run) ---"
   exit 0 # Exit successfully for dry run
 fi
@@ -83,36 +165,24 @@ fi
 # --- Actual Verification Logic ---
 echo "--- Actual Verification on NPM --- "
 echo "::group::Verifying published packages on NPM"
-echo "Waiting 10s for NPM to index the packages..."
-sleep 10
 
 verification_failed=false
 for pkg in "${PACKAGES_TO_VERIFY[@]}"; do
-  echo "Verifying $pkg@$NEW_VERSION..."
   # Check if pnpm is available
   if ! command -v pnpm &> /dev/null; then
       echo "::error::pnpm command could not be found. Please ensure pnpm is installed and in PATH."
       exit 1
   fi
-  # Use pnpm view with --json to get structured output, check version property
-  # Redirect stderr to /dev/null to suppress pnpm warnings/errors if package not found
-  pnpm_output=$(pnpm view "$pkg@$NEW_VERSION" version --json 2>/dev/null)
-  pnpm_exit_code=$?
 
-  if [[ $pnpm_exit_code -eq 0 ]] && [[ "$pnpm_output" == "\"$NEW_VERSION\"" ]]; then
-    echo "✅ $pkg@$NEW_VERSION verified"
-  else
-    echo "::error::Package $pkg@$NEW_VERSION not found or version mismatch on NPM (pnpm exit code: $pnpm_exit_code, Output: $pnpm_output)"
+  if ! verify_package_on_npm "$pkg" "$NEW_VERSION"; then
     verification_failed=true
-    # Decide whether to exit immediately or check all packages
-    # exit 1 # Exit immediately on first failure (can be uncommented)
   fi
 done
 
 echo "::endgroup::"
 
 if $verification_failed; then
-  echo "::error::One or more packages failed verification."
+  echo "::error::One or more packages failed verification after multiple attempts."
   echo "--- Verification Script End (Failed) ---"
   exit 1
 else

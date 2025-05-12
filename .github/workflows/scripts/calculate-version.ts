@@ -1,82 +1,58 @@
 #!/usr/bin/env node
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync, StdioOptions } from 'node:child_process';
+import { execSync } from 'node:child_process';
 
 interface PackageJson {
   version: string;
   name: string;
-  workspaces?: string[];
 }
 
-// --- Helper Functions ---
-
+// Read package.json from a given path
 function readPackageJson(pkgPath: string): PackageJson | undefined {
-  const fullPath = path.resolve(pkgPath);
-  if (fs.existsSync(fullPath)) {
-    try {
-      const content = fs.readFileSync(fullPath, 'utf-8');
-      return JSON.parse(content);
-    } catch (error: any) {
-      console.error(`Error reading or parsing ${fullPath}:`, error.message);
-      return undefined;
-    }
+  try {
+    const content = fs.readFileSync(path.resolve(pkgPath), 'utf-8');
+    return JSON.parse(content);
+  } catch (error: any) {
+    console.error(`Error reading or parsing ${pkgPath}:`, error.message);
+    return undefined;
   }
 }
 
-// Simplified runCommand: always executes, returns stdout
+// Execute a command and return its output
 function runCommand(command: string): string {
   console.log(`Executing: ${command}`);
   try {
-    const stdioOptions: StdioOptions = ['pipe', 'pipe', 'pipe'];
     const output = execSync(command, {
-      stdio: stdioOptions,
       encoding: 'utf-8',
       maxBuffer: 10 * 1024 * 1024,
     });
-
-    // Log output for specific commands
-    if (command.includes('DEBUG=true pnpm package-versioner') || command.startsWith('git diff')) {
-      if (output) {
-        console.log('--- Command Output ---');
-        console.log(output.trim());
-        console.log('--- End Command Output ---');
-      } else {
-        console.log('--- Command executed successfully, but produced no stdout. ---');
-      }
-    }
-    return output || '';
+    return output;
   } catch (error: any) {
     console.error(`Error executing command: ${command}`);
-    if (error.stdout && error.stdout.length > 0) {
-      console.error('--- STDOUT on Error ---');
-      console.error(error.stdout.toString().trim());
-      console.error('--- End STDOUT on Error ---');
-    }
-    if (error.stderr && error.stderr.length > 0) {
-      console.error('--- STDERR on Error ---');
-      console.error(error.stderr.toString().trim());
-      console.error('--- End STDERR on Error ---');
-    }
+    if (error.stdout) console.error(error.stdout.toString().trim());
+    if (error.stderr) console.error(error.stderr.toString().trim());
     process.exit(1);
   }
 }
 
-// Helper to strip scope (e.g., @zubridge/) if present
+// Strip scope from package name
 function getUnscopedPackageName(pkgName: string): string {
   return pkgName.includes('/') ? pkgName.split('/')[1] : pkgName;
 }
 
-// Function to get the FULL package name (scoped if present) from local file
+// Get full scoped package name from directory name
 function getScopedPackageName(simpleName: string): string | null {
-  const pkgJson = readPackageJson(path.join('packages', simpleName, 'package.json'));
-  return pkgJson ? pkgJson.name : null;
+  const pkgJsonPath = path.join('packages', simpleName, 'package.json');
+  if (fs.existsSync(pkgJsonPath)) {
+    const pkgJson = readPackageJson(pkgJsonPath);
+    return pkgJson ? pkgJson.name : null;
+  }
+  return null;
 }
 
-// --- Main Logic ---
-
 async function main() {
-  // Read Inputs
+  // Read inputs
   const packagesInput = process.env.INPUT_PACKAGES || '';
   const releaseVersionInput = process.env.INPUT_RELEASE_VERSION;
   const dryRun = process.env.INPUT_DRY_RUN === 'true';
@@ -89,278 +65,137 @@ async function main() {
 
   console.log(`Release Version Input: ${releaseVersionInput}`);
   console.log(`Dry Run: ${dryRun}`);
-  console.log(`Workspace Root: ${workspaceRoot}`);
-
   process.chdir(workspaceRoot);
 
-  // --- Log all package versions first ---
+  // Log current package versions
   console.log('\n========== CURRENT PACKAGE VERSIONS ==========');
-  // Find all packages and log their versions
   const packagesDir = path.join(workspaceRoot, 'packages');
   if (fs.existsSync(packagesDir)) {
     const packages = fs.readdirSync(packagesDir);
     for (const pkg of packages) {
-      const pkgJsonPath = path.join(packagesDir, pkg, 'package.json');
-      if (fs.existsSync(pkgJsonPath)) {
-        try {
-          const pkgJson = readPackageJson(pkgJsonPath);
-          if (pkgJson) {
-            console.log(`📦 ${pkgJson.name}: ${pkgJson.version}`);
-          }
-        } catch (error) {
-          console.warn(`Warning: Could not read package.json for ${pkg}`);
-        }
+      const pkgJson = readPackageJson(path.join(packagesDir, pkg, 'package.json'));
+      if (pkgJson) {
+        console.log(`📦 ${pkgJson.name}: ${pkgJson.version}`);
       }
     }
   }
   console.log('=============================================\n');
 
-  // Check package-versioner version
-  try {
-    const packageVersionerVersion = execSync('pnpm list package-versioner --json', { encoding: 'utf-8' });
-    console.log('📝 package-versioner info:');
-    console.log(packageVersionerVersion);
-  } catch (error) {
-    console.log('Could not determine package-versioner version');
-  }
-
-  // --- Determine Targets ---
-  let targets: string[] = [];
-
-  // Process input as a comma-separated list (even for single packages)
+  // Get target packages
   const packageList = packagesInput.includes(',')
-    ? packagesInput
-        .split(',')
-        .map((p) => p.trim())
-        .filter(Boolean)
+    ? packagesInput.split(',').map((p) => p.trim()).filter(Boolean)
     : [packagesInput.trim()];
 
-  for (const pkg of packageList) {
-    // Get the unscoped name (handles both @zubridge/something and plain names)
-    const simpleName = getUnscopedPackageName(pkg);
-
-    // Verify the package exists in the workspace
-    if (fs.existsSync(path.resolve(`packages/${simpleName}/package.json`))) {
-      targets.push(simpleName);
+  const targets: string[] = [];
+  for (const pkgDir of packageList) {
+    const packagePath = path.resolve(`packages/${pkgDir}`);
+    if (fs.existsSync(packagePath)) {
+      targets.push(pkgDir);
     } else {
-      console.warn(`::warning::Package ${pkg} (simple name: ${simpleName}) not found, skipping`);
+      console.warn(`Warning: Package directory ${pkgDir} not found, skipping`);
     }
   }
 
-  console.log(`Using specified targets: ${targets.join(', ')}`);
-
-  // Convert simple target names back to scoped names for the -t flag
-  const scopedTargets: string[] = [];
-  for (const simpleName of targets) {
-    const scopedName = getScopedPackageName(simpleName);
-    if (scopedName) {
-      scopedTargets.push(scopedName);
-    } else {
-      console.warn(`::warning::Could not get scoped name for target '${simpleName}'. Skipping.`);
-    }
-  }
-
-  if (scopedTargets.length === 0) {
-    console.error('Error: No valid target packages could be determined. Check INPUT_PACKAGES and package existence.');
-    process.exit(1);
-  }
-  console.log(`Effective scoped targets for -t flag: ${scopedTargets.join(', ')}`);
-
-  // --- Reference Package Info ---
-  // Use the first package in our targets list as the reference package
   if (targets.length === 0) {
-    console.error('Error: No valid target packages available to use as a reference.');
+    console.error('Error: No valid target packages specified.');
     process.exit(1);
   }
 
+  // Get scoped target names
+  const scopedTargets = targets
+    .map(dirName => getScopedPackageName(dirName))
+    .filter(Boolean) as string[];
+
+  console.log(`Using specified directories: ${targets.join(', ')}`);
+  console.log(`Effective scoped targets: ${scopedTargets.join(', ')}`);
+
+  // Reference package for version calculation
   const refPkgSimpleName = targets[0];
-  const refPkgPath = path.join('packages', refPkgSimpleName, 'package.json');
-
-  if (scopedTargets.length === 0) {
-    console.error('Error: No valid scoped target packages available to use as a reference.');
-    process.exit(1);
-  }
-
   const refPkgScopedName = scopedTargets[0];
-
   console.log(`Using ${refPkgScopedName} as reference package for version determination`);
 
-  // Add debug logging to show current package versions
-  console.log('\n--- Current Package Versions ---');
-  for (const scopedName of scopedTargets) {
-    const simpleName = getUnscopedPackageName(scopedName);
-    const pkgPath = path.join('packages', simpleName, 'package.json');
-    const pkgJson = readPackageJson(pkgPath);
-    if (pkgJson) {
-      console.log(`${pkgJson.name}: ${pkgJson.version}`);
-    }
-  }
-  console.log('--- End Current Package Versions ---\n');
+  // Determine version bump flag based on input
+  let bumpFlag: string;
 
-  // --- Construct package-versioner Command ---
-  let packageVersionerCmd = 'pnpm package-versioner';
-
-  // Add flags based on release type input
   if (['patch', 'minor', 'major'].includes(releaseVersionInput)) {
-    packageVersionerCmd += ` --bump ${releaseVersionInput}`;
-
-    // Log the existing version.config.json if it exists
-    const existingConfigPath = path.join(workspaceRoot, 'version.config.json');
-    if (fs.existsSync(existingConfigPath)) {
-      try {
-        const existingConfig = fs.readFileSync(existingConfigPath, 'utf8');
-        console.log('\n🔍 Existing version.config.json:');
-        console.log(existingConfig);
-      } catch (error) {
-        console.warn('Could not read existing version.config.json');
-      }
-    } else {
-      console.log('No existing version.config.json found');
-    }
+    bumpFlag = `--bump ${releaseVersionInput}`;
+  } else if (releaseVersionInput === 'prerelease') {
+    // Correct way to handle prerelease increment
+    bumpFlag = '--bump prerelease';
   } else if (releaseVersionInput.startsWith('pre')) {
-    let identifier = 'beta'; // Default identifier for 'prerelease'
+    // Handle prefixed releases like prepatch, preminor, premajor
     if (releaseVersionInput.includes(':')) {
-      // Extract identifier if present (e.g., prerelease:rc -> rc)
-      const parts = releaseVersionInput.split(':');
-      if (parts.length > 1 && parts[1]) {
-        identifier = parts[1];
-      }
+      const [type, identifier] = releaseVersionInput.split(':');
+      bumpFlag = `--bump ${type} --preid ${identifier}`;
     } else {
-      // Handle simple prepatch, preminor, premajor
-      if (releaseVersionInput !== 'prerelease') {
-        // Use the type itself as the identifier, tool should handle it
-        identifier = releaseVersionInput.substring(3); // e.g., prepatch -> patch
-      }
+      bumpFlag = `--bump ${releaseVersionInput}`;
     }
-    packageVersionerCmd += ` --prerelease ${identifier}`;
   } else {
-    console.error(
-      `Error: Invalid INPUT_RELEASE_VERSION value: ${releaseVersionInput}. Expected patch, minor, major, or pre*`,
-    );
+    console.error(`Error: Invalid release version: ${releaseVersionInput}`);
     process.exit(1);
   }
 
-  // Add dry-run flag if applicable
-  if (dryRun) {
-    packageVersionerCmd += ' --dry-run';
-  }
-
-  // Add JSON output flag for structured output
-  packageVersionerCmd += ' --json';
-
-  // Add target flag (now always added, as we handle 'all' by finding all packages)
+  // Build package-versioner command
   const targetsArg = scopedTargets.join(',');
-  packageVersionerCmd += ` -t ${targetsArg}`;
+  const packageVersionerCmd = [
+    'pnpm package-versioner',
+    bumpFlag,
+    dryRun ? '--dry-run' : '',
+    '--json',
+    `-t ${targetsArg}`
+  ].filter(Boolean).join(' ');
 
-  // --- Execute Command and Determine Version ---
+  // Execute command
   let newVersion: string | null = null;
+  const commandOutput = runCommand(packageVersionerCmd);
 
-  // Use the original command string built earlier
-  const commandToExecute = packageVersionerCmd;
+  try {
+    // Parse JSON output
+    const jsonOutput = JSON.parse(commandOutput);
+    const refPackageUpdate = jsonOutput.updates?.find((update: any) => update.packageName === refPkgScopedName);
 
-  if (dryRun) {
-    console.log('\n--- Dry Run: Calculating Version via package-versioner output ---');
-    const commandOutput = runCommand(commandToExecute);
-
-    try {
-      // Parse JSON output
-      const jsonOutput = JSON.parse(commandOutput);
-
-      // Extract version from the reference package in the updates array
-      const refPackageUpdate = jsonOutput.updates?.find((update: any) => update.packageName === refPkgScopedName);
-
-      if (refPackageUpdate && refPackageUpdate.newVersion) {
-        newVersion = refPackageUpdate.newVersion;
-        console.log(`Dry run: Determined next version for ${refPkgScopedName} would be: ${newVersion}`);
-      } else {
-        throw new Error(`Could not find ${refPkgScopedName} in the updates array`);
-      }
-    } catch (error: any) {
-      console.error(`Error: Could not parse JSON output from package-versioner: ${error.message}`);
-      console.error('Full output was:\n' + commandOutput);
-
-      // Fall back to older regex-based parsing as a secondary fallback
-      console.warn('::warning::Attempting to use regex fallback to extract version');
-
-      // Try to find the version in the Updated package.json line
-      const regexUpdated = new RegExp(
-        `Updated package\\.json at .*/packages/${refPkgSimpleName}/package\\.json to version (\\S+)`,
-      );
-      const matchUpdated = commandOutput.match(regexUpdated);
-
-      if (matchUpdated && matchUpdated[1]) {
-        newVersion = matchUpdated[1];
-        console.log(`Using regex fallback: Found version ${newVersion} in output`);
-      } else {
-        // Last resort: read current version
-        const currentPkgJson = readPackageJson(refPkgPath);
-        if (currentPkgJson) {
-          newVersion = currentPkgJson.version;
-          console.warn(`::warning::Falling back to current version '${newVersion}' due to parsing error.`);
-        } else {
-          console.error(`Error: Could not read current version from ${refPkgPath} either.`);
-          process.exit(1); // Exit if we can't determine a version
-        }
-      }
+    if (refPackageUpdate?.newVersion) {
+      newVersion = refPackageUpdate.newVersion;
+      console.log(`Version ${dryRun ? 'would be' : 'bumped to'}: ${newVersion}`);
+    } else {
+      throw new Error(`Could not find ${refPkgScopedName} in the updates array`);
     }
-  } else {
-    // Actual Run
-    console.log('\n--- Actual Run: Applying Version via package-versioner ---');
-    const commandOutput = runCommand(commandToExecute);
+  } catch (error: any) {
+    console.error(`Error parsing JSON output: ${error.message}`);
+    console.log('Falling back to reading version from package.json');
 
-    try {
-      // Parse JSON output
-      const jsonOutput = JSON.parse(commandOutput);
-
-      // Extract version from the reference package in the updates array
-      const refPackageUpdate = jsonOutput.updates?.find((update: any) => update.packageName === refPkgScopedName);
-
-      if (refPackageUpdate && refPackageUpdate.newVersion) {
-        newVersion = refPackageUpdate.newVersion;
-        console.log(`Version bumped to: ${newVersion} (from JSON output)`);
-      } else {
-        // Fall back to reading from package.json if JSON parsing fails
-        throw new Error(`Could not find ${refPkgScopedName} in the updates array`);
-      }
-    } catch (error: any) {
-      console.error(`Error parsing JSON output: ${error.message}`);
-      console.error('Falling back to reading updated version from package.json');
-
-      // Read the updated version directly from the reference package's file (@zubridge/types)
-      console.log(`Reading updated version from ${refPkgPath}...`);
-      const updatedPkgJson = readPackageJson(refPkgPath);
-      if (updatedPkgJson && updatedPkgJson.version) {
-        newVersion = updatedPkgJson.version;
-        console.log(`Version bumped to: ${newVersion} (from JSON output)`);
-      } else {
-        console.error(`Error: Could not read updated version from ${refPkgPath} after package-versioner run.`);
-        process.exit(1);
-      }
+    // Fallback to reading from package.json
+    const pkgJsonPath = path.join('packages', refPkgSimpleName, 'package.json');
+    const pkgJson = readPackageJson(pkgJsonPath);
+    if (pkgJson?.version) {
+      newVersion = pkgJson.version;
+      console.log(`Using version from package.json: ${newVersion}`);
+    } else {
+      console.error('Failed to determine version from any source');
+      process.exit(1);
     }
   }
 
-  // --- Output the Determined Version ---
+  // Output the determined version
   if (!newVersion) {
-    console.error('Error: Failed to determine new version.');
+    console.error('Failed to determine new version');
     process.exit(1);
   }
 
   const githubOutputFile = process.env.GITHUB_OUTPUT;
   if (githubOutputFile) {
-    console.log(`\nAppending new_version=${newVersion} to ${githubOutputFile}`);
-    await fs.promises.appendFile(githubOutputFile, `new_version=${newVersion}\n`);
+    console.log(`Setting output new_version=${newVersion}`);
+    fs.appendFileSync(githubOutputFile, `new_version=${newVersion}\n`);
   } else {
-    console.error(
-      'Error: GITHUB_OUTPUT environment variable not set. This script expects to be run in a GitHub Actions environment where GITHUB_OUTPUT is automatically provided.',
-    );
+    console.error('GITHUB_OUTPUT environment variable not set');
     process.exit(1);
   }
 
-  console.log('\nScript finished successfully.');
+  console.log('Version calculation completed successfully');
 }
 
-// Execute main function
-main().catch((error) => {
+main().catch(error => {
   console.error('Script failed:', error);
   process.exit(1);
 });
+
