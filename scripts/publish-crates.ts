@@ -83,12 +83,6 @@ for (const crate of cratesToPublish) {
 
     console.log(`Running: ${publishCommand}`);
 
-    if (!dryRun) {
-      // Verify crate first (dry run)
-      console.log('Verifying crate...');
-      execSync('cargo publish --dry-run', { stdio: 'inherit' });
-    }
-
     // Then do the actual publish or just log in dry run mode
     if (dryRun) {
       console.log('DRY RUN: Would publish crate to crates.io');
