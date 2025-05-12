@@ -48,7 +48,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
   context: ThunkContext,
   options: DoubleCounterOptions = {},
 ): Thunk<S> => {
-  const { useSlow = false, delayBetweenOperations = 500, includeTimestamps = false } = options;
+  const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false } = options;
 
   const logPrefix = getLogPrefix(context);
   const actionType = useSlow ? 'COUNTER:SET:SLOW' : 'COUNTER:SET';
