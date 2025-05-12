@@ -9,8 +9,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "clean": "shx rm -rf dist node_modules",
-    "clean:output": "shx rm -rf dist .turbo",
+    "clean": "pnpm run clean:output && pnpm dlx shx rm -rf dist node_modules",
+    "clean:output": "pnpm dlx shx rm -rf ./dist",
+    "clean:cache": "pnpm dlx shx rm -rf .turbo",
     "dev": "tsc --watch"
   },
   "dependencies": {
@@ -20,7 +21,6 @@
     "zustand": "^4.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.4",
-    "shx": "^0.4.0"
+    "typescript": "^5.0.4"
   }
 }
