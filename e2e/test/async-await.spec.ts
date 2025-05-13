@@ -3,7 +3,7 @@ import { it, describe, before } from 'mocha';
 import { browser } from 'wdio-electron-service';
 import { setupTestEnvironment, getCounterValue, resetCounter } from '../utils/windowUtils';
 import { TIMING } from '../constants';
-import { clickAndWaitForCounterChange } from '../utils/waitForCounterChange';
+import { waitForCounterChange } from '../utils/waitForCounterChange';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
@@ -49,7 +49,8 @@ describe('Async action awaiting behavior', () => {
     const timeBeforeClick = new Date();
 
     // Click the button and wait for the counter to change
-    const value = await clickAndWaitForCounterChange(slowObjectButton as unknown as WebdriverIO.Element, 8000, 100);
+    await slowObjectButton.click();
+    const value = await waitForCounterChange(2, 8000, 100);
 
     // Record the time after the counter changed
     const timeAfterChange = new Date();
