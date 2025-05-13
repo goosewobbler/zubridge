@@ -61,7 +61,7 @@ importers:
         version: 5.0.1
       zustand:
         specifier: ^5.0.3
-        version: 5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.4
@@ -74,10 +74,10 @@ importers:
         version: 22.15.17
       '@types/react':
         specifier: ^19.1.2
-        version: 19.1.3
+        version: 19.1.4
       '@types/react-dom':
         specifier: ^19.1.2
-        version: 19.1.3(@types/react@19.1.3)
+        version: 19.1.4(@types/react@19.1.4)
       '@vitejs/plugin-react':
         specifier: ^4.4.0
         version: 4.4.1(vite@6.3.5(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1))
@@ -113,7 +113,7 @@ importers:
         version: 6.3.5(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1)
       wdio-electron-service:
         specifier: ^8.0.1
-        version: 8.1.0(electron@35.3.0)(webdriverio@9.12.7(puppeteer-core@22.15.0))
+        version: 8.1.0(electron@35.3.0)(webdriverio@9.13.0(puppeteer-core@22.15.0))
 
   apps/tauri-example:
     dependencies:
@@ -134,7 +134,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       zustand:
         specifier: ^5.0.3
-        version: 5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^2.3.1
@@ -144,10 +144,10 @@ importers:
         version: 22.15.17
       '@types/react':
         specifier: ^19.1.2
-        version: 19.1.3
+        version: 19.1.4
       '@types/react-dom':
         specifier: ^19.1.2
-        version: 19.1.3(@types/react@19.1.3)
+        version: 19.1.4(@types/react@19.1.4)
       '@vitejs/plugin-react':
         specifier: ^4.4.0
         version: 4.4.1(vite@6.3.5(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1))
@@ -186,7 +186,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       zustand:
         specifier: ^5.0.3
-        version: 5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^1.6.3
@@ -196,10 +196,10 @@ importers:
         version: 22.15.17
       '@types/react':
         specifier: ^19.1.2
-        version: 19.1.3
+        version: 19.1.4
       '@types/react-dom':
         specifier: ^19.1.2
-        version: 19.1.3(@types/react@19.1.3)
+        version: 19.1.4(@types/react@19.1.4)
       '@vitejs/plugin-react':
         specifier: ^4.4.0
         version: 4.4.1(vite@6.3.5(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1))
@@ -239,16 +239,16 @@ importers:
         version: 22.15.17
       '@wdio/cli':
         specifier: ^9.12.4
-        version: 9.12.7(puppeteer-core@22.15.0)
+        version: 9.13.0(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: ^9.12.5
-        version: 9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
+        version: 9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
       '@wdio/local-runner':
         specifier: ^9.12.4
-        version: 9.12.7(puppeteer-core@22.15.0)
+        version: 9.13.0(puppeteer-core@22.15.0)
       '@wdio/mocha-framework':
         specifier: ^9.12.3
-        version: 9.12.6
+        version: 9.13.0
       read-package-up:
         specifier: ^11.0.0
         version: 11.0.0
@@ -260,7 +260,7 @@ importers:
         version: 5.8.3
       wdio-electron-service:
         specifier: ^8.0.1
-        version: 8.1.0(electron@35.3.0)(webdriverio@9.12.7(puppeteer-core@22.15.0))
+        version: 8.1.0(electron@35.3.0)(webdriverio@9.13.0(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -272,11 +272,8 @@ importers:
         version: link:../types
       zustand:
         specifier: ^4.3.0
-        version: 4.5.6(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)
+        version: 4.5.6(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)
     devDependencies:
-      shx:
-        specifier: ^0.4.0
-        version: 0.4.0
       typescript:
         specifier: ^5.0.4
         version: 5.8.3
@@ -300,7 +297,7 @@ importers:
         version: 11.1.0
       zustand:
         specifier: ^5.0.3
-        version: 5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@rollup/plugin-node-resolve':
         specifier: ^16.0.1
@@ -310,7 +307,7 @@ importers:
         version: 6.6.3
       '@testing-library/react':
         specifier: ^16.3.0
-        version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.3(@types/react@19.1.3))(@types/react@19.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.4(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@types/node':
         specifier: ^22.14.0
         version: 22.15.17
@@ -367,7 +364,7 @@ importers:
         version: link:../types
       zustand:
         specifier: ^5.0.3
-        version: 5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@tauri-apps/api':
         specifier: ^2.4.1
@@ -377,10 +374,10 @@ importers:
         version: 6.6.3
       '@testing-library/react':
         specifier: ^16.3.0
-        version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.3(@types/react@19.1.3))(@types/react@19.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.4(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@types/react':
         specifier: ^19.1.2
-        version: 19.1.3
+        version: 19.1.4
       '@types/shelljs':
         specifier: ^0.8.15
         version: 0.8.16
@@ -422,7 +419,7 @@ importers:
         version: 5.8.3
       zustand:
         specifier: ^5.0.3
-        version: 5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+        version: 5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
 
   packages/ui:
     dependencies:
@@ -444,10 +441,10 @@ importers:
         version: 4.1.6
       '@types/react':
         specifier: ^19.1.2
-        version: 19.1.3
+        version: 19.1.4
       '@types/react-dom':
         specifier: ^19.1.2
-        version: 19.1.3(@types/react@19.1.3)
+        version: 19.1.4(@types/react@19.1.4)
       autoprefixer:
         specifier: ^10.4.17
         version: 10.4.21(postcss@8.5.3)
@@ -1591,13 +1588,13 @@ packages:
   '@types/plist@3.0.5':
     resolution: {integrity: sha512-E6OCaRmAe4WDmWNsL/9RMqdkkzDCY1etutkflWk4c+AcjDU07Pcz1fQwTX0TQz+Pxqn9i4L1TU3UFpjnrcDgxA==}
 
-  '@types/react-dom@19.1.3':
-    resolution: {integrity: sha512-rJXC08OG0h3W6wDMFxQrZF00Kq6qQvw0djHRdzl3U5DnIERz0MRce3WVc7IS6JYBwtaP/DwYtRRjVlvivNveKg==}
+  '@types/react-dom@19.1.4':
+    resolution: {integrity: sha512-WxYAszDYgsMV31OVyoG4jbAgJI1Gw0Xq9V19zwhy6+hUUJlJIdZ3r/cbdmTqFv++SktQkZ/X+46yGFxp5XJBEg==}
     peerDependencies:
       '@types/react': ^19.0.0
 
-  '@types/react@19.1.3':
-    resolution: {integrity: sha512-dLWQ+Z0CkIvK1J8+wrDPwGxEYFA4RAyHoZPxHVGspYmFVnwGSNT24cGIhFJrtfRnWVuW8X7NO52gCXmhkVUWGQ==}
+  '@types/react@19.1.4':
+    resolution: {integrity: sha512-EB1yiiYdvySuIITtD5lhW4yPyJ31RkJkkDw794LaQYrxCSaQV/47y5o1FMC4zF9ZyjUjzJMZwbovEnT5yHTW6g==}
 
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
@@ -1691,17 +1688,17 @@ packages:
   '@vitest/utils@3.1.3':
     resolution: {integrity: sha512-2Ltrpht4OmHO9+c/nmHtF09HWiyWdworqnHIwjfvDyWjuwKbdkcS9AnhsDn+8E2RM4x++foD1/tNuLPVvWG1Rg==}
 
-  '@wdio/cli@9.12.7':
-    resolution: {integrity: sha512-X764hL/nHcbMTepvr7zNF/pSvb4r3twoa5lKllkIIraRDI0cg1/AKHreX24htjHpoA5OLzjEJaydQVJpZ3RzmA==}
+  '@wdio/cli@9.13.0':
+    resolution: {integrity: sha512-VulWwI3MFXK1E0nMxK9/EBCBhVJ9tktI/vFzexXKsWRZVDCWRAfwyq0lxiaAKaIkToQ4aVjB88nGC2mD0oROHA==}
     engines: {node: '>=18.20.0'}
     hasBin: true
 
-  '@wdio/config@9.12.6':
-    resolution: {integrity: sha512-zlOJixJUHxeoyfIN/KdM797HwJj/oNgBaEdftgJARqbXt5AVZu18vJ3zljb+wzbY2M0pl7Y4+5OFH06WlDgQ+A==}
+  '@wdio/config@9.13.0':
+    resolution: {integrity: sha512-hAt98YoOBjyna/Iam4Hf962xVrwTyNVLbYtrB69j5IsHwJQsnzKAU3zbbYQV8vFI6BEViqVW05uiLGPMEgovfg==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/dot-reporter@9.12.6':
-    resolution: {integrity: sha512-den2sRD+blw6ymI97X808ESxQ5cVVuNeu5V2VUJk3NWA7Q36cuaJ8s/rPKzcF0CdfdbkkKF8pEQWUVDrrWsK7Q==}
+  '@wdio/dot-reporter@9.13.0':
+    resolution: {integrity: sha512-ud8ZyGit6MbEhooQ/H4j46N1otNWan2f3IWIobhcBvc7y06lEj0EOv9ieo9FPd5Ko2VZUEHPjiWnwBHk0k+bzg==}
     engines: {node: '>=18.20.0'}
 
   '@wdio/electron-types@8.1.0':
@@ -1711,51 +1708,51 @@ packages:
     resolution: {integrity: sha512-pCHTP9xpSGjpguFZuuUmHPygpEkVpqco8UfbD5FX+DdXe8ZVMdeMzvoTsliDjjd+QmcVD9/PEKsJDFJZwYfN3g==}
     engines: {node: '>=18 || >=20'}
 
-  '@wdio/globals@9.12.7':
-    resolution: {integrity: sha512-WanmrLXRMmW3hwsXCm+x618gDsdGwkrxhiirgMC9Ny0g78qt7JLSOvAHKx+dCZtk77QwvFuNpLCd+Nxnszon9Q==}
+  '@wdio/globals@9.13.0':
+    resolution: {integrity: sha512-ns7IKuc7245CbJcuu1lbbS8Sr0jlsJI94Ph/rV9KVrHg2NQVeqsK07v4aaUBoziz8gsUnprTwdQ5FLpXziJCcA==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/local-runner@9.12.7':
-    resolution: {integrity: sha512-DabNXK0VkF7dZfhdGsfOXHnBNQ4Xy+TgFxJOXAcDKHw6nJ+WFf/pzvatV8Cye4oEvPeyhFHZlcLYJiMKUt9LKw==}
+  '@wdio/local-runner@9.13.0':
+    resolution: {integrity: sha512-H5ld1Ud3n6ykE1OUF2lOf5f8qODWAmehVZUZEN+LBhme8ejhTehhGznefsmZEB6qgy/uD0DAI2oQJB1cClx/dg==}
     engines: {node: '>=18.20.0'}
 
   '@wdio/logger@9.4.4':
     resolution: {integrity: sha512-BXx8RXFUW2M4dcO6t5Le95Hi2ZkTQBRsvBQqLekT2rZ6Xmw8ZKZBPf0FptnoftFGg6dYmwnDidYv/0+4PiHjpQ==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/mocha-framework@9.12.6':
-    resolution: {integrity: sha512-vBAtVY+PLCGTZqTqsfxNtPVthk6tKI4JSffgGNlWDK/uCcjUOZdvsRRs7VRLr8COyeP1QQFzJ8cHDpCu8nd7Fw==}
+  '@wdio/mocha-framework@9.13.0':
+    resolution: {integrity: sha512-NDbyBGdbnkOCfKZiF9HpANAwLy9GCFfjcuppcce19csXR5JX3sdlvnQZ7j4cPmyP1d9mVHb6/z8BEHsPtMNkMw==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/protocols@9.12.5':
-    resolution: {integrity: sha512-i+yc0EZtZOh5fFuwHxvcnXeTXk2ZjFICRbcAxTNE0F2Jr4uOydvcAOw4EIIRmb9NWUSPf/bGZAA+4SEXmxmjUA==}
+  '@wdio/protocols@9.13.0':
+    resolution: {integrity: sha512-JUsA+4xDcwinQsCcqECmqhuw+hdtDRyXdK+sfBktAcRNC1u7rWCnDjTp0YcnA8B0r0OUGubC4N16EYYiUN4Uxw==}
 
   '@wdio/repl@9.4.4':
     resolution: {integrity: sha512-kchPRhoG/pCn4KhHGiL/ocNhdpR8OkD2e6sANlSUZ4TGBVi86YSIEjc2yXUwLacHknC/EnQk/SFnqd4MsNjGGg==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/reporter@9.12.6':
-    resolution: {integrity: sha512-8cR74tEp5nzC8nP59n4hkDUpoaHUNDbJvP3jD9EfX+ZO4OgPMyJMVTGubo1o88Wuty/Gd2jvOZLHoGD8KlHcKw==}
+  '@wdio/reporter@9.13.0':
+    resolution: {integrity: sha512-TRihdUvtgIx8Nhx2iIFsWwTQXxX4V9VKr/MmgYXi/2wJcYOkJkwtsgvUYY5y4EAEMLEfMGhCc7750tOnS0ZZcw==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/runner@9.12.7':
-    resolution: {integrity: sha512-rslRCDT712SUxCyCpIvLZAnfB5+pMQA3asXfVzLD+CKs5MP5ywh7yW+BnYAT6HvT+Br4MrHt+0rVCJkrsXq4JA==}
+  '@wdio/runner@9.13.0':
+    resolution: {integrity: sha512-U349wpsirVAKwk/Cv+d44/2pSGLhTHPEHJ5F5mIfW03LrRK+9T2aTCjrQQYMWyKRhL4dJETG3SFTXsWtslzD7A==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/types@9.12.6':
-    resolution: {integrity: sha512-WzZhaN834du9wjqT/Go9qPyB7VkzV2bjr6pr06DrIzxIpJq/snWOv96C6OjJu8nmYNRjV769mAxyggBUf+sUoQ==}
+  '@wdio/types@9.13.0':
+    resolution: {integrity: sha512-0xjox32abfw4P6oJEyqsxel9Nf8tpghJblmhRvbQQxhkNS7TnSLLj8PCAo2qHgfpvUGjGUG646jsJDLMduZNmw==}
     engines: {node: '>=18.20.0'}
 
-  '@wdio/utils@9.12.6':
-    resolution: {integrity: sha512-JfI4CxBRQCOgToJeQNaZLv+wYNIGyJG1gqrpxUOvkrJvBgdOAmIu3dzlcKP/WviXlcxvwLQF2FK8bQVTjHv0fQ==}
+  '@wdio/utils@9.13.0':
+    resolution: {integrity: sha512-neAtnG92CYGpDz4d0Hzp9CGga2d1Qbf2TM/wYE4O8y0Czd/NPD54P/Yo/JNv/3GyJ/iHxgPXHNPgyLumTngkfw==}
     engines: {node: '>=18.20.0'}
 
   '@xmldom/xmldom@0.8.10':
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
 
-  '@zip.js/zip.js@2.7.60':
-    resolution: {integrity: sha512-vA3rLyqdxBrVo1FWSsbyoecaqWTV+vgPRf0QKeM7kVDG0r+lHUqd7zQDv1TO9k4BcAoNzNDSNrrel24Mk6addA==}
+  '@zip.js/zip.js@2.7.61':
+    resolution: {integrity: sha512-+tZvY10nkW0pJoU88XFWLBd2O9PJPvEnDhSY/jQHfIroN5W5qGfPgFHKC4lkx0+9Vw/0IAkNHf1XBVInBkM9Vw==}
     engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=16.5.0'}
 
   abbrev@1.1.1:
@@ -2463,8 +2460,8 @@ packages:
   electron-publish@26.0.11:
     resolution: {integrity: sha512-a8QRH0rAPIWH9WyyS5LbNvW9Ark6qe63/LqDB7vu2JXYpi0Gma5Q60Dh4tmTqhOBQt0xsrzD8qE7C+D7j+B24A==}
 
-  electron-to-chromium@1.5.151:
-    resolution: {integrity: sha512-Rl6uugut2l9sLojjS4H4SAr3A4IgACMLgpuEMPYCVcKydzfyPrn5absNRju38IhQOf/NwjJY8OGWjlteqYeBCA==}
+  electron-to-chromium@1.5.152:
+    resolution: {integrity: sha512-xBOfg/EBaIlVsHipHl2VdTPJRSvErNUaqW8ejTq5OlOlIYx1wOllCHsAvAIrr55jD1IYEfdR86miUEt8H5IeJg==}
 
   electron-vite@3.1.0:
     resolution: {integrity: sha512-M7aAzaRvSl5VO+6KN4neJCYLHLpF/iWo5ztchI/+wMxIieDZQqpbCYfaEHHHPH6eupEzfvZdLYdPdmvGqoVe0Q==}
@@ -4246,8 +4243,8 @@ packages:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
 
-  semver@7.7.1:
-    resolution: {integrity: sha512-hlq8tAfn0m/61p4BVRcPzIGr6LKiMwo4VM6dGi6pt4qcRkmNzTcWq6eCEjEh+qXjkMDvPlOFFSGwQjoEa6gyMA==}
+  semver@7.7.2:
+    resolution: {integrity: sha512-RF0Fw+rO5AMf9MAyaRXI4AV0Ulj5lMHqVxxdSgiVbixSCXoEmmX/jk0CuJw4+3SqroYO9VoUh+HcuJivvtJemA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -4892,12 +4889,12 @@ packages:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
 
-  webdriver@9.12.6:
-    resolution: {integrity: sha512-Alz+JiaVW15b/Qy6zSmJeYXxvmtMIVpEAg7QDfCWqG9miZSKJYWwgWE3xoSrwYn5kTylUszqb17Pb5wyrj7YFw==}
+  webdriver@9.13.0:
+    resolution: {integrity: sha512-cnUX4NBmUC5DtqbNPVE41HkXgdFHNOeBy8OM2SWt8R8TrT2bxP03VGVgl9g/ykg8YqgLeTxUHtIQnk7JN2EXzg==}
     engines: {node: '>=18.20.0'}
 
-  webdriverio@9.12.7:
-    resolution: {integrity: sha512-HxpLQrFuadfE65dqh+Qc2pdvz18FbsdpdiZogy8VUBtxRanijbOsi4cV84ffGXab8Ownzu+bNBJuJjlTBDX00Q==}
+  webdriverio@9.13.0:
+    resolution: {integrity: sha512-QeOpAWNtUo05r/gzyhq9m3gIQkA03VfhkFRilJavqcc1nk3TPKle2Xr3WHP2YNT2288bXArhYBN5L5/VC4W4Pw==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       puppeteer-core: '>=22.x || <=24.x'
@@ -5236,14 +5233,14 @@ snapshots:
   '@conventional-changelog/git-client@1.0.1(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.1.0)':
     dependencies:
       '@types/semver': 7.7.0
-      semver: 7.7.1
+      semver: 7.7.2
     optionalDependencies:
       conventional-commits-filter: 5.0.0
       conventional-commits-parser: 6.1.0
 
   '@conventional-changelog/git-client@2.0.0(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.1.0)':
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
     optionalDependencies:
       conventional-commits-filter: 5.0.0
       conventional-commits-parser: 6.1.0
@@ -5328,7 +5325,7 @@ snapshots:
       make-fetch-happen: 10.2.1
       nopt: 6.0.0
       proc-log: 2.0.1
-      semver: 7.7.1
+      semver: 7.7.2
       tar: 6.2.1
       which: 2.0.2
     transitivePeerDependencies:
@@ -5384,7 +5381,7 @@ snapshots:
       plist: 3.1.0
       resedit: 2.0.3
       resolve: 1.22.10
-      semver: 7.7.1
+      semver: 7.7.2
       yargs-parser: 21.1.1
     transitivePeerDependencies:
       - supports-color
@@ -5402,7 +5399,7 @@ snapshots:
       node-api-version: 0.2.1
       ora: 5.4.1
       read-binary-file-arch: 1.0.6
-      semver: 7.7.1
+      semver: 7.7.2
       tar: 6.2.1
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -5710,7 +5707,7 @@ snapshots:
   '@npmcli/fs@2.1.2':
     dependencies:
       '@gar/promisify': 1.1.3
-      semver: 7.7.1
+      semver: 7.7.2
 
   '@npmcli/move-file@2.0.1':
     dependencies:
@@ -5790,7 +5787,7 @@ snapshots:
       extract-zip: 2.0.1
       progress: 2.0.3
       proxy-agent: 6.5.0
-      semver: 7.7.1
+      semver: 7.7.2
       tar-fs: 3.0.8
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -5803,7 +5800,7 @@ snapshots:
       extract-zip: 2.0.1
       progress: 2.0.3
       proxy-agent: 6.5.0
-      semver: 7.7.1
+      semver: 7.7.2
       tar-fs: 3.0.8
       unbzip2-stream: 1.4.3
       yargs: 17.7.2
@@ -6074,7 +6071,7 @@ snapshots:
 
   '@tauri-apps/cli@1.6.3':
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
     optionalDependencies:
       '@tauri-apps/cli-darwin-arm64': 1.6.3
       '@tauri-apps/cli-darwin-x64': 1.6.3
@@ -6122,15 +6119,15 @@ snapshots:
       lodash: 4.17.21
       redent: 3.0.0
 
-  '@testing-library/react@16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.3(@types/react@19.1.3))(@types/react@19.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@testing-library/react@16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.4(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@babel/runtime': 7.27.1
       '@testing-library/dom': 10.4.0
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
     optionalDependencies:
-      '@types/react': 19.1.3
-      '@types/react-dom': 19.1.3(@types/react@19.1.3)
+      '@types/react': 19.1.4
+      '@types/react-dom': 19.1.4(@types/react@19.1.4)
 
   '@tootallnate/once@2.0.0': {}
 
@@ -6223,11 +6220,11 @@ snapshots:
       xmlbuilder: 15.1.1
     optional: true
 
-  '@types/react-dom@19.1.3(@types/react@19.1.3)':
+  '@types/react-dom@19.1.4(@types/react@19.1.4)':
     dependencies:
-      '@types/react': 19.1.3
+      '@types/react': 19.1.4
 
-  '@types/react@19.1.3':
+  '@types/react@19.1.4':
     dependencies:
       csstype: 3.1.3
 
@@ -6351,16 +6348,16 @@ snapshots:
       loupe: 3.1.3
       tinyrainbow: 2.0.0
 
-  '@wdio/cli@9.12.7(puppeteer-core@22.15.0)':
+  '@wdio/cli@9.13.0(puppeteer-core@22.15.0)':
     dependencies:
       '@types/node': 20.17.46
       '@vitest/snapshot': 2.1.9
-      '@wdio/config': 9.12.6
-      '@wdio/globals': 9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
+      '@wdio/config': 9.13.0
+      '@wdio/globals': 9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
       '@wdio/logger': 9.4.4
-      '@wdio/protocols': 9.12.5
-      '@wdio/types': 9.12.6
-      '@wdio/utils': 9.12.6
+      '@wdio/protocols': 9.13.0
+      '@wdio/types': 9.13.0
+      '@wdio/utils': 9.13.0
       async-exit-hook: 2.0.1
       chalk: 5.4.1
       chokidar: 4.0.3
@@ -6375,7 +6372,7 @@ snapshots:
       read-pkg-up: 10.1.0
       recursive-readdir: 2.2.3
       tsx: 4.19.4
-      webdriverio: 9.12.7(puppeteer-core@22.15.0)
+      webdriverio: 9.13.0(puppeteer-core@22.15.0)
       yargs: 17.7.2
     transitivePeerDependencies:
       - bare-buffer
@@ -6384,11 +6381,11 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@wdio/config@9.12.6':
+  '@wdio/config@9.13.0':
     dependencies:
       '@wdio/logger': 9.4.4
-      '@wdio/types': 9.12.6
-      '@wdio/utils': 9.12.6
+      '@wdio/types': 9.13.0
+      '@wdio/utils': 9.13.0
       deepmerge-ts: 7.1.5
       glob: 10.4.5
       import-meta-resolve: 4.1.0
@@ -6396,10 +6393,10 @@ snapshots:
       - bare-buffer
       - supports-color
 
-  '@wdio/dot-reporter@9.12.6':
+  '@wdio/dot-reporter@9.13.0':
     dependencies:
-      '@wdio/reporter': 9.12.6
-      '@wdio/types': 9.12.6
+      '@wdio/reporter': 9.13.0
+      '@wdio/types': 9.13.0
       chalk: 5.4.1
 
   '@wdio/electron-types@8.1.0':
@@ -6420,10 +6417,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@wdio/globals@9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)':
+  '@wdio/globals@9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)':
     optionalDependencies:
-      expect-webdriverio: 5.1.0(@wdio/globals@9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0))(@wdio/logger@9.4.4)(webdriverio@9.12.7(puppeteer-core@22.15.0))
-      webdriverio: 9.12.7(puppeteer-core@22.15.0)
+      expect-webdriverio: 5.1.0(@wdio/globals@9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0))(@wdio/logger@9.4.4)(webdriverio@9.13.0(puppeteer-core@22.15.0))
+      webdriverio: 9.13.0(puppeteer-core@22.15.0)
     transitivePeerDependencies:
       - '@wdio/logger'
       - bare-buffer
@@ -6432,13 +6429,13 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@wdio/local-runner@9.12.7(puppeteer-core@22.15.0)':
+  '@wdio/local-runner@9.13.0(puppeteer-core@22.15.0)':
     dependencies:
       '@types/node': 20.17.46
       '@wdio/logger': 9.4.4
       '@wdio/repl': 9.4.4
-      '@wdio/runner': 9.12.7(puppeteer-core@22.15.0)
-      '@wdio/types': 9.12.6
+      '@wdio/runner': 9.13.0(puppeteer-core@22.15.0)
+      '@wdio/types': 9.13.0
       async-exit-hook: 2.0.1
       split2: 4.2.0
       stream-buffers: 3.0.3
@@ -6456,45 +6453,45 @@ snapshots:
       loglevel-plugin-prefix: 0.8.4
       strip-ansi: 7.1.0
 
-  '@wdio/mocha-framework@9.12.6':
+  '@wdio/mocha-framework@9.13.0':
     dependencies:
       '@types/mocha': 10.0.10
       '@types/node': 20.17.46
       '@wdio/logger': 9.4.4
-      '@wdio/types': 9.12.6
-      '@wdio/utils': 9.12.6
+      '@wdio/types': 9.13.0
+      '@wdio/utils': 9.13.0
       mocha: 10.8.2
     transitivePeerDependencies:
       - bare-buffer
       - supports-color
 
-  '@wdio/protocols@9.12.5': {}
+  '@wdio/protocols@9.13.0': {}
 
   '@wdio/repl@9.4.4':
     dependencies:
       '@types/node': 20.17.46
 
-  '@wdio/reporter@9.12.6':
+  '@wdio/reporter@9.13.0':
     dependencies:
       '@types/node': 20.17.46
       '@wdio/logger': 9.4.4
-      '@wdio/types': 9.12.6
+      '@wdio/types': 9.13.0
       diff: 7.0.0
       object-inspect: 1.13.4
 
-  '@wdio/runner@9.12.7(puppeteer-core@22.15.0)':
+  '@wdio/runner@9.13.0(puppeteer-core@22.15.0)':
     dependencies:
       '@types/node': 20.17.46
-      '@wdio/config': 9.12.6
-      '@wdio/dot-reporter': 9.12.6
-      '@wdio/globals': 9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
+      '@wdio/config': 9.13.0
+      '@wdio/dot-reporter': 9.13.0
+      '@wdio/globals': 9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
       '@wdio/logger': 9.4.4
-      '@wdio/types': 9.12.6
-      '@wdio/utils': 9.12.6
+      '@wdio/types': 9.13.0
+      '@wdio/utils': 9.13.0
       deepmerge-ts: 7.1.5
-      expect-webdriverio: 5.1.0(@wdio/globals@9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0))(@wdio/logger@9.4.4)(webdriverio@9.12.7(puppeteer-core@22.15.0))
-      webdriver: 9.12.6
-      webdriverio: 9.12.7(puppeteer-core@22.15.0)
+      expect-webdriverio: 5.1.0(@wdio/globals@9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0))(@wdio/logger@9.4.4)(webdriverio@9.13.0(puppeteer-core@22.15.0))
+      webdriver: 9.13.0
+      webdriverio: 9.13.0(puppeteer-core@22.15.0)
     transitivePeerDependencies:
       - bare-buffer
       - bufferutil
@@ -6502,15 +6499,15 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@wdio/types@9.12.6':
+  '@wdio/types@9.13.0':
     dependencies:
       '@types/node': 20.17.46
 
-  '@wdio/utils@9.12.6':
+  '@wdio/utils@9.13.0':
     dependencies:
       '@puppeteer/browsers': 2.10.4
       '@wdio/logger': 9.4.4
-      '@wdio/types': 9.12.6
+      '@wdio/types': 9.13.0
       decamelize: 6.0.0
       deepmerge-ts: 7.1.5
       edgedriver: 6.1.1
@@ -6527,7 +6524,7 @@ snapshots:
 
   '@xmldom/xmldom@0.8.10': {}
 
-  '@zip.js/zip.js@2.7.60': {}
+  '@zip.js/zip.js@2.7.61': {}
 
   abbrev@1.1.1: {}
 
@@ -6627,7 +6624,7 @@ snapshots:
       minimatch: 10.0.1
       plist: 3.1.0
       resedit: 1.7.2
-      semver: 7.7.1
+      semver: 7.7.2
       tar: 6.2.1
       temp-file: 3.4.0
       tiny-async-pool: 1.3.0
@@ -6763,7 +6760,7 @@ snapshots:
   browserslist@4.24.5:
     dependencies:
       caniuse-lite: 1.0.30001717
-      electron-to-chromium: 1.5.151
+      electron-to-chromium: 1.5.152
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.24.5)
 
@@ -7276,7 +7273,7 @@ snapshots:
   edgedriver@6.1.1:
     dependencies:
       '@wdio/logger': 9.4.4
-      '@zip.js/zip.js': 2.7.60
+      '@zip.js/zip.js': 2.7.61
       decamelize: 6.0.0
       edge-paths: 3.0.5
       fast-xml-parser: 4.5.3
@@ -7331,7 +7328,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron-to-chromium@1.5.151: {}
+  electron-to-chromium@1.5.152: {}
 
   electron-vite@3.1.0(vite@6.3.5(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(tsx@4.19.4)(yaml@2.7.1)):
     dependencies:
@@ -7525,15 +7522,15 @@ snapshots:
 
   expect-type@1.2.1: {}
 
-  expect-webdriverio@5.1.0(@wdio/globals@9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0))(@wdio/logger@9.4.4)(webdriverio@9.12.7(puppeteer-core@22.15.0)):
+  expect-webdriverio@5.1.0(@wdio/globals@9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0))(@wdio/logger@9.4.4)(webdriverio@9.13.0(puppeteer-core@22.15.0)):
     dependencies:
       '@vitest/snapshot': 2.1.9
-      '@wdio/globals': 9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
+      '@wdio/globals': 9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
       '@wdio/logger': 9.4.4
       expect: 29.7.0
       jest-matcher-utils: 29.7.0
       lodash.isequal: 4.5.0
-      webdriverio: 9.12.7(puppeteer-core@22.15.0)
+      webdriverio: 9.13.0(puppeteer-core@22.15.0)
 
   expect@29.7.0:
     dependencies:
@@ -7728,7 +7725,7 @@ snapshots:
   geckodriver@5.0.0:
     dependencies:
       '@wdio/logger': 9.4.4
-      '@zip.js/zip.js': 2.7.60
+      '@zip.js/zip.js': 2.7.61
       decamelize: 6.0.0
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
@@ -7845,7 +7842,7 @@ snapshots:
       es6-error: 4.1.1
       matcher: 3.0.0
       roarr: 2.15.4
-      semver: 7.7.1
+      semver: 7.7.2
       serialize-error: 7.0.1
     optional: true
 
@@ -8414,7 +8411,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   make-fetch-happen@10.2.1:
     dependencies:
@@ -8592,7 +8589,7 @@ snapshots:
 
   node-abi@3.75.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   node-addon-api@1.7.2:
     optional: true
@@ -8601,7 +8598,7 @@ snapshots:
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   node-domexception@1.0.0: {}
 
@@ -8627,7 +8624,7 @@ snapshots:
   normalize-package-data@6.0.2:
     dependencies:
       hosted-git-info: 7.0.2
-      semver: 7.7.1
+      semver: 7.7.2
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}
@@ -8756,7 +8753,7 @@ snapshots:
       conventional-recommended-bump: 11.0.0
       figlet: 1.8.1
       git-semver-tags: 8.0.0(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.1.0)
-      semver: 7.7.1
+      semver: 7.7.2
       smol-toml: 1.3.4
     transitivePeerDependencies:
       - conventional-commits-parser
@@ -9199,7 +9196,7 @@ snapshots:
 
   semver@6.3.1: {}
 
-  semver@7.7.1: {}
+  semver@7.7.2: {}
 
   serialize-error@11.0.3:
     dependencies:
@@ -9248,7 +9245,7 @@ snapshots:
 
   simple-update-notifier@2.0.0:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.2
 
   slash@3.0.0: {}
 
@@ -9821,21 +9818,21 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
-  wdio-electron-service@8.1.0(electron@35.3.0)(webdriverio@9.12.7(puppeteer-core@22.15.0)):
+  wdio-electron-service@8.1.0(electron@35.3.0)(webdriverio@9.13.0(puppeteer-core@22.15.0)):
     dependencies:
       '@vitest/spy': 3.1.3
       '@wdio/electron-types': 8.1.0
       '@wdio/electron-utils': 8.1.0
-      '@wdio/globals': 9.12.7(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
+      '@wdio/globals': 9.13.0(@wdio/logger@9.4.4)(puppeteer-core@22.15.0)
       '@wdio/logger': 9.4.4
       compare-versions: 6.1.1
       debug: 4.4.0(supports-color@8.1.1)
-      electron-to-chromium: 1.5.151
+      electron-to-chromium: 1.5.152
       fast-copy: 3.0.2
       puppeteer-core: 22.15.0
       read-package-up: 11.0.0
       tinyspy: 4.0.3
-      webdriverio: 9.12.7(puppeteer-core@22.15.0)
+      webdriverio: 9.13.0(puppeteer-core@22.15.0)
     optionalDependencies:
       electron: 35.3.0
     transitivePeerDependencies:
@@ -9846,15 +9843,15 @@ snapshots:
 
   web-streams-polyfill@3.3.3: {}
 
-  webdriver@9.12.6:
+  webdriver@9.13.0:
     dependencies:
       '@types/node': 20.17.46
       '@types/ws': 8.18.1
-      '@wdio/config': 9.12.6
+      '@wdio/config': 9.13.0
       '@wdio/logger': 9.4.4
-      '@wdio/protocols': 9.12.5
-      '@wdio/types': 9.12.6
-      '@wdio/utils': 9.12.6
+      '@wdio/protocols': 9.13.0
+      '@wdio/types': 9.13.0
+      '@wdio/utils': 9.13.0
       deepmerge-ts: 7.1.5
       undici: 6.21.2
       ws: 8.18.2
@@ -9864,16 +9861,16 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  webdriverio@9.12.7(puppeteer-core@22.15.0):
+  webdriverio@9.13.0(puppeteer-core@22.15.0):
     dependencies:
       '@types/node': 20.17.46
       '@types/sinonjs__fake-timers': 8.1.5
-      '@wdio/config': 9.12.6
+      '@wdio/config': 9.13.0
       '@wdio/logger': 9.4.4
-      '@wdio/protocols': 9.12.5
+      '@wdio/protocols': 9.13.0
       '@wdio/repl': 9.4.4
-      '@wdio/types': 9.12.6
-      '@wdio/utils': 9.12.6
+      '@wdio/types': 9.13.0
+      '@wdio/utils': 9.13.0
       archiver: 7.0.1
       aria-query: 5.3.2
       cheerio: 1.0.0
@@ -9890,7 +9887,7 @@ snapshots:
       rgb2hex: 0.2.5
       serialize-error: 11.0.3
       urlpattern-polyfill: 10.1.0
-      webdriver: 9.12.6
+      webdriver: 9.13.0
     optionalDependencies:
       puppeteer-core: 22.15.0
     transitivePeerDependencies:
@@ -10042,17 +10039,17 @@ snapshots:
 
   zod@3.23.8: {}
 
-  zustand@4.5.6(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0):
+  zustand@4.5.6(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0):
     dependencies:
       use-sync-external-store: 1.5.0(react@19.1.0)
     optionalDependencies:
-      '@types/react': 19.1.3
+      '@types/react': 19.1.4
       immer: 10.1.1
       react: 19.1.0
 
-  zustand@5.0.4(@types/react@19.1.3)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)):
+  zustand@5.0.4(@types/react@19.1.4)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)):
     optionalDependencies:
-      '@types/react': 19.1.3
+      '@types/react': 19.1.4
       immer: 10.1.1
       react: 19.1.0
       use-sync-external-store: 1.5.0(react@19.1.0)
