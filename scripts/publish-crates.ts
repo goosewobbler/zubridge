@@ -16,6 +16,15 @@ const dryRun = args.includes('--dry-run');
 const noVerify = args.includes('--no-verify');
 const targetPackage = args.find((arg) => !arg.startsWith('--'));
 
+// Get the new version from environment variable if available
+const newVersion = process.env.NEW_VERSION || '';
+
+if (newVersion) {
+  console.log(`Using version from environment: ${newVersion}`);
+} else {
+  console.log('No NEW_VERSION environment variable provided, will use current Cargo.toml version');
+}
+
 // Ensure targetPackage is a string (not a Symbol) when used
 // IMPORTANT: This explicit conversion is necessary to prevent TypeScript warnings
 // about implicit Symbol to string conversion
@@ -64,6 +73,22 @@ console.log(`Publishing Rust crates to crates.io...${dryRun ? ' (DRY RUN)' : ''}
 console.log(`Target package: ${targetPackageStr || 'All crates'}`);
 console.log('Crates to publish:', cratesToPublish.map((c) => `${c.name} (${c.path})`).join(', '));
 
+// Function to update Cargo.toml version
+function updateCargoTomlVersion(cargoTomlPath: string, version: string): void {
+  if (!version) return; // Skip if no version provided
+
+  try {
+    let content = fs.readFileSync(cargoTomlPath, 'utf-8');
+    // Update version using regex to ensure we only replace the package version
+    content = content.replace(/^\s*version\s*=\s*"[^"]+"/m, `version = "${version}"`);
+    fs.writeFileSync(cargoTomlPath, content);
+    console.log(`Updated version in ${cargoTomlPath} to ${version}`);
+  } catch (error) {
+    console.error(`Error updating Cargo.toml version: ${error}`);
+    throw error;
+  }
+}
+
 // For each crate, check if it exists and publish it
 for (const crate of cratesToPublish) {
   const cratePath = path.join(process.cwd(), crate.path);
@@ -84,6 +109,11 @@ for (const crate of cratesToPublish) {
     console.log('Cleaning previous build artifacts...');
     execSync('cargo clean', { stdio: 'inherit' });
 
+    // Update Cargo.toml version if new version is provided
+    if (newVersion) {
+      updateCargoTomlVersion(cargoTomlPath, newVersion);
+    }
+
     // Handle Node.js bindings if present
     if (crate.hasNodeBindings) {
       console.log('Package has Node.js bindings. Ensuring node/ directory build is clean...');
@@ -91,6 +121,13 @@ for (const crate of cratesToPublish) {
         // Clean node build artifacts separately
         process.chdir(path.join(cratePath, 'node'));
         execSync('cargo clean', { stdio: 'inherit' });
+
+        // Update Node binding Cargo.toml version as well
+        const nodeCargoTomlPath = path.join(cratePath, 'node', 'Cargo.toml');
+        if (newVersion && fs.existsSync(nodeCargoTomlPath)) {
+          updateCargoTomlVersion(nodeCargoTomlPath, newVersion);
+        }
+
         // Go back to the main crate directory
         process.chdir(cratePath);
       }
