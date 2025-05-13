@@ -138,10 +138,44 @@ export function createCoreBridge<State extends AnyState>(
         return;
       }
 
+      let isAsyncAction = false;
+      let stateUpdatePromise: Promise<any> | undefined;
+
       try {
         console.log(`[BRIDGE DEBUG] Processing action ${action.type} (ID: ${action.id})`);
-        // Always await the action processing to ensure it's done before sending the acknowledgment
-        await stateManager.processAction(action);
+
+        // Process the action and get the result
+        const result = stateManager.processAction(action);
+
+        // Check if the action processing was asynchronous
+        if (result && !result.isSync) {
+          isAsyncAction = true;
+
+          if (result.completion) {
+            console.log(
+              `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) is asynchronous, waiting for completion`,
+            );
+            stateUpdatePromise = result.completion;
+          } else {
+            console.log(
+              `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) marked as async but no completion promise provided`,
+            );
+          }
+        } else {
+          console.log(`[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) is synchronous`);
+        }
+
+        // If the action is async and has a completion promise, wait for it
+        if (isAsyncAction && stateUpdatePromise) {
+          try {
+            console.log(`[BRIDGE DEBUG] Waiting for async action ${action.type} (ID: ${action.id}) to complete...`);
+            await stateUpdatePromise;
+            console.log(`[BRIDGE DEBUG] Async action ${action.type} (ID: ${action.id}) completed successfully`);
+          } catch (asyncError) {
+            console.error(`[BRIDGE DEBUG] Error in async action completion: ${asyncError}`);
+          }
+        }
+
         console.log(`[BRIDGE DEBUG] Action processing successful: ${action.type}`);
       } catch (processError) {
         console.error('[BRIDGE DEBUG] Error in stateManager.processAction:', processError);

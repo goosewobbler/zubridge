@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Thunk, Dispatch, StateManager } from '@zubridge/types';
+import type { Action, AnyState, Thunk, Dispatch, StateManager, ProcessResult } from '@zubridge/types';
 import { getThunkTracker } from '../lib/thunkTracker.js';
 import { IpcChannel } from '../constants.js';
 import { BrowserWindow } from 'electron';
@@ -97,7 +97,12 @@ export class MainThunkProcessor {
       if (this.debugLogging) {
         console.log(`[MAIN_THUNK] Completing pending action ${actionId}`);
       }
-      pendingAction.resolve(actionId);
+
+      // Get the current state after the action has been processed
+      const currentState = this.stateManager?.getState();
+
+      // Resolve with the current state or just the action ID if state can't be retrieved
+      pendingAction.resolve(currentState ?? actionId);
       this.pendingActionPromises.delete(actionId);
     } else if (this.debugLogging) {
       console.log(`[MAIN_THUNK] No pending action found for ${actionId}`);
@@ -156,6 +161,9 @@ export class MainThunkProcessor {
         }
 
         // Create a promise that will resolve when the action has been fully processed
+        const actionPromiseId = Math.random().toString(36).substring(2, 10);
+        console.log(`[PROMISE_DEBUG] [${actionPromiseId}] Creating action promise for: ${actionObj.type}`);
+
         const actionPromise = new Promise((resolve) => {
           // Store the promise resolver in our map
           this.pendingActionPromises.set(actionObj.id!, {
@@ -166,8 +174,65 @@ export class MainThunkProcessor {
           if (this.debugLogging) {
             console.log(`[MAIN_THUNK] Created pending promise for action ${actionObj.id}`);
           }
+        });
 
-          // Add a safety timeout to handle cases where acknowledgment might not be sent
+        // Process the action and check if it was processed synchronously
+        const processResult = this.stateManager!.processAction(actionObj) as ProcessResult | void;
+        const isProcessedSynchronously = processResult === undefined || processResult.isSync;
+
+        // Track the action
+        thunkHandle.addAction(actionObj.id!);
+
+        // For actions that are processed synchronously and originate from the main process,
+        // complete them immediately without waiting
+        if (isProcessedSynchronously && (actionObj as any).__isFromMainProcess) {
+          if (this.debugLogging) {
+            console.log(`[MAIN_THUNK] Action ${actionObj.id} processed synchronously, completing immediately`);
+          }
+          setTimeout(() => {
+            this.completeAction(actionObj.id!);
+          }, 0);
+        }
+        // For async actions with completion promises, properly await them
+        else if (processResult && !processResult.isSync && processResult.completion) {
+          if (this.debugLogging) {
+            console.log(`[MAIN_THUNK] Waiting for async action ${actionObj.id} to complete`);
+          }
+
+          console.log(`[MAIN_ASYNC_DEBUG] START waiting for completion of ${actionObj.type}`);
+
+          try {
+            // Wait for the action's completion promise (which will not return a value)
+            await processResult.completion;
+            console.log(`[MAIN_ASYNC_DEBUG] RESOLVED completion promise for ${actionObj.type}`);
+
+            // If the action is still pending, complete it now
+            if (this.pendingActionPromises.has(actionObj.id!)) {
+              if (this.debugLogging) {
+                console.log(`[MAIN_THUNK] Async action ${actionObj.id} completed successfully`);
+              }
+
+              // Use the original action object as the result since the completion promise returns void
+              this.pendingActionPromises.get(actionObj.id!)!.resolve(actionObj);
+              this.pendingActionPromises.delete(actionObj.id!);
+
+              // Send acknowledgment for the action
+              this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
+            }
+          } catch (error) {
+            console.error(`[MAIN_THUNK] Error in async action ${actionObj.id}:`, error);
+            console.error(`[MAIN_ASYNC_DEBUG] ERROR in completion promise for ${actionObj.type}`, error);
+
+            // Complete the action even if it failed
+            if (this.pendingActionPromises.has(actionObj.id!)) {
+              this.completeAction(actionObj.id!);
+              this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
+            }
+          }
+        }
+        // For actions without a completion promise, set up a safety timeout
+        else {
+          // Add a safety timeout for actions without completion promises
           setTimeout(() => {
             // If the action hasn't been completed yet, complete it
             if (this.pendingActionPromises.has(actionObj.id!)) {
@@ -182,26 +247,20 @@ export class MainThunkProcessor {
               this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
             }
           }, this.actionCompletionTimeoutMs);
-        });
-
-        // Process the action
-        this.stateManager!.processAction(actionObj);
-
-        // Track the action
-        thunkHandle.addAction(actionObj.id!);
+        }
 
         if (this.debugLogging) {
           console.log(`[MAIN_THUNK] Action ${actionObj.type} (${actionObj.id}) started, awaiting completion`);
         }
 
         // Wait for the action to complete before returning
-        await actionPromise;
+        const result = await actionPromise;
 
         if (this.debugLogging) {
           console.log(`[MAIN_THUNK] Action ${actionObj.type} (${actionObj.id}) completed`);
         }
 
-        return actionObj;
+        return result; // Return the action object or any result from the action
       };
 
       // Create an async getState function that matches our consistent API

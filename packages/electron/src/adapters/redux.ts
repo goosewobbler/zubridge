@@ -1,5 +1,5 @@
 import type { Store } from 'redux';
-import type { AnyState, Action, Handler, StateManager } from '@zubridge/types';
+import type { AnyState, Action, Handler, StateManager, ProcessResult } from '@zubridge/types';
 import { resolveHandler } from '../utils/handlers.js';
 import { debug } from '../utils/debug.js';
 
@@ -29,7 +29,7 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
   return {
     getState: () => store.getState(),
     subscribe: (listener) => store.subscribe(() => listener(store.getState())),
-    processAction: async (action: Action) => {
+    processAction: (action: Action) => {
       try {
         debug('adapters', 'Redux adapter processing action:', action);
 
@@ -44,20 +44,29 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
             const startTime = new Date().getTime();
             const result = handler(action.payload);
 
-            // If the handler returns a Promise, await it
+            // If the handler returns a Promise, it's async
             if (isPromise(result)) {
-              debug('adapters', `Handler for ${action.type} returned a Promise, awaiting completion`);
-              await result;
-              const endTime = new Date().getTime();
-              debug(
-                'adapters',
-                `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
-              );
+              debug('adapters', `Handler for ${action.type} returned a Promise, it will complete asynchronously`);
+              // Return both the async status and the completion promise
+              return {
+                isSync: false,
+                completion: result
+                  .then(() => {
+                    const endTime = new Date().getTime();
+                    debug(
+                      'adapters',
+                      `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
+                    );
+                  })
+                  .catch((error) => {
+                    console.error(`Error in async handler for ${action.type}:`, error);
+                  }),
+              };
             } else {
               const endTime = new Date().getTime();
               debug('adapters', `Sync handler for ${action.type} completed in ${endTime - startTime}ms`);
+              return { isSync: true }; // Sync action
             }
-            return;
           }
         }
 
@@ -65,9 +74,11 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
         // with our standard Action format
         debug('adapters', `Dispatching action to Redux store: ${action.type}`);
         store.dispatch(action as any);
+        return { isSync: true }; // Redux dispatch is synchronous
       } catch (error) {
         debug('adapters', 'Error processing Redux action:', error);
         console.error('Error processing Redux action:', error);
+        return { isSync: true }; // Default to sync if error occurred
       }
     },
   };
