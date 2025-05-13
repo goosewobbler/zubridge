@@ -129,11 +129,26 @@ export type DispatchFunc<S, TActions extends Record<string, any> = Record<string
   (action: Action): Promise<any>;
 };
 
+/**
+ * Result of processing an action
+ * Contains information about whether the action was processed synchronously
+ */
+export type ProcessResult = {
+  isSync: boolean;
+  completion?: Promise<any>; // Allow any return type, not just void
+};
+
 // Shared state manager interface that can be implemented by different backends
 export interface StateManager<State> {
   getState: () => State;
   subscribe: (listener: (state: State) => void) => () => void;
-  processAction: (action: Action) => void;
+  /**
+   * Process an action and update state accordingly
+   * @param action The action to process
+   * @returns ProcessResult indicating if the action was processed synchronously (isSync: true) or asynchronously (isSync: false)
+   * For backward compatibility, if undefined is returned, it's treated as synchronous
+   */
+  processAction: (action: Action) => ProcessResult | void;
 }
 
 // Base interface for backend bridges across platforms
