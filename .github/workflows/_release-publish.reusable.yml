@@ -297,6 +297,8 @@ jobs:
           else
             pnpx tsx scripts/publish-crates.ts "${{ inputs.packages }}"
           fi
+        env:
+          NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
 
       - name: 🔍 Verify published Rust crates
         shell: bash
