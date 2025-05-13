@@ -281,7 +281,7 @@ jobs:
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev libgobject-2.0-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev
 
       - name: 🔧 Login to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
