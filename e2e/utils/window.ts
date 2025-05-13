@@ -1,6 +1,6 @@
 // Utility functions for E2E window and counter management
 import { browser } from 'wdio-electron-service';
-import { TimingConfig, TIMING } from '../constants';
+import { TIMING } from '../constants';
 
 // Store windows by index rather than by title since all windows have the same title
 export const windowHandles: string[] = [];

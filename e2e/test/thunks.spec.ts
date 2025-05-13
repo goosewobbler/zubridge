@@ -10,9 +10,9 @@ import {
   getButtonInCurrentWindow,
   getCounterValue,
   resetCounter,
-} from '../utils/windowUtils';
-import { TIMING } from '../constants';
-import { waitForCounterChange } from '../utils/waitForCounterChange';
+} from '../utils/window.js';
+import { TIMING } from '../constants.js';
+import { waitForSpecificValue } from '../utils/counter.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
@@ -60,18 +60,22 @@ describe('Thunk Execution and Behavior', () => {
       // 1. First operation multiplies by 2 (4)
       // 2. Second operation multiplies by 2 (8)
       await doubleButton.click();
-      let intermediateValue = await waitForCounterChange(2);
-      console.log(`Intermediate counter value: ${intermediateValue}`);
-      expect(intermediateValue).toBe(4);
 
-      intermediateValue = await waitForCounterChange(4);
-      console.log(`Intermediate counter value: ${intermediateValue}`);
-      expect(intermediateValue).toBe(8);
+      // Wait for first expected value (4)
+      await waitForSpecificValue(4);
+      console.log(`Intermediate counter value: 4`);
+
+      // Wait for second expected value (8)
+      await waitForSpecificValue(8);
+      console.log(`Intermediate counter value: 8`);
 
       // Verify final counter value
       // The sequence should be: 2 -> 4 -> 8 -> 4, so expect 4
-      const finalValue = await waitForCounterChange(8);
-      console.log(`Final counter value: ${finalValue}`);
+      await waitForSpecificValue(4);
+      console.log(`Final counter value: 4`);
+
+      // Check the final value
+      const finalValue = await getCounterValue();
       expect(finalValue).toBe(4);
     });
 
@@ -96,18 +100,22 @@ describe('Thunk Execution and Behavior', () => {
       // 1. First operation multiplies by 2 (4)
       // 2. Second operation multiplies by 2 (8)
       await mainThunkButton.click();
-      const intermediateValue = await waitForCounterChange(2);
-      console.log(`Intermediate counter value (main thunk): ${intermediateValue}`);
-      expect(intermediateValue).toBe(4);
 
-      const intermediateValue2 = await waitForCounterChange(4);
-      console.log(`Intermediate counter value (main thunk): ${intermediateValue2}`);
-      expect(intermediateValue2).toBe(8);
+      // Wait for first expected value (4)
+      await waitForSpecificValue(4);
+      console.log(`Intermediate counter value (main thunk): 4`);
+
+      // Wait for second expected value (8)
+      await waitForSpecificValue(8);
+      console.log(`Intermediate counter value (main thunk): 8`);
 
       // Verify final counter value
       // The sequence should be: 2 -> 4 -> 8 -> 4, so expect 4
-      const finalValue = await waitForCounterChange(8);
-      console.log(`Final counter value: ${finalValue}`);
+      await waitForSpecificValue(4);
+      console.log(`Final counter value: 4`);
+
+      // Check the final value
+      const finalValue = await getCounterValue();
       expect(finalValue).toBe(4);
     });
   });
@@ -133,26 +141,27 @@ describe('Thunk Execution and Behavior', () => {
       console.log('Triggering renderer thunk...');
       const rendererThunkButton = await browser.$('button=Double (Renderer Thunk)');
 
-      // Check intermediate state
-      // kick off the thunk and wait for the first intermediate value
+      // Kick off the thunk sequence
       rendererThunkButton.click();
-      const intermediateValue = await waitForCounterChange(2);
-      expect(intermediateValue).toBe(4);
 
-      // interrupt the thunk with an increment
+      // Wait for thunk to reach its first intermediate value (4)
+      await waitForSpecificValue(4);
+
+      // Interrupt the thunk with an increment
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      const intermediateValue2 = await waitForCounterChange(4);
 
-      // verify the increment action was deferred and the thunk continued processing
-      expect(intermediateValue2).toBe(8);
+      // Wait for thunk to continue to its next value (8)
+      await waitForSpecificValue(8);
 
-      // wait for the thunk to complete
-      const finalThunkValue = await waitForCounterChange(8);
-      expect(finalThunkValue).toBe(4);
+      // Wait for thunk to finish (value 4)
+      await waitForSpecificValue(4);
 
-      // wait for the increment action to complete
-      const finalValue = await waitForCounterChange(4);
+      // Now wait for the increment action to be processed, resulting in 5
+      await waitForSpecificValue(5);
+
+      // Verify the final state
+      const finalValue = await getCounterValue();
       expect(finalValue).toBe(5);
     });
 
@@ -175,26 +184,27 @@ describe('Thunk Execution and Behavior', () => {
       console.log('Triggering main process thunk...');
       const mainThunkButton = await browser.$('button=Double (Main Thunk)');
 
-      // Check intermediate state
-      // kick off the thunk and wait for the first intermediate value
+      // Kick off the thunk sequence
       await mainThunkButton.click();
-      const intermediateValue = await waitForCounterChange(2);
-      expect(intermediateValue).toBe(4);
 
-      // interrupt the thunk with an increment
+      // Wait for thunk to reach its first intermediate value (4)
+      await waitForSpecificValue(4);
+
+      // Interrupt the thunk with an increment
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      const intermediateValue2 = await waitForCounterChange(4);
 
-      // verify the increment action was deferred and the thunk continued processing
-      expect(intermediateValue2).toBe(8);
+      // Wait for thunk to continue to its next value (8)
+      await waitForSpecificValue(8);
 
-      // wait for the thunk to complete
-      const finalThunkValue = await waitForCounterChange(8);
-      expect(finalThunkValue).toBe(4);
+      // Wait for thunk to finish (value 4)
+      await waitForSpecificValue(4);
 
-      // wait for the increment action to complete
-      const finalValue = await waitForCounterChange(4);
+      // Now wait for the increment action to be processed, resulting in 5
+      await waitForSpecificValue(5);
+
+      // Verify the final state
+      const finalValue = await getCounterValue();
       expect(finalValue).toBe(5);
     });
   });
@@ -364,33 +374,38 @@ describe('Thunk Execution and Behavior', () => {
       // The first change should happen quickly (regular COUNTER:SET)
       console.log('[ASYNC TEST] Waiting for first counter change (should be fast)');
       await doubleButton.click();
-      const value1 = await waitForCounterChange(2);
+
+      // Wait for first expected value (4)
+      await waitForSpecificValue(4);
       const timeAfterFirstChange = new Date();
-      console.log(`[ASYNC TEST] First value change: ${value1} at ${timeAfterFirstChange.toISOString()}`);
-      expect(value1).toBe(4);
+      console.log(`[ASYNC TEST] First value change: 4 at ${timeAfterFirstChange.toISOString()}`);
 
       // The second change should take ~2500ms because of the SLOW action
       console.log('[ASYNC TEST] Waiting for second counter change (should take ~2500ms)');
       const timeBeforeSecondChange = new Date();
-      const value2 = await waitForCounterChange(4); // Extended timeout for slow action
+
+      // Wait for second expected value (8)
+      await waitForSpecificValue(8);
       const timeAfterSecondChange = new Date();
 
       const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
-      console.log(`[ASYNC TEST] Second value change: ${value2} at ${timeAfterSecondChange.toISOString()}`);
+      console.log(`[ASYNC TEST] Second value change: 8 at ${timeAfterSecondChange.toISOString()}`);
       console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
 
       // The slow action should have taken at least 2000ms
       // This is a key verification of our fix - without the fix, the action would complete immediately
       expect(secondChangeDuration).toBeGreaterThan(2000);
 
-      // Verify the value is 8 (doubled again)
-      expect(value2).toBe(8);
-
       // Final operation - halve the counter
       console.log('[ASYNC TEST] Waiting for third counter change');
-      const value3 = await waitForCounterChange(8);
-      console.log(`[ASYNC TEST] Third value change: ${value3}`);
-      expect(value3).toBe(4);
+
+      // Wait for final value (4)
+      await waitForSpecificValue(4);
+      console.log(`[ASYNC TEST] Third value change: 4`);
+
+      // Verify the final value
+      const finalValue = await getCounterValue();
+      expect(finalValue).toBe(4);
     });
 
     it('should properly wait for async actions to complete in main process thunks', async () => {
@@ -415,33 +430,38 @@ describe('Thunk Execution and Behavior', () => {
       // The first change should happen quickly (regular COUNTER:SET)
       console.log('[ASYNC TEST] Waiting for first counter change (should be fast)');
       await doubleButton.click();
-      const value1 = await waitForCounterChange(2);
+
+      // Wait for first expected value (4)
+      await waitForSpecificValue(4);
       const timeAfterFirstChange = new Date();
-      console.log(`[ASYNC TEST] First value change: ${value1} at ${timeAfterFirstChange.toISOString()}`);
-      expect(value1).toBe(4);
+      console.log(`[ASYNC TEST] First value change: 4 at ${timeAfterFirstChange.toISOString()}`);
 
       // The second change should take ~2500ms because of the SLOW action
       console.log('[ASYNC TEST] Waiting for second counter change (should take ~2500ms)');
       const timeBeforeSecondChange = new Date();
-      const value2 = await waitForCounterChange(4); // Extended timeout for slow action
+
+      // Wait for second expected value (8)
+      await waitForSpecificValue(8);
       const timeAfterSecondChange = new Date();
 
       const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
-      console.log(`[ASYNC TEST] Second value change: ${value2} at ${timeAfterSecondChange.toISOString()}`);
+      console.log(`[ASYNC TEST] Second value change: 8 at ${timeAfterSecondChange.toISOString()}`);
       console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
 
       // The slow action should have taken at least 2000ms
       // This is a key verification of our fix - without the fix, the action would complete immediately
       expect(secondChangeDuration).toBeGreaterThan(2000);
 
-      // Verify the value is 8 (doubled again)
-      expect(value2).toBe(8);
-
       // Final operation - halve the counter
       console.log('[ASYNC TEST] Waiting for third counter change');
-      const value3 = await waitForCounterChange(8);
-      console.log(`[ASYNC TEST] Third value change: ${value3}`);
-      expect(value3).toBe(4);
+
+      // Wait for final value (4)
+      await waitForSpecificValue(4);
+      console.log(`[ASYNC TEST] Third value change: 4`);
+
+      // Verify the final value
+      const finalValue = await getCounterValue();
+      expect(finalValue).toBe(4);
     });
   });
 });

@@ -8,8 +8,9 @@ import {
   getButtonInCurrentWindow,
   getCounterValue,
   resetCounter,
-} from '../utils/windowUtils';
-import { TIMING } from '../constants';
+} from '../utils/window.js';
+import { TIMING } from '../constants.js';
+import { waitForSpecificValue } from '../utils/counter.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
@@ -85,25 +86,27 @@ describe('Basic State Synchronization', () => {
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // Verify counter is at 2
-      const initialCounter = await browser.$('h2');
-      expect(await initialCounter.getText()).toContain('2');
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
 
       // Click the double button
       const doubleButton = await browser.$('button=Double (Object)');
       await doubleButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE * 2);
 
-      // Verify counter is now doubled (4)
-      const doubledCounter = await browser.$('h2');
-      expect(await doubledCounter.getText()).toContain('4');
+      // Wait for counter to reach 4
+      await waitForSpecificValue(4);
+      console.log('Counter doubled to 4');
 
       // Double again
       await doubleButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE * 2);
 
-      // Verify counter is now 8
-      const finalCounter = await browser.$('h2');
-      expect(await finalCounter.getText()).toContain('8');
+      // Wait for counter to reach 8
+      await waitForSpecificValue(8);
+      console.log('Counter doubled to 8');
+
+      // Verify final value
+      const finalValue = await getCounterValue();
+      expect(finalValue).toBe(8);
     });
   });
 

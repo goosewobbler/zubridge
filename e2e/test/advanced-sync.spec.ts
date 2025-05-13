@@ -11,8 +11,8 @@ import {
   getCounterValue,
   incrementCounterAndVerify,
   resetCounter,
-} from '../utils/windowUtils';
-import { TIMING } from '../constants';
+} from '../utils/window.js';
+import { TIMING } from '../constants.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 

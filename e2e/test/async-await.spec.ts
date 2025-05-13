@@ -1,9 +1,9 @@
 import { expect } from '@wdio/globals';
 import { it, describe, before } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import { setupTestEnvironment, getCounterValue, resetCounter } from '../utils/windowUtils';
-import { TIMING } from '../constants';
-import { waitForCounterChange } from '../utils/waitForCounterChange';
+import { setupTestEnvironment, getCounterValue, resetCounter } from '../utils/window.js';
+import { TIMING } from '../constants.js';
+import { waitForSpecificValue } from '../utils/counter.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
@@ -48,21 +48,24 @@ describe('Async action awaiting behavior', () => {
     // Record the time before clicking the button
     const timeBeforeClick = new Date();
 
-    // Click the button and wait for the counter to change
+    // Click the button and wait for the counter to change to 4
     await slowObjectButton.click();
-    const value = await waitForCounterChange(2);
+
+    // Wait for the specific value (4) we expect after doubling
+    await waitForSpecificValue(4);
 
     // Record the time after the counter changed
     const timeAfterChange = new Date();
     const changeDuration = timeAfterChange.getTime() - timeBeforeClick.getTime();
 
-    console.log(`[ASYNC TEST] Counter changed to ${value} after ${changeDuration}ms`);
-
-    // The value should be 4 (2 * 2)
-    expect(value).toBe(4);
+    console.log(`[ASYNC TEST] Counter changed to 4 after ${changeDuration}ms`);
 
     // The action should have taken at least 2000ms due to the built-in delay
     // This verifies that the UI waits for the async action to complete
     expect(changeDuration).toBeGreaterThan(2000);
+
+    // Verify the final value
+    const finalValue = await getCounterValue();
+    expect(finalValue).toBe(4);
   });
 });
