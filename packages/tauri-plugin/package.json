@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/tauri-plugin",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Tauri plugin providing a backend API for `@zubridge/tauri`",
   "private": true,
   "files": [
