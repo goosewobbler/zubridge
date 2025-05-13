@@ -3,15 +3,16 @@
 //! This module provides a middleware for logging actions and state changes
 //! with options for WebSocket broadcasting for remote monitoring.
 
+use crate::{Action, Context, Middleware, Result, State};
+use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use std::sync::Arc;
+use tokio::sync::RwLock;
+use log::{debug, info};
 
 use async_trait::async_trait;
-use log::{debug, info};
-use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
 
 use crate::websocket::WebSocketServer;
-use crate::{Action, Context, Error, Middleware, Result, State};
 
 /// Configuration for the logging middleware
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -159,6 +160,16 @@ impl LoggingMiddleware {
         }
     }
 
+    /// Check if performance measurement is enabled
+    pub fn is_performance_measurement_enabled(&self) -> bool {
+        self.config.measure_performance
+    }
+
+    /// Get a reference to the configuration
+    pub fn get_config(&self) -> &LoggingConfig {
+        &self.config
+    }
+
     /// Add a log entry to history and optionally broadcast it
     async fn add_log_entry(&self, entry: LogEntry) -> Result<()> {
         // Log to console if enabled
@@ -214,9 +225,13 @@ impl LoggingMiddleware {
             let mut history = self.log_history.write().await;
             history.push(entry.clone());
 
-            // Trim if over limit
+            // Trim if over limit - fix the borrowing issue
             if history.len() > self.config.log_limit {
-                *history = history.split_off(history.len() - self.config.log_limit);
+                // Create a new vector instead of using split_off which borrows history mutably twice
+                let start_idx = history.len() - self.config.log_limit;
+                let mut new_history = Vec::with_capacity(self.config.log_limit);
+                new_history.extend_from_slice(&history[start_idx..]);
+                *history = new_history;
             }
         }
 
@@ -265,11 +280,13 @@ impl Middleware for LoggingMiddleware {
     async fn after_action(&self, action: &Action, state: &State, ctx: &Context) {
         // Get performance measurement if available
         let processing_time_ms = if self.config.measure_performance {
-            if let Some(Ok(time_str)) = ctx.metadata.get("processing_time_ms").map(|v| v.as_str()) {
-                time_str.parse::<f64>().ok()
-            } else {
-                None
-            }
+            // Fix the type mismatch by properly handling the JSON value conversion
+            ctx.metadata.get("processing_time_ms")
+                .and_then(|v| match v {
+                    JsonValue::String(s) => s.parse::<f64>().ok(),
+                    JsonValue::Number(n) => n.as_f64(),
+                    _ => None,
+                })
         } else {
             None
         };

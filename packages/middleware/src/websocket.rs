@@ -92,7 +92,12 @@ impl WebSocketServer {
     ) -> Result<()> {
         // Accept the WebSocket connection
         let ws_stream = accept_async(socket).await.map_err(|e| Error::WebSocket(e.to_string()))?;
-        let (mut ws_sender, mut ws_receiver) = ws_stream.split();
+
+        // Clone the stream instead of splitting it - this way we can use it in both tasks
+        let (ws_sender1, mut ws_receiver) = ws_stream.split();
+
+        // Create an Arc for the sender to share between tasks
+        let ws_sender1 = Arc::new(tokio::sync::Mutex::new(ws_sender1));
 
         // Add client to connected clients
         let mut receiver = sender.subscribe();
@@ -104,7 +109,10 @@ impl WebSocketServer {
         // Send initial history
         let history = log_history.read().await.clone();
         let msg = Self::serialize_to_messagepack(&history)?;
-        ws_sender.send(Message::Binary(msg)).await.map_err(|e| Error::WebSocket(e.to_string()))?;
+        ws_sender1.lock().await.send(Message::Binary(msg)).await.map_err(|e| Error::WebSocket(e.to_string()))?;
+
+        // Create a clone for the client task
+        let ws_sender2 = ws_sender1.clone();
 
         // Handle incoming messages (ping/pong)
         let client_task = tokio::spawn(async move {
@@ -112,7 +120,8 @@ impl WebSocketServer {
                 match msg {
                     Ok(msg) => {
                         if msg.is_ping() {
-                            if let Err(e) = ws_sender.send(Message::Pong(vec![])).await {
+                            let mut lock = ws_sender2.lock().await;
+                            if let Err(e) = lock.send(Message::Pong(vec![])).await {
                                 error!("Error sending pong: {}", e);
                                 break;
                             }
@@ -136,7 +145,8 @@ impl WebSocketServer {
             loop {
                 match receiver.recv().await {
                     Ok(msg) => {
-                        if let Err(e) = ws_sender.send(Message::Binary(msg)).await {
+                        let mut lock = ws_sender1.lock().await;
+                        if let Err(e) = lock.send(Message::Binary(msg)).await {
                             error!("Error sending message: {}", e);
                             break;
                         }

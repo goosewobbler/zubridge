@@ -7,6 +7,7 @@ mod error;
 mod logging;
 mod websocket;
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -43,7 +44,8 @@ pub struct Context {
     pub metadata: HashMap<String, JsonValue>,
 
     /// Start time for performance measurement (in nanoseconds)
-    #[serde(skip)]
+    #[doc(hidden)]
+    #[allow(dead_code)]
     pub(crate) start_time: Option<u128>,
 }
 
@@ -74,17 +76,17 @@ impl Default for Context {
 
 /// Core middleware trait that all middlewares must implement
 #[async_trait]
-pub trait Middleware: Send + Sync {
+pub trait Middleware: Send + Sync + Any {
     /// Process an action before it reaches the state reducer
     ///
     /// Return Some(action) to continue processing (potentially with a modified action)
     /// Return None to cancel the action (it will not be processed further)
-    async fn before_action(&self, action: &Action, ctx: &Context) -> Option<Action> {
+    async fn before_action(&self, action: &Action, _ctx: &Context) -> Option<Action> {
         Some(action.clone())
     }
 
     /// Process state after an action has been applied
-    async fn after_action(&self, action: &Action, state: &State, ctx: &Context) {
+    async fn after_action(&self, _action: &Action, _state: &State, _ctx: &Context) {
         // Default implementation does nothing
     }
 }
@@ -151,16 +153,21 @@ impl ZubridgeMiddleware {
 
         // If performance measurement is enabled in logging config, record start time
         let measure_performance = if let Some(middleware) = self.middlewares.iter()
-            .find(|m| m.type_id() == std::any::TypeId::of::<LoggingMiddleware>()) {
-            // Safe downcast since we already checked the type
-            let logging = unsafe { &*(middleware.as_ref() as *const dyn Middleware as *const LoggingMiddleware) };
-            if logging.config.measure_performance {
-                // Record start time using nanos for higher precision
-                ctx.start_time = Some(std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_nanos())
-                    .unwrap_or(0));
-                true
+            .find(|m| (**m).type_id() == std::any::TypeId::of::<LoggingMiddleware>()) {
+            // Using downcast_ref which is safer than unsafe casting
+            let logging = middleware.as_ref() as &dyn Any;
+            if let Some(logging) = logging.downcast_ref::<LoggingMiddleware>() {
+                // Use appropriate getter method for the config field instead of direct access
+                if logging.is_performance_measurement_enabled() {
+                    // Record start time using nanos for higher precision
+                    ctx.start_time = Some(std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_nanos())
+                        .unwrap_or(0));
+                    true
+                } else {
+                    false
+                }
             } else {
                 false
             }
@@ -200,8 +207,16 @@ impl ZubridgeMiddleware {
 
             // Store processing time in context for middleware to use
             if let Some(time) = processing_time_ms {
+                // Create a new clone for manipulation
+                let ctx_metadata = ctx.metadata.clone();
+                // Create a new context with the updated metadata
+                let mut new_metadata = ctx_metadata;
                 // Store as string since JsonValue doesn't directly support f64
-                let _ = ctx.with_metadata("processing_time_ms", time.to_string());
+                new_metadata.insert("processing_time_ms".to_string(),
+                    JsonValue::String(time.to_string()));
+
+                // Update context with new metadata
+                ctx.metadata = new_metadata;
             }
 
             // Now process through after_action middleware chain
