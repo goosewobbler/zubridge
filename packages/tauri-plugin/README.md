@@ -26,8 +26,6 @@ Zubridge creates a bridge between your Rust backend state and your frontend Java
 3. **Frontend**: Initialize the bridge with `@zubridge/tauri`
 4. **Frontend**: Access state with `useZubridgeStore` and dispatch actions with `useZubridgeDispatch`
 
-<img alt="zubridge tauri plugin architecture" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-tauri-plugin-architecture.png"/>
-
 ## Features
 
 - **Simple State Management**: Manages synchronization between Rust backend and JavaScript frontend
@@ -169,6 +167,10 @@ For more detailed documentation, see:
 A complete example application demonstrating the use of `tauri-plugin-zubridge` with a simple counter state:
 
 - [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-example)
+
+## Plugin Architecture
+
+<img alt="zubridge tauri plugin architecture" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-tauri-plugin-architecture.png"/>
 
 ## License
 
