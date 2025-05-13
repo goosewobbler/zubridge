@@ -86,6 +86,13 @@ jobs:
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           # GITHUB_WORKSPACE is automatically available
 
+      - name: Debug - Check file content
+        run: |
+          cat packages/tauri-plugin/Cargo.toml
+          grep -n "version" packages/tauri-plugin/Cargo.toml
+          cat packages/tauri-plugin/package.json
+          grep -n "version" packages/tauri-plugin/package.json
+
       - name: 📢 Publish to NPM
         shell: bash
         id: npm_publish
@@ -297,6 +304,8 @@ jobs:
           else
             pnpx tsx scripts/publish-crates.ts "${{ inputs.packages }}"
           fi
+        env:
+          NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
 
       - name: 🔍 Verify published Rust crates
         shell: bash
