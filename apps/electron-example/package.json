@@ -45,13 +45,13 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "@reduxjs/toolkit": "^2.7.0",
+    "@reduxjs/toolkit": "^2.8.1",
     "@zubridge/electron": "workspace:*",
     "@zubridge/ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redux": "^5.0.1",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.4",
@@ -63,7 +63,7 @@
     "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
-    "electron": "^35.1.5",
+    "electron": "^35.3.0",
     "electron-builder": "^26.0.12",
     "electron-vite": "^3.0.0",
     "postcss": "^8.5.3",
