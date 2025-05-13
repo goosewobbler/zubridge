@@ -12,7 +12,7 @@ import { browser } from 'wdio-electron-service';
 export async function waitForCounterChange(
   initialValue?: number,
   timeout = TIMING.THUNK_WAIT_TIME,
-  interval = 100,
+  interval = 10,
 ): Promise<number> {
   if (initialValue === undefined) {
     initialValue = await getCounterValue();
