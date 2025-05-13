@@ -21,7 +21,7 @@ export interface ThunkContext {
 /**
  * Counter operation methods
  */
-export type CounterMethod = 'action' | 'thunk' | 'main-thunk' | 'slow-thunk' | 'main-slow-thunk';
+export type CounterMethod = 'action' | 'thunk' | 'main-thunk' | 'slow-thunk' | 'slow-main-thunk';
 
 /**
  * Thunk creator function type that includes context
