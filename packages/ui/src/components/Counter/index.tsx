@@ -76,7 +76,7 @@ export const Counter: React.FC<CounterProps> = ({
             Double (Main Thunk)
           </Button>
           <Button
-            onClick={() => onDouble('main-slow-thunk')}
+            onClick={() => onDouble('slow-main-thunk')}
             disabled={isLoading}
             aria-label="Double counter using slow main process thunk"
             className="w-full"
@@ -90,6 +90,14 @@ export const Counter: React.FC<CounterProps> = ({
             className="w-full"
           >
             Double (Object)
+          </Button>
+          <Button
+            onClick={() => onDouble('slow-object')}
+            disabled={isLoading}
+            aria-label="Double counter using slow action"
+            className="w-full"
+          >
+            Double (Slow Object)
           </Button>
           <Button variant="reset" onClick={onReset} disabled={isLoading} aria-label="Reset counter" className="w-full">
             Reset

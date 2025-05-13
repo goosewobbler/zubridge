@@ -142,10 +142,18 @@ export function ZubridgeApp({
         const result = window.counter?.executeMainThunk();
         console.log(`[DEBUG] ${method} returned:`, result);
         return result;
-      } else if (method === 'main-slow-thunk') {
+      } else if (method === 'slow-main-thunk') {
         console.log(`[DEBUG] Starting ${method} execution`);
         const result = window.counter?.executeMainThunkSlow();
         console.log(`[DEBUG] ${method} returned:`, result);
+        return result;
+      } else if (method === 'slow-object') {
+        console.log(`[DEBUG] Dispatching slow action for ${method}`);
+        const result = dispatch({
+          type: 'COUNTER:SET:SLOW',
+          payload: counter * 2,
+        });
+        console.log(`[DEBUG] Slow action dispatch returned:`, result);
         return result;
       } else {
         console.log(`[DEBUG] Dispatching regular action for ${method}`);
