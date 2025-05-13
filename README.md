@@ -6,16 +6,23 @@
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity_
 
-<a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM"><img src="https://img.shields.io/badge/@zubridge/electron-9feaf9" />
-<img src="https://img.shields.io/npm/v/@zubridge/electron" />
-<img src="https://img.shields.io/npm/dw/@zubridge/electron" /></a> \
-<a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM"><img src="https://img.shields.io/badge/@zubridge/tauri-ffc131" />
-<img src="https://img.shields.io/npm/v/@zubridge/tauri" />
-<img src="https://img.shields.io/npm/dw/@zubridge/tauri" /></a> \
-<img src="https://img.shields.io/badge/tauri-plugin-ffc131" />
+<a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM">
+  <img src="https://img.shields.io/badge/@zubridge/electron-9feaf9" />
+  <img src="https://img.shields.io/npm/v/@zubridge/electron" />
+  <img src="https://img.shields.io/npm/dw/@zubridge/electron" />
+</a> \
+
+<a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM">
+  <img src="https://img.shields.io/badge/@zubridge/tauri-ffc131" />
+  <img src="https://img.shields.io/npm/v/@zubridge/tauri" />
+  <img src="https://img.shields.io/npm/dw/@zubridge/tauri" />
+</a> \
+
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Tauri-Plugin-Zubridge on Crates.io">
-<img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" />
-<img src="https://img.shields.io/crates/d/tauri-plugin-zubridge" /></a>
+  <img src="https://img.shields.io/badge/tauri-plugin-ffc131" />
+  <img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" />
+  <img src="https://img.shields.io/crates/d/tauri-plugin-zubridge" />
+</a>
 
 ### Why
 
