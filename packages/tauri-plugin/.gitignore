@@ -6,3 +6,6 @@ Cargo.lock
 /gen
 **/gen/
 **/target/package/**/gen/
+
+# But exclude them from gitignore during Cargo publish
+!target/package/tauri-plugin-zubridge-*/gen/
