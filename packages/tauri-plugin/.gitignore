@@ -2,4 +2,7 @@
 /target
 Cargo.lock
 
-gen
+# Explicitly ignore generated files
+/gen
+**/gen/
+**/target/package/**/gen/
