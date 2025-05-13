@@ -27,3 +27,7 @@ out-*
 
 # Ignore Aider files
 .aider*
+
+# Ignore Tauri files
+.tauri/
+target
