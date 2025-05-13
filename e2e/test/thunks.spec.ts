@@ -372,7 +372,7 @@ describe('Thunk Execution and Behavior', () => {
       // The second change should take ~2500ms because of the SLOW action
       console.log('[ASYNC TEST] Waiting for second counter change (should take ~2500ms)');
       const timeBeforeSecondChange = new Date();
-      const value2 = await waitForCounterChange(4, 8000, 100); // Extended timeout for slow action
+      const value2 = await waitForCounterChange(4); // Extended timeout for slow action
       const timeAfterSecondChange = new Date();
 
       const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
@@ -388,7 +388,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Final operation - halve the counter
       console.log('[ASYNC TEST] Waiting for third counter change');
-      const value3 = await waitForCounterChange(8, 8000, 100);
+      const value3 = await waitForCounterChange(8);
       console.log(`[ASYNC TEST] Third value change: ${value3}`);
       expect(value3).toBe(4);
     });
@@ -423,7 +423,7 @@ describe('Thunk Execution and Behavior', () => {
       // The second change should take ~2500ms because of the SLOW action
       console.log('[ASYNC TEST] Waiting for second counter change (should take ~2500ms)');
       const timeBeforeSecondChange = new Date();
-      const value2 = await waitForCounterChange(4, 8000, 100); // Extended timeout for slow action
+      const value2 = await waitForCounterChange(4); // Extended timeout for slow action
       const timeAfterSecondChange = new Date();
 
       const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
@@ -439,7 +439,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Final operation - halve the counter
       console.log('[ASYNC TEST] Waiting for third counter change');
-      const value3 = await waitForCounterChange(8, 8000, 100);
+      const value3 = await waitForCounterChange(8);
       console.log(`[ASYNC TEST] Third value change: ${value3}`);
       expect(value3).toBe(4);
     });

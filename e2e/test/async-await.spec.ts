@@ -50,7 +50,7 @@ describe('Async action awaiting behavior', () => {
 
     // Click the button and wait for the counter to change
     await slowObjectButton.click();
-    const value = await waitForCounterChange(2, 8000, 100);
+    const value = await waitForCounterChange(2);
 
     // Record the time after the counter changed
     const timeAfterChange = new Date();

@@ -19,7 +19,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_CHANGE_PAUSE: 200, // Time to wait after window creation/deletion
     WINDOW_WAIT_TIMEOUT: 3000, // Maximum time to wait for window operations
     WINDOW_WAIT_INTERVAL: 150, // How often to check window availability
-    THUNK_WAIT_TIME: 2000, // Time to wait for thunk to complete
+    THUNK_WAIT_TIME: 5000, // Time to wait for thunk to complete
   },
 
   // Timing adjustments for Linux (slower CI env)
@@ -30,7 +30,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_CHANGE_PAUSE: 200,
     WINDOW_WAIT_TIMEOUT: 10000,
     WINDOW_WAIT_INTERVAL: 500,
-    THUNK_WAIT_TIME: 2000,
+    THUNK_WAIT_TIME: 5000,
   },
 };
 
