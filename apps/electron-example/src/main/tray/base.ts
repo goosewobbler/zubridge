@@ -131,6 +131,9 @@ export class BaseSystemTray {
     this.electronTray.setContextMenu(contextMenu);
     this.electronTray.setToolTip('Zubridge Electron Example');
 
+    // Remove any existing click handlers
+    this.electronTray.removeAllListeners('click');
+
     // Add click handler to show window on left click
     this.electronTray.on('click', showWindow);
   };
