@@ -14,7 +14,7 @@ _Cross-platform state without boundaries: Zustand-inspired simplicity_
 <img src="https://img.shields.io/npm/dw/@zubridge/tauri" /></a> \
 <img src="https://img.shields.io/badge/tauri-plugin-ffc131" />
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Tauri-Plugin-Zubridge on Crates.io">
-<img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" /></a>
+<img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" />
 <img src="https://img.shields.io/crates/d/tauri-plugin-zubridge" /></a>
 
 ### Why
