@@ -13,6 +13,7 @@ function handleError(message: string, exitCode = 1): never {
 // Process arguments
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const noVerify = args.includes('--no-verify');
 const targetPackage = args.find((arg) => !arg.startsWith('--'));
 
 // Ensure targetPackage is a string (not a Symbol) when used
@@ -26,12 +27,16 @@ const knownCrates = [
     name: 'tauri-plugin-zubridge',
     dirName: 'tauri-plugin', // Directory name under packages/
     path: 'packages/tauri-plugin',
+    // Add special handling flags for tauri plugin which has build.rs issues
+    requiresSpecialEnv: true,
   },
   {
     name: 'zubridge-middleware',
     dirName: 'middleware', // Directory name under packages/
     path: 'packages/middleware',
     isHybrid: true,
+    // The middleware package uses napi-build but doesn't need special env vars
+    hasNodeBindings: true,
   },
   // Add more crates here if needed
 ];
@@ -78,16 +83,44 @@ for (const crate of cratesToPublish) {
     process.chdir(cratePath);
     console.log(`Changed directory to: ${cratePath}`);
 
+    // Clean any existing artifacts that might affect the build
+    console.log('Cleaning previous build artifacts...');
+    execSync('cargo clean', { stdio: 'inherit' });
+
+    // Set up environment variables if needed
+    const env = { ...process.env };
+    if (crate.requiresSpecialEnv) {
+      // Set TAURI_BUILD_GEN_DIR to target/out to prevent build.rs from modifying source directory
+      const targetOutDir = path.join(process.cwd(), 'target', 'out');
+      console.log(`Setting TAURI_BUILD_GEN_DIR to ${targetOutDir} for tauri plugin`);
+      env.TAURI_BUILD_GEN_DIR = targetOutDir;
+    }
+
+    // Handle Node.js bindings if present
+    if (crate.hasNodeBindings) {
+      console.log('Package has Node.js bindings. Ensuring node/ directory build is clean...');
+      if (fs.existsSync(path.join(cratePath, 'node'))) {
+        // Clean node build artifacts separately
+        process.chdir(path.join(cratePath, 'node'));
+        execSync('cargo clean', { stdio: 'inherit' });
+        // Go back to the main crate directory
+        process.chdir(cratePath);
+      }
+    }
+
     // Run cargo publish
-    const publishCommand = dryRun ? 'cargo publish --dry-run' : 'cargo publish';
+    let publishCommand = 'cargo publish';
+    if (dryRun) publishCommand += ' --dry-run';
+    if (noVerify) publishCommand += ' --no-verify';
 
     console.log(`Running: ${publishCommand}`);
 
     // Then do the actual publish or just log in dry run mode
     if (dryRun) {
       console.log('DRY RUN: Would publish crate to crates.io');
+      execSync(publishCommand, { stdio: 'inherit', env });
     } else {
-      execSync(publishCommand, { stdio: 'inherit' });
+      execSync(publishCommand, { stdio: 'inherit', env });
       console.log(`Successfully published ${crate.name} to crates.io`);
 
       // If this is a hybrid package with Node bindings, package-versioner has already
