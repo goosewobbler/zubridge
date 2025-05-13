@@ -32,4 +32,4 @@ log = "0.4"
 tauri = { version = "2.4.1", features = ["tray-icon"] }
 tauri-plugin-log = "2.0.0-rc"
 tokio = { version = "1", features = ["time"] }
-tauri-plugin-zubridge = { path = "../../../packages/tauri-plugin-zubridge" }
+tauri-plugin-zubridge = { path = "../../../packages/tauri-plugin" }

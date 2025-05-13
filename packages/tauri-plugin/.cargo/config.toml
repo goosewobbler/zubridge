@@ -1,0 +1,7 @@
+[env]
+# Ensure generated files are placed in OUT_DIR during build
+TAURI_BUILD_GEN_DIR = { value = "${OUT_DIR}", relative = false }
+
+[build]
+# Ensure rustc emits helpful messages during the build
+rustflags = ["--cfg", "tauri_plugin_zubridge"]

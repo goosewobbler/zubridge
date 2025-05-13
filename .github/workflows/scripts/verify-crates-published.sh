@@ -55,9 +55,9 @@ is_rust_crate() {
 verify_crate_on_cratesio() {
   local crate_name=$1
   local version=$2
-  local max_attempts=5
+  local max_attempts=10
   local attempt=1
-  local initial_wait=15
+  local initial_wait=30
   local wait_time=$initial_wait
 
   echo "Starting verification of $crate_name@$version (will retry up to $max_attempts times)"
@@ -65,23 +65,23 @@ verify_crate_on_cratesio() {
   while [ $attempt -le $max_attempts ]; do
     echo "Attempt $attempt/$max_attempts: Verifying $crate_name@$version..."
 
-    # Use cargo search with grep to check if crate exists with correct version
-    search_output=$(cargo search "$crate_name" --limit 1 2>/dev/null | grep -E "$crate_name = \"$version\"") || true
+    # Make a direct API request to crates.io
+    api_output=$(curl -s "https://crates.io/api/v1/crates/$crate_name/$version" | grep -E "\"version\":\"$version\"") || true
 
-    if [[ -n "$search_output" ]]; then
-      echo "✅ $crate_name@$version verified successfully on attempt $attempt"
+    if [[ -n "$api_output" ]]; then
+      echo "✅ $crate_name@$version verified successfully via crates.io API on attempt $attempt"
       return 0
+    fi
+
+    if [ $attempt -lt $max_attempts ]; then
+      echo "Crate $crate_name@$version not found on crates.io yet. Waiting ${wait_time}s before retry..."
+      sleep $wait_time
+      # Increase wait time for next attempt (exponential backoff)
+      wait_time=$((wait_time * 2))
+      attempt=$((attempt + 1))
     else
-      if [ $attempt -lt $max_attempts ]; then
-        echo "Crate $crate_name@$version not found on crates.io yet. Waiting ${wait_time}s before retry..."
-        sleep $wait_time
-        # Increase wait time for next attempt (exponential backoff)
-        wait_time=$((wait_time * 2))
-        attempt=$((attempt + 1))
-      else
-        echo "::error::Failed to verify $crate_name@$version after $max_attempts attempts"
-        return 1
-      fi
+      echo "::error::Failed to verify $crate_name@$version after $max_attempts attempts"
+      return 1
     fi
   done
 
@@ -153,9 +153,9 @@ echo "::group::Verifying published crates on crates.io"
 
 verification_failed=false
 for crate in "${CRATES_TO_VERIFY[@]}"; do
-  # Check if cargo is available
-  if ! command -v cargo &> /dev/null; then
-      echo "::error::cargo command could not be found. Please ensure Rust is installed and in PATH."
+  # Check if curl is available
+  if ! command -v curl &> /dev/null; then
+      echo "::error::curl command could not be found. Please ensure curl is installed and in PATH."
       exit 1
   fi
 

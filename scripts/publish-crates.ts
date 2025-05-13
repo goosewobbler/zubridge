@@ -13,6 +13,7 @@ function handleError(message: string, exitCode = 1): never {
 // Process arguments
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const noVerify = args.includes('--no-verify');
 const targetPackage = args.find((arg) => !arg.startsWith('--'));
 
 // Ensure targetPackage is a string (not a Symbol) when used
@@ -32,6 +33,7 @@ const knownCrates = [
     dirName: 'middleware', // Directory name under packages/
     path: 'packages/middleware',
     isHybrid: true,
+    hasNodeBindings: true,
   },
   // Add more crates here if needed
 ];
@@ -78,14 +80,33 @@ for (const crate of cratesToPublish) {
     process.chdir(cratePath);
     console.log(`Changed directory to: ${cratePath}`);
 
+    // Clean any existing artifacts that might affect the build
+    console.log('Cleaning previous build artifacts...');
+    execSync('cargo clean', { stdio: 'inherit' });
+
+    // Handle Node.js bindings if present
+    if (crate.hasNodeBindings) {
+      console.log('Package has Node.js bindings. Ensuring node/ directory build is clean...');
+      if (fs.existsSync(path.join(cratePath, 'node'))) {
+        // Clean node build artifacts separately
+        process.chdir(path.join(cratePath, 'node'));
+        execSync('cargo clean', { stdio: 'inherit' });
+        // Go back to the main crate directory
+        process.chdir(cratePath);
+      }
+    }
+
     // Run cargo publish
-    const publishCommand = dryRun ? 'cargo publish --dry-run' : 'cargo publish';
+    let publishCommand = 'cargo publish';
+    if (dryRun) publishCommand += ' --dry-run';
+    if (noVerify) publishCommand += ' --no-verify';
 
     console.log(`Running: ${publishCommand}`);
 
     // Then do the actual publish or just log in dry run mode
     if (dryRun) {
       console.log('DRY RUN: Would publish crate to crates.io');
+      execSync(publishCommand, { stdio: 'inherit' });
     } else {
       execSync(publishCommand, { stdio: 'inherit' });
       console.log(`Successfully published ${crate.name} to crates.io`);

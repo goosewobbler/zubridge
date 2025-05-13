@@ -276,6 +276,13 @@ jobs:
         with:
           toolchain: stable 6 months ago
 
+      # Install system dependencies required for GTK/GObject
+      - name: 📦 Install GTK and GObject dependencies
+        if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev
+
       - name: 🔧 Login to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: |
