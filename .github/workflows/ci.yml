@@ -14,11 +14,11 @@ env:
 
 jobs:
   build:
-    name: Build & Test
+    name: Build Packages
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        os: [ubuntu-latest]
         node-version: [20.x]
       fail-fast: false
 
@@ -51,26 +51,85 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: 🏗️ Build and verify packages
+      - name: 🏗️ Build packages
         uses: ./.github/workflows/actions/build-verify
 
-      - name: 🧪 Run Tests
+      - name: 🧪 Run Unit Tests
+        run: pnpm run test:unit
+        shell: bash
+
+      - name: 📦 Cache build artifacts
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            **/dist
+            **/out-*
+            **/dist-*
+          key: build-${{ github.sha }}
+
+  test-e2e:
+    name: E2E Tests (${{ matrix.mode }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [20.x]
+        mode: [basic, handlers, reducers, redux, custom]
+      fail-fast: false
+
+    steps:
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
-          # Turborepo's caching ensures each package is only built once
-          # The build dependency graph in turbo.json controls this
-          pnpm run test:unit
+          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
+          deb http://archive.ubuntu.com/ubuntu jammy main universe
+          EOT
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libglib2.0-dev \
+            libsoup-2.4-1 \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: 📦 Restore build artifacts
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            **/dist
+            **/out-*
+            **/dist-*
+          key: build-${{ github.sha }}
+
+      - name: 🧪 Run E2E Tests (${{ matrix.mode }})
+        run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
             # Workaround for linux CI
             # https://github.com/electron/electron/issues/41066
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
-          pnpm run test:e2e --concurrency=1
+          cd e2e
+          pnpm run test:e2e:${{ matrix.mode }}
         shell: bash
 
       - name: 🐛 Show logs
         if: failure()
-        run: |
-          pnpm run ci:e2e:logs
+        run: cat ./e2e/wdio-logs-electron-example-${{ matrix.mode }}/*.log
 
       - name: 🐛 Debug Build
         uses: stateful/vscode-server-action@v1.1.0
