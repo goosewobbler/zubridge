@@ -42,8 +42,9 @@ export function MainApp({ windowLabel }: MainAppProps) {
   };
 
   const handleDoubleCounter = () => {
-    dispatch((getState) => {
-      const currentValue = (getState().counter as number) || 0;
+    dispatch(async (getState) => {
+      const state = (await getState()) as AppState;
+      const currentValue = (state.counter as number) || 0;
       dispatch({ type: 'COUNTER:SET', payload: currentValue * 2 });
     });
   };
