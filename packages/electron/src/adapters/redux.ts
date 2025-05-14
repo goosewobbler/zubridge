@@ -1,5 +1,5 @@
 import type { Store } from 'redux';
-import type { AnyState, Action, Handler, StateManager, ProcessResult } from '@zubridge/types';
+import type { AnyState, Action, Handler, StateManager } from '@zubridge/types';
 import { resolveHandler } from '../utils/handlers.js';
 import { debug } from '../utils/debug.js';
 
