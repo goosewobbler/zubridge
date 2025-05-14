@@ -35,31 +35,39 @@ jobs:
 
   # Run unit tests on all supported operating systems
   unit-matrix:
-    name: Unit [${{ matrix.os == 'ubuntu-latest' && 'Linux' || matrix.os == 'windows-latest' && 'Windows' || 'macOS' }}]
+    name: Unit [${{ matrix.os.name }}]
     needs: [build, lint]
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu-latest', 'windows-latest', 'macos-latest']
+        os:
+          - {value: 'ubuntu-latest', name: 'Linux'}
+          - {value: 'windows-latest', name: 'Windows'}
+          - {value: 'macos-latest', name: 'macOS'}
     uses: ./.github/workflows/_ci-unit.reusable.yml
     with:
-      os: ${{ matrix.os }}
+      os: ${{ matrix.os.value }}
+      os_name: ${{ matrix.os.name }}
       build_id: ${{ needs.build.outputs.build_id }}
       artifact_size: ${{ needs.build.outputs.artifact_size }}
       cache_key: ${{ needs.build.outputs.cache_key }}
 
   # Run E2E tests for each mode
   e2e-matrix:
-    name: E2E [${{ matrix.os == 'ubuntu-latest' && 'Linux' || matrix.os == 'windows-latest' && 'Windows' || 'macOS' }}] - ${{ matrix.mode }}
+    name: E2E [${{ matrix.os.name }}] - ${{ matrix.mode }}
     needs: [build]
     strategy:
       matrix:
-        os: ['ubuntu-latest', 'windows-latest', 'macos-latest']
+        os:
+          - {value: 'ubuntu-latest', name: 'Linux'}
+          - {value: 'windows-latest', name: 'Windows'}
+          - {value: 'macos-latest', name: 'macOS'}
         mode: ['basic', 'handlers', 'reducers', 'redux', 'custom']
       fail-fast: false
     uses: ./.github/workflows/_ci-e2e.reusable.yml
     with:
-      os: ${{ matrix.os }}
+      os: ${{ matrix.os.value }}
+      os_name: ${{ matrix.os.name }}
       mode: ${{ matrix.mode }}
       build_id: ${{ needs.build.outputs.build_id }}
       artifact_size: ${{ needs.build.outputs.artifact_size }}

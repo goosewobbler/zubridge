@@ -8,6 +8,11 @@ on:
         description: 'Operating system to run tests on'
         type: string
         required: true
+      os_name:
+        description: 'Display name for the operating system (Linux, Windows, macOS)'
+        type: string
+        required: false
+        default: ''
       build_id:
         description: 'Build ID from the build job'
         type: string

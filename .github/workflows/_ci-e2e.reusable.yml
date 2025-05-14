@@ -8,6 +8,11 @@ on:
         description: 'Operating system to run tests on'
         required: true
         type: string
+      os_name:
+        description: 'Display name for the operating system (Linux, Windows, macOS)'
+        required: false
+        type: string
+        default: ''
       mode:
         description: 'Test mode (basic, handlers, reducers, redux, or custom)'
         required: true
