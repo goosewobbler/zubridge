@@ -11,19 +11,14 @@ export const toggleTheme =
     console.log('[Handler] Toggling theme');
 
     store.setState((state) => {
-      const currentIsDark = state.theme?.isDark ?? false;
-      const newIsDark = !currentIsDark;
+      const currentTheme = state.theme || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 
-      console.log(
-        `[Handler] Changing theme from ${currentIsDark ? 'dark' : 'light'} to ${newIsDark ? 'dark' : 'light'}`,
-      );
+      console.log(`[Handler] Changing theme from ${currentTheme} to ${newTheme}`);
 
       return {
         ...state,
-        theme: {
-          ...state.theme,
-          isDark: newIsDark,
-        },
+        theme: newTheme,
       };
     });
   };
@@ -35,13 +30,11 @@ export const toggleTheme =
 export const setTheme =
   <S extends State>(store: StoreApi<S>) =>
   (isDark: boolean) => {
-    console.log(`[Handler] Setting theme to ${isDark ? 'dark' : 'light'}`);
+    const theme = isDark ? 'dark' : 'light';
+    console.log(`[Handler] Setting theme to ${theme}`);
 
     store.setState((state) => ({
       ...state,
-      theme: {
-        ...state.theme,
-        isDark,
-      },
+      theme,
     }));
   };

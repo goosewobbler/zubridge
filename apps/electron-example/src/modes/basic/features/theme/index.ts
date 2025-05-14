@@ -11,18 +11,14 @@ export const attachThemeHandlers = <S extends BaseState>(store: StoreApi<S>) => 
   // Set up theme initial state
   setState((state) => ({
     ...state,
-    'theme': {
-      isDark: true, // Initialize to dark mode
-    },
+    'theme': 'dark', // Initialize to dark mode using string union
 
     // Implement the toggle theme handler
     'THEME:TOGGLE': () => {
       console.log('[Basic] Toggling theme');
       setState((state) => ({
         ...state,
-        theme: {
-          isDark: !state.theme.isDark,
-        },
+        theme: state.theme === 'dark' ? 'light' : 'dark',
       }));
     },
 
@@ -31,9 +27,7 @@ export const attachThemeHandlers = <S extends BaseState>(store: StoreApi<S>) => 
       console.log(`[Basic] Setting theme to ${isDark ? 'dark' : 'light'}`);
       setState((state) => ({
         ...state,
-        theme: {
-          isDark,
-        },
+        theme: isDark ? 'dark' : 'light',
       }));
     },
   }));

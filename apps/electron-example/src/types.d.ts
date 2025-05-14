@@ -20,15 +20,16 @@ export interface CounterAPI {
   executeMainThunkSlow: () => Promise<{ success: boolean; result?: number }>;
 }
 
+// Import the BaseState from apps-shared
+import { BaseState as SharedBaseState } from '@zubridge/apps-shared';
+
 /**
  * Base state interface that all mode-specific states share.
- * This defines the minimal structure expected across all modes.
+ * This extends the apps-shared BaseState which now has optional properties
+ * for better type compatibility between State and Partial<State>
  */
-export interface BaseState {
-  counter: number;
-  theme: {
-    isDark: boolean;
-  };
+export interface BaseState extends SharedBaseState {
+  // Additional fields can be added here if needed
   [key: string]: any; // Add index signature to satisfy AnyState constraint
 }
 

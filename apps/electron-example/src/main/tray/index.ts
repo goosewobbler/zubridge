@@ -1,7 +1,7 @@
 import { type BrowserWindow } from 'electron';
 import { type StoreApi } from 'zustand';
 import { getZubridgeMode } from '../../utils/mode.js';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 
 // Import mode-specific trays
 import { BasicSystemTray } from '../../modes/basic/tray.js';

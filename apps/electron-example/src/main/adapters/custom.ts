@@ -1,6 +1,6 @@
 import type { UnifiedStore } from './index.js';
 import type { StateManager } from '@zubridge/types';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 
 /**
  * Creates a custom store adapter that converts a StateManager to the UnifiedStore interface

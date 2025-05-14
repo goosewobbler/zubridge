@@ -4,7 +4,6 @@ import type { Store as ReduxStore } from 'redux';
 
 import { getZubridgeMode } from '../utils/mode.js';
 import type { BaseState } from '../types.js';
-import type { WrapperOrWebContents } from '@zubridge/types';
 
 /**
  * Creates the appropriate bridge implementation based on the selected mode

@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { create } from 'zustand';
 import { getZubridgeMode } from '../utils/mode.js';
-import type { State } from '../types/index.js';
+import type { State } from '../types.js';
 import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
 
 // Singleton store instance
@@ -13,12 +13,6 @@ let store: UnifiedStore<State>;
 export async function createModeStore(): Promise<UnifiedStore<State>> {
   const mode = getZubridgeMode();
   console.log('Creating store for mode:', mode);
-
-  // Initialize with a default true value for isDark (dark mode by default)
-  const initialState = {
-    counter: 0,
-    theme: { isDark: true },
-  };
 
   switch (mode) {
     case 'basic':
@@ -41,7 +35,7 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
         reducer: rootReducer,
       });
       // Use our adapter instead of unsafe casting
-      return createReduxAdapter(reduxStore);
+      return createReduxAdapter(reduxStore) as UnifiedStore<State>;
 
     case 'custom':
       // For custom mode, get our EventEmitter-based store
@@ -56,7 +50,14 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
 
     default:
       console.warn('Unknown mode, falling back to basic store');
-      return createZustandAdapter(create<State>()(() => initialState));
+      return createZustandAdapter(
+        create<State>()(() => {
+          return {
+            counter: 0,
+            theme: 'dark' as const, // Use const assertion to make TypeScript recognize this as a string literal
+          };
+        }),
+      );
   }
 }
 

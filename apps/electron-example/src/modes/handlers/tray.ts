@@ -1,7 +1,7 @@
 import { type BrowserWindow } from 'electron';
 import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 import { BaseSystemTray } from '../../main/tray/base.js';
 
 // Import handlers from main.ts

@@ -1,5 +1,4 @@
 import { createZustandBridge } from '@zubridge/electron/main';
-import type { WrapperOrWebContents } from '@zubridge/types';
 import type { StoreApi } from 'zustand';
 import type { ZustandBridge } from '@zubridge/electron/main';
 

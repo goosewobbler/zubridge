@@ -70,7 +70,7 @@ export class BaseSystemTray {
 
     // Match Tauri example format for display items
     const counterText = `Counter: ${state.counter ?? 0}`;
-    const themeText = `Theme: ${state.theme?.isDark ? 'Dark' : 'Light'}`;
+    const themeText = `Theme: ${state.theme === 'dark' ? 'Dark' : 'Light'}`;
 
     const contextMenu = Menu.buildFromTemplate([
       // Display items (non-clickable)

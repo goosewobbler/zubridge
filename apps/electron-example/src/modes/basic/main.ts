@@ -1,7 +1,6 @@
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
 import type { ZustandBridge } from '@zubridge/electron/main';
-import type { WrapperOrWebContents } from '@zubridge/types';
 
 import { attachCounterHandlers } from './features/counter/index.js';
 import { attachThemeHandlers } from './features/theme/index.js';

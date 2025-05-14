@@ -2,7 +2,7 @@ import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
 import { BaseSystemTray } from '../../main/tray/base.js';
 import type { Store } from 'redux';
-import type { BaseState } from '../../types/index.js';
+import type { BaseState } from '../../types.js';
 import type { StoreApi } from 'zustand';
 
 /**
@@ -28,9 +28,7 @@ export class ReduxSystemTray extends BaseSystemTray {
     const reduxState = this.store.getState();
     this.update({
       counter: reduxState.counter,
-      theme: {
-        isDark: reduxState.theme?.isDark ?? false,
-      },
+      theme: reduxState.theme === 'dark' ? 'dark' : 'light',
       window: { isOpen: false }, // Provide required window state for BaseState
     } as BaseState);
 
@@ -43,9 +41,7 @@ export class ReduxSystemTray extends BaseSystemTray {
         // Update the tray with the current state
         this.update({
           counter: state.counter,
-          theme: {
-            isDark: state.theme?.isDark ?? false,
-          },
+          theme: state.theme === 'dark' ? 'dark' : 'light',
           window: { isOpen: false }, // Provide required window state for BaseState
         } as BaseState);
       }

@@ -11,8 +11,8 @@ export interface State extends BaseState {}
  * Root reducer that combines all feature reducers
  */
 export const rootReducer: Reducer<State> = (state, action) => ({
-  counter: counterReducer(state.counter, action),
-  theme: themeReducer(state.theme, action),
+  counter: counterReducer(state.counter ?? 0, action),
+  theme: themeReducer(state.theme ?? 'dark', action),
 });
 
 export type RootState = ReturnType<typeof rootReducer>;

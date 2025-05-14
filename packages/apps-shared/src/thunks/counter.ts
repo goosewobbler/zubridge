@@ -56,7 +56,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
   return async (getState, dispatch) => {
     const getCounter = async () => {
       const state = await getState();
-      return state.counter;
+      return state.counter ?? initialCounter; // Use nullish coalescing to handle undefined counter
     };
 
     const logWithTimestamp = (message: string) => {

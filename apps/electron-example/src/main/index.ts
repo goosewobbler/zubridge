@@ -303,6 +303,7 @@ app
       const { mainWindow } = windows.getWindowRefs();
       mainWindow?.focus();
 
+      // Get the dispatch function
       const dispatch = createDispatch(store);
 
       // Setup IPC handlers
@@ -435,7 +436,7 @@ app
           const currentState = store.getState();
           const counter = currentState.counter || 0;
 
-          // Create the thunk with context
+          // Create thunk with the updated BaseState (with optional properties)
           const thunk = createDoubleCounterThunk(counter, thunkContext);
           const result = await dispatch(thunk);
           return { success: true, result };
@@ -460,7 +461,7 @@ app
           const currentState = store.getState();
           const counter = currentState.counter || 0;
 
-          // Create the slow thunk with context
+          // Create thunk with the updated BaseState (with optional properties)
           const thunk = createDoubleCounterSlowThunk(counter, thunkContext);
           const result = await dispatch(thunk);
           return { success: true, result };

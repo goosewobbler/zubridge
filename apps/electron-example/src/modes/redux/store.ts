@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 import { rootReducer } from './features/index.js';
 
 /**
@@ -44,5 +44,5 @@ export function getReduxStore(): StoreApi<State> {
   });
 
   // Create a Zustand adapter for the Redux store
-  return createReduxAdapter(reduxStore);
+  return createReduxAdapter(reduxStore) as StoreApi<State>;
 }

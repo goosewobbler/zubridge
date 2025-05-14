@@ -1,5 +1,4 @@
 import { createCoreBridge, createDispatch } from '@zubridge/electron/main';
-import type { WrapperOrWebContents } from '@zubridge/types';
 import type { ZustandBridge } from '@zubridge/electron/main';
 import { getCustomStore } from './store.js';
 

@@ -2,10 +2,11 @@ import type { AnyState, Thunk } from '@zubridge/types';
 
 /**
  * Base state interface shared across example apps
+ * All properties are optional to ensure compatibility with dispatch functions
  */
 export interface BaseState extends AnyState {
-  counter: number;
-  theme: 'light' | 'dark';
+  counter?: number;
+  theme?: 'light' | 'dark';
 }
 
 /**
@@ -25,5 +26,6 @@ export type CounterMethod = 'action' | 'thunk' | 'main-thunk' | 'slow-thunk' | '
 
 /**
  * Thunk creator function type that includes context
+ * Uses a generic state type S that must extend BaseState (which now has optional properties)
  */
-export type ThunkCreator<S extends AnyState = BaseState> = (counter: number, context: ThunkContext) => Thunk<S>;
+export type ThunkCreator<S extends BaseState = BaseState> = (counter: number, context: ThunkContext) => Thunk<S>;

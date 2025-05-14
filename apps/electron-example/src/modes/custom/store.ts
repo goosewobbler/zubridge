@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import type { StateManager, Action, AnyState } from '@zubridge/types';
+import type { StateManager, Action, AnyState, ProcessResult } from '@zubridge/types';
 import { getInitialState, handlers } from './features/index.js';
 
 /**
@@ -47,13 +47,13 @@ class CustomStore extends EventEmitter implements StateManager<AnyState> {
    * Process an action and update state
    * @param action The action to process
    */
-  processAction = (action: Action): void => {
+  processAction = (action: Action): ProcessResult => {
     console.log('[Custom Mode] Processing action:', action);
 
     // Special case for SET_STATE action from the adapter
     if (action.type === 'SET_STATE' && action.payload) {
       this.setState(action.payload as Partial<AnyState>);
-      return;
+      return { isSync: true };
     }
 
     // Handle different action types using the handlers from features/index.js
@@ -71,6 +71,9 @@ class CustomStore extends EventEmitter implements StateManager<AnyState> {
     } else {
       console.log('[Custom Mode] Unhandled action type:', action.type);
     }
+
+    // Return that the action was processed synchronously
+    return { isSync: true };
   };
 }
 
