@@ -1,5 +1,5 @@
-import { getCounterValue } from './window';
-import { TIMING } from '../constants';
+import { getCounterValue } from './window.js';
+import { TIMING } from '../constants.js';
 import { browser } from 'wdio-electron-service';
 
 /**
