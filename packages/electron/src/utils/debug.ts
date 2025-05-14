@@ -4,7 +4,7 @@
  * This provides a way to centrally control debug logging throughout the package.
  * This implementation uses the 'debug' package.
  */
-import debug from 'debug';
+import debug from 'weald';
 
 // Define type for the areas object with index signature
 interface DebugAreas {
