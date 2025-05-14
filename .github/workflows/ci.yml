@@ -123,8 +123,7 @@ jobs:
             # https://github.com/electron/electron/issues/41066
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
-          cd e2e
-          pnpm run test:e2e:${{ matrix.mode }}
+          pnpm run test:e2e:${{ matrix.mode }} --concurrency=1
         shell: bash
 
       - name: 🐛 Show logs
