@@ -5,7 +5,7 @@ import { isDev } from '@zubridge/electron';
 
 import type { StoreApi } from 'zustand';
 import type { Dispatch } from '@zubridge/types';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 import { getResourcePath } from '../../utils/path.js';
 
 // Get icon paths using our utility functions
