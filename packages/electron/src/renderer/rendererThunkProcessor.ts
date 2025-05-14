@@ -180,48 +180,49 @@ export class RendererThunkProcessor {
         if (!actionObj.id) {
           actionObj.id = uuidv4();
         }
+        const actionId = actionObj.id as string;
 
         if (this.debugLogging)
-          console.log(`[RENDERER_THUNK] Thunk ${thunkId} dispatching action ${actionObj.type} (${actionObj.id})`);
+          console.log(`[RENDERER_THUNK] Thunk ${thunkId} dispatching action ${actionObj.type} (${actionId})`);
 
         // Add to pending dispatches BEFORE creating the promise to ensure
         // getState can find it immediately
-        this.pendingDispatches.add(actionObj.id);
+        this.pendingDispatches.add(actionId);
         if (this.debugLogging)
           console.log(
-            `[RENDERER_THUNK] Added ${actionObj.id} to pending dispatches, now pending: ${this.pendingDispatches.size}`,
+            `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}`,
           );
 
         // Create a promise that will resolve when this action completes
         const actionPromise = new Promise<Action>((resolve) => {
           // Store the callback to be called when action acknowledgment is received
-          this.actionCompletionCallbacks.set(actionObj.id as string, (result) => {
+          this.actionCompletionCallbacks.set(actionId, (result) => {
             if (this.debugLogging)
-              console.log(`[RENDERER_THUNK] Action ${actionObj.id} completion callback called with result`, result);
+              console.log(`[RENDERER_THUNK] Action ${actionId} completion callback called with result`, result);
             resolve(result || actionObj);
           });
 
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Set completion callback for action ${actionObj.id}`);
+          if (this.debugLogging) console.log(`[RENDERER_THUNK] Set completion callback for action ${actionId}`);
 
           // Set up a safety timeout in case we don't receive an acknowledgment
           if (this.debugLogging) {
-            console.log(`[RENDERER_THUNK] Setting up safety timeout for action ${actionObj.id}`);
+            console.log(`[RENDERER_THUNK] Setting up safety timeout for action ${actionId}`);
           }
 
           const safetyTimeout = setTimeout(() => {
             // If we still have a pending callback for this action, resolve it
-            if (this.actionCompletionCallbacks.has(actionObj.id as string)) {
+            if (this.actionCompletionCallbacks.has(actionId)) {
               if (this.debugLogging) {
                 console.log(
-                  `[RENDERER_THUNK] Safety timeout triggered for action ${actionObj.id} after ${this.actionCompletionTimeoutMs}ms`,
+                  `[RENDERER_THUNK] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
                 );
               }
-              this.completeAction(actionObj.id as string, actionObj);
+              this.completeAction(actionId, actionObj);
             }
           }, this.actionCompletionTimeoutMs);
 
           // Store the timeout so we can clear it if we get an acknowledgment
-          this.actionTimeouts.set(actionObj.id as string, safetyTimeout);
+          this.actionTimeouts.set(actionId, safetyTimeout);
         });
 
         // Send the action to the main process
@@ -232,39 +233,39 @@ export class RendererThunkProcessor {
 
         if (this.actionSender) {
           try {
-            if (this.debugLogging) console.log(`[RENDERER_THUNK] Sending action ${actionObj.id} to main process`);
+            if (this.debugLogging) console.log(`[RENDERER_THUNK] Sending action ${actionId} to main process`);
             await this.actionSender(actionObj, thunkId as any);
-            if (this.debugLogging) console.log(`[RENDERER_THUNK] Action ${actionObj.id} sent to main process`);
+            if (this.debugLogging) console.log(`[RENDERER_THUNK] Action ${actionId} sent to main process`);
           } catch (error) {
             // If sending fails, clear any pending timeout
-            const timeout = this.actionTimeouts.get(actionObj.id as string);
+            const timeout = this.actionTimeouts.get(actionId);
             if (timeout) {
               clearTimeout(timeout);
-              this.actionTimeouts.delete(actionObj.id as string);
+              this.actionTimeouts.delete(actionId);
             }
 
             // Remove from pending and reject
-            this.pendingDispatches.delete(actionObj.id);
-            this.actionCompletionCallbacks.delete(actionObj.id as string);
+            this.pendingDispatches.delete(actionId);
+            this.actionCompletionCallbacks.delete(actionId);
             throw error;
           }
         } else {
           if (this.debugLogging) console.log(`[RENDERER_THUNK] ERROR: No actionSender available for thunk ${thunkId}`);
 
           // Clear any pending timeout
-          const timeout = this.actionTimeouts.get(actionObj.id as string);
+          const timeout = this.actionTimeouts.get(actionId);
           if (timeout) {
             clearTimeout(timeout);
-            this.actionTimeouts.delete(actionObj.id as string);
+            this.actionTimeouts.delete(actionId);
           }
 
           // If no sender is available, remove from pending and resolve with original action
-          this.pendingDispatches.delete(actionObj.id);
-          this.actionCompletionCallbacks.delete(actionObj.id as string);
+          this.pendingDispatches.delete(actionId);
+          this.actionCompletionCallbacks.delete(actionId);
           return actionObj;
         }
 
-        if (this.debugLogging) console.log(`[RENDERER_THUNK] Waiting for action ${actionObj.id} to complete`);
+        if (this.debugLogging) console.log(`[RENDERER_THUNK] Waiting for action ${actionId} to complete`);
         // Return the action promise
         return actionPromise;
       };
