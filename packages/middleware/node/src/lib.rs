@@ -4,8 +4,6 @@ use std::sync::Arc;
 
 use napi_derive::napi;
 use napi::bindgen_prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 // Re-export the types we need from the middleware crate
 use zubridge_middleware::{
@@ -13,7 +11,6 @@ use zubridge_middleware::{
   ZubridgeMiddlewareConfig as RustZubridgeMiddlewareConfig,
   LoggingConfig as RustLoggingConfig,
   Action as RustAction,
-  Error as RustError,
 };
 
 #[napi(object)]
@@ -35,7 +32,7 @@ pub struct ZubridgeMiddlewareConfig {
 #[napi(object)]
 pub struct Action {
   pub r#type: String,
-  pub payload: Option<Unknown>,
+  pub payload: Option<String>,
 }
 
 /// Convert JS LoggingConfig to Rust LoggingConfig
@@ -88,26 +85,6 @@ impl From<ZubridgeMiddlewareConfig> for RustZubridgeMiddlewareConfig {
   }
 }
 
-/// Convert JS Action to Rust Action
-impl TryFrom<Action> for RustAction {
-  type Error = napi::Error;
-
-  fn try_from(action: Action) -> Result<Self> {
-    let payload = match action.payload {
-      Some(unknown) => {
-        let json: JsonValue = serde_json::from_str(&unknown.to_string()?)?;
-        Some(json)
-      },
-      None => None,
-    };
-
-    Ok(RustAction {
-      action_type: action.r#type,
-      payload,
-    })
-  }
-}
-
 /// Wrapper for Rust ZubridgeMiddleware to expose to JS
 #[napi]
 pub struct ZubridgeMiddleware {
@@ -118,37 +95,48 @@ pub struct ZubridgeMiddleware {
 impl ZubridgeMiddleware {
   #[napi]
   pub async fn process_action(&self, action: Action) -> Result<()> {
-    let rust_action = RustAction::try_from(action)?;
+    // Convert payload string to JSON if present
+    let payload = if let Some(json_str) = action.payload {
+      match serde_json::from_str(&json_str) {
+        Ok(value) => Some(value),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload: {}", e))),
+      }
+    } else {
+      None
+    };
 
+    // Create Rust action
+    let rust_action = RustAction {
+      action_type: action.r#type,
+      payload,
+    };
+
+    // Process the action
     self.inner.process_action(rust_action)
       .await
-      .map_err(|e| napi::Error::from_reason(format!("Failed to process action: {}", e)))?;
-
-    Ok(())
+      .map_err(|e| Error::from_reason(format!("Failed to process action: {}", e)))
   }
 
   #[napi]
-  pub async fn get_state(&self) -> Result<Unknown> {
-    let state = self.inner.get_state()
-      .await;
+  pub async fn get_state(&self) -> Result<String> {
+    // Get state
+    let state = self.inner.get_state().await;
 
-    let json_str = serde_json::to_string(&state)
-      .map_err(|e| napi::Error::from_reason(format!("Failed to serialize state: {}", e)))?;
-
-    Ok(Unknown::from_json(&json_str)?)
+    // Serialize to JSON string
+    serde_json::to_string(&state)
+      .map_err(|e| Error::from_reason(format!("Failed to serialize state: {}", e)))
   }
 
   #[napi]
-  pub async fn set_state(&self, state: Unknown) -> Result<()> {
-    let json_str = state.to_string()?;
-    let json_value: JsonValue = serde_json::from_str(&json_str)
-      .map_err(|e| napi::Error::from_reason(format!("Failed to parse state: {}", e)))?;
+  pub async fn set_state(&self, state_json: String) -> Result<()> {
+    // Parse JSON string
+    let state = serde_json::from_str(&state_json)
+      .map_err(|e| Error::from_reason(format!("Failed to parse state JSON: {}", e)))?;
 
-    self.inner.set_state(json_value)
+    // Set state
+    self.inner.set_state(state)
       .await
-      .map_err(|e| napi::Error::from_reason(format!("Failed to set state: {}", e)))?;
-
-    Ok(())
+      .map_err(|e| Error::from_reason(format!("Failed to set state: {}", e)))
   }
 }
 
