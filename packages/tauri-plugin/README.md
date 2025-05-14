@@ -20,7 +20,7 @@ _Cross-platform state without boundaries: The official Tauri plugin for Zubridge
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Crates.io Version">
   <img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" /></a>
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Crates.io Downloads">
-  <img src="https://img.shields.io/crates/d/tauri-plugin-zubridge" /></a>
+  <img src="https://img.shields.io/crates/dr/tauri-plugin-zubridge" /></a>
 
 ## Why Zubridge?
 
