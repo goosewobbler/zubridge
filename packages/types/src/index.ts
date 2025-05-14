@@ -146,9 +146,8 @@ export interface StateManager<State> {
    * Process an action and update state accordingly
    * @param action The action to process
    * @returns ProcessResult indicating if the action was processed synchronously (isSync: true) or asynchronously (isSync: false)
-   * For backward compatibility, if undefined is returned, it's treated as synchronous
    */
-  processAction: (action: Action) => ProcessResult | void;
+  processAction: (action: Action) => ProcessResult;
 }
 
 // Base interface for backend bridges across platforms
