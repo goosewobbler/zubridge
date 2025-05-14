@@ -1,0 +1,93 @@
+name: Build
+description: 'Builds all packages and creates shareable artifacts for testing'
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: 'OS of runner'
+        default: 'ubuntu-latest'
+        type: string
+    outputs:
+      build_id:
+        description: 'Unique identifier for this build'
+        value: ${{ jobs.build.outputs.build_id }}
+      build_date:
+        description: 'Timestamp when the build completed'
+        value: ${{ jobs.build.outputs.build_date }}
+      artifact_size:
+        description: 'Size of the build artifact in bytes'
+        value: ${{ jobs.build.outputs.artifact_size }}
+      cache_key:
+        description: 'Cache key used for artifact uploads, can be passed to download actions'
+        value: ${{ jobs.build.outputs.cache_key }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ inputs.os }}
+    outputs:
+      build_id: ${{ steps.build-info.outputs.build_id }}
+      build_date: ${{ steps.build-info.outputs.build_date }}
+      artifact_size: ${{ steps.upload-archive.outputs.size || '0' }}
+      cache_key: ${{ steps.upload-archive.outputs.cache_key }}
+    steps:
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
+          deb http://archive.ubuntu.com/ubuntu jammy main universe
+          EOT
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libglib2.0-dev \
+            libsoup-2.4-1 \
+            libjavascriptcoregtk-4.1-dev
+
+      # Standard checkout
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Set up Node.js and PNPM
+      - name: 🛠️ Setup Development Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: '20'
+
+      # Generate build information for tracking
+      - name: 📊 Generate Build Information
+        id: build-info
+        shell: bash
+        run: |
+          echo "build_id=$(date +%s)-${{ github.run_id }}" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+
+      # Build all packages
+      - name: 🏗️ Build All Packages
+        run: pnpm run build
+        shell: bash
+
+      # Upload build artifacts
+      - name: 📦 Upload Package Build Artifacts
+        id: upload-archive
+        uses: ./.github/workflows/actions/upload-archive
+        with:
+          name: zubridge
+          output: zubridge-build/artifact.zip
+          paths: |
+            packages/*/dist
+            packages/*/dist-*
+            packages/*/out-*
+          cache_key_prefix: zubridge-build
+          retention_days: '90'

@@ -1,0 +1,125 @@
+name: 'Download and Extract Artifacts'
+description: 'Downloads and extracts compressed artifacts shared from previous jobs using GitHub cache (90-day retention)'
+inputs:
+  path:
+    description: 'Destination directory to extract the artifact contents'
+    required: true
+  filename:
+    description: 'Filename of the compressed artifact to download'
+    required: true
+    default: 'artifact.zip'
+  name:
+    description: 'Artifact name as used in the cache key'
+    required: true
+  cache_key_prefix:
+    description: 'Prefix for the cache key (must match upload setting)'
+    default: 'build-artifacts'
+    required: false
+  exact_cache_key:
+    description: 'Exact cache key to use for retrieval (if provided)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    # Generate standard cache keys
+    - name: 🔑 Generate Cache Keys
+      id: generate-keys
+      shell: bash
+      run: |
+        # Ensure values have defaults
+        CACHE_PREFIX="${{ inputs.cache_key_prefix || 'artifacts' }}"
+        NAME="${{ inputs.name }}"
+        OS="${{ runner.os }}"
+        RUN_ID="${{ github.run_id }}"
+
+        # Generate standard key (os-specific)
+        STANDARD_KEY="${OS}-${CACHE_PREFIX}-${NAME}-${RUN_ID}"
+        echo "standard_key=${STANDARD_KEY}" >> $GITHUB_OUTPUT
+
+        # Generate OS-agnostic key
+        AGNOSTIC_KEY="${CACHE_PREFIX}-${NAME}-${RUN_ID}"
+        echo "agnostic_key=${AGNOSTIC_KEY}" >> $GITHUB_OUTPUT
+
+        # Generate Linux-specific key for cross-OS compatibility
+        LINUX_KEY="Linux-${CACHE_PREFIX}-${NAME}-${RUN_ID}"
+        echo "linux_key=${LINUX_KEY}" >> $GITHUB_OUTPUT
+
+    # Restore cache with exact key (if provided)
+    - name: 🗄️ Restore with Exact Key
+      id: cache-restore-exact
+      if: inputs.exact_cache_key != ''
+      uses: actions/cache/restore@v4
+      env:
+        ACTIONS_CACHE_SERVICE_V2: 'true'
+      with:
+        path: ${{ inputs.path }}/${{ inputs.filename }}
+        key: ${{ inputs.exact_cache_key }}
+        enableCrossOsArchive: true
+        lookup-only: false
+        fail-on-cache-miss: false
+
+    # Restore with standard key (os-specific)
+    - name: 🗄️ Restore with Standard Key
+      id: cache-restore-standard
+      if: steps.cache-restore-exact.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v4
+      env:
+        ACTIONS_CACHE_SERVICE_V2: 'true'
+      with:
+        path: ${{ inputs.path }}/${{ inputs.filename }}
+        key: ${{ steps.generate-keys.outputs.standard_key }}
+        enableCrossOsArchive: true
+        lookup-only: false
+        fail-on-cache-miss: false
+
+    # Restore with OS-agnostic key
+    - name: 🗄️ Restore with OS-Agnostic Key
+      id: cache-restore-agnostic
+      if: steps.cache-restore-exact.outputs.cache-hit != 'true' && steps.cache-restore-standard.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v4
+      env:
+        ACTIONS_CACHE_SERVICE_V2: 'true'
+      with:
+        path: ${{ inputs.path }}/${{ inputs.filename }}
+        key: ${{ steps.generate-keys.outputs.agnostic_key }}
+        enableCrossOsArchive: true
+        lookup-only: false
+        fail-on-cache-miss: false
+
+    # Restore with Linux key for cross-OS compatibility
+    - name: 🗄️ Restore with Linux Key
+      id: cache-restore-linux
+      if: steps.cache-restore-exact.outputs.cache-hit != 'true' && steps.cache-restore-standard.outputs.cache-hit != 'true' && steps.cache-restore-agnostic.outputs.cache-hit != 'true' && runner.os != 'Linux'
+      uses: actions/cache/restore@v4
+      env:
+        ACTIONS_CACHE_SERVICE_V2: 'true'
+      with:
+        path: ${{ inputs.path }}/${{ inputs.filename }}
+        key: ${{ steps.generate-keys.outputs.linux_key }}
+        enableCrossOsArchive: true
+        lookup-only: false
+        fail-on-cache-miss: false
+
+    # Fall back to artifact download if cache misses
+    - name: 📥 Download Artifact
+      id: download-artifact
+      if: steps.cache-restore-exact.outputs.cache-hit != 'true' && steps.cache-restore-standard.outputs.cache-hit != 'true' && steps.cache-restore-agnostic.outputs.cache-hit != 'true' && steps.cache-restore-linux.outputs.cache-hit != 'true'
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+
+    # Extract the compressed artifact to the destination
+    - name: 📂 Extract Compressed Archive
+      id: extract-archive
+      shell: bash
+      run: |
+        # Ensure the archive exists
+        if [ ! -f "${{ inputs.path }}/${{ inputs.filename }}" ]; then
+          echo "::error::Archive not found for extraction: ${{ inputs.path }}/${{ inputs.filename }}"
+          exit 1
+        fi
+
+        # Extract to workspace root directory
+        cd "${{ github.workspace }}" && unzip -q -o "${{ inputs.path }}/${{ inputs.filename }}"

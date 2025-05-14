@@ -1,0 +1,124 @@
+name: 'Upload Artifacts with Caching'
+description: 'Uploads compressed artifacts and saves them to GitHub cache (90-day retention)'
+
+inputs:
+  name:
+    description: 'Artifact name'
+    required: true
+  output:
+    description: 'Output filename (with .zip extension)'
+    required: true
+  paths:
+    description: 'Artifact paths (can be a pattern or directory)'
+    required: true
+  retention_days:
+    description: 'Retention days for GitHub artifacts'
+    required: false
+    default: '90'
+  cache_key_prefix:
+    description: 'Prefix for the cache key'
+    default: 'build-artifacts'
+    required: false
+
+outputs:
+  size:
+    description: 'Size of the upload in bytes'
+    value: ${{ steps.compress.outputs.size }}
+  cache_key:
+    description: 'The cache key used for the upload, can be passed to download-archive as exact_cache_key'
+    value: ${{ steps.generate-keys.outputs.standard_key }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Check for rerun attempts and handle them specially
+    - name: 🪄 Check for Rerun Attempt
+      id: check-rerun
+      shell: bash
+      run: |
+        # Check if this is a rerun of a previous workflow run
+        RUN_ATTEMPT="${{ github.run_attempt }}"
+
+        if [[ "${RUN_ATTEMPT}" -gt 1 ]]; then
+          # This is a rerun, add a suffix to avoid conflicts
+          RERUN_SUFFIX="-rerun${RUN_ATTEMPT}"
+          echo "::notice::Rerun #${RUN_ATTEMPT} detected - using unique cache keys to avoid conflicts"
+        else
+          # Not a rerun, no suffix needed
+          RERUN_SUFFIX=""
+        fi
+
+        echo "rerun_suffix=${RERUN_SUFFIX}" >> $GITHUB_OUTPUT
+
+    # Compress the specified directories/files into a .zip file
+    - name: 🗜️ Compress Files
+      id: compress
+      shell: bash
+      run: |
+        # Create output directory
+        mkdir -p $(dirname "${{ inputs.output }}")
+
+        # Get file count before compression (for validation)
+        FILE_COUNT=$(find ${{ inputs.paths }} -type f | wc -l)
+
+        # Compress files (excluding node_modules by default)
+        zip -r "${{ inputs.output }}" ${{ inputs.paths }} -x "*/node_modules/*" "*/\.*/*"
+
+        # Get archive size for reporting
+        FILE_SIZE=$(stat -c%s "${{ inputs.output }}" 2>/dev/null || stat -f%z "${{ inputs.output }}" 2>/dev/null || ls -l "${{ inputs.output }}" | awk '{print $5}')
+        HUMAN_SIZE=$(du -h "${{ inputs.output }}" | cut -f1)
+
+        # Display a concise summary of the archive
+        echo "::notice::Artifact ${{ inputs.name }}: created ${HUMAN_SIZE} archive with ${FILE_COUNT} files"
+
+        # Export artifact size
+        echo "size=${FILE_SIZE}" >> $GITHUB_OUTPUT
+
+    # Generate cache keys
+    - name: 🔑 Generate Cache Keys
+      id: generate-keys
+      shell: bash
+      run: |
+        # Ensure values have defaults
+        CACHE_PREFIX="${{ inputs.cache_key_prefix || 'artifacts' }}"
+        NAME="${{ inputs.name }}"
+        OS="${{ runner.os }}"
+        RUN_ID="${{ github.run_id }}"
+        RERUN_SUFFIX="${{ steps.check-rerun.outputs.rerun_suffix }}"
+
+        # Generate standard key (OS specific)
+        STANDARD_KEY="${OS}-${CACHE_PREFIX}-${NAME}-${RUN_ID}${RERUN_SUFFIX}"
+        echo "standard_key=${STANDARD_KEY}" >> $GITHUB_OUTPUT
+
+        # Generate OS-agnostic key (used across platforms)
+        AGNOSTIC_KEY="${CACHE_PREFIX}-${NAME}-${RUN_ID}${RERUN_SUFFIX}"
+        echo "agnostic_key=${AGNOSTIC_KEY}" >> $GITHUB_OUTPUT
+
+    # Upload to GitHub Artifacts
+    - name: 📤 Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.output }}
+        retention-days: ${{ inputs.retention_days }}
+        if-no-files-found: error
+
+    # Cache with OS-specific key
+    - name: 🗄️ Cache Artifact (OS-specific)
+      uses: actions/cache/save@v4
+      env:
+        ACTIONS_CACHE_SERVICE_V2: 'true'
+      with:
+        path: ${{ inputs.output }}
+        key: ${{ steps.generate-keys.outputs.standard_key }}
+        enableCrossOsArchive: true
+
+    # Cache with OS-agnostic key
+    - name: 🗄️ Cache Artifact (OS-agnostic)
+      uses: actions/cache/save@v4
+      env:
+        ACTIONS_CACHE_SERVICE_V2: 'true'
+      with:
+        path: ${{ inputs.output }}
+        key: ${{ steps.generate-keys.outputs.agnostic_key }}
+        enableCrossOsArchive: true
