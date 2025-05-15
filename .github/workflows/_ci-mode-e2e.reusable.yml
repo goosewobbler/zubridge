@@ -74,42 +74,65 @@ jobs:
           name: ${{ inputs.artifact_name }}
           path: .
 
-      # - name: 🚚 Place Downloaded Artifacts Correctly
-      #   shell: bash
-      #   run: |
-      #     set -e # Exit on error
-      #     echo "Downloaded artifact path: ${{ steps.download_app_artifact.outputs.download-path }}"
+      # Place downloaded artifacts correctly
+      - name: 🚚 Place Downloaded Artifacts Correctly
+        shell: bash
+        run: |
+          set -e
+          echo "Attempting to place artifacts for ${{ inputs.app }} mode ${{ inputs.mode }}"
 
-      #     # The downloaded artifact is in a directory, e.g., ./${{ inputs.artifact_name }}
-      #     # Inside this directory is another directory, e.g., dist-${{ inputs.mode }}
-      #     # Example: SOURCE_DIR becomes ./${{ inputs.artifact_name }}/dist-${{ inputs.mode }}
-      #     SOURCE_DIR="${{ steps.download_app_artifact.outputs.download-path }}/dist-${{ inputs.mode }}"
+          # When download-artifact uses 'path: .', it creates a directory named after the artifact
+          # in the current directory ('.').
+          # inputs.artifact_name is the name like 'electron-basic-XYZ'
+          ARTIFACT_SUBDIR="./${{ inputs.artifact_name }}"
+          echo "Expecting artifact contents in subdirectory: $ARTIFACT_SUBDIR"
 
-      #     # Construct target directory, e.g. apps/electron-example/
-      #     # We want to place dist-${{ inputs.mode }} INTO apps/electron-example/
-      #     TARGET_BASE_DIR="./apps/${{ inputs.app }}-example"
+          TARGET_APP_BASE_DIR="./apps/${{ inputs.app }}-example"
+          mkdir -p "$TARGET_APP_BASE_DIR"
+          echo "Target app base directory: $TARGET_APP_BASE_DIR"
 
-      #     echo "Source directory to move: $SOURCE_DIR"
-      #     echo "Target base directory: $TARGET_BASE_DIR"
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            SOURCE_SPECIFIC_DIR="$ARTIFACT_SUBDIR/dist-${{ inputs.mode }}"
+            if [ ! -d "$SOURCE_SPECIFIC_DIR" ]; then
+              echo "::error::Electron source dir '$SOURCE_SPECIFIC_DIR' not found!"
+              echo "Listing contents of expected artifact subdirectory '$ARTIFACT_SUBDIR':"
+              ls -la "$ARTIFACT_SUBDIR" || echo "Directory $ARTIFACT_SUBDIR not found or ls failed"
+              echo "Also listing current directory (workspace root):"
+              ls -la .
+              exit 1
+            fi
+            echo "Moving Electron dir '$SOURCE_SPECIFIC_DIR' to '$TARGET_APP_BASE_DIR/'"
+            mv "$SOURCE_SPECIFIC_DIR" "$TARGET_APP_BASE_DIR/"
+            echo "Electron artifacts moved to $TARGET_APP_BASE_DIR/dist-${{ inputs.mode }}"
+            ls -la "$TARGET_APP_BASE_DIR/dist-${{ inputs.mode }}"
+          elif [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
+            SOURCE_DIST_DIR="$ARTIFACT_SUBDIR/dist"
+            SOURCE_TARGET_DIR="$ARTIFACT_SUBDIR/src-tauri/target"
 
-      #     if [ ! -d "$SOURCE_DIR" ]; then
-      #       echo "::error::Source directory $SOURCE_DIR does not exist after download!"
-      #       echo "Listing contents of ${{ steps.download_app_artifact.outputs.download-path }}:"
-      #       ls -la "${{ steps.download_app_artifact.outputs.download-path }}"
-      #       exit 1
-      #     fi
+            if [ -d "$SOURCE_DIST_DIR" ]; then
+              echo "Moving Tauri 'dist' dir '$SOURCE_DIST_DIR' to '$TARGET_APP_BASE_DIR/'"
+              mv "$SOURCE_DIST_DIR" "$TARGET_APP_BASE_DIR/"
+              echo "Tauri 'dist' moved to $TARGET_APP_BASE_DIR/dist"
+              ls -la "$TARGET_APP_BASE_DIR/dist"
+            else
+              echo "::warning::Tauri 'dist' dir '$SOURCE_DIST_DIR' not found in downloaded artifact."
+              ls -la "$ARTIFACT_SUBDIR" || echo "Directory $ARTIFACT_SUBDIR not found or ls failed"
+            fi
 
-      #     # Ensure the base target directory exists (e.g., apps/electron-example)
-      #     mkdir -p "$TARGET_BASE_DIR"
-
-      #     # Move the dist-${{ inputs.mode }} folder into the target base directory
-      #     # This will result in apps/electron-example/dist-${{ inputs.mode }}
-      #     echo "Moving $SOURCE_DIR to $TARGET_BASE_DIR/"
-      #     mv "$SOURCE_DIR" "$TARGET_BASE_DIR/"
-
-      #     echo "Artifacts moved successfully to $TARGET_BASE_DIR/dist-${{ inputs.mode }}"
-      #     ls -la "$TARGET_BASE_DIR/"
-      #     ls -la "$TARGET_BASE_DIR/dist-${{ inputs.mode }}"
+            if [ -d "$SOURCE_TARGET_DIR" ]; then
+              mkdir -p "$TARGET_APP_BASE_DIR/src-tauri"
+              echo "Moving Tauri 'src-tauri/target' dir '$SOURCE_TARGET_DIR' to '$TARGET_APP_BASE_DIR/src-tauri/'"
+              mv "$SOURCE_TARGET_DIR" "$TARGET_APP_BASE_DIR/src-tauri/"
+              echo "Tauri 'src-tauri/target' moved to $TARGET_APP_BASE_DIR/src-tauri/target"
+              ls -la "$TARGET_APP_BASE_DIR/src-tauri/target"
+            else
+              echo "::warning::Tauri 'src-tauri/target' dir '$SOURCE_TARGET_DIR' not found in downloaded artifact."
+            fi
+          else
+            echo "::error::Unknown app type '${{ inputs.app }}' for artifact placement."
+            exit 1
+          fi
+          echo "Artifact placement complete."
 
       # Display build information
       - name: 📊 Show Build Information
