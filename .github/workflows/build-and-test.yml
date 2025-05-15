@@ -43,10 +43,22 @@ jobs:
       - name: Install Linux dependencies
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         run: |
+          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
+          deb http://archive.ubuntu.com/ubuntu jammy main universe
+          EOT
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
-            libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev \
-            libsoup-2.4-1 libjavascriptcoregtk-4.1-dev
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libglib2.0-dev \
+            libsoup-2.4-1 \
+            libsoup-2.4-dev \
+            libjavascriptcoregtk-4.0-dev \
+            libjavascriptcoregtk-4.1-dev
 
       # Checkout and setup
       - name: Checkout Repository
@@ -109,7 +121,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release apps/{0}-example/src-tauri/target/release/bundle', inputs.app) }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -189,7 +201,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release apps/{0}-example/src-tauri/target/release/bundle', inputs.app) }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -269,7 +281,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release apps/{0}-example/src-tauri/target/release/bundle', inputs.app) }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
           retention-days: 1
           if-no-files-found: warn
 
