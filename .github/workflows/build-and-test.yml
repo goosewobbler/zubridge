@@ -139,6 +139,13 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      # Provide an interactive debugging session on failure
+      - name: 🐛 Debug on Failure
+        uses: stateful/vscode-server-action@v1.1.0
+        if: failure()
+        with:
+            timeout: "180000"
+
   # Run E2E tests immediately after the build completes
   e2e-test:
     needs: build
