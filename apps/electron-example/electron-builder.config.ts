@@ -155,8 +155,6 @@ const config: Configuration = {
   },
   asar: true,
   asarUnpack: ['**/*.node'],
-  // Set up the app properly
-  electronVersion: '35.1.4',
   extraMetadata: {
     main: 'main/index.js',
   },
