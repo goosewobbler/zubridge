@@ -1,0 +1,93 @@
+name: Mode Build
+description: "Builds a specific mode of the Electron example app"
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "OS of runner"
+        default: "ubuntu-latest"
+        type: string
+      mode:
+        description: "The mode to build (basic, handlers, reducers, redux, custom)"
+        required: true
+        type: string
+    outputs:
+      build_succeeded:
+        description: "Whether the build succeeded"
+        value: ${{ jobs.build-mode.outputs.build_succeeded }}
+      build_id:
+        description: "Unique identifier for this build"
+        value: ${{ jobs.build-mode.outputs.build_id }}
+      artifact_name:
+        description: "Name of the uploaded artifact"
+        value: ${{ jobs.build-mode.outputs.artifact_name }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  build-mode:
+    name: Build electron:${{ inputs.mode }}
+    runs-on: ${{ inputs.os }}
+    outputs:
+      build_succeeded: ${{ steps.build.outputs.success || 'false' }}
+      build_id: ${{ steps.build-info.outputs.build_id }}
+      artifact_name: ${{ steps.upload.outputs.artifact_name }}
+    steps:
+      # Standard checkout
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Set up Node.js and PNPM
+      - name: 🛠️ Setup Development Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      # Generate build information for tracking
+      - name: 📊 Generate Build Information
+        id: build-info
+        shell: bash
+        run: |
+          echo "build_id=$(date +%s)-${{ github.run_id }}-${{ inputs.mode }}" >> $GITHUB_OUTPUT
+
+      # Download shared packages from all OSes
+      - name: 📦 Download Linux shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages-ubuntu-latest
+          path: packages
+
+      # Build the specific mode
+      - name: 🏗️ Build electron:${{ inputs.mode }}
+        id: build
+        run: |
+          cd apps/electron-example
+          pnpm run typecheck
+          pnpm run build:${{ inputs.mode }}
+          echo "success=true" >> $GITHUB_OUTPUT
+        shell: bash
+        continue-on-error: true
+
+      # Upload build artifacts for this specific mode
+      - name: 📦 Upload ${{ inputs.mode }} Mode Artifacts
+        id: upload
+        if: steps.build.outputs.success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
+          path: |
+            apps/electron-example/dist-${{ inputs.mode }}
+            apps/electron-example/out-${{ inputs.mode }}
+          retention-days: 1
+          if-no-files-found: error
+
+      # Output the artifact name for downstream jobs
+      - name: Set artifact name output
+        if: steps.build.outputs.success == 'true'
+        run: |
+          echo "artifact_name=electron-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}" >> $GITHUB_OUTPUT
+        shell: bash

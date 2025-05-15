@@ -86,7 +86,7 @@ const config = {
   connectionRetryTimeout: 30000,
   logLevel: 'debug',
   runner: 'local',
-  outputDir: `wdio-logs-${appDir}-${mode}`,
+  outputDir: `wdio-logs-electron-${mode}`,
   specs: ['./test/*.spec.ts'],
   tsConfigPath: path.join(__dirname, 'tsconfig.json'),
   framework: 'mocha',

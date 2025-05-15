@@ -35,24 +35,6 @@ jobs:
       artifact_size: ${{ steps.upload-archive.outputs.size || '0' }}
       cache_key: ${{ steps.upload-archive.outputs.cache_key }}
     steps:
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
-          deb http://archive.ubuntu.com/ubuntu jammy main universe
-          EOT
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libglib2.0-dev \
-            libsoup-2.4-1 \
-            libjavascriptcoregtk-4.1-dev
-
       # Standard checkout
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4

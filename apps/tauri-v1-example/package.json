@@ -12,7 +12,8 @@
     "dev:vite": "vite",
     "dev": "vite build && pnpm tauri dev",
     "dev:ui": "cross-env WATCH_UI=true vite build && cross-env WATCH_UI=true pnpm tauri dev",
-    "build": "pnpm run typecheck && pnpm tauri build"
+    "build": "pnpm run typecheck && pnpm build:basic",
+    "build:basic": "cross-env ZUBRIDGE_MODE=basic vite build && cross-env ZUBRIDGE_MODE=basic pnpm tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^1.5.3",
