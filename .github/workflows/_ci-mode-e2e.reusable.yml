@@ -68,10 +68,48 @@ jobs:
 
       # Download the build artifacts specifically for this mode (built on Linux)
       - name: 📦 Download ${{ inputs.app }}:${{ inputs.mode }} Build Artifacts
+        id: download_app_artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
           path: .
+
+      - name: 🚚 Place Downloaded Artifacts Correctly
+        shell: bash
+        run: |
+          set -e # Exit on error
+          echo "Downloaded artifact path: ${{ steps.download_app_artifact.outputs.download-path }}"
+
+          # The downloaded artifact is in a directory, e.g., ./${{ inputs.artifact_name }}
+          # Inside this directory is another directory, e.g., dist-${{ inputs.mode }}
+          # Example: SOURCE_DIR becomes ./${{ inputs.artifact_name }}/dist-${{ inputs.mode }}
+          SOURCE_DIR="${{ steps.download_app_artifact.outputs.download-path }}/dist-${{ inputs.mode }}"
+
+          # Construct target directory, e.g. apps/electron-example/
+          # We want to place dist-${{ inputs.mode }} INTO apps/electron-example/
+          TARGET_BASE_DIR="./apps/${{ inputs.app }}-example"
+
+          echo "Source directory to move: $SOURCE_DIR"
+          echo "Target base directory: $TARGET_BASE_DIR"
+
+          if [ ! -d "$SOURCE_DIR" ]; then
+            echo "::error::Source directory $SOURCE_DIR does not exist after download!"
+            echo "Listing contents of ${{ steps.download_app_artifact.outputs.download-path }}:"
+            ls -la "${{ steps.download_app_artifact.outputs.download-path }}"
+            exit 1
+          fi
+
+          # Ensure the base target directory exists (e.g., apps/electron-example)
+          mkdir -p "$TARGET_BASE_DIR"
+
+          # Move the dist-${{ inputs.mode }} folder into the target base directory
+          # This will result in apps/electron-example/dist-${{ inputs.mode }}
+          echo "Moving $SOURCE_DIR to $TARGET_BASE_DIR/"
+          mv "$SOURCE_DIR" "$TARGET_BASE_DIR/"
+
+          echo "Artifacts moved successfully to $TARGET_BASE_DIR/dist-${{ inputs.mode }}"
+          ls -la "$TARGET_BASE_DIR/"
+          ls -la "$TARGET_BASE_DIR/dist-${{ inputs.mode }}"
 
       # Display build information
       - name: 📊 Show Build Information
