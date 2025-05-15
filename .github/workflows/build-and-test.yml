@@ -285,54 +285,93 @@ jobs:
     needs: linux-build
     if: needs.linux-build.outputs.success == 'true'
     name: Linux E2E
-    uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
-    with:
-      os: ubuntu-latest
-      app: ${{ inputs.app }}
-      mode: ${{ inputs.mode }}
-      build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
-      artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
-      test_name: ""
-    secrets:
+    runs-on: ubuntu-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Run E2E Tests
+        uses: ./.github/workflows/actions/e2e-test
+        with:
+          os: ubuntu-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+          artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
 
   # E2E Tests for macOS
   macos-test:
     needs: macos-build
     if: needs.macos-build.outputs.success == 'true'
     name: macOS E2E
-    uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
-    with:
-      os: macOS-latest
-      app: ${{ inputs.app }}
-      mode: ${{ inputs.mode }}
-      build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
-      artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
-      test_name: ""
-    secrets:
+    runs-on: macOS-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Run E2E Tests
+        uses: ./.github/workflows/actions/e2e-test
+        with:
+          os: macOS-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+          artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
 
   # E2E Tests for Windows
   windows-test:
     needs: windows-build
     if: needs.windows-build.outputs.success == 'true'
     name: Windows E2E
-    uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
-    with:
-      os: windows-latest
-      app: ${{ inputs.app }}
-      mode: ${{ inputs.mode }}
-      build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
-      artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
-      test_name: ""
-    secrets:
+    runs-on: windows-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Run E2E Tests
+        uses: ./.github/workflows/actions/e2e-test
+        with:
+          os: windows-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+          artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
 
   # Final status aggregation
   ci-status:
