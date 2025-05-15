@@ -123,36 +123,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
-          path: |
-            ${{ inputs.mode == 'basic' && 'apps/electron-example/dist-basic' }}
-            ${{ inputs.mode == 'handlers' && 'apps/electron-example/dist-handlers' }}
-            ${{ inputs.mode == 'reducers' && 'apps/electron-example/dist-reducers' }}
-            ${{ inputs.mode == 'redux' && 'apps/electron-example/dist-redux' }}
-            ${{ inputs.mode == 'custom' && 'apps/electron-example/dist-custom' }}
+          path: apps/electron-example/dist-${{ inputs.mode }}
           retention-days: 1
           if-no-files-found: error
 
       - name: 📦 Upload Tauri Artifacts
         id: upload-tauri
-        if: steps.build.outputs.success == 'true' && inputs.app == 'tauri'
+        if: steps.build.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
           path: |
-            ${{ inputs.app == 'tauri' && 'apps/tauri-example/dist' }}
-            ${{ inputs.app == 'tauri' && 'apps/tauri-example/src-tauri/target' }}
-          retention-days: 1
-          if-no-files-found: error
-
-      - name: 📦 Upload Tauri v1 Artifacts
-        id: upload-tauri-v1
-        if: steps.build.outputs.success == 'true' && inputs.app == 'tauri-v1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
-          path: |
-              ${{ inputs.app == 'tauri-v1' && 'apps/tauri-v1-example/dist' }}
-              ${{ inputs.app == 'tauri-v1' && 'apps/tauri-v1-example/src-tauri/target' }}
+            apps/${{ inputs.app }}-example/dist
+            apps/${{ inputs.app }}-example/src-tauri/target
           retention-days: 1
           if-no-files-found: error
 
