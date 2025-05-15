@@ -112,7 +112,6 @@ jobs:
         id: build-app
         run: |
           pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
-          echo "success=true" >> $GITHUB_OUTPUT
         shell: bash
         continue-on-error: true
 
@@ -120,10 +119,12 @@ jobs:
       - name: Combine Build Results
         id: build
         run: |
-          if [[ "${{ steps.build-app.outputs.success }}" == "true" ]]; then
+          echo "Build app step outcome: ${{ steps.build-app.outcome }}"
+          if [[ "${{ steps.build-app.outcome }}" == "success" ]]; then
             echo "success=true" >> $GITHUB_OUTPUT
           else
             echo "success=false" >> $GITHUB_OUTPUT
+            echo "::error::Application build failed. Outcome: ${{ steps.build-app.outcome }}"
           fi
 
       # Upload artifacts
