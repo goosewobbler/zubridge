@@ -58,6 +58,16 @@ jobs:
             libsoup-2.4-1 \
             libjavascriptcoregtk-4.1-dev
 
+      # Install Wine for Windows builds (only for Electron app on Linux runner)
+      - name: Install Wine for Windows builds
+        if: inputs.app == 'electron'
+        run: |
+          echo "Setting up Wine for Electron Windows build..."
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends wine64 wine32
+          echo "Wine setup complete."
+
       # Standard checkout
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
