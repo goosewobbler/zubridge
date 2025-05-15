@@ -65,7 +65,7 @@ jobs:
           echo "Setting up Wine for Electron Windows build..."
           sudo dpkg --add-architecture i386
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends wine64 wine32
+          sudo apt-get install -y --no-install-recommends winehq-stable
           echo "Wine setup complete."
 
       # Standard checkout
@@ -125,6 +125,7 @@ jobs:
           else
             echo "success=false" >> $GITHUB_OUTPUT
             echo "::error::Application build failed. Outcome: ${{ steps.build-app.outcome }}"
+            exit 1
           fi
 
       # Upload artifacts
