@@ -161,7 +161,7 @@ const config: Configuration = {
     main: 'main/index.js',
   },
   mac: {
-    target: 'dmg',
+    target: ['zip'],
   },
   win: {
     target: 'nsis',
