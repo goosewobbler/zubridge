@@ -59,13 +59,17 @@ jobs:
             libjavascriptcoregtk-4.1-dev
 
       # Install Wine for Windows builds (only for Electron app on Linux runner)
-      - name: Install Wine for Windows builds
+      - name: Install Wine for Windows Electron builds
         if: inputs.app == 'electron'
         run: |
           echo "Setting up Wine for Electron Windows build..."
           sudo dpkg --add-architecture i386
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends winehq-stable
+          cat /etc/os-release
+          sudo mkdir -pm755 /etc/apt/keyrings
+          wget -O - https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key -
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
+          sudo apt update
+          sudo apt install -y --no-install-recommends winehq-stable
           echo "Wine setup complete."
 
       # Standard checkout
