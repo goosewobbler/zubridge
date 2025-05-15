@@ -20,7 +20,7 @@ on:
         required: false
     outputs:
       success:
-        description: "Whether the build succeeded"
+        description: "Whether any build/test succeeded"
         value: ${{ jobs.ci-status.outputs.success }}
 
 env:
@@ -28,416 +28,315 @@ env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   TURBO_API: ${{ secrets.TURBO_API }}
+  BUILD_ID: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
 
 jobs:
-  # Generate common build info
-  generate-build-info:
-    name: Generate Build Info
-    runs-on: ubuntu-latest
-    outputs:
-      build_id: ${{ steps.build-info.outputs.build_id }}
-    steps:
-      - name: 📊 Generate Build Information
-        id: build-info
-        shell: bash
-        run: |
-          echo "build_id=$(date +%s)-${{ github.run_id }}-${{ inputs.mode }}" >> $GITHUB_OUTPUT
-
   # Build on Linux
-  build-linux:
-    name: Build (Linux)
-    needs: generate-build-info
+  linux-build:
+    name: Linux Build
     runs-on: ubuntu-latest
     outputs:
       success: ${{ steps.build-result.outputs.success }}
-      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ needs.generate-build-info.outputs.build_id }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
     steps:
-      # Install Linux dependencies for Tauri builds
+      # Linux-specific dependencies
       - name: Install Linux dependencies
-        if: runner.os == 'Linux' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         run: |
-          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
-          deb http://archive.ubuntu.com/ubuntu jammy main universe
-          EOT
           sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libglib2.0-dev \
-            libsoup-2.4-1 \
-            libjavascriptcoregtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev \
+            libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev libsoup-2.4-1 libjavascriptcoregtk-4.1-dev
 
-      # Standard checkout
-      - name: 📥 Checkout Repository
+      # Checkout and setup
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Set up Node.js and PNPM
-      - name: 🛠️ Setup Development Environment
+      - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
           node-version: "20"
 
       # Download shared packages
-      - name: 📦 Download shared packages
+      - name: Download shared packages
         uses: actions/download-artifact@v4
         with:
           name: shared-packages
           path: packages
 
-      # Set up Cargo cache for Tauri builds
-      - name: 🛠️ Setup Cargo Cache
-        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         shell: bash
         run: |
-          mkdir -p ~/.cargo/registry
-          mkdir -p ~/.cargo/git
+          mkdir -p ~/.cargo/{registry,git}
           echo '[net]
           git-fetch-with-cli = true
           retry = 3
           [build]
           jobs = 2' > ~/.cargo/config.toml
 
-      # Set platform-specific flags
-      - name: Set platform-specific build flags
-        id: build-flags
-        shell: bash
-        run: |
-          echo "electron_builder_flag=-l" >> $GITHUB_OUTPUT
-          echo "platform=linux" >> $GITHUB_OUTPUT
-
-      # Build the test app with platform-specific flags
-      - name: 🏗️ Build ${{ inputs.app }}:${{ inputs.mode }} for Linux
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
         id: build-app
         shell: bash
         run: |
           if [ "${{ inputs.app }}" == "electron" ]; then
-            # For Electron, pass the platform-specific flag to the existing build script
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- ${{ steps.build-flags.outputs.electron_builder_flag }}
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
           else
-            # For Tauri, use the existing build command
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
           fi
         continue-on-error: true
 
-      # Combine build outcomes
-      - name: Combine Build Results
+      # Process build result
+      - name: Process Build Result
         id: build-result
         shell: bash
         run: |
-          echo "Build app step outcome: ${{ steps.build-app.outcome }}"
           if [[ "${{ steps.build-app.outcome }}" == "success" ]]; then
             echo "success=true" >> $GITHUB_OUTPUT
           else
             echo "success=false" >> $GITHUB_OUTPUT
-            echo "::error::Application build failed. Outcome: ${{ steps.build-app.outcome }}"
+            echo "::error::Build failed with outcome: ${{ steps.build-app.outcome }}"
             exit 1
           fi
 
-      # Upload artifacts with platform-specific names
-      - name: 📦 Upload Electron Artifacts for Linux
-        id: upload-electron
-        if: steps.build-result.outputs.success == 'true' && inputs.app == 'electron'
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ needs.generate-build-info.outputs.build_id }}
-          path: apps/electron-example/dist-${{ inputs.mode }}
+          name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/dist apps/{0}-example/src-tauri/target', inputs.app) }}
           retention-days: 1
           if-no-files-found: error
 
-      - name: 📦 Upload Tauri Artifacts for Linux
-        id: upload-tauri
-        if: steps.build-result.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ needs.generate-build-info.outputs.build_id }}
-          path: |
-            apps/${{ inputs.app }}-example/dist
-            apps/${{ inputs.app }}-example/src-tauri/target
-          retention-days: 1
-          if-no-files-found: error
-
-      # Provide an interactive debugging session on failure
-      - name: 🐛 Debug on Failure
+      # Debug on failure
+      - name: Debug on Failure
         uses: stateful/vscode-server-action@v1.1.0
         if: failure()
         with:
-            timeout: "180000"
+          timeout: "180000"
 
   # Build on macOS
-  build-macos:
-    name: Build (macOS)
-    needs: generate-build-info
+  macos-build:
+    name: macOS Build
     runs-on: macOS-latest
     outputs:
       success: ${{ steps.build-result.outputs.success }}
-      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ needs.generate-build-info.outputs.build_id }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
     steps:
-      # Standard checkout
-      - name: 📥 Checkout Repository
+      # Checkout and setup
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Set up Node.js and PNPM
-      - name: 🛠️ Setup Development Environment
+      - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
           node-version: "20"
 
       # Download shared packages
-      - name: 📦 Download shared packages
+      - name: Download shared packages
         uses: actions/download-artifact@v4
         with:
           name: shared-packages
           path: packages
 
-      # Set up Cargo cache for Tauri builds
-      - name: 🛠️ Setup Cargo Cache
-        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         shell: bash
         run: |
-          mkdir -p ~/.cargo/registry
-          mkdir -p ~/.cargo/git
+          mkdir -p ~/.cargo/{registry,git}
           echo '[net]
           git-fetch-with-cli = true
           retry = 3
           [build]
           jobs = 2' > ~/.cargo/config.toml
 
-      # Set platform-specific flags
-      - name: Set platform-specific build flags
-        id: build-flags
-        shell: bash
-        run: |
-          echo "electron_builder_flag=-m" >> $GITHUB_OUTPUT
-          echo "platform=macos" >> $GITHUB_OUTPUT
-
-      # Build the test app with platform-specific flags
-      - name: 🏗️ Build ${{ inputs.app }}:${{ inputs.mode }} for macOS
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
         id: build-app
         shell: bash
         run: |
           if [ "${{ inputs.app }}" == "electron" ]; then
-            # For Electron, pass the platform-specific flag to the existing build script
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- ${{ steps.build-flags.outputs.electron_builder_flag }}
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
           else
-            # For Tauri, use the existing build command
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
           fi
         continue-on-error: true
 
-      # Combine build outcomes
-      - name: Combine Build Results
+      # Process build result
+      - name: Process Build Result
         id: build-result
         shell: bash
         run: |
-          echo "Build app step outcome: ${{ steps.build-app.outcome }}"
           if [[ "${{ steps.build-app.outcome }}" == "success" ]]; then
             echo "success=true" >> $GITHUB_OUTPUT
           else
             echo "success=false" >> $GITHUB_OUTPUT
-            echo "::error::Application build failed. Outcome: ${{ steps.build-app.outcome }}"
+            echo "::error::Build failed with outcome: ${{ steps.build-app.outcome }}"
             exit 1
           fi
 
-      # Upload artifacts with platform-specific names
-      - name: 📦 Upload Electron Artifacts for macOS
-        id: upload-electron
-        if: steps.build-result.outputs.success == 'true' && inputs.app == 'electron'
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ needs.generate-build-info.outputs.build_id }}
-          path: apps/electron-example/dist-${{ inputs.mode }}
+          name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/dist apps/{0}-example/src-tauri/target', inputs.app) }}
           retention-days: 1
           if-no-files-found: error
 
-      - name: 📦 Upload Tauri Artifacts for macOS
-        id: upload-tauri
-        if: steps.build-result.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ needs.generate-build-info.outputs.build_id }}
-          path: |
-            apps/${{ inputs.app }}-example/dist
-            apps/${{ inputs.app }}-example/src-tauri/target
-          retention-days: 1
-          if-no-files-found: error
-
-      # Provide an interactive debugging session on failure
-      - name: 🐛 Debug on Failure
+      # Debug on failure
+      - name: Debug on Failure
         uses: stateful/vscode-server-action@v1.1.0
         if: failure()
         with:
-            timeout: "180000"
+          timeout: "180000"
 
   # Build on Windows
-  build-windows:
-    name: Build (Windows)
-    needs: generate-build-info
+  windows-build:
+    name: Windows Build
     runs-on: windows-latest
     outputs:
       success: ${{ steps.build-result.outputs.success }}
-      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ needs.generate-build-info.outputs.build_id }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
     steps:
-      # Standard checkout
-      - name: 📥 Checkout Repository
+      # Checkout and setup
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Set up Node.js and PNPM
-      - name: 🛠️ Setup Development Environment
+      - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
           node-version: "20"
 
       # Download shared packages
-      - name: 📦 Download shared packages
+      - name: Download shared packages
         uses: actions/download-artifact@v4
         with:
           name: shared-packages
           path: packages
 
-      # Set up Cargo cache for Tauri builds
-      - name: 🛠️ Setup Cargo Cache
-        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         shell: bash
         run: |
-          mkdir -p ~/.cargo/registry
-          mkdir -p ~/.cargo/git
+          mkdir -p ~/.cargo/{registry,git}
           echo '[net]
           git-fetch-with-cli = true
           retry = 3
           [build]
           jobs = 2' > ~/.cargo/config.toml
 
-      # Set platform-specific flags
-      - name: Set platform-specific build flags
-        id: build-flags
-        shell: bash
-        run: |
-          echo "electron_builder_flag=-w" >> $GITHUB_OUTPUT
-          echo "platform=windows" >> $GITHUB_OUTPUT
-
-      # Build the test app with platform-specific flags
-      - name: 🏗️ Build ${{ inputs.app }}:${{ inputs.mode }} for Windows
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
         id: build-app
         shell: bash
         run: |
           if [ "${{ inputs.app }}" == "electron" ]; then
-            # For Electron, pass the platform-specific flag to the existing build script
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- ${{ steps.build-flags.outputs.electron_builder_flag }}
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
           else
-            # For Tauri, use the existing build command
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
           fi
         continue-on-error: true
 
-      # Combine build outcomes - PowerShell for Windows
-      - name: Combine Build Results
+      # Process build result (using PowerShell)
+      - name: Process Build Result
         id: build-result
         shell: pwsh
         run: |
-          Write-Host "Build app step outcome: ${{ steps.build-app.outcome }}"
           if ("${{ steps.build-app.outcome }}" -eq "success") {
-            Write-Host "success=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Output "success=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           } else {
-            Write-Host "success=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-            Write-Error "Application build failed. Outcome: ${{ steps.build-app.outcome }}"
+            Write-Output "success=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Error "Build failed with outcome: ${{ steps.build-app.outcome }}"
             exit 1
           }
 
-      # Upload artifacts with platform-specific names
-      - name: 📦 Upload Electron Artifacts for Windows
-        id: upload-electron
-        if: steps.build-result.outputs.success == 'true' && inputs.app == 'electron'
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ needs.generate-build-info.outputs.build_id }}
-          path: apps/electron-example/dist-${{ inputs.mode }}
+          name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/dist apps/{0}-example/src-tauri/target', inputs.app) }}
           retention-days: 1
           if-no-files-found: error
 
-      - name: 📦 Upload Tauri Artifacts for Windows
-        id: upload-tauri
-        if: steps.build-result.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ needs.generate-build-info.outputs.build_id }}
-          path: |
-            apps/${{ inputs.app }}-example/dist
-            apps/${{ inputs.app }}-example/src-tauri/target
-          retention-days: 1
-          if-no-files-found: error
-
-      # Provide an interactive debugging session on failure
-      - name: 🐛 Debug on Failure
+      # Debug on failure
+      - name: Debug on Failure
         uses: stateful/vscode-server-action@v1.1.0
         if: failure()
         with:
-            timeout: "180000"
+          timeout: "180000"
 
   # E2E Tests for Linux
-  e2e-test-linux:
-    needs: [generate-build-info, build-linux]
-    if: needs.build-linux.outputs.success == 'true'
-    name: E2E (Linux)
+  linux-test:
+    needs: linux-build
+    if: needs.linux-build.outputs.success == 'true'
+    name: Linux Test
     uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
     with:
       os: ubuntu-latest
       app: ${{ inputs.app }}
       mode: ${{ inputs.mode }}
-      build_id: ${{ needs.generate-build-info.outputs.build_id }}
-      artifact_name: ${{ needs.build-linux.outputs.artifact_name }}
+      build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+      artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
+      test_name: "Linux"
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
 
   # E2E Tests for macOS
-  e2e-test-macos:
-    needs: [generate-build-info, build-macos]
-    if: needs.build-macos.outputs.success == 'true'
-    name: E2E (macOS)
+  macos-test:
+    needs: macos-build
+    if: needs.macos-build.outputs.success == 'true'
+    name: macOS Test
     uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
     with:
       os: macOS-latest
       app: ${{ inputs.app }}
       mode: ${{ inputs.mode }}
-      build_id: ${{ needs.generate-build-info.outputs.build_id }}
-      artifact_name: ${{ needs.build-macos.outputs.artifact_name }}
+      build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+      artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
+      test_name: "macOS"
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
 
   # E2E Tests for Windows
-  e2e-test-windows:
-    needs: [generate-build-info, build-windows]
-    if: needs.build-windows.outputs.success == 'true'
-    name: E2E (Windows)
+  windows-test:
+    needs: windows-build
+    if: needs.windows-build.outputs.success == 'true'
+    name: Windows Test
     uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
     with:
       os: windows-latest
       app: ${{ inputs.app }}
       mode: ${{ inputs.mode }}
-      build_id: ${{ needs.generate-build-info.outputs.build_id }}
-      artifact_name: ${{ needs.build-windows.outputs.artifact_name }}
+      build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+      artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
+      test_name: "Windows"
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
 
-  # Final status job
+  # Final status aggregation
   ci-status:
-    name: CI Status
-    needs: [build-linux, build-macos, build-windows, e2e-test-linux, e2e-test-macos, e2e-test-windows]
+    name: Status
+    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test]
     if: always()
     runs-on: ubuntu-latest
     outputs:
@@ -446,11 +345,9 @@ jobs:
       - name: Check status
         id: check-status
         run: |
-          # Check if any job succeeded
           if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
             echo "success=true" >> $GITHUB_OUTPUT
             echo "At least one job passed successfully"
-            exit 0
           else
             echo "success=false" >> $GITHUB_OUTPUT
             echo "All jobs failed"

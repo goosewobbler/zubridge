@@ -25,6 +25,11 @@ on:
         description: "Name of the artifact to download"
         type: string
         required: true
+      test_name:
+        description: "Name of the test to use in job display (e.g., 'Linux', 'macOS', 'Windows')"
+        type: string
+        required: false
+        default: "E2E"
     secrets:
       TURBO_TOKEN:
         description: 'Vercel token for Turborepo remote caching'
@@ -44,7 +49,7 @@ env:
 
 jobs:
   e2e-mode:
-    name: E2E
+    name: ${{ inputs.test_name }}
     runs-on: ${{ inputs.os }}
     steps:
       # Standard checkout
