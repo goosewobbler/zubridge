@@ -161,13 +161,13 @@ const config: Configuration = {
     main: 'main/index.js',
   },
   mac: {
-    target: ['zip'],
+    target: 'zip',
   },
   win: {
-    target: 'nsis',
+    target: 'zip',
   },
   linux: {
-    target: 'AppImage',
+    target: 'zip',
     executableName: `zubridge-electron-example-${currentMode}`,
   },
 };
