@@ -66,73 +66,39 @@ jobs:
           name: shared-packages
           path: packages
 
-      # Download the build artifacts specifically for this mode (built on Linux)
+      # Download the build artifacts directly to their final location
       - name: 📦 Download ${{ inputs.app }}:${{ inputs.mode }} Build Artifacts
         id: download_app_artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          path: .
+          path: ${{ inputs.app == 'electron' && format('./apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('./apps/{0}-example', inputs.app) }}
 
-      # Place downloaded artifacts correctly
-      - name: 🚚 Place Downloaded Artifacts Correctly
+      # Display download information
+      - name: 📊 Show Download Information
         shell: bash
         run: |
-          set -e
-          echo "Attempting to place artifacts for ${{ inputs.app }} mode ${{ inputs.mode }}"
-
-          # When download-artifact uses 'path: .', it creates a directory named after the artifact
-          # in the current directory ('.').
-          # inputs.artifact_name is the name like 'electron-basic-XYZ'
-          ARTIFACT_SUBDIR="./${{ inputs.artifact_name }}"
-          echo "Expecting artifact contents in subdirectory: $ARTIFACT_SUBDIR"
-
-          TARGET_APP_BASE_DIR="./apps/${{ inputs.app }}-example"
-          mkdir -p "$TARGET_APP_BASE_DIR"
-          echo "Target app base directory: $TARGET_APP_BASE_DIR"
-
+          echo "Artifact ${{ inputs.artifact_name }} downloaded to target location"
           if [ "${{ inputs.app }}" == "electron" ]; then
-            SOURCE_SPECIFIC_DIR="$ARTIFACT_SUBDIR/dist-${{ inputs.mode }}"
-            if [ ! -d "$SOURCE_SPECIFIC_DIR" ]; then
-              echo "::error::Electron source dir '$SOURCE_SPECIFIC_DIR' not found!"
-              echo "Listing contents of expected artifact subdirectory '$ARTIFACT_SUBDIR':"
-              ls -la "$ARTIFACT_SUBDIR" || echo "Directory $ARTIFACT_SUBDIR not found or ls failed"
-              echo "Also listing current directory (workspace root):"
-              ls -la .
-              exit 1
-            fi
-            echo "Moving Electron dir '$SOURCE_SPECIFIC_DIR' to '$TARGET_APP_BASE_DIR/'"
-            mv "$SOURCE_SPECIFIC_DIR" "$TARGET_APP_BASE_DIR/"
-            echo "Electron artifacts moved to $TARGET_APP_BASE_DIR/dist-${{ inputs.mode }}"
-            ls -la "$TARGET_APP_BASE_DIR/dist-${{ inputs.mode }}"
+            TARGET_DIR="./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}"
+            echo "Electron artifacts in $TARGET_DIR:"
+            ls -la "$TARGET_DIR"
           elif [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
-            SOURCE_DIST_DIR="$ARTIFACT_SUBDIR/dist"
-            SOURCE_TARGET_DIR="$ARTIFACT_SUBDIR/src-tauri/target"
+            TARGET_DIR="./apps/${{ inputs.app }}-example"
+            echo "Tauri artifacts in $TARGET_DIR:"
+            ls -la "$TARGET_DIR"
 
-            if [ -d "$SOURCE_DIST_DIR" ]; then
-              echo "Moving Tauri 'dist' dir '$SOURCE_DIST_DIR' to '$TARGET_APP_BASE_DIR/'"
-              mv "$SOURCE_DIST_DIR" "$TARGET_APP_BASE_DIR/"
-              echo "Tauri 'dist' moved to $TARGET_APP_BASE_DIR/dist"
-              ls -la "$TARGET_APP_BASE_DIR/dist"
-            else
-              echo "::warning::Tauri 'dist' dir '$SOURCE_DIST_DIR' not found in downloaded artifact."
-              ls -la "$ARTIFACT_SUBDIR" || echo "Directory $ARTIFACT_SUBDIR not found or ls failed"
+            # Check expected sub-directories
+            if [ -d "$TARGET_DIR/dist" ]; then
+              echo "dist/ directory found"
+              ls -la "$TARGET_DIR/dist"
             fi
 
-            if [ -d "$SOURCE_TARGET_DIR" ]; then
-              mkdir -p "$TARGET_APP_BASE_DIR/src-tauri"
-              echo "Moving Tauri 'src-tauri/target' dir '$SOURCE_TARGET_DIR' to '$TARGET_APP_BASE_DIR/src-tauri/'"
-              mv "$SOURCE_TARGET_DIR" "$TARGET_APP_BASE_DIR/src-tauri/"
-              echo "Tauri 'src-tauri/target' moved to $TARGET_APP_BASE_DIR/src-tauri/target"
-              ls -la "$TARGET_APP_BASE_DIR/src-tauri/target"
-            else
-              echo "::warning::Tauri 'src-tauri/target' dir '$SOURCE_TARGET_DIR' not found in downloaded artifact."
+            if [ -d "$TARGET_DIR/src-tauri/target" ]; then
+              echo "src-tauri/target/ directory found"
+              ls -la "$TARGET_DIR/src-tauri/target"
             fi
-          else
-            echo "::error::Unknown app type '${{ inputs.app }}' for artifact placement."
-            exit 1
           fi
-          echo "Artifact placement complete."
 
       # Display build information
       - name: 📊 Show Build Information

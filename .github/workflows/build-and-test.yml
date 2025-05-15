@@ -37,7 +37,7 @@ jobs:
     outputs:
       success: ${{ steps.build.outputs.success || 'false' }}
       build_id: ${{ steps.build-info.outputs.build_id }}
-      artifact_name: ${{ inputs.app == 'electron' && steps.upload-electron.outputs.artifact-name || steps.upload-tauri.outputs.artifact-name }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
     steps:
       # Install Linux dependencies for Tauri builds
       - name: Install Linux dependencies
