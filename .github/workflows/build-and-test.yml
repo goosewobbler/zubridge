@@ -30,18 +30,24 @@ env:
   TURBO_API: ${{ secrets.TURBO_API }}
 
 jobs:
-  # Build the specific mode
+  # Build the specific mode on platform-specific runners
   build:
-    name: Build
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
     outputs:
-      success: ${{ steps.build.outputs.success || 'false' }}
+      success: ${{ steps.build-result.outputs.success || 'false' }}
       build_id: ${{ steps.build-info.outputs.build_id }}
-      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
+      linux_artifact: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ steps.build-info.outputs.build_id }}
+      macos_artifact: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ steps.build-info.outputs.build_id }}
+      windows_artifact: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ steps.build-info.outputs.build_id }}
     steps:
       # Install Linux dependencies for Tauri builds
       - name: Install Linux dependencies
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1' && runner.os == 'Linux'
         run: |
           sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
           deb http://archive.ubuntu.com/ubuntu jammy main universe
@@ -60,7 +66,7 @@ jobs:
 
       # Install Wine for Windows builds (only for Electron app on Linux runner)
       - name: Install Wine for Windows Electron builds
-        if: inputs.app == 'electron'
+        if: inputs.app == 'electron' && runner.os == 'Linux'
         run: |
           echo "Setting up Wine for Electron Windows build..."
           sudo dpkg --add-architecture i386
@@ -108,7 +114,7 @@ jobs:
 
       # Set up Cargo cache for Tauri builds
       - name: 🛠️ Setup Cargo Cache
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
         shell: bash
         run: |
           mkdir -p ~/.cargo/registry
@@ -119,17 +125,39 @@ jobs:
           [build]
           jobs = 2' > ~/.cargo/config.toml
 
-      # Build the test app
-      - name: 🏗️ Build ${{ inputs.app }}:${{ inputs.mode }}
-        id: build-app
-        run: |
-          pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+      # Determine platform-specific builder flags
+      - name: Set platform-specific build flags
+        id: build-flags
         shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            echo "electron_builder_flag=-l" >> $GITHUB_OUTPUT
+            echo "platform=linux" >> $GITHUB_OUTPUT
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "electron_builder_flag=-m" >> $GITHUB_OUTPUT
+            echo "platform=macos" >> $GITHUB_OUTPUT
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "electron_builder_flag=-w" >> $GITHUB_OUTPUT
+            echo "platform=windows" >> $GITHUB_OUTPUT
+          fi
+
+      # Build the test app with platform-specific flags
+      - name: 🏗️ Build ${{ inputs.app }}:${{ inputs.mode }} for ${{ runner.os }}
+        id: build-app
+        shell: bash
+        run: |
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            # For Electron, pass the platform-specific flag to the existing build script
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- ${{ steps.build-flags.outputs.electron_builder_flag }}
+          else
+            # For Tauri, use the existing build command
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+          fi
         continue-on-error: true
 
       # Combine build outcomes
       - name: Combine Build Results
-        id: build
+        id: build-result
         run: |
           echo "Build app step outcome: ${{ steps.build-app.outcome }}"
           if [[ "${{ steps.build-app.outcome }}" == "success" ]]; then
@@ -140,23 +168,23 @@ jobs:
             exit 1
           fi
 
-      # Upload artifacts
-      - name: 📦 Upload Electron Artifacts
+      # Upload artifacts with platform-specific names
+      - name: 📦 Upload Electron Artifacts for ${{ runner.os }}
         id: upload-electron
-        if: steps.build.outputs.success == 'true' && inputs.app == 'electron'
+        if: steps.build-result.outputs.success == 'true' && inputs.app == 'electron'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
+          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-flags.outputs.platform }}-${{ steps.build-info.outputs.build_id }}
           path: apps/electron-example/dist-${{ inputs.mode }}
           retention-days: 1
           if-no-files-found: error
 
-      - name: 📦 Upload Tauri Artifacts
+      - name: 📦 Upload Tauri Artifacts for ${{ runner.os }}
         id: upload-tauri
-        if: steps.build.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+        if: steps.build-result.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
+          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-flags.outputs.platform }}-${{ steps.build-info.outputs.build_id }}
           path: |
             apps/${{ inputs.app }}-example/dist
             apps/${{ inputs.app }}-example/src-tauri/target
@@ -170,11 +198,11 @@ jobs:
         with:
             timeout: "180000"
 
-  # Run E2E tests immediately after the build completes
+  # Run E2E tests on each platform using the platform-specific builds
   e2e-test:
     needs: build
     if: needs.build.outputs.success == 'true'
-    name: ${{ matrix.os }}
+    name: E2E (${{ matrix.os }})
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
@@ -185,7 +213,7 @@ jobs:
       app: ${{ inputs.app }}
       mode: ${{ inputs.mode }}
       build_id: ${{ needs.build.outputs.build_id }}
-      artifact_name: ${{ needs.build.outputs.artifact_name }}
+      artifact_name: ${{ matrix.os == 'ubuntu-latest' && needs.build.outputs.linux_artifact || matrix.os == 'macOS-latest' && needs.build.outputs.macos_artifact || needs.build.outputs.windows_artifact }}
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}

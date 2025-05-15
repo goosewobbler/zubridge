@@ -66,6 +66,19 @@ jobs:
           name: shared-packages
           path: packages
 
+      # Determine platform-specific paths and settings
+      - name: Set platform-specific variables
+        id: platform-vars
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            echo "platform=linux" >> $GITHUB_OUTPUT
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "platform=macos" >> $GITHUB_OUTPUT
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "platform=windows" >> $GITHUB_OUTPUT
+          fi
+
       # Download the build artifacts directly to their final location
       - name: 📦 Download ${{ inputs.app }}:${{ inputs.mode }} Build Artifacts
         id: download_app_artifact
@@ -83,6 +96,48 @@ jobs:
             TARGET_DIR="./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}"
             echo "Electron artifacts in $TARGET_DIR:"
             ls -la "$TARGET_DIR"
+
+            # Check platform-specific directories
+            if [[ "${{ runner.os }}" == "Linux" ]]; then
+              echo "Linux build directory:"
+              if [ -d "$TARGET_DIR/linux-unpacked" ]; then
+                ls -la "$TARGET_DIR/linux-unpacked"
+                if [ -f "$TARGET_DIR/linux-unpacked/zubridge-electron-example-${{ inputs.mode }}" ]; then
+                  echo "Executable exists and permissions:"
+                  ls -la "$TARGET_DIR/linux-unpacked/zubridge-electron-example-${{ inputs.mode }}"
+                else
+                  echo "ERROR: Executable not found!"
+                fi
+              else
+                echo "WARNING: linux-unpacked directory not found!"
+              fi
+            elif [[ "${{ runner.os }}" == "macOS" ]]; then
+              echo "macOS build directory:"
+              if [ -d "$TARGET_DIR/mac" ]; then
+                ls -la "$TARGET_DIR/mac"
+                if [ -d "$TARGET_DIR/mac/zubridge-electron-example-${{ inputs.mode }}.app" ]; then
+                  echo "App bundle exists:"
+                  ls -la "$TARGET_DIR/mac/zubridge-electron-example-${{ inputs.mode }}.app/Contents/MacOS/"
+                else
+                  echo "ERROR: App bundle not found!"
+                fi
+              else
+                echo "WARNING: mac directory not found!"
+              fi
+            elif [[ "${{ runner.os }}" == "Windows" ]]; then
+              echo "Windows build directory:"
+              if [ -d "$TARGET_DIR/win-unpacked" ]; then
+                ls -la "$TARGET_DIR/win-unpacked"
+                if [ -f "$TARGET_DIR/win-unpacked/zubridge-electron-example-${{ inputs.mode }}.exe" ]; then
+                  echo "Executable exists:"
+                  ls -la "$TARGET_DIR/win-unpacked/zubridge-electron-example-${{ inputs.mode }}.exe"
+                else
+                  echo "ERROR: Executable not found!"
+                fi
+              else
+                echo "WARNING: win-unpacked directory not found!"
+              fi
+            fi
           elif [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
             TARGET_DIR="./apps/${{ inputs.app }}-example"
             echo "Tauri artifacts in $TARGET_DIR:"
