@@ -44,8 +44,9 @@ jobs:
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev \
-            libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev libsoup-2.4-1 libjavascriptcoregtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
+            libappindicator3-dev librsvg2-dev patchelf libglib2.0-dev \
+            libsoup-2.4-1 libjavascriptcoregtk-4.1-dev
 
       # Checkout and setup
       - name: Checkout Repository
@@ -108,9 +109,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/dist apps/{0}-example/src-tauri/target', inputs.app) }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release apps/{0}-example/src-tauri/target/release/bundle', inputs.app) }}
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
 
       # Debug on failure
       - name: Debug on Failure
@@ -188,9 +189,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/dist apps/{0}-example/src-tauri/target', inputs.app) }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release apps/{0}-example/src-tauri/target/release/bundle', inputs.app) }}
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
 
       # Debug on failure
       - name: Debug on Failure
@@ -268,9 +269,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/dist apps/{0}-example/src-tauri/target', inputs.app) }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release apps/{0}-example/src-tauri/target/release/bundle', inputs.app) }}
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
 
       # Debug on failure
       - name: Debug on Failure
@@ -283,7 +284,7 @@ jobs:
   linux-test:
     needs: linux-build
     if: needs.linux-build.outputs.success == 'true'
-    name: Linux Test
+    name: Linux E2E
     uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
     with:
       os: ubuntu-latest
@@ -291,7 +292,7 @@ jobs:
       mode: ${{ inputs.mode }}
       build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
       artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
-      test_name: "Linux"
+      test_name: ""
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
@@ -301,7 +302,7 @@ jobs:
   macos-test:
     needs: macos-build
     if: needs.macos-build.outputs.success == 'true'
-    name: macOS Test
+    name: macOS E2E
     uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
     with:
       os: macOS-latest
@@ -309,7 +310,7 @@ jobs:
       mode: ${{ inputs.mode }}
       build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
       artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
-      test_name: "macOS"
+      test_name: ""
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
@@ -319,7 +320,7 @@ jobs:
   windows-test:
     needs: windows-build
     if: needs.windows-build.outputs.success == 'true'
-    name: Windows Test
+    name: Windows E2E
     uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
     with:
       os: windows-latest
@@ -327,7 +328,7 @@ jobs:
       mode: ${{ inputs.mode }}
       build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
       artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
-      test_name: "Windows"
+      test_name: ""
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}

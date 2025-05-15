@@ -49,7 +49,7 @@ env:
 
 jobs:
   e2e-mode:
-    name: ${{ inputs.test_name }}
+    name: ${{ inputs.test_name != '' && inputs.test_name || 'E2E' }}
     runs-on: ${{ inputs.os }}
     steps:
       # Standard checkout
