@@ -1,0 +1,45 @@
+name: 'Process Build Result'
+description: 'Process the outcome of a build step and provide standardized output'
+
+inputs:
+  build_step_id:
+    description: "ID of the build step to check"
+    required: true
+  shell_type:
+    description: "Shell type to use (bash or pwsh)"
+    required: false
+    default: "bash"
+
+outputs:
+  success:
+    description: "Whether the build succeeded"
+    value: ${{ steps.process_result.outputs.success || steps.process_result_pwsh.outputs.success }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Process Result with Bash
+      id: process_result
+      if: inputs.shell_type == 'bash'
+      shell: bash
+      run: |
+        if [[ "${{ steps[inputs.build_step_id].outcome }}" == "success" ]]; then
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "success=false" >> $GITHUB_OUTPUT
+          echo "::error::Build failed with outcome: ${{ steps[inputs.build_step_id].outcome }}"
+          exit 1
+        fi
+
+    - name: Process Result with PowerShell
+      id: process_result_pwsh
+      if: inputs.shell_type == 'pwsh'
+      shell: pwsh
+      run: |
+        if ("${{ steps[inputs.build_step_id].outcome }}" -eq "success") {
+          Write-Output "success=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        } else {
+          Write-Output "success=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Error "Build failed with outcome: ${{ steps[inputs.build_step_id].outcome }}"
+          exit 1
+        }
