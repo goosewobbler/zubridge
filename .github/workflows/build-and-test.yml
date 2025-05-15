@@ -64,28 +64,6 @@ jobs:
             libsoup-2.4-1 \
             libjavascriptcoregtk-4.1-dev
 
-      # Install Wine for Windows builds (only for Electron app on Linux runner)
-      - name: Install Wine for Windows Electron builds
-        if: inputs.app == 'electron' && runner.os == 'Linux'
-        run: |
-          echo "Setting up Wine for Electron Windows build..."
-          sudo dpkg --add-architecture i386
-
-          # Dynamically get Ubuntu codename
-          UBUNTU_CODENAME=$(lsb_release -cs)
-          echo "Detected Ubuntu codename: $UBUNTU_CODENAME"
-
-          sudo mkdir -pm755 /etc/apt/keyrings
-          wget -O - https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key
-
-          # Use the dynamic codename in the sources list URL
-          sudo wget -NP /etc/apt/sources.list.d/ "https://dl.winehq.org/wine-builds/ubuntu/dists/$UBUNTU_CODENAME/winehq-$UBUNTU_CODENAME.sources"
-
-          sudo apt-get update -qq # -qq for quieter output
-          sudo apt-get install -y --no-install-recommends winehq-stable # Or winehq-devel / winehq-staging
-          echo "Wine setup complete."
-          wine --version # Verify installation
-
       # Standard checkout
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
