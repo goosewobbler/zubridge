@@ -81,12 +81,13 @@ jobs:
           fi
         continue-on-error: true
 
-      # Process build result
+      # Process build result for Linux
       - name: Process Build Result
         id: build-result
         uses: ./.github/workflows/actions/process-build-result
         with:
           build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
           shell_type: bash
 
       # Upload artifacts
@@ -149,12 +150,13 @@ jobs:
           fi
         continue-on-error: true
 
-      # Process build result
+      # Process build result for macOS
       - name: Process Build Result
         id: build-result
         uses: ./.github/workflows/actions/process-build-result
         with:
           build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
           shell_type: bash
 
       # Upload artifacts
@@ -217,12 +219,13 @@ jobs:
           fi
         continue-on-error: true
 
-      # Process build result (using PowerShell)
+      # Process build result for Windows
       - name: Process Build Result
         id: build-result
         uses: ./.github/workflows/actions/process-build-result
         with:
           build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
           shell_type: pwsh
 
       # Upload artifacts

@@ -3,7 +3,10 @@ description: 'Process the outcome of a build step and provide standardized outpu
 
 inputs:
   build_step_id:
-    description: "ID of the build step to check"
+    description: "ID of the build step to check (for reference only)"
+    required: true
+  build_outcome:
+    description: "The outcome of the build step"
     required: true
   shell_type:
     description: "Shell type to use (bash or pwsh)"
@@ -23,11 +26,11 @@ runs:
       if: inputs.shell_type == 'bash'
       shell: bash
       run: |
-        if [[ "${{ steps[inputs.build_step_id].outcome }}" == "success" ]]; then
+        if [[ "${{ inputs.build_outcome }}" == "success" ]]; then
           echo "success=true" >> $GITHUB_OUTPUT
         else
           echo "success=false" >> $GITHUB_OUTPUT
-          echo "::error::Build failed with outcome: ${{ steps[inputs.build_step_id].outcome }}"
+          echo "::error::Build failed with outcome: ${{ inputs.build_outcome }}"
           exit 1
         fi
 
@@ -36,10 +39,10 @@ runs:
       if: inputs.shell_type == 'pwsh'
       shell: pwsh
       run: |
-        if ("${{ steps[inputs.build_step_id].outcome }}" -eq "success") {
+        if ("${{ inputs.build_outcome }}" -eq "success") {
           Write-Output "success=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         } else {
           Write-Output "success=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Error "Build failed with outcome: ${{ steps[inputs.build_step_id].outcome }}"
+          Write-Error "Build failed with outcome: ${{ inputs.build_outcome }}"
           exit 1
         }
