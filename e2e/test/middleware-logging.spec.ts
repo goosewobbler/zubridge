@@ -109,6 +109,9 @@ describe('IPC Traffic Logging Middleware', () => {
       if (msg.state_delta) {
         console.log(`  state_delta: ${JSON.stringify(msg.state_delta)}`);
       }
+      if (msg.processing_metrics) {
+        console.log(`  processing_metrics: ${JSON.stringify(msg.processing_metrics)}`);
+      }
     });
 
     // Check if we received any state updates
@@ -128,7 +131,14 @@ describe('IPC Traffic Logging Middleware', () => {
         expect(stateUpdates[0].state_summary).toHaveProperty('properties');
       }
 
-      // Accept either state or state_summary to pass the test
+      // Check for processing metrics if they're available
+      if (stateUpdates[0].processing_metrics) {
+        console.log('Processing metrics received:', JSON.stringify(stateUpdates[0].processing_metrics));
+        // Verify it has at least the total_ms property
+        expect(stateUpdates[0].processing_metrics).toHaveProperty('total_ms');
+      }
+
+      // Accept state information in any form to pass the test
       const hasStateInfo = stateUpdates[0].state !== undefined || stateUpdates[0].state_summary !== undefined;
       assert(hasStateInfo, 'State update should include state information or summary');
     }
