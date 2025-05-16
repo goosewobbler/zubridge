@@ -27,6 +27,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.14.0",
+    "@types/ws": "^8.18.1",
     "@wdio/cli": "^9.14.0",
     "@wdio/globals": "^9.14.0",
     "@wdio/local-runner": "^9.14.0",
@@ -35,6 +36,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "wdio-electron-service": "^8.0.1",
+    "ws": "^8.18.2",
     "xvfb-maybe": "^0.2.1"
   }
 }
