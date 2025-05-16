@@ -103,6 +103,12 @@ describe('IPC Traffic Logging Middleware', () => {
       if (msg.state) {
         console.log(`  state keys: ${Object.keys(msg.state).join(', ')}`);
       }
+      if (msg.state_summary) {
+        console.log(`  state_summary: ${JSON.stringify(msg.state_summary)}`);
+      }
+      if (msg.state_delta) {
+        console.log(`  state_delta: ${JSON.stringify(msg.state_delta)}`);
+      }
     });
 
     // Check if we received any state updates
@@ -113,23 +119,18 @@ describe('IPC Traffic Logging Middleware', () => {
       // Debug the state structure
       console.log('First state update contents:', JSON.stringify(stateUpdates[0], null, 2).substring(0, 200));
 
-      // Try different ways to find the counter
-      if (stateUpdates[0].state && typeof stateUpdates[0].state === 'object') {
-        // Direct counter property
-        if ('counter' in stateUpdates[0].state) {
-          expect(stateUpdates[0].state.counter).toBeDefined();
-        }
-        // Maybe it's nested
-        else if (Object.keys(stateUpdates[0].state).length > 0) {
-          // Pass test if we at least got a state object
-          console.log(`State has these keys: ${Object.keys(stateUpdates[0].state).join(', ')}`);
-          // The test passes - we at least got state
-        } else {
-          throw new Error('State object is empty');
-        }
-      } else {
-        throw new Error('No valid state object found');
+      // Check for state_summary or state_delta
+      if (stateUpdates[0].state_summary) {
+        console.log('State summary received:', JSON.stringify(stateUpdates[0].state_summary));
+        // Check that it has the expected structure
+        expect(stateUpdates[0].state_summary).toHaveProperty('size_bytes');
+        expect(stateUpdates[0].state_summary).toHaveProperty('property_count');
+        expect(stateUpdates[0].state_summary).toHaveProperty('properties');
       }
+
+      // Accept either state or state_summary to pass the test
+      const hasStateInfo = stateUpdates[0].state !== undefined || stateUpdates[0].state_summary !== undefined;
+      assert(hasStateInfo, 'State update should include state information or summary');
     }
   });
 
@@ -140,9 +141,13 @@ describe('IPC Traffic Logging Middleware', () => {
       return;
     }
 
-    // Find and click the increment button
+    // Find and click the increment button twice to generate delta
     const incrementButton = await browser.$('button=+');
     expect(incrementButton).toBeExisting();
+    await incrementButton.click();
+
+    // Wait a bit and click again to ensure we get a delta
+    await browser.pause(500);
     await incrementButton.click();
 
     // Wait for logs to be received
@@ -158,9 +163,23 @@ describe('IPC Traffic Logging Middleware', () => {
       if (msg.action) {
         console.log(`  action.action_type: ${msg.action.action_type}`);
       }
+      // Log state_delta if present
+      if (msg.state_delta) {
+        console.log(`  state_delta: ${JSON.stringify(msg.state_delta)}`);
+      }
     });
 
-    // Look for any action dispatched - be more lenient
+    // Look for state updates with deltas (should be present after second action)
+    const stateUpdatesWithDelta = logMessages.filter(
+      (msg) => msg.entry_type === 'StateUpdated' && msg.state_delta !== undefined,
+    );
+
+    if (stateUpdatesWithDelta.length > 0) {
+      console.log(`Found ${stateUpdatesWithDelta.length} state updates with delta information`);
+      console.log('First delta:', JSON.stringify(stateUpdatesWithDelta[0].state_delta));
+    }
+
+    // Look for any action dispatched
     const actionLogs = logMessages.filter((msg) => msg.entry_type === 'ActionDispatched');
 
     // If we have actions, pass the test
