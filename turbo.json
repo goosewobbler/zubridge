@@ -63,35 +63,35 @@
         "test:e2e:tauri-basic",
         "test:e2e:tauri-v1-basic"
       ],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-reducers": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:reducers"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-handlers": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:handlers"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-basic": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:basic"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-redux": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:redux"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-custom": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:custom"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:tauri-basic": {
       "dependsOn": ["build:packages", "zubridge-tauri-example#build"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:tauri-v1-basic": {
       "dependsOn": ["build:packages", "zubridge-tauri-v1-example#build"],
-      "cache": true
+      "cache": false
     },
     "@zubridge/types#build": {
       "outputs": ["dist/**"],
