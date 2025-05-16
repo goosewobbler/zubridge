@@ -1,7 +1,8 @@
 import { expect } from '@wdio/globals';
 import { it, describe, before } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import { setupTestEnvironment, getCounterValue, resetCounter } from '../utils/window.js';
+import { setupTestEnvironment } from '../utils/window.js';
+import { getCounterValue, resetCounter } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
 import { waitForSpecificValue } from '../utils/counter.js';
 

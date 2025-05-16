@@ -1,4 +1,4 @@
-import { getCounterValue } from './window.js';
+import { getButtonInCurrentWindow } from './window.js';
 import { TIMING } from '../constants.js';
 import { browser } from 'wdio-electron-service';
 
@@ -33,3 +33,41 @@ export async function waitForSpecificValue(
     },
   );
 }
+
+export const getCounterValue = async () => {
+  const counterElement = await browser.$('h2');
+  const counterText = await counterElement.getText();
+  return parseInt(counterText.replace('Counter: ', ''));
+};
+
+export const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {
+  let currentValue = await getCounterValue();
+  const incrementButton = await getButtonInCurrentWindow('increment');
+  while (currentValue < targetValue) {
+    await incrementButton.click();
+    await browser.pause(50);
+    const newValue = await getCounterValue();
+    if (newValue === currentValue) {
+      await incrementButton.click();
+      await browser.pause(100);
+    }
+    currentValue = await getCounterValue();
+  }
+  return currentValue;
+};
+
+export const resetCounter = async () => {
+  const counterElement = await browser.$('h2');
+  const counterText = await counterElement.getText();
+  const currentCount = parseInt(counterText.replace('Counter: ', ''));
+  if (currentCount > 0) {
+    const decrementButton = await browser.$('button=-');
+    for (let i = 0; i < currentCount; i++) {
+      await decrementButton.click();
+      await browser.pause(50);
+    }
+  }
+  const newCounterElement = await browser.$('h2');
+  const newCounterText = await newCounterElement.getText();
+  return parseInt(newCounterText.replace('Counter: ', ''));
+};
