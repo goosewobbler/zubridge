@@ -19,82 +19,103 @@ console.log(`[DEBUG] Running on platform: ${process.platform}`);
 console.log(`[DEBUG] APP_DIR: ${appDir}, MODE: ${mode}`);
 console.log(`[DEBUG] packageJsonPath: ${packageJsonPath}`);
 console.log(`[DEBUG] appPath (base for dist): ${appPath}`);
+console.log(`[DEBUG] Running on architecture: ${process.arch}`);
 
+// Find binary path for current platform
 let binaryPath = '';
 const currentPlatform = process.platform;
 
-const platformSpecificAppPaths = {
-  darwin: path.join(
-    appPath, // apps/electron-example
-    `dist-${mode}`,
-    'mac', // Electron builder often uses 'mac' or 'mac-arm64' etc. Let's assume 'mac' for now or check artifact structure.
-    `zubridge-electron-example-${mode}.app`,
-    'Contents',
-    'MacOS',
-    `zubridge-electron-example-${mode}`,
-  ),
-  win32: path.join(appPath, `dist-${mode}`, 'win-unpacked', `zubridge-electron-example-${mode}.exe`),
-  linux: path.join(appPath, `dist-${mode}`, 'linux-unpacked', `zubridge-electron-example-${mode}`),
-};
+// Define possible binary locations with architecture-aware paths
+const findMacBinary = () => {
+  // Define possible mac directories to check in priority order
+  const macDirs =
+    process.arch === 'arm64'
+      ? ['mac-arm64', 'mac'] // Prefer arm64 on arm systems
+      : ['mac', 'mac-arm64']; // Prefer intel on intel systems
 
-// Log the paths we're about to check
-console.log(`[DEBUG] Expected Darwin (macOS) path: ${platformSpecificAppPaths.darwin}`);
-console.log(`[DEBUG] Expected Windows path: ${platformSpecificAppPaths.win32}`);
-console.log(`[DEBUG] Expected Linux path: ${platformSpecificAppPaths.linux}`);
-
-if (currentPlatform === 'darwin') {
-  if (fs.existsSync(platformSpecificAppPaths.darwin)) {
-    binaryPath = platformSpecificAppPaths.darwin;
-    console.log(`[DEBUG] Using Darwin (macOS) binary: ${binaryPath}`);
-  } else {
-    // Attempt a common alternative for arm64 if the primary 'mac' doesn't exist
-    const arm64MacPath = path.join(
+  // Try each directory in order
+  for (const dir of macDirs) {
+    const binPath = path.join(
       appPath,
       `dist-${mode}`,
-      'mac-arm64', // Common for arm64 builds
+      dir,
       `zubridge-electron-example-${mode}.app`,
       'Contents',
       'MacOS',
       `zubridge-electron-example-${mode}`,
     );
-    console.log(`[DEBUG] Darwin (macOS) primary path not found, checking arm64 path: ${arm64MacPath}`);
-    if (fs.existsSync(arm64MacPath)) {
-      binaryPath = arm64MacPath;
-      console.log(`[DEBUG] Using Darwin (macOS) arm64 binary: ${binaryPath}`);
-    } else {
-      console.warn(`[WARN] Darwin (macOS) binary not found at expected paths.`);
+
+    if (fs.existsSync(binPath)) {
+      console.log(`[DEBUG] Found macOS binary in ${dir}`);
+      return binPath;
     }
   }
-} else if (currentPlatform === 'win32') {
-  if (fs.existsSync(platformSpecificAppPaths.win32)) {
-    binaryPath = platformSpecificAppPaths.win32;
-    console.log(`[DEBUG] Using Windows binary: ${binaryPath}`);
-  } else {
-    console.warn(`[WARN] Windows binary not found at ${platformSpecificAppPaths.win32}`);
+
+  // Last resort: look for any mac* directory in dist
+  const distDir = path.join(appPath, `dist-${mode}`);
+  if (fs.existsSync(distDir)) {
+    try {
+      const macFolders = fs
+        .readdirSync(distDir)
+        .filter((dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory());
+
+      for (const folder of macFolders) {
+        const binPath = path.join(
+          distDir,
+          folder,
+          `zubridge-electron-example-${mode}.app`,
+          'Contents',
+          'MacOS',
+          `zubridge-electron-example-${mode}`,
+        );
+
+        if (fs.existsSync(binPath)) {
+          return binPath;
+        }
+      }
+    } catch (err) {
+      /* ignore errors during directory scan */
+    }
   }
-} else if (currentPlatform === 'linux') {
-  if (fs.existsSync(platformSpecificAppPaths.linux)) {
-    binaryPath = platformSpecificAppPaths.linux;
-    console.log(`[DEBUG] Using Linux binary: ${binaryPath}`);
+
+  return '';
+};
+
+// Platform-specific binary finders
+const binaryFinders = {
+  darwin: findMacBinary,
+  win32: () => {
+    const binPath = path.join(appPath, `dist-${mode}`, 'win-unpacked', `zubridge-electron-example-${mode}.exe`);
+    return fs.existsSync(binPath) ? binPath : '';
+  },
+  linux: () => {
+    const binPath = path.join(appPath, `dist-${mode}`, 'linux-unpacked', `zubridge-electron-example-${mode}`);
+    return fs.existsSync(binPath) ? binPath : '';
+  },
+};
+
+// Find binary for current platform
+if (binaryFinders[currentPlatform]) {
+  binaryPath = binaryFinders[currentPlatform]();
+  if (binaryPath) {
+    console.log(`[DEBUG] Using ${currentPlatform} binary: ${binaryPath}`);
   } else {
-    console.warn(`[WARN] Linux binary not found at ${platformSpecificAppPaths.linux}`);
+    console.log(`[DEBUG] No platform-specific binary found for ${currentPlatform}, will try fallback`);
   }
 }
 
+// Fallback to direct Electron execution if no binary found
 if (!binaryPath) {
-  console.log('[DEBUG] No platform-specific binary found, attempting fallback to direct Electron execution.');
+  console.log('[DEBUG] Attempting fallback to direct Electron execution');
   const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
-  const appMain = path.join(appPath, `out-${mode}`, 'main', 'index.js'); // Assumes 'out-${mode}' for non-packaged builds
+  const appMain = path.join(appPath, `out-${mode}`, 'main', 'index.js');
 
   if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
     binaryPath = electronBin;
-    process.env.ELECTRON_APP_PATH = appMain; // Critical for wdio-electron-service when using electron directly
-    console.log(`[DEBUG] Fallback: Using electron binary: ${electronBin} with main script: ${appMain}`);
+    process.env.ELECTRON_APP_PATH = appMain;
+    console.log(`[DEBUG] Using electron binary with main script: ${appMain}`);
   } else {
-    console.error(
-      `[ERROR] No suitable binary found for platform ${currentPlatform} and fallback also failed. electronBin: ${electronBin} (exists: ${fs.existsSync(electronBin)}), appMain: ${appMain} (exists: ${fs.existsSync(appMain)})`,
-    );
-    // Consider throwing an error here if tests cannot proceed without a binary
+    console.error(`[ERROR] No suitable binary found for platform ${currentPlatform}`);
   }
 }
 
