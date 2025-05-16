@@ -23,11 +23,23 @@ describe('IPC Traffic Logging Middleware', () => {
       // Store received log messages in the array
       ws.on('message', (data) => {
         try {
-          const parsedData = JSON.parse(data.toString());
-          console.log('Received log message:', JSON.stringify(parsedData, null, 2));
-          logMessages.push(parsedData);
+          // Parse JSON data
+          const messageStr = data.toString('utf8');
+          console.log('Received message:', messageStr.substring(0, 100) + (messageStr.length > 100 ? '...' : ''));
+
+          const parsedData = JSON.parse(messageStr);
+
+          // If we get an array, add each item individually
+          if (Array.isArray(parsedData)) {
+            parsedData.forEach((item) => logMessages.push(item));
+            console.log(`Added ${parsedData.length} log items`);
+          } else {
+            // Otherwise add the single message
+            logMessages.push(parsedData);
+            console.log('Added 1 log item');
+          }
         } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
+          console.error('Error handling message:', err);
         }
       });
 
@@ -78,13 +90,16 @@ describe('IPC Traffic Logging Middleware', () => {
     // Wait for logs to be received (WebSocket is asynchronous)
     await browser.pause(1000);
 
+    // Debug info
+    console.log(`Received ${logMessages.length} log messages`);
+
     // Check if we received any state updates
-    const stateUpdates = logMessages.filter((msg) => msg.type === 'state');
+    const stateUpdates = logMessages.filter((msg) => msg.entry_type === 'StateUpdated');
     assert(stateUpdates.length > 0, 'Should receive state update logs');
 
     if (stateUpdates.length > 0) {
       // Verify counter exists in state
-      expect(stateUpdates[0].data).toHaveProperty('counter');
+      expect(stateUpdates[0].state).toHaveProperty('counter');
     }
   });
 
@@ -103,13 +118,13 @@ describe('IPC Traffic Logging Middleware', () => {
     // Wait for logs to be received
     await browser.pause(1000);
 
-    // Check if we received any action logs
-    const actionLogs = logMessages.filter((msg) => msg.type === 'action' && msg.data?.action_type?.includes('counter'));
+    // Debug info
+    console.log(`Received ${logMessages.length} log messages`);
 
-    // Output helpful debug information if no logs received
-    if (actionLogs.length === 0) {
-      console.log('No counter action logs received. All logs:', logMessages);
-    }
+    // Check if we received any action logs
+    const actionLogs = logMessages.filter(
+      (msg) => msg.entry_type === 'ActionDispatched' && msg.action?.action_type?.includes('counter'),
+    );
 
     assert(actionLogs.length > 0, 'Should receive counter action logs');
   });
