@@ -117,7 +117,15 @@ impl WebSocketServer {
 
         // Send initial history
         let history = log_history.read().await.clone();
-        let (msg_type, msg) = Self::serialize_data(&history, &serialization_format)?;
+        let (_msg_type, serialized) = Self::serialize_data(&history, &serialization_format)?;
+
+        // Create the correct message type based on serialization format
+        let msg = if serialization_format == SerializationFormat::Json {
+            Message::Text(String::from_utf8_lossy(&serialized).to_string())
+        } else {
+            Message::Binary(serialized)
+        };
+
         ws_sender1.lock().await.send(msg).await.map_err(|e| Error::WebSocket(e.to_string()))?;
 
         // Create a clone for the client task

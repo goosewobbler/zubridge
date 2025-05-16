@@ -62,7 +62,7 @@ impl Context {
     /// Add metadata to the context
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Serialize) -> Result<Self> {
         let key = key.into();
-        let value = serde_json::to_value(value).map_err(|e| Error::Serialization(e))?;
+        let value = serde_json::to_value(value).map_err(|e| Error::Json(e))?;
         self.metadata.insert(key, value);
         Ok(self)
     }
