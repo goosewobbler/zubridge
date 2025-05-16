@@ -66,6 +66,49 @@ impl Context {
         self.metadata.insert(key, value);
         Ok(self)
     }
+
+    /// Add a performance metric to the context metadata
+    ///
+    /// This is a helper method to simplify adding timing metrics
+    /// for the logging middleware.
+    pub fn add_performance_metric(&mut self, name: &str, value: f64) {
+        self.metadata.insert(name.to_string(), serde_json::json!(value));
+    }
+
+    /// Set all performance metrics at once
+    ///
+    /// Adds all the timing metrics used by the logging middleware:
+    /// - total_ms: Total processing time
+    /// - deserialization_ms: Time spent deserializing
+    /// - action_ms: Time spent in action handlers
+    /// - state_ms: Time spent updating state
+    /// - serialization_ms: Time spent serializing
+    pub fn set_performance_metrics(
+        &mut self,
+        total_ms: f64,
+        deserialization_ms: Option<f64>,
+        action_ms: Option<f64>,
+        state_ms: Option<f64>,
+        serialization_ms: Option<f64>,
+    ) {
+        self.add_performance_metric("processing_time_ms", total_ms);
+
+        if let Some(deser_ms) = deserialization_ms {
+            self.add_performance_metric("deserialization_time_ms", deser_ms);
+        }
+
+        if let Some(action_ms) = action_ms {
+            self.add_performance_metric("action_processing_time_ms", action_ms);
+        }
+
+        if let Some(state_ms) = state_ms {
+            self.add_performance_metric("state_update_time_ms", state_ms);
+        }
+
+        if let Some(ser_ms) = serialization_ms {
+            self.add_performance_metric("serialization_time_ms", ser_ms);
+        }
+    }
 }
 
 impl Default for Context {

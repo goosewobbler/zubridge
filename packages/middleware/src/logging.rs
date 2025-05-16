@@ -117,9 +117,9 @@ pub struct LogEntry {
     /// Context ID for tracking related logs
     pub context_id: String,
 
-    /// Processing time in milliseconds (for action logs with performance measurement)
+    /// Detailed processing time metrics in milliseconds
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub processing_time_ms: Option<f64>,
+    pub processing_metrics: Option<ProcessingMetrics>,
 }
 
 /// Types of log entries
@@ -149,6 +149,42 @@ pub struct StateSummary {
 
     /// List of top-level property names
     pub properties: Vec<String>,
+}
+
+/// Performance metrics for action and state processing
+///
+/// To populate these metrics, add the following metadata to the Context object:
+/// - `processing_time_ms`: Required - total processing time (if this is missing, no metrics will be recorded)
+/// - `deserialization_time_ms`: Time spent deserializing the action
+/// - `action_processing_time_ms`: Time spent in business logic handling the action
+/// - `state_update_time_ms`: Time spent updating the state
+/// - `serialization_time_ms`: Time spent serializing the response
+///
+/// For Electron/Zustand, these timings would represent:
+/// - `deserialization_time_ms`: Time to parse IPC message
+/// - `action_processing_time_ms`: Time spent in action handlers
+/// - `state_update_time_ms`: Time for Zustand to update state
+/// - `serialization_time_ms`: Time to serialize state for IPC
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProcessingMetrics {
+    /// Total processing time in milliseconds (action receipt to state update complete)
+    pub total_ms: f64,
+
+    /// Time spent deserializing the action in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deserialization_ms: Option<f64>,
+
+    /// Time spent processing the action in milliseconds (business logic)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action_processing_ms: Option<f64>,
+
+    /// Time spent updating the state in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_update_ms: Option<f64>,
+
+    /// Time spent serializing the response in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serialization_ms: Option<f64>,
 }
 
 /// Middleware for logging actions and state changes
@@ -234,8 +270,8 @@ impl LoggingMiddleware {
                     }
                 }
                 LogEntryType::StateUpdated => {
-                    let processing_info = match entry.processing_time_ms {
-                        Some(time) => format!(" processed in {:.2}ms", time),
+                    let processing_info = match &entry.processing_metrics {
+                        Some(metrics) => format!(" processed in {:.2}ms", metrics.total_ms),
                         None => String::new(),
                     };
 
@@ -355,6 +391,58 @@ impl LoggingMiddleware {
             None
         }
     }
+
+    /// Extract detailed processing metrics from context
+    fn extract_processing_metrics(&self, ctx: &Context) -> Option<ProcessingMetrics> {
+        if !self.config.measure_performance {
+            return None;
+        }
+
+        // Try to get the overall processing time
+        let total_ms = ctx.metadata.get("processing_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            })?;
+
+        // Extract other timing metrics if available
+        let deserialization_ms = ctx.metadata.get("deserialization_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        let action_processing_ms = ctx.metadata.get("action_processing_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        let state_update_ms = ctx.metadata.get("state_update_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        let serialization_ms = ctx.metadata.get("serialization_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        Some(ProcessingMetrics {
+            total_ms,
+            deserialization_ms,
+            action_processing_ms,
+            state_update_ms,
+            serialization_ms,
+        })
+    }
 }
 
 #[async_trait]
@@ -369,7 +457,7 @@ impl Middleware for LoggingMiddleware {
             state_summary: None,
             state_delta: None,
             context_id: ctx.id.clone(),
-            processing_time_ms: None,
+            processing_metrics: None,
         };
 
         if let Err(err) = self.add_log_entry(entry).await {
@@ -381,18 +469,8 @@ impl Middleware for LoggingMiddleware {
     }
 
     async fn after_action(&self, action: &Action, state: &State, ctx: &Context) {
-        // Get performance measurement if available
-        let processing_time_ms = if self.config.measure_performance {
-            // Fix the type mismatch by properly handling the JSON value conversion
-            ctx.metadata.get("processing_time_ms")
-                .and_then(|v| match v {
-                    JsonValue::String(s) => s.parse::<f64>().ok(),
-                    JsonValue::Number(n) => n.as_f64(),
-                    _ => None,
-                })
-        } else {
-            None
-        };
+        // Extract detailed processing metrics
+        let processing_metrics = self.extract_processing_metrics(ctx);
 
         // Calculate state summary
         let state_summary = self.create_state_summary(state);
@@ -415,7 +493,7 @@ impl Middleware for LoggingMiddleware {
             state_summary,
             state_delta,
             context_id: ctx.id.clone(),
-            processing_time_ms,
+            processing_metrics,
         };
 
         if let Err(err) = self.add_log_entry(entry).await {
