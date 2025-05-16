@@ -42,9 +42,23 @@ jobs:
       # Linux-specific dependencies
       - name: Install Linux dependencies
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        uses: ./.github/workflows/actions/tauri-dependencies
-        with:
-          app_type: ${{ inputs.app }}
+        run: |
+          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
+          deb http://archive.ubuntu.com/ubuntu jammy main universe
+          EOT
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libglib2.0-dev \
+            libsoup-2.4-1 \
+            libsoup2.4-dev \
+            libjavascriptcoregtk-4.0-dev \
+            libjavascriptcoregtk-4.1-dev
 
       # Checkout and setup
       - name: Checkout Repository
@@ -67,7 +81,14 @@ jobs:
       # Cargo setup for Tauri
       - name: Setup Cargo Cache
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        uses: ./.github/workflows/actions/cargo-setup
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
 
       # Build application
       - name: Build ${{ inputs.app }}:${{ inputs.mode }}
@@ -136,7 +157,14 @@ jobs:
       # Cargo setup for Tauri
       - name: Setup Cargo Cache
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        uses: ./.github/workflows/actions/cargo-setup
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
 
       # Build application
       - name: Build ${{ inputs.app }}:${{ inputs.mode }}
@@ -205,7 +233,14 @@ jobs:
       # Cargo setup for Tauri
       - name: Setup Cargo Cache
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        uses: ./.github/workflows/actions/cargo-setup
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
 
       # Build application
       - name: Build ${{ inputs.app }}:${{ inputs.mode }}
