@@ -16,19 +16,19 @@ import { getPreloadPath } from '../utils/path.js';
 import * as windows from './window.js';
 import { AppIpcChannel } from '../constants.js';
 
-debug('Starting app initialization');
+debug.log('example-app:init', 'Starting app initialization');
 
 // Ensure NODE_ENV is always set
 process.env.NODE_ENV = process.env.NODE_ENV || (app.isPackaged ? 'production' : 'development');
 
 // Check if we're in development mode using the shared utility
-debug('Checking dev mode');
+debug.log('example-app:init', 'Checking dev mode');
 const isDevMode = await isDev();
-debug(`Dev mode: ${isDevMode}`);
+debug.log('example-app:init', `Dev mode: ${isDevMode}`);
 
 // Check if we're in test mode
 const isTestMode = process.env.TEST === 'true';
-debug(`Test mode: ${isTestMode}`);
+debug.log('example-app:init', `Test mode: ${isTestMode}`);
 
 // Disable GPU acceleration
 if (!isTestMode && process.platform === 'darwin') {
@@ -38,17 +38,17 @@ if (!isTestMode && process.platform === 'darwin') {
 
 const mode = getZubridgeMode();
 const modeName = getModeName();
-debug(`Using Zubridge mode: ${modeName}`);
+debug.log('example-app:init', `Using Zubridge mode: ${modeName}`);
 
 // Ensure we always use the absolute path for the preload script
 const preloadPath = getPreloadPath();
-debug(`Using preload path: ${preloadPath}`);
+debug.log('example-app:init', `Using preload path: ${preloadPath}`);
 
 // Flag to track when app is explicitly being quit
 let isAppQuitting = false;
 
 app.on('window-all-closed', () => {
-  debug('All windows closed event');
+  debug.log('example-app:init', 'All windows closed event');
   if (process.platform !== 'darwin') {
     isAppQuitting = true;
     app.quit();
@@ -56,46 +56,46 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  debug('App before-quit event');
+  debug.log('example-app:init', 'App before-quit event');
   isAppQuitting = true;
 });
 
 app
   .whenReady()
   .then(async () => {
-    debug('App is ready, initializing windows');
+    debug.log('example-app:init', 'App is ready, initializing windows');
 
     // Initialize all windows
-    debug('Initializing main window');
+    debug.log('example-app:init', 'Initializing main window');
     const initialMainWindow = windows.initMainWindow(isAppQuitting);
-    debug(`Main window created with ID: ${initialMainWindow.id}`);
+    debug.log('example-app:init', `Main window created with ID: ${initialMainWindow.id}`);
 
-    debug('Initializing direct WebContents window');
+    debug.log('example-app:init', 'Initializing direct WebContents window');
     const initialDirectWebContentsWindow = windows.initDirectWebContentsWindow();
-    debug(`Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`);
+    debug.log('example-app:init', `Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`);
 
-    debug('Initializing BrowserView window');
+    debug.log('example-app:init', 'Initializing BrowserView window');
     const { window: initialBrowserViewWindow, browserView } = windows.initBrowserViewWindow();
     if (initialBrowserViewWindow && browserView) {
-      debug(`BrowserView window created with ID: ${initialBrowserViewWindow.id}`);
-      debug(`BrowserView WebContents ID: ${browserView.webContents.id}`);
+      debug.log('example-app:init', `BrowserView window created with ID: ${initialBrowserViewWindow.id}`);
+      debug.log('example-app:init', `BrowserView WebContents ID: ${browserView.webContents.id}`);
     } else {
-      debug('BrowserView window skipped (disabled in test mode)');
+      debug.log('example-app:init', 'BrowserView window skipped (disabled in test mode)');
     }
 
-    debug('Initializing WebContentsView window');
+    debug.log('example-app:init', 'Initializing WebContentsView window');
     const { window: initialWebContentsViewWindow, webContentsView } = windows.initWebContentsViewWindow();
     if (initialWebContentsViewWindow && webContentsView) {
-      debug(`WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`);
-      debug(`WebContentsView WebContents ID: ${webContentsView.webContents.id}`);
+      debug.log('example-app:init', `WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`);
+      debug.log('example-app:init', `WebContentsView WebContents ID: ${webContentsView.webContents.id}`);
     } else {
-      debug('WebContentsView window skipped (disabled in test mode)');
+      debug.log('example-app:init', 'WebContentsView window skipped (disabled in test mode)');
     }
 
     // Initialize the store
-    debug('Initializing store');
+    debug.log('example-app:init', 'Initializing store');
     await initStore();
-    debug('Store initialized');
+    debug.log('example-app:init', 'Store initialized');
 
     // Import middleware package
     const { initZubridgeMiddleware } = await import('@zubridge/middleware');
@@ -112,46 +112,49 @@ app
     // Create bridge with middleware
     const bridge = await createBridge(store, middleware);
 
-    debug('Bridge created successfully, setting up subscribers');
+    debug.log('example-app:init', 'Bridge created successfully, setting up subscribers');
 
     // Create a more general array that accepts different window/view types
     const windowsAndViews: WrapperOrWebContents[] = [];
 
     if (initialMainWindow) {
-      debug(`Adding main window ID: ${initialMainWindow.id}`);
+      debug.log('example-app:init', `Adding main window ID: ${initialMainWindow.id}`);
       windowsAndViews.push(initialMainWindow);
     }
 
     if (initialDirectWebContentsWindow) {
-      debug(`Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
+      debug.log('example-app:init', `Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
       windowsAndViews.push(initialDirectWebContentsWindow);
     }
 
     if (browserView) {
-      debug(`Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
+      debug.log('example-app:init', `Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
       windowsAndViews.push(browserView);
     }
 
     if (webContentsView) {
-      debug(`Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
+      debug.log(
+        'example-app:init',
+        `Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`,
+      );
       windowsAndViews.push(webContentsView);
     }
 
-    debug(`Subscribing ${windowsAndViews.length} windows/views to the bridge`);
+    debug.log('example-app:init', `Subscribing ${windowsAndViews.length} windows/views to the bridge`);
     bridge.subscribe(windowsAndViews);
 
     // Create the system tray
-    debug('Creating system tray');
+    debug.log('example-app:init', 'Creating system tray');
     const trayInstance = tray(store, initialMainWindow);
-    debug('System tray created');
+    debug.log('example-app:init', 'System tray created');
 
     // Get the subscribe function from the bridge
     const { subscribe } = bridge;
-    debug('Retrieved subscribe function from bridge');
+    debug.log('example-app:init', 'Retrieved subscribe function from bridge');
 
     // On macOS activate, ensure all primary windows are handled
     app.on('activate', () => {
-      debug('App activate event triggered');
+      debug.log('example-app:init', 'App activate event triggered');
       const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow } = windows.getWindowRefs();
 
       // Use optional chaining and null checks
@@ -160,19 +163,20 @@ app
       const hasBrowserViewWindow = browserViewWindow && !browserViewWindow.isDestroyed();
       const hasWebContentsViewWindow = webContentsViewWindow && !webContentsViewWindow.isDestroyed();
 
-      debug(
+      debug.log(
+        'example-app:init',
         `Window states - Main: ${hasMainWindow}, Direct: ${hasDirectWebContentsWindow}, BrowserView: ${hasBrowserViewWindow}, WebContentsView: ${hasWebContentsViewWindow}`,
       );
 
       let windowToFocus: BrowserWindow | undefined = undefined;
 
       if (!hasMainWindow) {
-        debug('Creating new main window on activate');
+        debug.log('example-app:init', 'Creating new main window on activate');
         const newMainWindow = windows.initMainWindow(isAppQuitting);
         subscribe([newMainWindow]); // Subscribe new main window
         windowToFocus = newMainWindow;
       } else if (!mainWindow?.isVisible()) {
-        debug('Showing existing main window');
+        debug.log('example-app:init', 'Showing existing main window');
         mainWindow?.show();
         windowToFocus = mainWindow;
       } else {
@@ -180,26 +184,29 @@ app
       }
 
       if (!hasDirectWebContentsWindow) {
-        debug('Creating new direct WebContents window on activate');
+        debug.log('example-app:init', 'Creating new direct WebContents window on activate');
         const newDirectWebContentsWindow = windows.initDirectWebContentsWindow();
         subscribe([newDirectWebContentsWindow]);
       } else if (!directWebContentsWindow?.isVisible()) {
-        debug('Showing existing direct WebContents window');
+        debug.log('example-app:init', 'Showing existing direct WebContents window');
         directWebContentsWindow?.show();
       }
 
       // Only create BrowserView window if not in test mode
       if (!isTestMode) {
         if (!hasBrowserViewWindow) {
-          debug('Creating new BrowserView window on activate');
+          debug.log('example-app:init', 'Creating new BrowserView window on activate');
           const { browserView } = windows.initBrowserViewWindow();
           // Pass the browserView directly to subscribe
           if (browserView) {
-            debug(`Subscribing BrowserView directly, WebContents ID: ${browserView.webContents.id}`);
+            debug.log(
+              'example-app:init',
+              `Subscribing BrowserView directly, WebContents ID: ${browserView.webContents.id}`,
+            );
             subscribe([browserView]);
           }
         } else if (!browserViewWindow?.isVisible()) {
-          debug('Showing existing BrowserView window');
+          debug.log('example-app:init', 'Showing existing BrowserView window');
           browserViewWindow?.show();
         }
       }
@@ -207,21 +214,24 @@ app
       // Only create WebContentsView window if not in test mode
       if (!isTestMode) {
         if (!hasWebContentsViewWindow) {
-          debug('Creating new WebContentsView window on activate');
+          debug.log('example-app:init', 'Creating new WebContentsView window on activate');
           const { webContentsView } = windows.initWebContentsViewWindow();
           // Pass the webContentsView directly to subscribe
           if (webContentsView) {
-            debug(`Subscribing WebContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
+            debug.log(
+              'example-app:init',
+              `Subscribing WebContentsView directly, WebContents ID: ${webContentsView.webContents.id}`,
+            );
             subscribe([webContentsView]);
           }
         } else if (!webContentsViewWindow?.isVisible()) {
-          debug('Showing existing WebContentsView window');
+          debug.log('example-app:init', 'Showing existing WebContentsView window');
           webContentsViewWindow?.show();
         }
       }
 
       // Focus the determined window (use optional chaining)
-      debug(`Focusing window ID: ${windowToFocus?.id}`);
+      debug.log('example-app:init', `Focusing window ID: ${windowToFocus?.id}`);
       windowToFocus?.focus();
     });
 
@@ -250,15 +260,15 @@ app
 
           const isTracked = runtimeWindows.some((w) => w === win);
           if (!isTracked) {
-            debug(`Adding new runtime window ${win.id} to tracking`);
+            debug.log('example-app:init', `Adding new runtime window ${win.id} to tracking`);
             runtimeWindows.push(win);
             const subscription = subscribe([win]);
             win.once('closed', () => {
-              debug(`Runtime window ${win.id} closed, cleaning up`);
+              debug.log('example-app:init', `Runtime window ${win.id} closed, cleaning up`);
               const index = runtimeWindows.indexOf(win);
               if (index !== -1) runtimeWindows.splice(index, 1);
               subscription.unsubscribe();
-              debug(`Window ${win.id} closed and unsubscribed`);
+              debug.log('example-app:init', `Window ${win.id} closed and unsubscribed`);
             });
           }
         }
@@ -267,7 +277,7 @@ app
         for (let i = runtimeWindows.length - 1; i >= 0; i--) {
           if (runtimeWindows[i]?.isDestroyed()) {
             // Optional chaining for safety
-            debug(`Removing destroyed window from runtimeWindows array at index ${i}`);
+            debug.log('example-app:init', `Removing destroyed window from runtimeWindows array at index ${i}`);
             runtimeWindows.splice(i, 1);
           }
         }
@@ -277,32 +287,32 @@ app
     };
 
     // Run the tracker when the app starts
-    debug('Running initial window tracker');
+    debug.log('example-app:init', 'Running initial window tracker');
     trackNewWindows();
 
     // Poll for new windows every second to catch any windows created by child windows
-    debug('Setting up window tracking interval');
+    debug.log('example-app:init', 'Setting up window tracking interval');
     const windowTrackingInterval = setInterval(trackNewWindows, 1000);
 
     // Modify quit handler to clean up both windows if they exist
     app.on('quit', () => {
-      debug('App quit event triggered');
+      debug.log('example-app:init', 'App quit event triggered');
       try {
-        debug('Cleaning up resources on quit');
+        debug.log('example-app:init', 'Cleaning up resources on quit');
         clearInterval(windowTrackingInterval);
         trayInstance.destroy();
         bridge.unsubscribe();
 
         // Clean up all windows
-        debug('Cleaning up windows');
+        debug.log('example-app:init', 'Cleaning up windows');
         windows.cleanupWindows();
-        debug('Windows cleanup complete');
+        debug.log('example-app:init', 'Windows cleanup complete');
       } catch (error) {
         console.error('Error during cleanup:', error);
       }
     });
 
-    debug('Setting initial window focus');
+    debug.log('example-app:init', 'Setting initial window focus');
     app.focus({ steal: true });
     const { mainWindow } = windows.getWindowRefs();
     mainWindow?.focus();
@@ -311,11 +321,11 @@ app
     const dispatch = createDispatch(store);
 
     // Setup IPC handlers
-    debug('Setting up IPC handlers');
+    debug.log('example-app:init', 'Setting up IPC handlers');
 
     // Set up handler for closing the current window
     ipcMain.handle(AppIpcChannel.CLOSE_CURRENT_WINDOW, async (event) => {
-      debug(`CloseCurrentWindow request received from window ID: ${event.sender.id}`);
+      debug.log('example-app:init', `CloseCurrentWindow request received from window ID: ${event.sender.id}`);
       try {
         // Get the window that sent this message
         const window = BrowserWindow.fromWebContents(event.sender);
@@ -324,13 +334,13 @@ app
         if (window) {
           // If this is the main window, just minimize it
           if (window === mainWindow) {
-            debug('Minimizing main window instead of closing');
+            debug.log('example-app:init', 'Minimizing main window instead of closing');
             if (!window.isDestroyed()) {
               window.minimize();
             }
           } else {
             // Common close logic for all modes
-            debug(`Closing window ${window.id}`);
+            debug.log('example-app:init', `Closing window ${window.id}`);
 
             // In all modes, just close the window directly
             window.isFocused() && window.close();
@@ -345,7 +355,7 @@ app
 
     // Set up handler for window-created event
     ipcMain.handle(AppIpcChannel.WINDOW_CREATED, (_event) => {
-      debug('Window created event received');
+      debug.log('example-app:init', 'Window created event received');
       // Immediately track the new window
       trackNewWindows();
       return true;
@@ -357,7 +367,7 @@ app
       const { mainWindow } = windows.getWindowRefs();
       // Check if this is the main window
       const isMainWindow = window === mainWindow;
-      debug(`is-main-window check for window ${event.sender.id}: ${isMainWindow}`);
+      debug.log('example-app:init', `is-main-window check for window ${event.sender.id}: ${isMainWindow}`);
       return isMainWindow;
     });
 
@@ -365,7 +375,7 @@ app
     ipcMain.handle(AppIpcChannel.GET_WINDOW_ID, (event) => {
       const window = BrowserWindow.fromWebContents(event.sender);
       const windowId = window ? window.id : null;
-      debug(`get-window-id for ${event.sender.id}: ${windowId}`);
+      debug.log('example-app:init', `get-window-id for ${event.sender.id}: ${windowId}`);
       return windowId;
     });
 
@@ -373,7 +383,7 @@ app
     ipcMain.handle(AppIpcChannel.GET_WINDOW_INFO, (event) => {
       const window = BrowserWindow.fromWebContents(event.sender);
       if (!window) {
-        debug(`get-window-info: No window found for ${event.sender.id}`);
+        debug.log('example-app:init', `get-window-info: No window found for ${event.sender.id}`);
         return null;
       }
 
@@ -392,24 +402,24 @@ app
       }
       // No need to check runtimeWindows array explicitly, default handles it
 
-      debug(`get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}`);
+      debug.log('example-app:init', `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}`);
       return { type: windowType, id: windowId };
     });
 
     // IPC Handler for creating runtime windows
     ipcMain.handle(AppIpcChannel.CREATE_RUNTIME_WINDOW, (event) => {
-      debug(`create-runtime-window request from ${event.sender.id}`);
+      debug.log('example-app:init', `create-runtime-window request from ${event.sender.id}`);
       console.log(`IPC: Received request to create runtime window from sender ${event.sender.id}`);
       const newWindow = windows.createRuntimeWindow();
       // Subscribe the new window immediately
-      debug(`Runtime window created with ID: ${newWindow.id}, subscribing to bridge`);
+      debug.log('example-app:init', `Runtime window created with ID: ${newWindow.id}, subscribing to bridge`);
       subscribe([newWindow]);
       return { success: true, windowId: newWindow.id };
     });
 
     // Set up handler to get the current mode
     ipcMain.handle(AppIpcChannel.GET_MODE, () => {
-      debug(`get-mode request, returning: ${mode}, ${modeName}`);
+      debug.log('example-app:init', `get-mode request, returning: ${mode}, ${modeName}`);
       return {
         mode,
         modeName,
@@ -418,7 +428,7 @@ app
 
     // Set up handler to quit the app
     ipcMain.handle(AppIpcChannel.QUIT_APP, () => {
-      debug('quitApp request received, setting isAppQuitting flag');
+      debug.log('example-app:init', 'quitApp request received, setting isAppQuitting flag');
       isAppQuitting = true;
       app.quit();
       return true;
@@ -426,7 +436,7 @@ app
 
     // Set up the handler for the main process thunk
     ipcMain.handle(AppIpcChannel.EXECUTE_MAIN_THUNK, async () => {
-      debug('Received IPC request to execute main process thunk');
+      debug.log('example-app:init', 'Received IPC request to execute main process thunk');
 
       try {
         // Create a context for the main process thunk
@@ -451,7 +461,7 @@ app
 
     // Set up the handler for the main process slow thunk
     ipcMain.handle(AppIpcChannel.EXECUTE_MAIN_THUNK_SLOW, async () => {
-      debug('Received IPC request to execute main process slow thunk');
+      debug.log('example-app:init', 'Received IPC request to execute main process slow thunk');
 
       try {
         // Create a context for the main process thunk
@@ -474,11 +484,11 @@ app
       }
     });
 
-    debug('App initialization complete, waiting for events');
+    debug.log('example-app:init', 'App initialization complete, waiting for events');
   })
   .catch((error) => {
     console.error('Error during app initialization:', error);
-    debug(`CRITICAL ERROR during app initialization: ${error}`);
+    debug.log('example-app:init', `CRITICAL ERROR during app initialization: ${error}`);
   });
 
 // For testing and debugging
