@@ -34,5 +34,8 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
   },
 };
 
+// Log the platform we're using
+console.log(`[PLATFORM] Using platform '${process.platform}' for timing configuration`);
+
 // Determine which timing configuration to use based on platform
 export const TIMING: TimingConfig = PLATFORM_TIMING[process.platform] || PLATFORM_TIMING.base;

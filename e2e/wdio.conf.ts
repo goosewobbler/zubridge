@@ -15,21 +15,23 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf
 const pkg = { packageJson, path: packageJsonPath };
 const electronVersion = await getElectronVersion(pkg);
 
-console.log(`[DEBUG] Running on platform: ${process.platform}`);
+const currentPlatform = process.platform;
+const currentArch = process.arch;
+
+console.log(`[DEBUG] Running on platform: ${currentPlatform}`);
 console.log(`[DEBUG] APP_DIR: ${appDir}, MODE: ${mode}`);
 console.log(`[DEBUG] packageJsonPath: ${packageJsonPath}`);
 console.log(`[DEBUG] appPath (base for dist): ${appPath}`);
-console.log(`[DEBUG] Running on architecture: ${process.arch}`);
+console.log(`[DEBUG] Running on architecture: ${currentArch}`);
 
 // Find binary path for current platform
 let binaryPath = '';
-const currentPlatform = process.platform;
 
 // Define possible binary locations with architecture-aware paths
 const findMacBinary = () => {
   // Define possible mac directories to check in priority order
   const macDirs =
-    process.arch === 'arm64'
+    currentArch === 'arm64'
       ? ['mac-arm64', 'mac'] // Prefer arm64 on arm systems
       : ['mac', 'mac-arm64']; // Prefer intel on intel systems
 
@@ -116,6 +118,20 @@ if (!binaryPath) {
     console.log(`[DEBUG] Using electron binary with main script: ${appMain}`);
   } else {
     console.error(`[ERROR] No suitable binary found for platform ${currentPlatform}`);
+  }
+}
+
+// Fix for macOS: Ensure the binary is always executable before running tests
+if (currentPlatform === 'darwin' && binaryPath && fs.existsSync(binaryPath)) {
+  try {
+    const stats = fs.statSync(binaryPath);
+    const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
+    if (!isExecutable) {
+      console.log('[DEBUG] Making macOS binary executable...');
+      fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
+    }
+  } catch (err) {
+    console.error(`[ERROR] Failed to check/fix binary permissions: ${err}`);
   }
 }
 
@@ -233,7 +249,7 @@ const config = {
         console.log(`[DEBUG] Binary file permissions: ${stats.mode.toString(8)}`);
 
         // On Linux/Mac, check if binary is executable
-        if (process.platform !== 'win32') {
+        if (currentPlatform !== 'win32') {
           const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
           console.log(`[DEBUG] Binary is executable: ${isExecutable}`);
 
