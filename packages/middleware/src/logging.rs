@@ -106,6 +106,14 @@ pub struct LogEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<State>,
 
+    /// State summary with metrics for analysis
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_summary: Option<StateSummary>,
+
+    /// Only the changed parts of state since previous update
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_delta: Option<serde_json::Value>,
+
     /// Context ID for tracking related logs
     pub context_id: String,
 
@@ -130,6 +138,19 @@ pub enum LogEntryType {
     Error,
 }
 
+/// Summary information about the state
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StateSummary {
+    /// Approximate size of state in bytes
+    pub size_bytes: usize,
+
+    /// Number of top-level properties
+    pub property_count: usize,
+
+    /// List of top-level property names
+    pub properties: Vec<String>,
+}
+
 /// Middleware for logging actions and state changes
 pub struct LoggingMiddleware {
     /// Configuration for the logging middleware
@@ -140,6 +161,9 @@ pub struct LoggingMiddleware {
 
     /// Log history
     log_history: Arc<RwLock<Vec<LogEntry>>>,
+
+    /// Last state for calculating deltas
+    last_state: Arc<RwLock<Option<State>>>,
 }
 
 impl LoggingMiddleware {
@@ -152,6 +176,7 @@ impl LoggingMiddleware {
         }
 
         let log_history = Arc::new(RwLock::new(Vec::with_capacity(config.log_limit)));
+        let last_state = Arc::new(RwLock::new(None));
 
         // Start WebSocket server if enabled
         let websocket = if let Some(port) = config.websocket_port {
@@ -175,6 +200,7 @@ impl LoggingMiddleware {
             config,
             websocket,
             log_history,
+            last_state,
         }
     }
 
@@ -272,6 +298,63 @@ impl LoggingMiddleware {
         history.clear();
         Ok(())
     }
+
+    /// Calculate state summary information
+    fn create_state_summary(&self, state: &State) -> Option<StateSummary> {
+        let state_json = serde_json::to_string(state).ok()?;
+
+        // Calculate property information from the state object
+        let state_value = serde_json::from_str::<serde_json::Value>(&state_json).ok()?;
+        let property_names = match &state_value {
+            serde_json::Value::Object(map) => {
+                map.keys().map(|k| k.clone()).collect::<Vec<String>>()
+            },
+            _ => Vec::new(),
+        };
+
+        Some(StateSummary {
+            size_bytes: state_json.len(),
+            property_count: property_names.len(),
+            properties: property_names,
+        })
+    }
+
+    /// Calculate state delta (what changed since last state)
+    async fn calculate_state_delta(&self, state: &State) -> Option<serde_json::Value> {
+        let last_state = self.last_state.read().await;
+
+        if let Some(prev_state) = &*last_state {
+            // Convert both states to JSON values for comparison
+            let prev_json = serde_json::to_value(prev_state).ok()?;
+            let current_json = serde_json::to_value(state).ok()?;
+
+            // Only handle Object types for delta calculation
+            match (prev_json, current_json) {
+                (serde_json::Value::Object(prev_map), serde_json::Value::Object(current_map)) => {
+                    let mut delta = serde_json::Map::new();
+
+                    // Find changed or new properties
+                    for (key, value) in current_map.iter() {
+                        if !prev_map.contains_key(key) || prev_map[key] != *value {
+                            delta.insert(key.clone(), value.clone());
+                        }
+                    }
+
+                    // If no changes, return None instead of an empty object
+                    if delta.is_empty() {
+                        None
+                    } else {
+                        Some(serde_json::Value::Object(delta))
+                    }
+                },
+                // If not objects, just return None
+                _ => None
+            }
+        } else {
+            // First state, no delta to calculate
+            None
+        }
+    }
 }
 
 #[async_trait]
@@ -283,6 +366,8 @@ impl Middleware for LoggingMiddleware {
             entry_type: LogEntryType::ActionDispatched,
             action: Some(action.clone()),
             state: None,
+            state_summary: None,
+            state_delta: None,
             context_id: ctx.id.clone(),
             processing_time_ms: None,
         };
@@ -309,12 +394,26 @@ impl Middleware for LoggingMiddleware {
             None
         };
 
+        // Calculate state summary
+        let state_summary = self.create_state_summary(state);
+
+        // Calculate state delta
+        let state_delta = self.calculate_state_delta(state).await;
+
+        // Update last state for future deltas
+        {
+            let mut last_state = self.last_state.write().await;
+            *last_state = Some(state.clone());
+        }
+
         // Log the state after action
         let entry = LogEntry {
             timestamp: chrono::Utc::now(),
             entry_type: LogEntryType::StateUpdated,
             action: Some(action.clone()),
             state: Some(state.clone()),
+            state_summary,
+            state_delta,
             context_id: ctx.id.clone(),
             processing_time_ms,
         };
