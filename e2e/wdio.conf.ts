@@ -118,31 +118,18 @@ let specPattern;
 const specificSpecFile = process.env.SPEC_FILE;
 
 if (specificSpecFile) {
-  // If a specific spec file is provided, use it with absolute path
-  const specFile = path.isAbsolute(specificSpecFile)
-    ? specificSpecFile
-    : path.resolve(__dirname, `./test/${specificSpecFile}`);
-  specPattern = [specFile];
-  console.log(`[DEBUG] Running specific spec file: ${specFile}`);
+  // If a specific spec file is provided, use absolute path
+  specPattern = path.resolve(__dirname, 'test', specificSpecFile);
+  console.log(`[DEBUG] Running specific spec file: ${specPattern}`);
 } else {
-  // Check if we have a mode-specific spec file
-  const modeSpecFile = `./test/${mode}.spec.ts`;
-  const modeSpecPath = path.resolve(__dirname, modeSpecFile);
+  // Use the absolute path to the test directory directly
+  // This ensures WebdriverIO gets the correct absolute path on all platforms
+  const testDirPath = path.resolve(__dirname, 'test');
 
-  if (fs.existsSync(modeSpecPath)) {
-    specPattern = [modeSpecPath]; // Use absolute path for specific file
-    console.log(`[DEBUG] Running mode-specific spec file: ${modeSpecPath}`);
-  } else {
-    // For glob patterns, use forward slashes for all platforms
-    // Convert Windows backslashes to forward slashes for consistency
-    const testDir = path.resolve(__dirname, 'test');
-    const globPattern = path.posix.join(
-      testDir.replace(/\\/g, '/'), // Convert Windows backslashes to forward slashes
-      '*.spec.ts',
-    );
-    specPattern = [globPattern];
-    console.log(`[DEBUG] No mode-specific spec found, using glob pattern: ${globPattern}`);
-  }
+  // For macOS and Linux, use a direct glob pattern for all test files
+  specPattern = `${testDirPath}/**/*.spec.ts`;
+
+  console.log(`[DEBUG] Using spec pattern: ${specPattern}`);
 }
 
 // Get the config that will be exported
@@ -150,18 +137,15 @@ const config = {
   services: ['electron'],
   capabilities: [
     {
-      'browserName': 'electron', // Should be 'electron' for wdio-electron-service
+      'browserName': 'electron',
       'wdio:electronServiceOptions': {
         appBinaryPath: binaryPath,
         appArgs,
-        chromeDriverArgs: ['--verbose'], // Useful for debugging ChromeDriver issues
+        chromeDriverArgs: ['--verbose'],
         appEnv: { ZUBRIDGE_MODE: mode },
-        browserVersion: electronVersion, // Ensures compatibility
+        browserVersion: electronVersion,
         restoreMocks: true,
       },
-      // It's often better to put chromeOptions specific to Electron under 'goog:chromeOptions'
-      // but wdio-electron-service primarily uses its own options.
-      // If also testing web directly, separate capabilities would be needed.
     },
   ],
   maxInstances: 1,
@@ -171,30 +155,54 @@ const config = {
   logLevel: 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${appDir}-${mode}`,
-  specs: specPattern,
+  specs: [specPattern],
+  baseUrl: `file://${__dirname}`,
   onPrepare: function (config, capabilities) {
     console.log('[DEBUG] Starting test preparation with WebdriverIO');
 
     // Log the spec files that will be executed
-    console.log('[DEBUG] Spec files to be executed:');
+    console.log('[DEBUG] Spec pattern to be executed:');
     if (Array.isArray(config.specs)) {
       config.specs.forEach((spec, index) => {
-        const exists = spec.includes('*') ? 'GLOB_PATTERN' : fs.existsSync(spec) ? 'EXISTS' : 'NOT_FOUND';
+        console.log(`[DEBUG] Spec[${index}]: ${spec}`);
 
-        console.log(`[DEBUG] Spec[${index}]: ${spec} (${exists})`);
+        // For specific files (not glob patterns), check if they exist
+        if (!spec.includes('*')) {
+          const exists = fs.existsSync(spec) ? 'EXISTS' : 'NOT_FOUND';
+          console.log(`[DEBUG] File ${spec} ${exists}`);
 
-        // For specific files that should exist, check permissions
-        if (!spec.includes('*') && exists === 'EXISTS') {
-          try {
-            const stats = fs.statSync(spec);
-            console.log(`[DEBUG] Spec file permissions: ${stats.mode.toString(8)}`);
-          } catch (err) {
-            console.error(`[ERROR] Failed to check permissions for ${spec}:`, err);
+          if (exists === 'EXISTS') {
+            try {
+              const stats = fs.statSync(spec);
+              console.log(`[DEBUG] Spec file permissions: ${stats.mode.toString(8)}`);
+            } catch (err) {
+              console.error(`[ERROR] Failed to check permissions for ${spec}:`, err);
+            }
+          }
+        } else {
+          console.log(`[DEBUG] Using glob pattern: ${spec}`);
+
+          // For glob patterns, try to list matching files for debugging
+          const baseDir = spec.split('*')[0]; // Get directory part before wildcard
+          if (fs.existsSync(baseDir)) {
+            try {
+              console.log(`[DEBUG] Base directory ${baseDir} exists. Contents:`);
+              const files = fs.readdirSync(baseDir);
+              files.forEach((file) => {
+                const fullPath = path.join(baseDir, file);
+                const stats = fs.statSync(fullPath);
+                console.log(`[DEBUG]   - ${file} (${stats.isDirectory() ? 'dir' : 'file'})`);
+              });
+            } catch (err) {
+              console.error(`[ERROR] Failed to list directory ${baseDir}:`, err);
+            }
+          } else {
+            console.error(`[ERROR] Base directory ${baseDir} does not exist`);
           }
         }
       });
     } else {
-      console.log('[DEBUG] No spec files defined in config');
+      console.log(`[DEBUG] Spec: ${config.specs}`);
     }
 
     // Check app binary exists and has proper permissions
