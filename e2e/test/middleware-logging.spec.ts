@@ -1,7 +1,8 @@
 import { expect } from '@wdio/globals';
+import { it, describe, before, beforeEach, after } from 'mocha';
 import WebSocket from 'ws';
 import assert from 'node:assert';
-
+import { browser } from 'wdio-electron-service';
 /**
  * E2E test for the IPC traffic logging middleware
  * Tests the WebSocket server functionality by connecting to it and
@@ -70,9 +71,9 @@ describe('IPC Traffic Logging Middleware', () => {
     }
 
     // Find and click the increment button
-    const incrementBtn = await $('button=Increment');
-    expect(incrementBtn).toBeExisting();
-    await incrementBtn.click();
+    const incrementButton = await browser.$('button=+');
+    expect(incrementButton).toBeExisting();
+    await incrementButton.click();
 
     // Wait for logs to be received (WebSocket is asynchronous)
     await browser.pause(1000);
@@ -95,9 +96,9 @@ describe('IPC Traffic Logging Middleware', () => {
     }
 
     // Find and click the increment button
-    const incrementBtn = await $('button=Increment');
-    expect(incrementBtn).toBeExisting();
-    await incrementBtn.click();
+    const incrementButton = await browser.$('button=+');
+    expect(incrementButton).toBeExisting();
+    await incrementButton.click();
 
     // Wait for logs to be received
     await browser.pause(1000);
