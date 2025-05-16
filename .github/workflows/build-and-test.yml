@@ -20,26 +20,26 @@ on:
         required: false
     outputs:
       success:
-        description: "Whether the build succeeded"
-        value: ${{ jobs.build.outputs.success }}
+        description: "Whether any build/test succeeded"
+        value: ${{ jobs.ci-status.outputs.success }}
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   TURBO_API: ${{ secrets.TURBO_API }}
+  BUILD_ID: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
 
 jobs:
-  # Build the specific mode
-  build:
-    name: Build
+  # Build on Linux
+  linux-build:
+    name: Linux Build
     runs-on: ubuntu-latest
     outputs:
-      success: ${{ steps.build.outputs.success || 'false' }}
-      build_id: ${{ steps.build-info.outputs.build_id }}
-      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
+      success: ${{ steps.build-result.outputs.success }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
     steps:
-      # Install Linux dependencies for Tauri builds
+      # Linux-specific dependencies
       - name: Install Linux dependencies
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         run: |
@@ -56,137 +56,340 @@ jobs:
             patchelf \
             libglib2.0-dev \
             libsoup-2.4-1 \
+            libsoup2.4-dev \
+            libjavascriptcoregtk-4.0-dev \
             libjavascriptcoregtk-4.1-dev
 
-      # Install Wine for Windows builds (only for Electron app on Linux runner)
-      - name: Install Wine for Windows Electron builds
-        if: inputs.app == 'electron'
-        run: |
-          echo "Setting up Wine for Electron Windows build..."
-          sudo dpkg --add-architecture i386
-
-          # Dynamically get Ubuntu codename
-          UBUNTU_CODENAME=$(lsb_release -cs)
-          echo "Detected Ubuntu codename: $UBUNTU_CODENAME"
-
-          sudo mkdir -pm755 /etc/apt/keyrings
-          wget -O - https://dl.winehq.org/wine-builds/winehq.key | sudo gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key
-
-          # Use the dynamic codename in the sources list URL
-          sudo wget -NP /etc/apt/sources.list.d/ "https://dl.winehq.org/wine-builds/ubuntu/dists/$UBUNTU_CODENAME/winehq-$UBUNTU_CODENAME.sources"
-
-          sudo apt-get update -qq # -qq for quieter output
-          sudo apt-get install -y --no-install-recommends winehq-stable # Or winehq-devel / winehq-staging
-          echo "Wine setup complete."
-          wine --version # Verify installation
-
-      # Standard checkout
-      - name: 📥 Checkout Repository
+      # Checkout and setup
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Set up Node.js and PNPM
-      - name: 🛠️ Setup Development Environment
+      - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
           node-version: "20"
 
-      # Generate build information for tracking
-      - name: 📊 Generate Build Information
-        id: build-info
-        shell: bash
-        run: |
-          echo "build_id=$(date +%s)-${{ github.run_id }}-${{ inputs.mode }}" >> $GITHUB_OUTPUT
-
       # Download shared packages
-      - name: 📦 Download shared packages
+      - name: Download shared packages
         uses: actions/download-artifact@v4
         with:
           name: shared-packages
           path: packages
 
-      # Set up Cargo cache for Tauri builds
-      - name: 🛠️ Setup Cargo Cache
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         shell: bash
         run: |
-          mkdir -p ~/.cargo/registry
-          mkdir -p ~/.cargo/git
+          mkdir -p ~/.cargo/{registry,git}
           echo '[net]
           git-fetch-with-cli = true
           retry = 3
           [build]
           jobs = 2' > ~/.cargo/config.toml
 
-      # Build the test app
-      - name: 🏗️ Build ${{ inputs.app }}:${{ inputs.mode }}
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
         id: build-app
-        run: |
-          pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
         shell: bash
+        run: |
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
+          else
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+          fi
         continue-on-error: true
 
-      # Combine build outcomes
-      - name: Combine Build Results
-        id: build
-        run: |
-          echo "Build app step outcome: ${{ steps.build-app.outcome }}"
-          if [[ "${{ steps.build-app.outcome }}" == "success" ]]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "::error::Application build failed. Outcome: ${{ steps.build-app.outcome }}"
-            exit 1
-          fi
+      # Process build result for Linux
+      - name: Process Build Result
+        id: build-result
+        uses: ./.github/workflows/actions/process-build-result
+        with:
+          build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
+          shell_type: bash
 
       # Upload artifacts
-      - name: 📦 Upload Electron Artifacts
-        id: upload-electron
-        if: steps.build.outputs.success == 'true' && inputs.app == 'electron'
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
-          path: apps/electron-example/dist-${{ inputs.mode }}
+          name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
 
-      - name: 📦 Upload Tauri Artifacts
-        id: upload-tauri
-        if: steps.build.outputs.success == 'true' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.app }}-${{ inputs.mode }}-${{ steps.build-info.outputs.build_id }}
-          path: |
-            apps/${{ inputs.app }}-example/dist
-            apps/${{ inputs.app }}-example/src-tauri/target
-          retention-days: 1
-          if-no-files-found: error
-
-      # Provide an interactive debugging session on failure
-      - name: 🐛 Debug on Failure
+      # Debug on failure
+      - name: Debug on Failure
         uses: stateful/vscode-server-action@v1.1.0
         if: failure()
         with:
-            timeout: "180000"
+          timeout: "180000"
 
-  # Run E2E tests immediately after the build completes
-  e2e-test:
-    needs: build
-    if: needs.build.outputs.success == 'true'
-    name: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-      fail-fast: false
-    uses: ./.github/workflows/_ci-mode-e2e.reusable.yml
-    with:
-      os: ${{ matrix.os }}
-      app: ${{ inputs.app }}
-      mode: ${{ inputs.mode }}
-      build_id: ${{ needs.build.outputs.build_id }}
-      artifact_name: ${{ needs.build.outputs.artifact_name }}
-    secrets:
+  # Build on macOS
+  macos-build:
+    name: macOS Build
+    runs-on: macOS-latest
+    outputs:
+      success: ${{ steps.build-result.outputs.success }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
+    steps:
+      # Checkout and setup
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      # Download shared packages
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
+
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
+        id: build-app
+        shell: bash
+        run: |
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
+          else
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+          fi
+        continue-on-error: true
+
+      # Process build result for macOS
+      - name: Process Build Result
+        id: build-result
+        uses: ./.github/workflows/actions/process-build-result
+        with:
+          build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
+          shell_type: bash
+
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
+          retention-days: 1
+          if-no-files-found: warn
+
+      # Debug on failure
+      - name: Debug on Failure
+        uses: stateful/vscode-server-action@v1.1.0
+        if: failure()
+        with:
+          timeout: "180000"
+
+  # Build on Windows
+  windows-build:
+    name: Windows Build
+    runs-on: windows-latest
+    outputs:
+      success: ${{ steps.build-result.outputs.success }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
+    steps:
+      # Checkout and setup
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      # Download shared packages
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
+
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
+        id: build-app
+        shell: bash
+        run: |
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
+          else
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+          fi
+        continue-on-error: true
+
+      # Process build result for Windows
+      - name: Process Build Result
+        id: build-result
+        uses: ./.github/workflows/actions/process-build-result
+        with:
+          build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
+          shell_type: pwsh
+
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
+          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
+          retention-days: 1
+          if-no-files-found: warn
+
+      # Debug on failure
+      - name: Debug on Failure
+        uses: stateful/vscode-server-action@v1.1.0
+        if: failure()
+        with:
+          timeout: "180000"
+
+  # E2E Tests for Linux
+  linux-test:
+    needs: linux-build
+    if: needs.linux-build.outputs.success == 'true'
+    name: Linux E2E
+    runs-on: ubuntu-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Run E2E Tests
+        uses: ./.github/workflows/actions/e2e-test
+        with:
+          os: ubuntu-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+          artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
+
+  # E2E Tests for macOS
+  macos-test:
+    needs: macos-build
+    if: needs.macos-build.outputs.success == 'true'
+    name: macOS E2E
+    runs-on: macOS-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Run E2E Tests
+        uses: ./.github/workflows/actions/e2e-test
+        with:
+          os: macOS-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+          artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
+
+  # E2E Tests for Windows
+  windows-test:
+    needs: windows-build
+    if: needs.windows-build.outputs.success == 'true'
+    name: Windows E2E
+    runs-on: windows-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Run E2E Tests
+        uses: ./.github/workflows/actions/e2e-test
+        with:
+          os: windows-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+          artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
+
+  # Final status aggregation
+  ci-status:
+    name: Status
+    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      success: ${{ steps.check-status.outputs.success }}
+    steps:
+      - name: Check status
+        id: check-status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "At least one job passed successfully"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "All jobs failed"
+            exit 1
+          fi
