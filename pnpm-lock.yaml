@@ -47,6 +47,9 @@ importers:
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../../packages/electron
+      '@zubridge/middleware':
+        specifier: workspace:*
+        version: link:../../packages/middleware/node
       '@zubridge/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -237,6 +240,9 @@ importers:
       '@types/node':
         specifier: ^22.14.0
         version: 22.15.18
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       '@wdio/cli':
         specifier: ^9.14.0
         version: 9.14.0(puppeteer-core@22.15.0)
@@ -261,6 +267,9 @@ importers:
       wdio-electron-service:
         specifier: ^8.0.1
         version: 8.1.0(electron@36.2.1)(webdriverio@9.14.0(puppeteer-core@22.15.0))
+      ws:
+        specifier: ^8.18.2
+        version: 8.18.2
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -2460,8 +2469,8 @@ packages:
   electron-publish@26.0.11:
     resolution: {integrity: sha512-a8QRH0rAPIWH9WyyS5LbNvW9Ark6qe63/LqDB7vu2JXYpi0Gma5Q60Dh4tmTqhOBQt0xsrzD8qE7C+D7j+B24A==}
 
-  electron-to-chromium@1.5.154:
-    resolution: {integrity: sha512-G4VCFAyKbp1QJ+sWdXYIRYsPGvlV5sDACfCmoMFog3rjm1syLhI41WXm/swZypwCIWIm4IFLWzHY14joWMQ5Fw==}
+  electron-to-chromium@1.5.155:
+    resolution: {integrity: sha512-ps5KcGGmwL8VaeJlvlDlu4fORQpv3+GIcF5I3f9tUKUlJ/wsysh6HU8P5L1XWRYeXfA0oJd4PyM8ds8zTFf6Ng==}
 
   electron-vite@3.1.0:
     resolution: {integrity: sha512-M7aAzaRvSl5VO+6KN4neJCYLHLpF/iWo5ztchI/+wMxIieDZQqpbCYfaEHHHPH6eupEzfvZdLYdPdmvGqoVe0Q==}
@@ -6772,7 +6781,7 @@ snapshots:
   browserslist@4.24.5:
     dependencies:
       caniuse-lite: 1.0.30001718
-      electron-to-chromium: 1.5.154
+      electron-to-chromium: 1.5.155
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.24.5)
 
@@ -7340,7 +7349,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron-to-chromium@1.5.154: {}
+  electron-to-chromium@1.5.155: {}
 
   electron-vite@3.1.0(vite@6.3.5(@types/node@22.15.18)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0)):
     dependencies:
@@ -9850,7 +9859,7 @@ snapshots:
       '@wdio/logger': 9.4.4
       compare-versions: 6.1.1
       debug: 4.4.1(supports-color@8.1.1)
-      electron-to-chromium: 1.5.154
+      electron-to-chromium: 1.5.155
       fast-copy: 3.0.2
       puppeteer-core: 22.15.0
       read-package-up: 11.0.0
