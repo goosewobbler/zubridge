@@ -43,6 +43,19 @@ pub struct LoggingConfig {
     /// Whether to log verbose debug information
     #[serde(default = "default_false")]
     pub verbose: bool,
+
+    /// Serialization format for WebSocket messages
+    #[serde(default = "default_serialization_format")]
+    pub serialization_format: SerializationFormat,
+}
+
+/// Available serialization formats for WebSocket messages
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum SerializationFormat {
+    /// JSON format - more human-readable, compatible with browsers
+    Json,
+    /// MessagePack format - more efficient binary format
+    MessagePack,
 }
 
 fn default_true() -> bool {
@@ -57,6 +70,10 @@ fn default_log_limit() -> usize {
     1000
 }
 
+fn default_serialization_format() -> SerializationFormat {
+    SerializationFormat::Json
+}
+
 impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
@@ -67,6 +84,7 @@ impl Default for LoggingConfig {
             measure_performance: true,
             pretty_print: false,
             verbose: false,
+            serialization_format: default_serialization_format(),
         }
     }
 }
@@ -137,7 +155,7 @@ impl LoggingMiddleware {
 
         // Start WebSocket server if enabled
         let websocket = if let Some(port) = config.websocket_port {
-            let websocket = WebSocketServer::new(port, log_history.clone());
+            let websocket = WebSocketServer::new(port, log_history.clone(), config.serialization_format.clone());
             let websocket_arc = Arc::new(websocket);
 
             // Spawn WebSocket server

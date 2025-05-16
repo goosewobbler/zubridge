@@ -1,7 +1,7 @@
 //! WebSocket server for broadcasting log entries to clients
 //!
 //! This module provides a WebSocket server that broadcasts log entries to connected clients
-//! using the MessagePack format for efficient serialization.
+//! using either JSON or MessagePack format for serialization.
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -18,7 +18,7 @@ use tokio_tungstenite::{
 };
 
 use crate::{Error, Result};
-use crate::logging::LogEntry;
+use crate::logging::{LogEntry, SerializationFormat};
 
 /// Maximum size of the broadcast channel
 const BROADCAST_CHANNEL_SIZE: usize = 1024;
@@ -36,11 +36,14 @@ pub struct WebSocketServer {
 
     /// Log history reference
     log_history: Arc<RwLock<Vec<LogEntry>>>,
+
+    /// Serialization format to use
+    serialization_format: SerializationFormat,
 }
 
 impl WebSocketServer {
     /// Create a new WebSocket server
-    pub fn new(port: u16, log_history: Arc<RwLock<Vec<LogEntry>>>) -> Self {
+    pub fn new(port: u16, log_history: Arc<RwLock<Vec<LogEntry>>>, serialization_format: SerializationFormat) -> Self {
         let (sender, _) = broadcast::channel(BROADCAST_CHANNEL_SIZE);
 
         Self {
@@ -48,6 +51,7 @@ impl WebSocketServer {
             sender,
             clients: Arc::new(RwLock::new(HashMap::new())),
             log_history,
+            serialization_format,
         }
     }
 
@@ -56,7 +60,8 @@ impl WebSocketServer {
         let addr = format!("127.0.0.1:{}", self.port);
         let listener = TcpListener::bind(&addr).await.map_err(|e| Error::WebSocket(e.to_string()))?;
 
-        info!("WebSocket server listening on {}", addr);
+        info!("WebSocket server listening on {} with {:?} serialization",
+              addr, self.serialization_format);
 
         loop {
             let (socket, addr) = match listener.accept().await {
@@ -72,10 +77,13 @@ impl WebSocketServer {
             let clients = self.clients.clone();
             let sender = self.sender.clone();
             let log_history = self.log_history.clone();
+            let serialization_format = self.serialization_format.clone();
 
             // Handle each connection in a separate task
             tokio::spawn(async move {
-                if let Err(e) = Self::handle_connection(socket, addr, clients, sender, log_history).await {
+                if let Err(e) = Self::handle_connection(
+                    socket, addr, clients, sender, log_history, serialization_format
+                ).await {
                     error!("Error handling WebSocket connection: {}", e);
                 }
             });
@@ -89,6 +97,7 @@ impl WebSocketServer {
         clients: Arc<RwLock<HashMap<SocketAddr, broadcast::Receiver<Vec<u8>>>>>,
         sender: broadcast::Sender<Vec<u8>>,
         log_history: Arc<RwLock<Vec<LogEntry>>>,
+        serialization_format: SerializationFormat,
     ) -> Result<()> {
         // Accept the WebSocket connection
         let ws_stream = accept_async(socket).await.map_err(|e| Error::WebSocket(e.to_string()))?;
@@ -108,8 +117,8 @@ impl WebSocketServer {
 
         // Send initial history
         let history = log_history.read().await.clone();
-        let msg = Self::serialize_to_messagepack(&history)?;
-        ws_sender1.lock().await.send(Message::Binary(msg)).await.map_err(|e| Error::WebSocket(e.to_string()))?;
+        let (msg_type, msg) = Self::serialize_data(&history, &serialization_format)?;
+        ws_sender1.lock().await.send(msg).await.map_err(|e| Error::WebSocket(e.to_string()))?;
 
         // Create a clone for the client task
         let ws_sender2 = ws_sender1.clone();
@@ -144,9 +153,17 @@ impl WebSocketServer {
         let broadcast_task = tokio::spawn(async move {
             loop {
                 match receiver.recv().await {
-                    Ok(msg) => {
+                    Ok(binary_data) => {
                         let mut lock = ws_sender1.lock().await;
-                        if let Err(e) = lock.send(Message::Binary(msg)).await {
+
+                        // Directly use the message (already serialized during broadcast)
+                        let msg = if serialization_format == SerializationFormat::Json {
+                            Message::Text(String::from_utf8_lossy(&binary_data).to_string())
+                        } else {
+                            Message::Binary(binary_data)
+                        };
+
+                        if let Err(e) = lock.send(msg).await {
                             error!("Error sending message: {}", e);
                             break;
                         }
@@ -188,18 +205,32 @@ impl WebSocketServer {
 
     /// Broadcast a message to all connected clients
     pub async fn broadcast<T: Serialize>(&self, msg: &T) -> Result<()> {
-        let binary = Self::serialize_to_messagepack(msg)?;
+        let (_, serialized) = self.serialize(msg)?;
 
         // Send the message to all clients
-        if let Err(e) = self.sender.send(binary) {
+        if let Err(e) = self.sender.send(serialized) {
             error!("Error broadcasting message: {}", e);
         }
 
         Ok(())
     }
 
-    /// Serialize a message to MessagePack
-    fn serialize_to_messagepack<T: Serialize>(msg: &T) -> Result<Vec<u8>> {
-        rmp_serde::to_vec(msg).map_err(Error::MessagePack)
+    /// Serialize data according to the configured format
+    fn serialize<T: Serialize>(&self, data: &T) -> Result<(String, Vec<u8>)> {
+        Self::serialize_data(data, &self.serialization_format)
+    }
+
+    /// Serialize data with the specified format
+    fn serialize_data<T: Serialize>(data: &T, format: &SerializationFormat) -> Result<(String, Vec<u8>)> {
+        match format {
+            SerializationFormat::Json => {
+                let json_str = serde_json::to_string(data).map_err(Error::Json)?;
+                Ok(("json".to_string(), json_str.into_bytes()))
+            },
+            SerializationFormat::MessagePack => {
+                let binary = rmp_serde::to_vec(data).map_err(Error::MessagePack)?;
+                Ok(("messagepack".to_string(), binary))
+            }
+        }
     }
 }
