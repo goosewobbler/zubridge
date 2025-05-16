@@ -48,7 +48,10 @@ jobs:
       packages: ${{ inputs.packages }}
       dry_run: ${{ inputs.dry_run }}
     secrets:
-      github_bot_token: ${{ secrets.GITHUB_TOKEN }}
-      npm_token: ${{ secrets.NPM_TOKEN }}
-      deploy_key: ${{ secrets.DEPLOY_KEY }}
-      crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
+      GITHUB_BOT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}

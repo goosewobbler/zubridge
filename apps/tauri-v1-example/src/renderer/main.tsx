@@ -5,7 +5,7 @@ import { getCurrent } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/tauri';
 import { listen } from '@tauri-apps/api/event';
 import { initializeBridge, cleanupZubridge } from '@zubridge/tauri';
-import '@zubridge/ui/dist/styles.css';
+import '@zubridge/ui/styles.css';
 import './styles/index.css';
 import { MainApp } from './App.main.js';
 import { RuntimeApp } from './App.runtime.js';

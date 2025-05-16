@@ -1,5 +1,4 @@
 import { createCoreBridge, createDispatch } from '@zubridge/electron/main';
-import type { WrapperOrWebContents } from '@zubridge/types';
 import type { ZustandBridge } from '@zubridge/electron/main';
 import { getCustomStore } from './store.js';
 
@@ -7,7 +6,7 @@ import { getCustomStore } from './store.js';
  * Creates a bridge using the custom store approach
  * This demonstrates how to use createCoreBridge with a custom state manager
  */
-export const createCustomBridge = (windows: WrapperOrWebContents[] = []): ZustandBridge => {
+export const createCustomBridge = (): ZustandBridge => {
   console.log('[Custom Mode] Creating bridge with custom state manager');
 
   // Get a CustomStore instance from our implementation
@@ -15,7 +14,7 @@ export const createCustomBridge = (windows: WrapperOrWebContents[] = []): Zustan
   const customStore = getCustomStore();
 
   // Create the core bridge with our custom store
-  const coreBridge = createCoreBridge(customStore, windows);
+  const coreBridge = createCoreBridge(customStore);
 
   // Create a dispatch function that works with our store
   const dispatchFn = createDispatch(customStore);

@@ -5,7 +5,8 @@ export type CounterAction =
   | { type: 'COUNTER:INCREMENT' }
   | { type: 'COUNTER:DECREMENT' }
   | { type: 'COUNTER:RESET' }
-  | { type: 'COUNTER:SET'; payload: number };
+  | { type: 'COUNTER:SET'; payload: number }
+  | { type: 'COUNTER:SET:SLOW'; payload: number };
 
 /**
  * Reducer for the counter state
@@ -25,6 +26,11 @@ export const reducer: Reducer<number> = (counter = 0, action: Action) => {
       return 0;
     case 'COUNTER:SET':
       console.log(`[Reducer] Setting counter to ${action.payload}`);
+      return action.payload as number;
+    case 'COUNTER:SET:SLOW':
+      // Note: reducers are synchronous, so we can't implement the delay here
+      // The delay would be implemented by middleware, thunks, or in the UI
+      console.log(`[Reducer] Setting counter (slow) to ${action.payload}`);
       return action.payload as number;
     default:
       return counter;

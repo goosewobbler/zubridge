@@ -17,6 +17,7 @@ export const handlers = {
   'COUNTER:INCREMENT': (state: AnyState) => counter.increment(state),
   'COUNTER:DECREMENT': (state: AnyState) => counter.decrement(state),
   'COUNTER:SET': (payload: number) => counter.setValue(payload),
+  'COUNTER:SET:SLOW': (payload: number) => counter.setValueSlow(payload),
   'COUNTER:RESET': () => counter.reset(),
   'THEME:TOGGLE': (state: AnyState) => theme.toggle(state),
   'THEME:SET': (payload: boolean) => theme.setValue(payload),

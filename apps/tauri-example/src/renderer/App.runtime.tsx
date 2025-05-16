@@ -59,8 +59,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
 
   const doubleCounterThunk = () => {
     // Use a thunk to get the current state and dispatch a new action
-    dispatch((getState) => {
-      const currentValue = (getState().counter as number) || 0;
+    dispatch(async (getState) => {
+      const state = (await getState()) as AppState;
+      const currentValue = (state.counter as number) || 0;
       console.log(`[${windowLabel}] Thunk: Doubling counter from ${currentValue} to ${currentValue * 2}`);
 
       // Dispatch a special action to set the counter to double its current value

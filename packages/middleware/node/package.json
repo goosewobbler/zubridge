@@ -1,0 +1,52 @@
+{
+  "name": "@zubridge/middleware",
+  "version": "0.1.0",
+  "description": "Middleware framework for Zubridge state management",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "zubridge-middleware",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.16.5",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">= 14.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "napi build --platform",
+    "build:debug": "napi build --platform --debug",
+    "prepublishOnly": "napi prepublish -t npm",
+    "version": "napi version"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zubridge/zubridge.git",
+    "directory": "packages/middleware/node"
+  },
+  "keywords": [
+    "zubridge",
+    "middleware",
+    "napi-rs",
+    "electron",
+    "state-management"
+  ],
+  "author": "Zubridge Contributors"
+}

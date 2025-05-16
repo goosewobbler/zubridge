@@ -1,9 +1,10 @@
-import path from 'node:path';
 import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
 
 import { isDev } from '@zubridge/electron';
+import { createDispatch } from '@zubridge/electron/main';
 import type { WrapperOrWebContents } from '@zubridge/types';
+import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
 import 'wdio-electron-service/main';
 
 import { store, initStore } from './store.js';
@@ -12,6 +13,7 @@ import { createBridge } from './bridge.js';
 import { getModeName, getZubridgeMode } from '../utils/mode.js';
 import { getPreloadPath } from '../utils/path.js';
 import * as windows from './window.js';
+import { AppIpcChannel } from '../constants.js';
 
 // Debug logger
 function debug(message: string) {
@@ -33,8 +35,6 @@ debug(`Dev mode: ${isDevMode}`);
 const isTestMode = process.env.TEST === 'true';
 debug(`Test mode: ${isTestMode}`);
 
-const icon = path.join(__dirname, '..', '..', 'resources', 'images', 'icon.png');
-
 // Disable GPU acceleration
 if (!isTestMode && process.platform === 'darwin') {
   app.disableHardwareAcceleration();
@@ -46,7 +46,7 @@ const modeName = getModeName();
 debug(`Using Zubridge mode: ${modeName}`);
 
 // Ensure we always use the absolute path for the preload script
-const preloadPath = getPreloadPath(__dirname);
+const preloadPath = getPreloadPath();
 debug(`Using preload path: ${preloadPath}`);
 
 // Flag to track when app is explicitly being quit
@@ -102,38 +102,38 @@ app
     await initStore();
     debug('Store initialized');
 
-    // Create the bridge, passing all windows/views for synchronization
-    debug('Creating bridge with windows');
-
-    // Use a more general array that accepts different window/view types
-    const windowsAndViews: WrapperOrWebContents[] = [];
-
-    if (initialMainWindow) {
-      debug(`Adding main window ID: ${initialMainWindow.id}`);
-      windowsAndViews.push(initialMainWindow);
-    }
-
-    if (initialDirectWebContentsWindow) {
-      debug(`Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
-      windowsAndViews.push(initialDirectWebContentsWindow);
-    }
-
-    if (browserView) {
-      debug(`Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
-      windowsAndViews.push(browserView);
-    }
-
-    if (webContentsView) {
-      debug(`Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
-      windowsAndViews.push(webContentsView);
-    }
-
-    debug(`Passing ${windowsAndViews.length} windows/views to bridge`);
-
+    // Create the bridge
+    debug('Creating bridge');
     try {
       debug('Before bridge creation');
-      const bridge = await createBridge(store, windowsAndViews);
+      const bridge = await createBridge(store);
       debug('Bridge created successfully');
+
+      // Create a more general array that accepts different window/view types
+      const windowsAndViews: WrapperOrWebContents[] = [];
+
+      if (initialMainWindow) {
+        debug(`Adding main window ID: ${initialMainWindow.id}`);
+        windowsAndViews.push(initialMainWindow);
+      }
+
+      if (initialDirectWebContentsWindow) {
+        debug(`Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
+        windowsAndViews.push(initialDirectWebContentsWindow);
+      }
+
+      if (browserView) {
+        debug(`Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
+        windowsAndViews.push(browserView);
+      }
+
+      if (webContentsView) {
+        debug(`Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
+        windowsAndViews.push(webContentsView);
+      }
+
+      debug(`Subscribing ${windowsAndViews.length} windows/views to the bridge`);
+      bridge.subscribe(windowsAndViews);
 
       // Create the system tray
       debug('Creating system tray');
@@ -303,9 +303,14 @@ app
       const { mainWindow } = windows.getWindowRefs();
       mainWindow?.focus();
 
-      // Set up the handler for closeCurrentWindow
+      // Get the dispatch function
+      const dispatch = createDispatch(store);
+
+      // Setup IPC handlers
       debug('Setting up IPC handlers');
-      ipcMain.handle('closeCurrentWindow', async (event) => {
+
+      // Set up handler for closing the current window
+      ipcMain.handle(AppIpcChannel.CLOSE_CURRENT_WINDOW, async (event) => {
         debug(`CloseCurrentWindow request received from window ID: ${event.sender.id}`);
         try {
           // Get the window that sent this message
@@ -335,7 +340,7 @@ app
       });
 
       // Set up handler for window-created event
-      ipcMain.handle('window-created', (_event) => {
+      ipcMain.handle(AppIpcChannel.WINDOW_CREATED, (_event) => {
         debug('Window created event received');
         // Immediately track the new window
         trackNewWindows();
@@ -343,7 +348,7 @@ app
       });
 
       // Set up handler to check if the window is the main window
-      ipcMain.handle('is-main-window', (event) => {
+      ipcMain.handle(AppIpcChannel.IS_MAIN_WINDOW, (event) => {
         const window = BrowserWindow.fromWebContents(event.sender);
         const { mainWindow } = windows.getWindowRefs();
         // Check if this is the main window
@@ -353,7 +358,7 @@ app
       });
 
       // Set up handler to get the window ID
-      ipcMain.handle('get-window-id', (event) => {
+      ipcMain.handle(AppIpcChannel.GET_WINDOW_ID, (event) => {
         const window = BrowserWindow.fromWebContents(event.sender);
         const windowId = window ? window.id : null;
         debug(`get-window-id for ${event.sender.id}: ${windowId}`);
@@ -361,7 +366,7 @@ app
       });
 
       // Set up handler to get window type (main, secondary, runtime) and ID
-      ipcMain.handle('get-window-info', (event) => {
+      ipcMain.handle(AppIpcChannel.GET_WINDOW_INFO, (event) => {
         const window = BrowserWindow.fromWebContents(event.sender);
         if (!window) {
           debug(`get-window-info: No window found for ${event.sender.id}`);
@@ -388,8 +393,8 @@ app
         return { type: windowType, id: windowId };
       });
 
-      // --> NEW: IPC Handler for creating runtime windows <--
-      ipcMain.handle('create-runtime-window', (event) => {
+      // IPC Handler for creating runtime windows
+      ipcMain.handle(AppIpcChannel.CREATE_RUNTIME_WINDOW, (event) => {
         debug(`create-runtime-window request from ${event.sender.id}`);
         console.log(`IPC: Received request to create runtime window from sender ${event.sender.id}`);
         const newWindow = windows.createRuntimeWindow();
@@ -398,10 +403,9 @@ app
         subscribe([newWindow]);
         return { success: true, windowId: newWindow.id };
       });
-      // --> END NEW HANDLER <--
 
       // Set up handler to get the current mode
-      ipcMain.handle('get-mode', () => {
+      ipcMain.handle(AppIpcChannel.GET_MODE, () => {
         debug(`get-mode request, returning: ${mode}, ${modeName}`);
         return {
           mode,
@@ -410,11 +414,61 @@ app
       });
 
       // Set up handler to quit the app
-      ipcMain.handle('quitApp', () => {
+      ipcMain.handle(AppIpcChannel.QUIT_APP, () => {
         debug('quitApp request received, setting isAppQuitting flag');
         isAppQuitting = true;
         app.quit();
         return true;
+      });
+
+      // Set up the handler for the main process thunk
+      ipcMain.handle(AppIpcChannel.EXECUTE_MAIN_THUNK, async () => {
+        debug('Received IPC request to execute main process thunk');
+
+        try {
+          // Create a context for the main process thunk
+          const thunkContext: ThunkContext = {
+            environment: 'main',
+            logPrefix: 'MAIN_PROCESS',
+          };
+
+          // Get the current counter value from store
+          const currentState = store.getState();
+          const counter = currentState.counter || 0;
+
+          // Create thunk with the updated BaseState (with optional properties)
+          const thunk = createDoubleCounterThunk(counter, thunkContext);
+          const result = await dispatch(thunk);
+          return { success: true, result };
+        } catch (error) {
+          console.error('[MAIN] Error executing main process thunk:', error);
+          return { success: false, error: String(error) };
+        }
+      });
+
+      // Set up the handler for the main process slow thunk
+      ipcMain.handle(AppIpcChannel.EXECUTE_MAIN_THUNK_SLOW, async () => {
+        debug('Received IPC request to execute main process slow thunk');
+
+        try {
+          // Create a context for the main process thunk
+          const thunkContext: ThunkContext = {
+            environment: 'main',
+            logPrefix: 'MAIN_PROCESS_SLOW',
+          };
+
+          // Get the current counter value from store
+          const currentState = store.getState();
+          const counter = currentState.counter || 0;
+
+          // Create thunk with the updated BaseState (with optional properties)
+          const thunk = createDoubleCounterSlowThunk(counter, thunkContext);
+          const result = await dispatch(thunk);
+          return { success: true, result };
+        } catch (error) {
+          console.error('[MAIN] Error executing main process slow thunk:', error);
+          return { success: false, error: String(error) };
+        }
       });
 
       debug('App initialization complete, waiting for events');
