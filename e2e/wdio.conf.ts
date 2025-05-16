@@ -113,6 +113,38 @@ try {
 const baseArgs = ['--no-sandbox', '--disable-gpu', `--user-data-dir=${userDataDir}`];
 const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
 
+// Determine which spec files to run based on the mode
+let specPattern;
+const specificSpecFile = process.env.SPEC_FILE;
+
+if (specificSpecFile) {
+  // If a specific spec file is provided, use it with absolute path
+  const specFile = path.isAbsolute(specificSpecFile)
+    ? specificSpecFile
+    : path.resolve(__dirname, `./test/${specificSpecFile}`);
+  specPattern = [specFile];
+  console.log(`[DEBUG] Running specific spec file: ${specFile}`);
+} else {
+  // Check if we have a mode-specific spec file
+  const modeSpecFile = `./test/${mode}.spec.ts`;
+  const modeSpecPath = path.resolve(__dirname, modeSpecFile);
+
+  if (fs.existsSync(modeSpecPath)) {
+    specPattern = [modeSpecPath]; // Use absolute path for specific file
+    console.log(`[DEBUG] Running mode-specific spec file: ${modeSpecPath}`);
+  } else {
+    // For glob patterns, use forward slashes for all platforms
+    // Convert Windows backslashes to forward slashes for consistency
+    const testDir = path.resolve(__dirname, 'test');
+    const globPattern = path.posix.join(
+      testDir.replace(/\\/g, '/'), // Convert Windows backslashes to forward slashes
+      '*.spec.ts',
+    );
+    specPattern = [globPattern];
+    console.log(`[DEBUG] No mode-specific spec found, using glob pattern: ${globPattern}`);
+  }
+}
+
 // Get the config that will be exported
 const config = {
   services: ['electron'],
@@ -138,8 +170,61 @@ const config = {
   connectionRetryTimeout: 30000,
   logLevel: 'debug',
   runner: 'local',
-  outputDir: `wdio-logs-electron-${mode}`, // Unique log directory per mode
-  specs: ['./test/*.spec.ts'],
+  outputDir: `wdio-logs-${appDir}-${mode}`,
+  specs: specPattern,
+  onPrepare: function (config, capabilities) {
+    console.log('[DEBUG] Starting test preparation with WebdriverIO');
+
+    // Log the spec files that will be executed
+    console.log('[DEBUG] Spec files to be executed:');
+    if (Array.isArray(config.specs)) {
+      config.specs.forEach((spec, index) => {
+        const exists = spec.includes('*') ? 'GLOB_PATTERN' : fs.existsSync(spec) ? 'EXISTS' : 'NOT_FOUND';
+
+        console.log(`[DEBUG] Spec[${index}]: ${spec} (${exists})`);
+
+        // For specific files that should exist, check permissions
+        if (!spec.includes('*') && exists === 'EXISTS') {
+          try {
+            const stats = fs.statSync(spec);
+            console.log(`[DEBUG] Spec file permissions: ${stats.mode.toString(8)}`);
+          } catch (err) {
+            console.error(`[ERROR] Failed to check permissions for ${spec}:`, err);
+          }
+        }
+      });
+    } else {
+      console.log('[DEBUG] No spec files defined in config');
+    }
+
+    // Check app binary exists and has proper permissions
+    if (binaryPath && fs.existsSync(binaryPath)) {
+      try {
+        const stats = fs.statSync(binaryPath);
+        console.log(`[DEBUG] Binary file permissions: ${stats.mode.toString(8)}`);
+
+        // On Linux/Mac, check if binary is executable
+        if (process.platform !== 'win32') {
+          const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
+          console.log(`[DEBUG] Binary is executable: ${isExecutable}`);
+
+          if (!isExecutable) {
+            console.log('[DEBUG] Making binary executable...');
+            try {
+              fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
+              console.log('[DEBUG] Binary made executable');
+            } catch (err) {
+              console.error('[ERROR] Failed to make binary executable:', err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[ERROR] Failed to check binary permissions:`, err);
+      }
+    } else {
+      console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
+    }
+  },
   tsConfigPath: path.join(__dirname, 'tsconfig.json'),
   framework: 'mocha',
   mochaOpts: {
