@@ -6,17 +6,6 @@ import path from 'path';
 const currentMode = process.env.ZUBRIDGE_MODE || 'basic';
 console.log(`[DEBUG] Mode: ${currentMode}, OutDir: out-${currentMode}`);
 
-// Check for platform-specific flag in command line arguments
-// When the build script passes -- -m or -- -w or -- -l, we need to respect that
-const argPlatforms: string[] = [];
-if (process.argv.includes('-m')) argPlatforms.push('mac');
-if (process.argv.includes('-w')) argPlatforms.push('win');
-if (process.argv.includes('-l')) argPlatforms.push('linux');
-
-// If platform flags were provided, use them, otherwise build for all platforms
-const buildPlatforms = argPlatforms.length > 0 ? argPlatforms : ['mac', 'win', 'linux'];
-console.log(`[DEBUG] Building for platforms: ${buildPlatforms.join(', ')}`);
-
 // Determine if we're running in e2e test environment
 const isE2eTest = process.cwd().includes('/e2e');
 console.log(`[DEBUG] Running in e2e test environment: ${isE2eTest}`);
@@ -135,7 +124,6 @@ if (!fs.existsSync(outputDir)) {
   }
 }
 
-// Generate the configuration with platform-specific targets
 const config: Configuration = {
   appId: `com.zubridge.example.${currentMode}`,
   productName: `zubridge-electron-example-${currentMode}`,
@@ -170,23 +158,16 @@ const config: Configuration = {
   extraMetadata: {
     main: 'main/index.js',
   },
-  // Only include platform targets that were specified in buildPlatforms
-  ...(buildPlatforms.includes('mac') && {
-    mac: {
-      target: 'zip',
-    },
-  }),
-  ...(buildPlatforms.includes('win') && {
-    win: {
-      target: 'zip',
-    },
-  }),
-  ...(buildPlatforms.includes('linux') && {
-    linux: {
-      target: 'zip',
-      executableName: `zubridge-electron-example-${currentMode}`,
-    },
-  }),
+  mac: {
+    target: 'dmg',
+  },
+  win: {
+    target: 'nsis',
+  },
+  linux: {
+    target: 'AppImage',
+    executableName: `zubridge-electron-example-${currentMode}`,
+  },
 };
 
 export default config;

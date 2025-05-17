@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 import type { NormalizedPackageJson } from 'read-package-up';
 
-import { getElectronVersion } from '@wdio/electron-utils';
+import { getElectronVersion, getBinaryPath } from '@wdio/electron-utils';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const appDir = process.env.APP_DIR as string; // This should be 'electron-example'
@@ -24,101 +24,40 @@ console.log(`[DEBUG] packageJsonPath: ${packageJsonPath}`);
 console.log(`[DEBUG] appPath (base for dist): ${appPath}`);
 console.log(`[DEBUG] Running on architecture: ${currentArch}`);
 
-// Find binary path for current platform
+// Set the ZUBRIDGE_MODE environment variable to ensure electron-builder.config.ts uses the correct mode
+process.env.ZUBRIDGE_MODE = mode;
+
+// Use getBinaryPath to find the binary instead of custom platform-specific logic
 let binaryPath = '';
 
-// Define possible binary locations with architecture-aware paths
-const findMacBinary = () => {
-  // Define possible mac directories to check in priority order
-  const macDirs =
-    currentArch === 'arm64'
-      ? ['mac-arm64', 'mac'] // Prefer arm64 on arm systems
-      : ['mac', 'mac-arm64']; // Prefer intel on intel systems
+try {
+  // Load the actual configuration from electron-builder.config.ts
+  console.log(`[DEBUG] Loading electron-builder config for mode: ${mode}`);
 
-  // Try each directory in order
-  for (const dir of macDirs) {
-    const binPath = path.join(
-      appPath,
-      `dist-${mode}`,
-      dir,
-      `zubridge-electron-example-${mode}.app`,
-      'Contents',
-      'MacOS',
-      `zubridge-electron-example-${mode}`,
-    );
+  // Import the electron-builder config
+  const builderConfigPath = path.join(appPath, 'electron-builder.config.ts');
+  console.log(`[DEBUG] Builder config path: ${builderConfigPath}`);
 
-    if (fs.existsSync(binPath)) {
-      console.log(`[DEBUG] Found macOS binary in ${dir}`);
-      return binPath;
-    }
-  }
+  const builderConfig = await import(builderConfigPath);
+  const config = builderConfig.default;
 
-  // Last resort: look for any mac* directory in dist
-  const distDir = path.join(appPath, `dist-${mode}`);
-  if (fs.existsSync(distDir)) {
-    try {
-      const macFolders = fs
-        .readdirSync(distDir)
-        .filter((dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory());
+  console.log(`[DEBUG] Loaded builder config with output dir: ${config.directories?.output}`);
 
-      for (const folder of macFolders) {
-        const binPath = path.join(
-          distDir,
-          folder,
-          `zubridge-electron-example-${mode}.app`,
-          'Contents',
-          'MacOS',
-          `zubridge-electron-example-${mode}`,
-        );
+  // Create AppBuildInfo for electron-builder
+  const appBuildInfo = {
+    appName: `zubridge-electron-example-${mode}`,
+    config: config,
+    isBuilder: true as const,
+    isForge: false as const,
+  };
 
-        if (fs.existsSync(binPath)) {
-          return binPath;
-        }
-      }
-    } catch (err) {
-      /* ignore errors during directory scan */
-    }
-  }
+  // Get binary path using the real config
+  binaryPath = await getBinaryPath(packageJsonPath, appBuildInfo, electronVersion);
 
-  return '';
-};
-
-// Platform-specific binary finders
-const binaryFinders = {
-  darwin: findMacBinary,
-  win32: () => {
-    const binPath = path.join(appPath, `dist-${mode}`, 'win-unpacked', `zubridge-electron-example-${mode}.exe`);
-    return fs.existsSync(binPath) ? binPath : '';
-  },
-  linux: () => {
-    const binPath = path.join(appPath, `dist-${mode}`, 'linux-unpacked', `zubridge-electron-example-${mode}`);
-    return fs.existsSync(binPath) ? binPath : '';
-  },
-};
-
-// Find binary for current platform
-if (binaryFinders[currentPlatform]) {
-  binaryPath = binaryFinders[currentPlatform]();
-  if (binaryPath) {
-    console.log(`[DEBUG] Using ${currentPlatform} binary: ${binaryPath}`);
-  } else {
-    console.log(`[DEBUG] No platform-specific binary found for ${currentPlatform}, will try fallback`);
-  }
-}
-
-// Fallback to direct Electron execution if no binary found
-if (!binaryPath) {
-  console.log('[DEBUG] Attempting fallback to direct Electron execution');
-  const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
-  const appMain = path.join(appPath, `out-${mode}`, 'main', 'index.js');
-
-  if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
-    binaryPath = electronBin;
-    process.env.ELECTRON_APP_PATH = appMain;
-    console.log(`[DEBUG] Using electron binary with main script: ${appMain}`);
-  } else {
-    console.error(`[ERROR] No suitable binary found for platform ${currentPlatform}`);
-  }
+  console.log(`[DEBUG] Binary path found by getBinaryPath: ${binaryPath}`);
+} catch (err) {
+  console.error(`[ERROR] Failed to get binary path: ${err}`);
+  throw new Error(`Could not find the electron binary for mode: ${mode}. Error: ${err}`);
 }
 
 // Fix for macOS: Ensure the binary is always executable before running tests
@@ -147,7 +86,26 @@ try {
   // Fallback or rethrow if this is critical
 }
 
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, `wdio-logs-${appDir}-${mode}`);
+try {
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+    console.log(`[DEBUG] Created logs directory: ${logsDir}`);
+  }
+} catch (e) {
+  console.error(`[ERROR] Failed to create logs directory ${logsDir}:`, e);
+}
+
+// Platform-specific args
 const baseArgs = ['--no-sandbox', '--disable-gpu', `--user-data-dir=${userDataDir}`];
+
+// Add special flags for macOS
+if (currentPlatform === 'darwin') {
+  baseArgs.push('--disable-dev-shm-usage');
+  baseArgs.push('--disable-software-rasterizer');
+}
+
 const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
 
 // Determine which spec files to run based on the mode
@@ -186,9 +144,9 @@ const config = {
     },
   ],
   maxInstances: 1,
-  waitforTimeout: 15000,
-  connectionRetryCount: 10,
-  connectionRetryTimeout: 30000,
+  waitforTimeout: 30000, // Increase timeout for macOS builds
+  connectionRetryCount: 3,
+  connectionRetryTimeout: 60000, // Increase connection retry timeout
   logLevel: 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${appDir}-${mode}`,
@@ -274,7 +232,7 @@ const config = {
   framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
-    timeout: 30000,
+    timeout: 60000, // Increase test timeout for macOS builds
   },
 };
 
