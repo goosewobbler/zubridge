@@ -6,9 +6,8 @@ import {
   waitUntilWindowsAvailable,
   switchToWindow,
   getButtonInCurrentWindow,
-  getCounterValue,
-  resetCounter,
 } from '../utils/window.js';
+import { getCounterValue, resetCounter } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
 import { waitForSpecificValue } from '../utils/counter.js';
 

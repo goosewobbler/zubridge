@@ -43,6 +43,19 @@ pub struct LoggingConfig {
     /// Whether to log verbose debug information
     #[serde(default = "default_false")]
     pub verbose: bool,
+
+    /// Serialization format for WebSocket messages
+    #[serde(default = "default_serialization_format")]
+    pub serialization_format: SerializationFormat,
+}
+
+/// Available serialization formats for WebSocket messages
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum SerializationFormat {
+    /// JSON format - more human-readable, compatible with browsers
+    Json,
+    /// MessagePack format - more efficient binary format
+    MessagePack,
 }
 
 fn default_true() -> bool {
@@ -57,6 +70,10 @@ fn default_log_limit() -> usize {
     1000
 }
 
+fn default_serialization_format() -> SerializationFormat {
+    SerializationFormat::Json
+}
+
 impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
@@ -67,6 +84,7 @@ impl Default for LoggingConfig {
             measure_performance: true,
             pretty_print: false,
             verbose: false,
+            serialization_format: default_serialization_format(),
         }
     }
 }
@@ -88,12 +106,20 @@ pub struct LogEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<State>,
 
+    /// State summary with metrics for analysis
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_summary: Option<StateSummary>,
+
+    /// Only the changed parts of state since previous update
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_delta: Option<serde_json::Value>,
+
     /// Context ID for tracking related logs
     pub context_id: String,
 
-    /// Processing time in milliseconds (for action logs with performance measurement)
+    /// Detailed processing time metrics in milliseconds
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub processing_time_ms: Option<f64>,
+    pub processing_metrics: Option<ProcessingMetrics>,
 }
 
 /// Types of log entries
@@ -112,6 +138,55 @@ pub enum LogEntryType {
     Error,
 }
 
+/// Summary information about the state
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StateSummary {
+    /// Approximate size of state in bytes
+    pub size_bytes: usize,
+
+    /// Number of top-level properties
+    pub property_count: usize,
+
+    /// List of top-level property names
+    pub properties: Vec<String>,
+}
+
+/// Performance metrics for action and state processing
+///
+/// To populate these metrics, add the following metadata to the Context object:
+/// - `processing_time_ms`: Required - total processing time (if this is missing, no metrics will be recorded)
+/// - `deserialization_time_ms`: Time spent deserializing the action
+/// - `action_processing_time_ms`: Time spent in business logic handling the action
+/// - `state_update_time_ms`: Time spent updating the state
+/// - `serialization_time_ms`: Time spent serializing the response
+///
+/// For Electron/Zustand, these timings would represent:
+/// - `deserialization_time_ms`: Time to parse IPC message
+/// - `action_processing_time_ms`: Time spent in action handlers
+/// - `state_update_time_ms`: Time for Zustand to update state
+/// - `serialization_time_ms`: Time to serialize state for IPC
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProcessingMetrics {
+    /// Total processing time in milliseconds (action receipt to state update complete)
+    pub total_ms: f64,
+
+    /// Time spent deserializing the action in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deserialization_ms: Option<f64>,
+
+    /// Time spent processing the action in milliseconds (business logic)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action_processing_ms: Option<f64>,
+
+    /// Time spent updating the state in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_update_ms: Option<f64>,
+
+    /// Time spent serializing the response in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serialization_ms: Option<f64>,
+}
+
 /// Middleware for logging actions and state changes
 pub struct LoggingMiddleware {
     /// Configuration for the logging middleware
@@ -122,6 +197,9 @@ pub struct LoggingMiddleware {
 
     /// Log history
     log_history: Arc<RwLock<Vec<LogEntry>>>,
+
+    /// Last state for calculating deltas
+    last_state: Arc<RwLock<Option<State>>>,
 }
 
 impl LoggingMiddleware {
@@ -134,10 +212,11 @@ impl LoggingMiddleware {
         }
 
         let log_history = Arc::new(RwLock::new(Vec::with_capacity(config.log_limit)));
+        let last_state = Arc::new(RwLock::new(None));
 
         // Start WebSocket server if enabled
         let websocket = if let Some(port) = config.websocket_port {
-            let websocket = WebSocketServer::new(port, log_history.clone());
+            let websocket = WebSocketServer::new(port, log_history.clone(), config.serialization_format.clone());
             let websocket_arc = Arc::new(websocket);
 
             // Spawn WebSocket server
@@ -157,6 +236,7 @@ impl LoggingMiddleware {
             config,
             websocket,
             log_history,
+            last_state,
         }
     }
 
@@ -190,8 +270,8 @@ impl LoggingMiddleware {
                     }
                 }
                 LogEntryType::StateUpdated => {
-                    let processing_info = match entry.processing_time_ms {
-                        Some(time) => format!(" processed in {:.2}ms", time),
+                    let processing_info = match &entry.processing_metrics {
+                        Some(metrics) => format!(" processed in {:.2}ms", metrics.total_ms),
                         None => String::new(),
                     };
 
@@ -254,6 +334,115 @@ impl LoggingMiddleware {
         history.clear();
         Ok(())
     }
+
+    /// Calculate state summary information
+    fn create_state_summary(&self, state: &State) -> Option<StateSummary> {
+        let state_json = serde_json::to_string(state).ok()?;
+
+        // Calculate property information from the state object
+        let state_value = serde_json::from_str::<serde_json::Value>(&state_json).ok()?;
+        let property_names = match &state_value {
+            serde_json::Value::Object(map) => {
+                map.keys().map(|k| k.clone()).collect::<Vec<String>>()
+            },
+            _ => Vec::new(),
+        };
+
+        Some(StateSummary {
+            size_bytes: state_json.len(),
+            property_count: property_names.len(),
+            properties: property_names,
+        })
+    }
+
+    /// Calculate state delta (what changed since last state)
+    async fn calculate_state_delta(&self, state: &State) -> Option<serde_json::Value> {
+        let last_state = self.last_state.read().await;
+
+        if let Some(prev_state) = &*last_state {
+            // Convert both states to JSON values for comparison
+            let prev_json = serde_json::to_value(prev_state).ok()?;
+            let current_json = serde_json::to_value(state).ok()?;
+
+            // Only handle Object types for delta calculation
+            match (prev_json, current_json) {
+                (serde_json::Value::Object(prev_map), serde_json::Value::Object(current_map)) => {
+                    let mut delta = serde_json::Map::new();
+
+                    // Find changed or new properties
+                    for (key, value) in current_map.iter() {
+                        if !prev_map.contains_key(key) || prev_map[key] != *value {
+                            delta.insert(key.clone(), value.clone());
+                        }
+                    }
+
+                    // If no changes, return None instead of an empty object
+                    if delta.is_empty() {
+                        None
+                    } else {
+                        Some(serde_json::Value::Object(delta))
+                    }
+                },
+                // If not objects, just return None
+                _ => None
+            }
+        } else {
+            // First state, no delta to calculate
+            None
+        }
+    }
+
+    /// Extract detailed processing metrics from context
+    fn extract_processing_metrics(&self, ctx: &Context) -> Option<ProcessingMetrics> {
+        if !self.config.measure_performance {
+            return None;
+        }
+
+        // Try to get the overall processing time
+        let total_ms = ctx.metadata.get("processing_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            })?;
+
+        // Extract other timing metrics if available
+        let deserialization_ms = ctx.metadata.get("deserialization_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        let action_processing_ms = ctx.metadata.get("action_processing_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        let state_update_ms = ctx.metadata.get("state_update_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        let serialization_ms = ctx.metadata.get("serialization_time_ms")
+            .and_then(|v| match v {
+                JsonValue::String(s) => s.parse::<f64>().ok(),
+                JsonValue::Number(n) => n.as_f64(),
+                _ => None,
+            });
+
+        Some(ProcessingMetrics {
+            total_ms,
+            deserialization_ms,
+            action_processing_ms,
+            state_update_ms,
+            serialization_ms,
+        })
+    }
 }
 
 #[async_trait]
@@ -265,8 +454,10 @@ impl Middleware for LoggingMiddleware {
             entry_type: LogEntryType::ActionDispatched,
             action: Some(action.clone()),
             state: None,
+            state_summary: None,
+            state_delta: None,
             context_id: ctx.id.clone(),
-            processing_time_ms: None,
+            processing_metrics: None,
         };
 
         if let Err(err) = self.add_log_entry(entry).await {
@@ -278,18 +469,20 @@ impl Middleware for LoggingMiddleware {
     }
 
     async fn after_action(&self, action: &Action, state: &State, ctx: &Context) {
-        // Get performance measurement if available
-        let processing_time_ms = if self.config.measure_performance {
-            // Fix the type mismatch by properly handling the JSON value conversion
-            ctx.metadata.get("processing_time_ms")
-                .and_then(|v| match v {
-                    JsonValue::String(s) => s.parse::<f64>().ok(),
-                    JsonValue::Number(n) => n.as_f64(),
-                    _ => None,
-                })
-        } else {
-            None
-        };
+        // Extract detailed processing metrics
+        let processing_metrics = self.extract_processing_metrics(ctx);
+
+        // Calculate state summary
+        let state_summary = self.create_state_summary(state);
+
+        // Calculate state delta
+        let state_delta = self.calculate_state_delta(state).await;
+
+        // Update last state for future deltas
+        {
+            let mut last_state = self.last_state.write().await;
+            *last_state = Some(state.clone());
+        }
 
         // Log the state after action
         let entry = LogEntry {
@@ -297,8 +490,10 @@ impl Middleware for LoggingMiddleware {
             entry_type: LogEntryType::StateUpdated,
             action: Some(action.clone()),
             state: Some(state.clone()),
+            state_summary,
+            state_delta,
             context_id: ctx.id.clone(),
-            processing_time_ms,
+            processing_metrics,
         };
 
         if let Err(err) = self.add_log_entry(entry).await {

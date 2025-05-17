@@ -8,12 +8,9 @@ import {
   waitUntilWindowsAvailable,
   switchToWindow,
   getButtonInCurrentWindow,
-  getCounterValue,
-  incrementCounterAndVerify,
-  resetCounter,
 } from '../utils/window.js';
+import { getCounterValue, incrementCounterAndVerify, resetCounter } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
-
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
 // Names of core windows for easier reference in tests

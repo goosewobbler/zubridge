@@ -1,35 +1,29 @@
-name: 'Run E2E Tests'
-description: 'Runs end-to-end tests for an application'
+name: 'Setup E2E Environment'
+description: 'Downloads artifacts and sets up environment for E2E tests'
 
 inputs:
   os:
     description: "Operating system to run tests on"
     required: true
-  mode:
-    description: "Test mode (basic, handlers, reducers, redux, or custom)"
-    required: true
-  app:
-    description: "Type of application to test (electron, tauri, tauri-v1)"
-    required: true
-    default: "electron"
-  build_id:
-    description: "Build ID from the build job"
-    required: true
   artifact_name:
     description: "Name of the artifact to download"
+    required: true
+  app:
+    description: "Type of application to test"
+    required: true
+  mode:
+    description: "Test mode"
     required: true
 
 runs:
   using: "composite"
   steps:
-    # Download the shared packages (built on Linux)
     - name: Download Shared Packages
       uses: actions/download-artifact@v4
       with:
         name: shared-packages
         path: packages
 
-    # Determine platform-specific paths and settings
     - name: Set platform-specific variables
       id: platform-vars
       run: |
@@ -42,15 +36,12 @@ runs:
         fi
       shell: bash
 
-    # Download the build artifacts directly to their final location
-    - name: Download ${{ inputs.app }}:${{ inputs.mode }} Build Artifacts
-      id: download_app_artifact
+    - name: Download Build Artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.artifact_name }}
         path: ${{ inputs.app == 'electron' && format('./apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('./apps/{0}-example', inputs.app) }}
 
-    # Display download information
     - name: Show Download Information
       run: |
         echo "Artifact ${{ inputs.artifact_name }} downloaded to target location"
@@ -118,35 +109,12 @@ runs:
         fi
       shell: bash
 
-    # Display build information
     - name: Show Build Information
       run: |
-        echo "::notice::Running E2E tests for ${{ inputs.app }}:${{ inputs.mode }} mode on ${{ inputs.os }} with build ID ${{ inputs.build_id }}"
+        echo "::notice::Running E2E tests for ${{ inputs.app }}:${{ inputs.mode }} mode on ${{ inputs.os }} with build ID"
       shell: bash
 
-    # Special workaround for Linux to enable Electron testing
     - name: Apply Linux Kernel Workaround
       if: inputs.app == 'electron' && runner.os == 'Linux'
       run: sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
       shell: bash
-
-    # Run the E2E tests for the provided app and mode
-    - name: Execute E2E Tests
-      run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-      shell: bash
-
-    # Show logs on failure
-    - name: Show Test Logs on Failure
-      if: failure() && inputs.app == 'electron'
-      run: cat ./e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/*.log || echo "No log files found"
-      shell: bash
-
-    # Upload logs as artifacts on failure
-    - name: Upload Test Logs on Failure
-      uses: actions/upload-artifact@v4
-      if: failure() && inputs.app == 'electron'
-      with:
-        name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
-        path: e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/*.log
-        retention-days: 30
-        if-no-files-found: warn

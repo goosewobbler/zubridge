@@ -302,14 +302,25 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run E2E Tests
-        uses: ./.github/workflows/actions/e2e-test
+      - name: Setup E2E Environment
+        uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: ubuntu-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
-          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
           artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
+
+      - name: Execute E2E Tests
+        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        shell: bash
+
+      - name: Handle Test Failures
+        if: failure()
+        uses: ./.github/workflows/actions/handle-e2e-failures
+        with:
+          os: ubuntu-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
 
   # E2E Tests for macOS
   macos-test:
@@ -333,14 +344,25 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run E2E Tests
-        uses: ./.github/workflows/actions/e2e-test
+      - name: Setup E2E Environment
+        uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: macOS-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
-          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
           artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
+
+      - name: Execute E2E Tests
+        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        shell: bash
+
+      - name: Handle Test Failures
+        if: failure()
+        uses: ./.github/workflows/actions/handle-e2e-failures
+        with:
+          os: macOS-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
 
   # E2E Tests for Windows
   windows-test:
@@ -364,14 +386,25 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run E2E Tests
-        uses: ./.github/workflows/actions/e2e-test
+      - name: Setup E2E Environment
+        uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: windows-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
-          build_id: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
           artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
+
+      - name: Execute E2E Tests
+        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        shell: bash
+
+      - name: Handle Test Failures
+        if: failure()
+        uses: ./.github/workflows/actions/handle-e2e-failures
+        with:
+          os: windows-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
 
   # Final status aggregation
   ci-status:

@@ -5,6 +5,16 @@
  */
 
 /**
+ * Available serialization formats for WebSocket messages
+ */
+export enum SerializationFormat {
+  /** JSON format - more human-readable, compatible with browsers */
+  Json = 'json',
+  /** MessagePack format - more efficient binary format */
+  MessagePack = 'messagepack',
+}
+
+/**
  * Configuration for the logging middleware
  */
 export interface LoggingConfig {
@@ -19,6 +29,12 @@ export interface LoggingConfig {
 
   /** Maximum number of log entries to keep in memory */
   logLimit?: number;
+
+  /**
+   * Serialization format for WebSocket messages
+   * @default SerializationFormat.Json
+   */
+  serializationFormat?: SerializationFormat;
 }
 
 /**
