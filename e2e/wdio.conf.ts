@@ -23,25 +23,117 @@ console.log(`[DEBUG] APP_DIR: ${appDir}, MODE: ${mode}`);
 console.log(`[DEBUG] packageJsonPath: ${packageJsonPath}`);
 console.log(`[DEBUG] appPath (base for dist): ${appPath}`);
 console.log(`[DEBUG] Running on architecture: ${currentArch}`);
+console.log(`[DEBUG] Electron version: ${electronVersion}`);
 
 // Set the ZUBRIDGE_MODE environment variable to ensure electron-builder.config.ts uses the correct mode
 process.env.ZUBRIDGE_MODE = mode;
+console.log(`[DEBUG] Set ZUBRIDGE_MODE to: ${process.env.ZUBRIDGE_MODE}`);
 
 // Use getBinaryPath to find the binary instead of custom platform-specific logic
 let binaryPath = '';
 
+// Explicitly define the output directory based on mode
+const outputDir = `dist-${mode}`;
+console.log(`[DEBUG] Expected output directory: ${outputDir}`);
+
+// Add a function to list directory contents with depth limit
+function listDirectoryContents(dirPath: string, indent = 0, maxDepth = 2, currentDepth = 0) {
+  if (!fs.existsSync(dirPath)) {
+    console.log(`${' '.repeat(indent)}[DEBUG] Directory does not exist: ${dirPath}`);
+    return;
+  }
+
+  // Stop recursion if we've reached max depth
+  if (currentDepth > maxDepth) {
+    console.log(`${' '.repeat(indent)}[DEBUG] Max depth reached at: ${dirPath}`);
+    return;
+  }
+
+  console.log(`${' '.repeat(indent)}[DEBUG] Contents of ${dirPath}:`);
+  const items = fs.readdirSync(dirPath);
+
+  // Limit the number of items shown per directory
+  const maxItems = 20;
+  const displayItems = items.length > maxItems ? items.slice(0, maxItems) : items;
+
+  if (items.length > maxItems) {
+    console.log(`${' '.repeat(indent + 2)}[DEBUG] Showing ${maxItems} of ${items.length} items...`);
+  }
+
+  for (const item of displayItems) {
+    const itemPath = path.join(dirPath, item);
+    try {
+      const stats = fs.statSync(itemPath);
+      const itemType = stats.isDirectory() ? 'Directory' : 'File';
+      const size = stats.isFile() ? `(${stats.size} bytes)` : '';
+      console.log(`${' '.repeat(indent + 2)}[DEBUG] ${itemType}: ${item} ${size}`);
+
+      if (stats.isDirectory()) {
+        listDirectoryContents(itemPath, indent + 4, maxDepth, currentDepth + 1);
+      }
+    } catch (err) {
+      console.log(`${' '.repeat(indent + 2)}[DEBUG] Error reading item ${itemPath}: ${err}`);
+    }
+  }
+}
+
+// Function to directly find the macOS binary based on the architecture
+function findMacOSBinary() {
+  if (currentPlatform !== 'darwin') return null;
+
+  const fullOutputPath = path.join(appPath, outputDir);
+  if (!fs.existsSync(fullOutputPath)) return null;
+
+  // Determine architecture-specific directory
+  if (currentArch === 'arm64') {
+    // Check mac-arm64 directory first
+    const arm64Path = path.join(fullOutputPath, 'mac-arm64');
+    if (fs.existsSync(arm64Path)) {
+      const appName = `zubridge-electron-example-${mode}.app`;
+      const appPath = path.join(arm64Path, appName);
+      if (fs.existsSync(appPath)) {
+        const binaryPath = path.join(appPath, 'Contents', 'MacOS', `zubridge-electron-example-${mode}`);
+        if (fs.existsSync(binaryPath)) return binaryPath;
+      }
+    }
+
+    // Fallback to other possible directories
+    const fallbackDirs = ['mac', 'mac-universal'];
+    for (const dir of fallbackDirs) {
+      const dirPath = path.join(fullOutputPath, dir);
+      if (fs.existsSync(dirPath)) {
+        const appName = `zubridge-electron-example-${mode}.app`;
+        const appPath = path.join(dirPath, appName);
+        if (fs.existsSync(appPath)) {
+          const binaryPath = path.join(appPath, 'Contents', 'MacOS', `zubridge-electron-example-${mode}`);
+          if (fs.existsSync(binaryPath)) return binaryPath;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 try {
-  // Load the actual configuration from electron-builder.config.ts
-  console.log(`[DEBUG] Loading electron-builder config for mode: ${mode}`);
+  // Create a builder config manually - simpler and more reliable than importing
+  console.log(`[DEBUG] Creating builder config for mode: ${mode}`);
 
-  // Import the electron-builder config
-  const builderConfigPath = path.join(appPath, 'electron-builder.config.ts');
-  console.log(`[DEBUG] Builder config path: ${builderConfigPath}`);
+  // List contents of the output directory at a limited depth
+  const fullOutputPath = path.join(appPath, outputDir);
+  console.log(`[DEBUG] Checking expected output directory: ${fullOutputPath}`);
+  listDirectoryContents(fullOutputPath, 0, 2);
 
-  const builderConfig = await import(builderConfigPath);
-  const config = builderConfig.default;
+  const config = {
+    appId: `com.zubridge.example.${mode}`,
+    productName: `zubridge-electron-example-${mode}`,
+    directories: {
+      output: outputDir,
+    },
+  };
 
-  console.log(`[DEBUG] Loaded builder config with output dir: ${config.directories?.output}`);
+  // Log the config we're using
+  console.log(`[DEBUG] Builder config:`, JSON.stringify(config, null, 2));
 
   // Create AppBuildInfo for electron-builder
   const appBuildInfo = {
@@ -51,12 +143,57 @@ try {
     isForge: false as const,
   };
 
-  // Get binary path using the real config
-  binaryPath = await getBinaryPath(packageJsonPath, appBuildInfo, electronVersion);
+  // Log the appBuildInfo being passed to getBinaryPath
+  console.log(`[DEBUG] AppBuildInfo for getBinaryPath:`, JSON.stringify(appBuildInfo, null, 2));
+  console.log(`[DEBUG] PackageJsonPath: ${packageJsonPath}`);
 
-  console.log(`[DEBUG] Binary path found by getBinaryPath: ${binaryPath}`);
+  // Try to get binary path using the config
+  try {
+    binaryPath = await getBinaryPath(packageJsonPath, appBuildInfo, electronVersion);
+    console.log(`[DEBUG] Binary path found by getBinaryPath: ${binaryPath}`);
+  } catch (err) {
+    console.log(`[DEBUG] getBinaryPath failed, trying direct detection: ${err}`);
+
+    // If getBinaryPath fails, fall back to direct detection for macOS
+    if (currentPlatform === 'darwin') {
+      const macBinary = findMacOSBinary();
+      if (macBinary) {
+        console.log(`[DEBUG] Found macOS binary directly: ${macBinary}`);
+        binaryPath = macBinary;
+      } else {
+        throw new Error(`Failed to find binary using both getBinaryPath and direct detection`);
+      }
+    } else {
+      // Re-throw on non-macOS platforms
+      throw err;
+    }
+  }
+
+  console.log(`[DEBUG] Binary exists: ${fs.existsSync(binaryPath)}`);
+
+  if (fs.existsSync(binaryPath)) {
+    const stats = fs.statSync(binaryPath);
+    console.log(`[DEBUG] Binary file size: ${stats.size} bytes`);
+    console.log(`[DEBUG] Binary file permissions: ${stats.mode.toString(8)}`);
+    console.log(`[DEBUG] Binary is executable: ${(stats.mode & fs.constants.S_IXUSR) !== 0}`);
+  }
 } catch (err) {
   console.error(`[ERROR] Failed to get binary path: ${err}`);
+
+  // Log more details about the error
+  if (err instanceof Error) {
+    console.error(`[ERROR] Stack trace: ${err.stack}`);
+  }
+
+  // Check if the dist directory without mode suffix exists (common fallback)
+  const fallbackOutputDir = 'dist';
+  const fallbackOutputPath = path.join(appPath, fallbackOutputDir);
+  if (fs.existsSync(fallbackOutputPath)) {
+    console.log(`[DEBUG] Fallback output directory exists: ${fallbackOutputPath}`);
+    console.log(`[DEBUG] Listing contents of fallback directory:`);
+    listDirectoryContents(fallbackOutputPath, 0, 1);
+  }
+
   throw new Error(`Could not find the electron binary for mode: ${mode}. Error: ${err}`);
 }
 
