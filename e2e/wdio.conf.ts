@@ -23,25 +23,33 @@ console.log(`[DEBUG] APP_DIR: ${appDir}, MODE: ${mode}`);
 console.log(`[DEBUG] packageJsonPath: ${packageJsonPath}`);
 console.log(`[DEBUG] appPath (base for dist): ${appPath}`);
 console.log(`[DEBUG] Running on architecture: ${currentArch}`);
+console.log(`[DEBUG] Electron version: ${electronVersion}`);
 
 // Set the ZUBRIDGE_MODE environment variable to ensure electron-builder.config.ts uses the correct mode
 process.env.ZUBRIDGE_MODE = mode;
+console.log(`[DEBUG] Set ZUBRIDGE_MODE to: ${process.env.ZUBRIDGE_MODE}`);
 
 // Use getBinaryPath to find the binary instead of custom platform-specific logic
 let binaryPath = '';
 
+// Explicitly define the output directory based on mode
+const outputDir = `dist-${mode}`;
+console.log(`[DEBUG] Expected output directory: ${outputDir}`);
+
 try {
-  // Load the actual configuration from electron-builder.config.ts
-  console.log(`[DEBUG] Loading electron-builder config for mode: ${mode}`);
+  // Create a builder config manually - simpler and more reliable than importing
+  console.log(`[DEBUG] Creating builder config for mode: ${mode}`);
 
-  // Import the electron-builder config
-  const builderConfigPath = path.join(appPath, 'electron-builder.config.ts');
-  console.log(`[DEBUG] Builder config path: ${builderConfigPath}`);
+  const config = {
+    appId: `com.zubridge.example.${mode}`,
+    productName: `zubridge-electron-example-${mode}`,
+    directories: {
+      output: outputDir,
+    },
+  };
 
-  const builderConfig = await import(builderConfigPath);
-  const config = builderConfig.default;
-
-  console.log(`[DEBUG] Loaded builder config with output dir: ${config.directories?.output}`);
+  // Log the config we're using
+  console.log(`[DEBUG] Builder config:`, JSON.stringify(config, null, 2));
 
   // Create AppBuildInfo for electron-builder
   const appBuildInfo = {
@@ -51,12 +59,30 @@ try {
     isForge: false as const,
   };
 
-  // Get binary path using the real config
+  // Log the appBuildInfo being passed to getBinaryPath
+  console.log(`[DEBUG] AppBuildInfo for getBinaryPath:`, JSON.stringify(appBuildInfo, null, 2));
+  console.log(`[DEBUG] PackageJsonPath: ${packageJsonPath}`);
+
+  // Get binary path using the config
   binaryPath = await getBinaryPath(packageJsonPath, appBuildInfo, electronVersion);
 
   console.log(`[DEBUG] Binary path found by getBinaryPath: ${binaryPath}`);
+  console.log(`[DEBUG] Binary exists: ${fs.existsSync(binaryPath)}`);
+
+  if (fs.existsSync(binaryPath)) {
+    const stats = fs.statSync(binaryPath);
+    console.log(`[DEBUG] Binary file size: ${stats.size} bytes`);
+    console.log(`[DEBUG] Binary file permissions: ${stats.mode.toString(8)}`);
+    console.log(`[DEBUG] Binary is executable: ${(stats.mode & fs.constants.S_IXUSR) !== 0}`);
+  }
 } catch (err) {
   console.error(`[ERROR] Failed to get binary path: ${err}`);
+
+  // Log more details about the error
+  if (err instanceof Error) {
+    console.error(`[ERROR] Stack trace: ${err.stack}`);
+  }
+
   throw new Error(`Could not find the electron binary for mode: ${mode}. Error: ${err}`);
 }
 
