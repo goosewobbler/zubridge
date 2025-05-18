@@ -358,9 +358,51 @@ try {
   if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir, { recursive: true });
     console.log(`[DEBUG] Created logs directory: ${logsDir}`);
+  } else {
+    console.log(`[DEBUG] Using existing logs directory: ${logsDir}`);
+    // List contents of logs directory if it exists
+    try {
+      const files = fs.readdirSync(logsDir);
+      console.log(`[DEBUG] Logs directory contains ${files.length} files`);
+      if (files.length > 0) {
+        console.log('[DEBUG] Log files found:');
+        files.forEach((file) => console.log(`[DEBUG]   - ${file}`));
+      } else {
+        console.log('[DEBUG] Logs directory is empty');
+      }
+    } catch (err) {
+      console.error(`[ERROR] Failed to read logs directory ${logsDir}:`, err);
+    }
+  }
+
+  // Ensure directory has correct permissions
+  try {
+    const stats = fs.statSync(logsDir);
+    console.log(`[DEBUG] Logs directory permissions: ${stats.mode.toString(8)}`);
+    // Make sure directory is writable
+    fs.accessSync(logsDir, fs.constants.W_OK);
+    console.log(`[DEBUG] Logs directory is writable`);
+  } catch (err) {
+    console.error(`[ERROR] Logs directory permission issue: ${err}`);
+    // Try to fix permissions if needed
+    try {
+      fs.chmodSync(logsDir, 0o755);
+      console.log(`[DEBUG] Fixed logs directory permissions`);
+    } catch (fixErr) {
+      console.error(`[ERROR] Failed to fix logs directory permissions: ${fixErr}`);
+    }
   }
 } catch (e) {
-  console.error(`[ERROR] Failed to create logs directory ${logsDir}:`, e);
+  console.error(`[ERROR] Failed to set up logs directory ${logsDir}:`, e);
+  // Fallback to a different directory if this fails
+  try {
+    const fallbackDir = path.join(process.cwd(), 'logs');
+    console.log(`[DEBUG] Trying fallback logs directory: ${fallbackDir}`);
+    fs.mkdirSync(fallbackDir, { recursive: true });
+    console.log(`[DEBUG] Created fallback logs directory: ${fallbackDir}`);
+  } catch (fallbackErr) {
+    console.error(`[ERROR] Failed to create fallback logs directory:`, fallbackErr);
+  }
 }
 
 // Platform-specific args
@@ -415,7 +457,7 @@ const config = {
   connectionRetryTimeout: 60000, // Increase connection retry timeout
   logLevel: 'debug',
   runner: 'local',
-  outputDir: `wdio-logs-${appDir}-${mode}`,
+  outputDir: logsDir,
   specs: [specPattern],
   baseUrl: `file://${__dirname}`,
   onPrepare: function (config, capabilities) {
@@ -494,11 +536,92 @@ const config = {
       console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
     }
   },
+  onComplete: function (exitCode, config, capabilities, results) {
+    console.log(`[DEBUG] Test run completed with exit code: ${exitCode}`);
+
+    // Log results summary
+    if (results) {
+      console.log(`[DEBUG] Test results summary:`);
+      console.log(`[DEBUG] Specs total: ${results.specs.length}`);
+      console.log(`[DEBUG] Suites completed: ${results.finished}`);
+      console.log(`[DEBUG] Suites failed: ${results.failed}`);
+
+      // Try to log any errors from the results
+      if (results.failed > 0) {
+        console.log('[DEBUG] Test failures detected:');
+        results.specs.forEach((spec, index) => {
+          if (spec.error) {
+            console.log(`[DEBUG] Spec #${index} failed: ${spec.error}`);
+          }
+        });
+      }
+    }
+
+    // Check for log files
+    try {
+      const logFiles = fs.readdirSync(logsDir).filter((f) => f.endsWith('.log'));
+      console.log(`[DEBUG] ${logFiles.length} log files found in ${logsDir}`);
+      logFiles.forEach((file) => {
+        console.log(`[DEBUG] Log file: ${file}`);
+        // Log the last few lines of each file for debugging
+        try {
+          const logContent = fs.readFileSync(path.join(logsDir, file), 'utf-8');
+          const lines = logContent.split('\n');
+          const lastLines = lines.slice(Math.max(0, lines.length - 20)).join('\n');
+          console.log(`[DEBUG] Last 20 lines of ${file}:\n${lastLines}`);
+        } catch (err) {
+          console.error(`[ERROR] Failed to read log file ${file}:`, err);
+        }
+      });
+    } catch (err) {
+      console.error(`[ERROR] Failed to check for log files:`, err);
+    }
+  },
   tsConfigPath: path.join(__dirname, 'tsconfig.json'),
   framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
     timeout: 60000, // Increase test timeout for macOS builds
+  },
+  afterTest: async function (test, context, { error, result, duration, passed, retries }) {
+    // Log test result information
+    console.log(`[DEBUG] Test completed: ${test.parent} - ${test.title}`);
+    console.log(`[DEBUG] Status: ${passed ? 'PASSED' : 'FAILED'}`);
+    console.log(`[DEBUG] Duration: ${duration}ms`);
+
+    if (!passed) {
+      console.error(`[ERROR] Test failed: ${test.parent} - ${test.title}`);
+      if (error) {
+        console.error(`[ERROR] Error message: ${error.message}`);
+        console.error(`[ERROR] Error stack: ${error.stack}`);
+      }
+
+      // Try to capture a screenshot on failure
+      try {
+        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        const screenshotPath = path.join(logsDir, `${test.parent}-${test.title}-${timestamp}.png`);
+        console.log(`[DEBUG] Capturing screenshot to: ${screenshotPath}`);
+
+        await browser.saveScreenshot(screenshotPath);
+        console.log(`[DEBUG] Screenshot saved to: ${screenshotPath}`);
+      } catch (screenshotErr) {
+        console.error(`[ERROR] Failed to capture screenshot: ${screenshotErr}`);
+      }
+
+      // Log browser console logs
+      try {
+        const logs = await browser.getLogs('browser');
+        console.log(`[DEBUG] Browser console logs (${logs.length} entries):`);
+        logs.forEach((log, i) => {
+          // Handle log entries safely with proper type checking
+          const level = typeof log === 'object' && log && 'level' in log ? log.level : 'unknown';
+          const message = typeof log === 'object' && log && 'message' in log ? log.message : String(log);
+          console.log(`[DEBUG] [Console ${i}] [${level}] ${message}`);
+        });
+      } catch (logsErr) {
+        console.error(`[ERROR] Failed to get browser logs: ${logsErr}`);
+      }
+    }
   },
 };
 
