@@ -191,7 +191,7 @@ const config = {
   connectionRetryTimeout: 30000,
   logLevel: 'debug',
   runner: 'local',
-  outputDir: `wdio-logs-${appDir}-${mode}`,
+  outputDir: `wdio-logs-${mode}`,
   specs: [specPattern],
   baseUrl: `file://${__dirname}`,
   onPrepare: function (config, capabilities) {
