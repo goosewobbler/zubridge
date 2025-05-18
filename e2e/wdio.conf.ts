@@ -194,6 +194,13 @@ const macOSFlags =
         '--disable-web-security',
         '--trace-warnings',
         '--remote-debugging-port=9222',
+        '--disable-features=ElectronDisablePopupBlocking,ElectronDisableSecurityWarnings',
+        '--disable-notifications',
+        '--disable-infobars',
+        '--incognito', // Use incognito mode to avoid profile issues
+        '--disable-restore-session-state',
+        '--disable-session-crashed-bubble',
+        // Don't use --user-data-dir at all
       ]
     : [];
 
@@ -342,43 +349,61 @@ const config = {
     }
   },
   onWorkerStart: function (cid, caps, specs, args, execArgv) {
-    // Create a highly unique user data directory for each worker
-    const workerId = cid.split('-')[1];
-    const uniqueId = crypto.randomUUID();
-    const tempDir = path.join(os.tmpdir(), `zubridge-electron-test-${mode}-${workerId}-${uniqueId}`);
+    // We'll avoid using --user-data-dir completely for macOS CI
+    if (currentPlatform !== 'darwin') {
+      // Create a highly unique user data directory for each worker, only for non-macOS
+      const workerId = cid.split('-')[1];
+      const uniqueId = crypto.randomUUID();
+      const tempDir = path.join(os.tmpdir(), `zubridge-electron-test-${mode}-${workerId}-${uniqueId}`);
 
-    try {
-      // Create a completely fresh directory for each test
-      if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
+      try {
+        // Create a completely fresh directory for each test
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+
+        fs.mkdirSync(tempDir, { recursive: true });
+        console.log(`[DEBUG] Created worker-specific user data directory: ${tempDir}`);
+
+        // Add the user data dir to the appArgs for this specific worker
+        if (caps['wdio:electronServiceOptions']) {
+          // Add user data dir to app args
+          const userDataDirArg = `--user-data-dir=${tempDir}`;
+
+          // Add to both configs to be absolutely sure it's used
+          caps['wdio:electronServiceOptions'].appArgs = caps['wdio:electronServiceOptions'].appArgs.filter(
+            (arg) => !arg.startsWith('--user-data-dir='),
+          );
+          caps['wdio:electronServiceOptions'].appArgs.push(userDataDirArg);
+
+          // Also add to chromeOptions if it exists
+          if (caps['goog:chromeOptions'] && caps['goog:chromeOptions'].args) {
+            caps['goog:chromeOptions'].args = caps['goog:chromeOptions'].args.filter(
+              (arg) => !arg.startsWith('--user-data-dir='),
+            );
+            caps['goog:chromeOptions'].args.push(userDataDirArg);
+          }
+
+          console.log(`[DEBUG] Added worker-specific user data dir to appArgs: ${userDataDirArg}`);
+        }
+      } catch (e) {
+        console.error(`[ERROR] Failed to create worker user data directory ${tempDir}:`, e);
       }
-
-      fs.mkdirSync(tempDir, { recursive: true });
-      console.log(`[DEBUG] Created worker-specific user data directory: ${tempDir}`);
-
-      // Add the user data dir to the appArgs for this specific worker
+    } else {
+      // For macOS, explicitly remove any user-data-dir args
       if (caps['wdio:electronServiceOptions']) {
-        // Add user data dir to app args
-        const userDataDirArg = `--user-data-dir=${tempDir}`;
-
-        // Add to both configs to be absolutely sure it's used
         caps['wdio:electronServiceOptions'].appArgs = caps['wdio:electronServiceOptions'].appArgs.filter(
           (arg) => !arg.startsWith('--user-data-dir='),
         );
-        caps['wdio:electronServiceOptions'].appArgs.push(userDataDirArg);
 
-        // Also add to chromeOptions if it exists
         if (caps['goog:chromeOptions'] && caps['goog:chromeOptions'].args) {
           caps['goog:chromeOptions'].args = caps['goog:chromeOptions'].args.filter(
             (arg) => !arg.startsWith('--user-data-dir='),
           );
-          caps['goog:chromeOptions'].args.push(userDataDirArg);
         }
 
-        console.log(`[DEBUG] Added worker-specific user data dir to appArgs: ${userDataDirArg}`);
+        console.log(`[DEBUG] Removed user-data-dir arguments for macOS`);
       }
-    } catch (e) {
-      console.error(`[ERROR] Failed to create worker user data directory ${tempDir}:`, e);
     }
   },
   onComplete: function () {
