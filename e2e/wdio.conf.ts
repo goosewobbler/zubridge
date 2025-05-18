@@ -197,7 +197,6 @@ const macOSFlags =
         '--disable-features=ElectronDisablePopupBlocking,ElectronDisableSecurityWarnings',
         '--disable-notifications',
         '--disable-infobars',
-        '--incognito', // Use incognito mode to avoid profile issues
         '--disable-restore-session-state',
         '--disable-session-crashed-bubble',
         // Don't use --user-data-dir at all
