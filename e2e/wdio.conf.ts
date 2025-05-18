@@ -353,57 +353,95 @@ try {
 }
 
 // Create logs directory if it doesn't exist
-const logsDir = path.join(__dirname, `wdio-logs-${appDir}-${mode}`);
-try {
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
-    console.log(`[DEBUG] Created logs directory: ${logsDir}`);
-  } else {
-    console.log(`[DEBUG] Using existing logs directory: ${logsDir}`);
-    // List contents of logs directory if it exists
-    try {
-      const files = fs.readdirSync(logsDir);
-      console.log(`[DEBUG] Logs directory contains ${files.length} files`);
-      if (files.length > 0) {
-        console.log('[DEBUG] Log files found:');
-        files.forEach((file) => console.log(`[DEBUG]   - ${file}`));
-      } else {
-        console.log('[DEBUG] Logs directory is empty');
-      }
-    } catch (err) {
-      console.error(`[ERROR] Failed to read logs directory ${logsDir}:`, err);
-    }
-  }
+// Standardize on a single format: wdio-logs-${mode}
+// where mode combines the app type and mode: electron-basic, redux-basic, etc.
+const standardMode = `${appDir.replace('-example', '')}-${mode}`;
+const logsDir = path.join(__dirname, `wdio-logs-${standardMode}`);
 
-  // Ensure directory has correct permissions
+// Function to set up logs directory
+function setupLogsDir(dir) {
   try {
-    const stats = fs.statSync(logsDir);
-    console.log(`[DEBUG] Logs directory permissions: ${stats.mode.toString(8)}`);
-    // Make sure directory is writable
-    fs.accessSync(logsDir, fs.constants.W_OK);
-    console.log(`[DEBUG] Logs directory is writable`);
-  } catch (err) {
-    console.error(`[ERROR] Logs directory permission issue: ${err}`);
-    // Try to fix permissions if needed
-    try {
-      fs.chmodSync(logsDir, 0o755);
-      console.log(`[DEBUG] Fixed logs directory permissions`);
-    } catch (fixErr) {
-      console.error(`[ERROR] Failed to fix logs directory permissions: ${fixErr}`);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`[DEBUG] Created logs directory: ${dir}`);
+    } else {
+      console.log(`[DEBUG] Using existing logs directory: ${dir}`);
+      // List contents of logs directory if it exists
+      try {
+        const files = fs.readdirSync(dir);
+        console.log(`[DEBUG] Logs directory contains ${files.length} files`);
+        if (files.length > 0) {
+          console.log(`[DEBUG] Log files found:`);
+          files.forEach((file) => console.log(`[DEBUG]   - ${file}`));
+        } else {
+          console.log(`[DEBUG] Logs directory is empty`);
+        }
+      } catch (err) {
+        console.error(`[ERROR] Failed to read logs directory ${dir}:`, err);
+      }
     }
-  }
-} catch (e) {
-  console.error(`[ERROR] Failed to set up logs directory ${logsDir}:`, e);
-  // Fallback to a different directory if this fails
-  try {
-    const fallbackDir = path.join(process.cwd(), 'logs');
-    console.log(`[DEBUG] Trying fallback logs directory: ${fallbackDir}`);
-    fs.mkdirSync(fallbackDir, { recursive: true });
-    console.log(`[DEBUG] Created fallback logs directory: ${fallbackDir}`);
-  } catch (fallbackErr) {
-    console.error(`[ERROR] Failed to create fallback logs directory:`, fallbackErr);
+
+    // Ensure directory has correct permissions
+    try {
+      const stats = fs.statSync(dir);
+      console.log(`[DEBUG] Logs directory permissions: ${stats.mode.toString(8)}`);
+      // Make sure directory is writable
+      fs.accessSync(dir, fs.constants.W_OK);
+      console.log(`[DEBUG] Logs directory is writable`);
+    } catch (err) {
+      console.error(`[ERROR] Logs directory permission issue: ${err}`);
+      // Try to fix permissions if needed
+      try {
+        fs.chmodSync(dir, 0o755);
+        console.log(`[DEBUG] Fixed logs directory permissions`);
+      } catch (fixErr) {
+        console.error(`[ERROR] Failed to fix logs directory permissions: ${fixErr}`);
+      }
+    }
+
+    return true;
+  } catch (e) {
+    console.error(`[ERROR] Failed to set up logs directory ${dir}:`, e);
+    // Fallback to a different directory if this fails
+    try {
+      const fallbackDir = path.join(process.cwd(), 'logs');
+      console.log(`[DEBUG] Trying fallback logs directory: ${fallbackDir}`);
+      fs.mkdirSync(fallbackDir, { recursive: true });
+      console.log(`[DEBUG] Created fallback logs directory: ${fallbackDir}`);
+    } catch (fallbackErr) {
+      console.error(`[ERROR] Failed to create fallback logs directory:`, fallbackErr);
+    }
+    return false;
   }
 }
+
+// Set up logs directory
+setupLogsDir(logsDir);
+
+// Create a special early error log file that will be written before WebdriverIO starts
+const earlyErrorLogPath = path.join(logsDir, 'early-errors.log');
+try {
+  fs.writeFileSync(earlyErrorLogPath, `Test started at ${new Date().toISOString()}\n`, { flag: 'a' });
+  console.log(`[DEBUG] Created early error log at: ${earlyErrorLogPath}`);
+} catch (err) {
+  console.error(`[ERROR] Failed to create early error log: ${err}`);
+}
+
+// Helper to log errors to both console and file
+function logError(message, error) {
+  const errorMessage = `${new Date().toISOString()} - ${message}: ${error}\n${error?.stack || 'No stack trace'}\n\n`;
+  console.error(`[ERROR] ${message}: ${error}`);
+  try {
+    fs.writeFileSync(earlyErrorLogPath, errorMessage, { flag: 'a' });
+  } catch (logErr) {
+    console.error(`[ERROR] Failed to write to error log: ${logErr}`);
+  }
+}
+
+// Fix for macOS platforms: Add additional time for startup
+// There's a race condition where tests start before app is ready
+const isMacOS = currentPlatform === 'darwin';
+const platformWaitTime = isMacOS ? 10000 : 5000; // 10 seconds for macOS, 5 for others
 
 // Platform-specific args
 const baseArgs = ['--no-sandbox', '--disable-gpu', `--user-data-dir=${userDataDir}`];
@@ -452,7 +490,7 @@ const config = {
     },
   ],
   maxInstances: 1,
-  waitforTimeout: 30000, // Increase timeout for macOS builds
+  waitforTimeout: isMacOS ? 45000 : 30000, // Longer timeout for macOS builds
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000, // Increase connection retry timeout
   logLevel: 'debug',
@@ -536,18 +574,46 @@ const config = {
       console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
     }
   },
+  // Add a before hook to allow time for app initialization before tests start
+  before: async function (capabilities, specs) {
+    console.log(`[DEBUG] Running 'before' hook - waiting ${platformWaitTime}ms for app initialization`);
+    try {
+      // Create a custom log file with browser setup information
+      const logPath = path.join(logsDir, 'browser-setup.log');
+      fs.writeFileSync(logPath, `${new Date().toISOString()} - Starting browser setup\n`, { flag: 'a' });
+
+      // Log browser info
+      const title = await browser.getTitle();
+      const url = await browser.getUrl();
+      const logInfo = `${new Date().toISOString()} - Initial browser state:\nTitle: ${title}\nURL: ${url}\n`;
+      fs.writeFileSync(logPath, logInfo, { flag: 'a' });
+
+      // Wait for the app to initialize
+      console.log(`[DEBUG] Waiting ${platformWaitTime}ms for app initialization...`);
+      await browser.pause(platformWaitTime);
+      console.log('[DEBUG] Wait complete, proceeding with tests');
+
+      // Log post-wait state
+      const postWaitTitle = await browser.getTitle();
+      const postWaitUrl = await browser.getUrl();
+      const postWaitInfo = `${new Date().toISOString()} - After wait state:\nTitle: ${postWaitTitle}\nURL: ${postWaitUrl}\n`;
+      fs.writeFileSync(logPath, postWaitInfo, { flag: 'a' });
+    } catch (err) {
+      logError('Error in before hook', err);
+    }
+  },
   onComplete: function (exitCode, config, capabilities, results) {
     console.log(`[DEBUG] Test run completed with exit code: ${exitCode}`);
 
     // Log results summary
     if (results) {
       console.log(`[DEBUG] Test results summary:`);
-      console.log(`[DEBUG] Specs total: ${results.specs.length}`);
-      console.log(`[DEBUG] Suites completed: ${results.finished}`);
-      console.log(`[DEBUG] Suites failed: ${results.failed}`);
+      console.log(`[DEBUG] Specs total: ${results.specs?.length || 'unknown'}`);
+      console.log(`[DEBUG] Suites completed: ${results.finished || 'unknown'}`);
+      console.log(`[DEBUG] Suites failed: ${results.failed || 'unknown'}`);
 
       // Try to log any errors from the results
-      if (results.failed > 0) {
+      if (results.failed > 0 && results.specs) {
         console.log('[DEBUG] Test failures detected:');
         results.specs.forEach((spec, index) => {
           if (spec.error) {
@@ -561,11 +627,18 @@ const config = {
     try {
       const logFiles = fs.readdirSync(logsDir).filter((f) => f.endsWith('.log'));
       console.log(`[DEBUG] ${logFiles.length} log files found in ${logsDir}`);
+
+      // Create a summary file with all log contents
+      const summaryPath = path.join(logsDir, 'log-summary.txt');
+      fs.writeFileSync(summaryPath, `Log summary created at ${new Date().toISOString()}\n\n`, { flag: 'w' });
+
       logFiles.forEach((file) => {
         console.log(`[DEBUG] Log file: ${file}`);
-        // Log the last few lines of each file for debugging
+        // Add content to summary file
         try {
           const logContent = fs.readFileSync(path.join(logsDir, file), 'utf-8');
+          fs.writeFileSync(summaryPath, `\n\n===== ${file} =====\n\n${logContent}`, { flag: 'a' });
+
           const lines = logContent.split('\n');
           const lastLines = lines.slice(Math.max(0, lines.length - 20)).join('\n');
           console.log(`[DEBUG] Last 20 lines of ${file}:\n${lastLines}`);
