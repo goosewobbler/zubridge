@@ -1,6 +1,7 @@
 import url from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 
 import type { NormalizedPackageJson } from 'read-package-up';
 
@@ -150,7 +151,16 @@ try {
 // Additional flags for macOS
 const macOSFlags =
   currentPlatform === 'darwin'
-    ? ['--disable-dev-shm-usage', '--disable-renderer-backgrounding', '--disable-software-rasterizer']
+    ? [
+        '--disable-dev-shm-usage',
+        '--disable-renderer-backgrounding',
+        '--disable-software-rasterizer',
+        '--no-verify-signature',
+        '--no-proxy-server',
+        '--ignore-certificate-errors',
+        '--allow-insecure-localhost',
+        '--disable-web-security',
+      ]
     : [];
 
 const baseArgs = ['--no-sandbox', '--disable-gpu', ...macOSFlags];
@@ -190,6 +200,7 @@ const config = {
         appEnv: { ZUBRIDGE_MODE: mode },
         browserVersion: electronVersion,
         restoreMocks: true,
+        electronStdio: 'inherit', // See stdout/stderr from Electron process
       },
     },
   ],
@@ -204,6 +215,18 @@ const config = {
   baseUrl: `file://${__dirname}`,
   onPrepare: function (config, capabilities) {
     console.log('[DEBUG] Starting test preparation with WebdriverIO');
+
+    // Remove quarantine attribute for macOS apps
+    if (currentPlatform === 'darwin' && binaryPath) {
+      try {
+        console.log('[DEBUG] Removing quarantine attribute from macOS app bundle');
+        const appBundle = binaryPath.split('/Contents/MacOS/')[0];
+        execSync(`xattr -r -d com.apple.quarantine "${appBundle}" || true`, { stdio: 'inherit' });
+        console.log('[DEBUG] Quarantine removal complete');
+      } catch (err) {
+        console.error('[ERROR] Failed to remove quarantine attributes:', err);
+      }
+    }
 
     // Log the spec files that will be executed
     console.log('[DEBUG] Spec pattern to be executed:');
