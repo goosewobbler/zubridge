@@ -99,7 +99,7 @@ export function ZubridgeApp({
   // Add console log to track the bridge status
   console.log('[ZubridgeApp] Bridge status:', bridgeStatus);
   console.log('[ZubridgeApp] Counter value:', counter);
-  console.log('[ZubridgeApp] Store:', store);
+  console.log('[ZubridgeApp] Theme mode:', isDarkMode ? 'dark' : 'light');
 
   // Apply theme based on state
   useEffect(() => {
