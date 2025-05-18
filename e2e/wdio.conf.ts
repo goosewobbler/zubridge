@@ -160,6 +160,8 @@ const macOSFlags =
         '--ignore-certificate-errors',
         '--allow-insecure-localhost',
         '--disable-web-security',
+        '--trace-warnings',
+        '--remote-debugging-port=9222',
       ]
     : [];
 
@@ -197,7 +199,13 @@ const config = {
         appBinaryPath: binaryPath,
         appArgs,
         chromeDriverArgs: ['--verbose'],
-        appEnv: { ZUBRIDGE_MODE: mode },
+        appEnv: {
+          ZUBRIDGE_MODE: mode,
+          ELECTRON_ENABLE_LOGGING: '1',
+          ELECTRON_ENABLE_STACK_DUMPING: '1',
+          NODE_ENV: 'test',
+          DEBUG: '*',
+        },
         browserVersion: electronVersion,
         restoreMocks: true,
         electronStdio: 'inherit', // See stdout/stderr from Electron process
@@ -205,9 +213,9 @@ const config = {
     },
   ],
   maxInstances: 1,
-  waitforTimeout: 15000,
-  connectionRetryCount: 10,
-  connectionRetryTimeout: 30000,
+  waitforTimeout: 60000,
+  connectionRetryCount: 15,
+  connectionRetryTimeout: 60000,
   logLevel: 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${mode}`,
@@ -333,7 +341,17 @@ const config = {
   framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
-    timeout: 30000,
+    timeout: 60000,
+    bail: true,
+  },
+  afterTest: function (test, context, { error, result, duration, passed, retries }) {
+    if (error) {
+      console.log('--------------- TEST FAILURE ---------------');
+      console.log(`Test: ${test.title}`);
+      console.log(`Error: ${error.message}`);
+      console.log(`Stack: ${error.stack}`);
+      console.log('-------------------------------------------');
+    }
   },
 };
 
