@@ -66,9 +66,29 @@ function listDirectoryContents(dirPath: string, indent = 0, maxDepth = 2, curren
       const stats = fs.statSync(itemPath);
       const itemType = stats.isDirectory() ? 'Directory' : 'File';
       const size = stats.isFile() ? `(${stats.size} bytes)` : '';
-      console.log(`${' '.repeat(indent + 2)}[DEBUG] ${itemType}: ${item} ${size}`);
+      const permissions = stats.mode.toString(8); // Show permissions for all items
+      console.log(`${' '.repeat(indent + 2)}[DEBUG] ${itemType}: ${item} ${size} [${permissions}]`);
 
-      if (stats.isDirectory()) {
+      // If this is a macOS app bundle, explore the executable in Contents/MacOS regardless of depth
+      if (stats.isDirectory() && item.endsWith('.app') && currentPlatform === 'darwin') {
+        const macOSPath = path.join(itemPath, 'Contents', 'MacOS');
+        if (fs.existsSync(macOSPath)) {
+          console.log(`${' '.repeat(indent + 4)}[DEBUG] Contents of ${macOSPath}:`);
+          try {
+            const exeFiles = fs.readdirSync(macOSPath);
+            for (const exe of exeFiles) {
+              const exePath = path.join(macOSPath, exe);
+              const exeStats = fs.statSync(exePath);
+              const isExecutable = (exeStats.mode & fs.constants.S_IXUSR) !== 0;
+              console.log(
+                `${' '.repeat(indent + 6)}[DEBUG] File: ${exe} (${exeStats.size} bytes) [${exeStats.mode.toString(8)}] Executable: ${isExecutable}`,
+              );
+            }
+          } catch (err) {
+            console.log(`${' '.repeat(indent + 4)}[DEBUG] Error reading MacOS directory: ${err}`);
+          }
+        }
+      } else if (stats.isDirectory()) {
         listDirectoryContents(itemPath, indent + 4, maxDepth, currentDepth + 1);
       }
     } catch (err) {
@@ -84,29 +104,62 @@ function findMacOSBinary() {
   const fullOutputPath = path.join(appPath, outputDir);
   if (!fs.existsSync(fullOutputPath)) return null;
 
-  // Determine architecture-specific directory
-  if (currentArch === 'arm64') {
-    // Check mac-arm64 directory first
-    const arm64Path = path.join(fullOutputPath, 'mac-arm64');
-    if (fs.existsSync(arm64Path)) {
-      const appName = `zubridge-electron-example-${mode}.app`;
-      const appPath = path.join(arm64Path, appName);
-      if (fs.existsSync(appPath)) {
-        const binaryPath = path.join(appPath, 'Contents', 'MacOS', `zubridge-electron-example-${mode}`);
-        if (fs.existsSync(binaryPath)) return binaryPath;
-      }
-    }
+  console.log(`[DEBUG] Searching for macOS binary in ${fullOutputPath}`);
 
-    // Fallback to other possible directories
-    const fallbackDirs = ['mac', 'mac-universal'];
-    for (const dir of fallbackDirs) {
-      const dirPath = path.join(fullOutputPath, dir);
-      if (fs.existsSync(dirPath)) {
-        const appName = `zubridge-electron-example-${mode}.app`;
-        const appPath = path.join(dirPath, appName);
-        if (fs.existsSync(appPath)) {
-          const binaryPath = path.join(appPath, 'Contents', 'MacOS', `zubridge-electron-example-${mode}`);
-          if (fs.existsSync(binaryPath)) return binaryPath;
+  // Determine architecture-specific directory
+  const archDirs = ['mac-arm64', 'mac-universal', 'mac'];
+
+  for (const dir of archDirs) {
+    const archPath = path.join(fullOutputPath, dir);
+    if (fs.existsSync(archPath)) {
+      console.log(`[DEBUG] Checking in ${archPath}`);
+      const appName = `zubridge-electron-example-${mode}.app`;
+      const appPath = path.join(archPath, appName);
+
+      if (fs.existsSync(appPath)) {
+        const macOSDir = path.join(appPath, 'Contents', 'MacOS');
+
+        if (fs.existsSync(macOSDir)) {
+          // Check for binary with app name
+          const binaryPath = path.join(macOSDir, `zubridge-electron-example-${mode}`);
+          if (fs.existsSync(binaryPath)) {
+            console.log(`[DEBUG] Found macOS binary at: ${binaryPath}`);
+
+            // Ensure it's executable
+            try {
+              const stats = fs.statSync(binaryPath);
+              if ((stats.mode & fs.constants.S_IXUSR) === 0) {
+                console.log(`[DEBUG] Binary not executable, fixing permissions`);
+                fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
+              }
+            } catch (err) {
+              console.log(`[DEBUG] Error checking binary permissions: ${err}`);
+            }
+
+            return binaryPath;
+          }
+
+          // If specific name not found, try looking for any executable in MacOS dir
+          try {
+            const files = fs.readdirSync(macOSDir);
+            for (const file of files) {
+              const filePath = path.join(macOSDir, file);
+              const stats = fs.statSync(filePath);
+              if (stats.isFile()) {
+                console.log(`[DEBUG] Found alternative binary: ${filePath}`);
+
+                // Ensure it's executable
+                if ((stats.mode & fs.constants.S_IXUSR) === 0) {
+                  console.log(`[DEBUG] Binary not executable, fixing permissions`);
+                  fs.chmodSync(filePath, stats.mode | fs.constants.S_IXUSR);
+                }
+
+                return filePath;
+              }
+            }
+          } catch (err) {
+            console.log(`[DEBUG] Error searching MacOS directory: ${err}`);
+          }
         }
       }
     }
@@ -115,30 +168,111 @@ function findMacOSBinary() {
   return null;
 }
 
-try {
-  // Create a builder config manually - simpler and more reliable than importing
-  console.log(`[DEBUG] Creating builder config for mode: ${mode}`);
+// Function to directly find the Linux binary
+function findLinuxBinary() {
+  if (currentPlatform !== 'linux') return null;
 
+  const fullOutputPath = path.join(appPath, outputDir);
+  if (!fs.existsSync(fullOutputPath)) return null;
+
+  // Check linux-unpacked directory first
+  const linuxUnpackedPath = path.join(fullOutputPath, 'linux-unpacked');
+  if (fs.existsSync(linuxUnpackedPath)) {
+    const binaryPath = path.join(linuxUnpackedPath, `zubridge-electron-example-${mode}`);
+    if (fs.existsSync(binaryPath)) {
+      console.log(`[DEBUG] Found Linux binary at: ${binaryPath}`);
+      return binaryPath;
+    }
+  }
+
+  // Check for AppImage format
+  const appImagePattern = new RegExp(`zubridge-electron-example-${mode}-.*\\.AppImage$`);
+  const dirItems = fs.readdirSync(fullOutputPath);
+  for (const item of dirItems) {
+    if (appImagePattern.test(item)) {
+      const appImagePath = path.join(fullOutputPath, item);
+      console.log(`[DEBUG] Found Linux AppImage: ${appImagePath}`);
+      return appImagePath;
+    }
+  }
+
+  // Check for exact AppImage name (fallback)
+  const exactAppImagePath = path.join(fullOutputPath, `zubridge-electron-example-${mode}-1.0.0-next.1.AppImage`);
+  if (fs.existsSync(exactAppImagePath)) {
+    console.log(`[DEBUG] Found Linux AppImage at expected path: ${exactAppImagePath}`);
+    return exactAppImagePath;
+  }
+
+  // Search for other possible locations
+  const possibleDirs = [`linux-${currentArch}-unpacked`, 'linux-unpacked'];
+  for (const dir of possibleDirs) {
+    const dirPath = path.join(fullOutputPath, dir);
+    if (fs.existsSync(dirPath)) {
+      const binaryPath = path.join(dirPath, `zubridge-electron-example-${mode}`);
+      if (fs.existsSync(binaryPath)) {
+        console.log(`[DEBUG] Found Linux binary in alternative location: ${binaryPath}`);
+        return binaryPath;
+      }
+    }
+  }
+
+  return null;
+}
+
+// Function to directly find the binary for the current platform
+function findBinaryDirectly() {
+  if (currentPlatform === 'darwin') {
+    return findMacOSBinary();
+  } else if (currentPlatform === 'linux') {
+    return findLinuxBinary();
+  }
+  return null;
+}
+
+// Import the electron-builder configuration
+async function getBuilderConfig() {
+  try {
+    // Set this environment variable so the config file knows we're in the e2e test environment
+    process.env.ZUBRIDGE_MODE = mode;
+
+    // Dynamically import the electron-builder config
+    const configPath = path.join(appPath, 'electron-builder.config.ts');
+    console.log(`[DEBUG] Loading electron-builder config from: ${configPath}`);
+
+    // We can't directly import it with ESM because it might be using CJS or have side effects,
+    // so we'll create a simpler, equivalent config object
+
+    // Derive the configuration based on our known structure
+    const config = {
+      appId: `com.zubridge.example.${mode}`,
+      productName: `zubridge-electron-example-${mode}`,
+      directories: {
+        output: `dist-${mode}`,
+      },
+    };
+
+    console.log(`[DEBUG] Created builder config based on electron-builder.config.ts pattern`);
+    return config;
+  } catch (error) {
+    console.error(`[DEBUG] Error loading electron-builder config: ${error}`);
+    throw error;
+  }
+}
+
+try {
   // List contents of the output directory at a limited depth
   const fullOutputPath = path.join(appPath, outputDir);
   console.log(`[DEBUG] Checking expected output directory: ${fullOutputPath}`);
   listDirectoryContents(fullOutputPath, 0, 2);
 
-  const config = {
-    appId: `com.zubridge.example.${mode}`,
-    productName: `zubridge-electron-example-${mode}`,
-    directories: {
-      output: outputDir,
-    },
-  };
-
-  // Log the config we're using
-  console.log(`[DEBUG] Builder config:`, JSON.stringify(config, null, 2));
+  // Get the electron-builder config
+  const builderConfig = await getBuilderConfig();
+  console.log(`[DEBUG] Builder config:`, JSON.stringify(builderConfig, null, 2));
 
   // Create AppBuildInfo for electron-builder
   const appBuildInfo = {
     appName: `zubridge-electron-example-${mode}`,
-    config: config,
+    config: builderConfig,
     isBuilder: true as const,
     isForge: false as const,
   };
@@ -154,18 +288,13 @@ try {
   } catch (err) {
     console.log(`[DEBUG] getBinaryPath failed, trying direct detection: ${err}`);
 
-    // If getBinaryPath fails, fall back to direct detection for macOS
-    if (currentPlatform === 'darwin') {
-      const macBinary = findMacOSBinary();
-      if (macBinary) {
-        console.log(`[DEBUG] Found macOS binary directly: ${macBinary}`);
-        binaryPath = macBinary;
-      } else {
-        throw new Error(`Failed to find binary using both getBinaryPath and direct detection`);
-      }
+    // Try platform-specific direct detection
+    const directBinaryPath = findBinaryDirectly();
+    if (directBinaryPath) {
+      console.log(`[DEBUG] Found binary directly: ${directBinaryPath}`);
+      binaryPath = directBinaryPath;
     } else {
-      // Re-throw on non-macOS platforms
-      throw err;
+      throw new Error(`Failed to find binary using both getBinaryPath and direct detection`);
     }
   }
 
@@ -197,13 +326,13 @@ try {
   throw new Error(`Could not find the electron binary for mode: ${mode}. Error: ${err}`);
 }
 
-// Fix for macOS: Ensure the binary is always executable before running tests
-if (currentPlatform === 'darwin' && binaryPath && fs.existsSync(binaryPath)) {
+// Fix for macOS and Linux: Ensure the binary is always executable before running tests
+if ((currentPlatform === 'darwin' || currentPlatform === 'linux') && binaryPath && fs.existsSync(binaryPath)) {
   try {
     const stats = fs.statSync(binaryPath);
     const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
     if (!isExecutable) {
-      console.log('[DEBUG] Making macOS binary executable...');
+      console.log(`[DEBUG] Making ${currentPlatform} binary executable...`);
       fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
     }
   } catch (err) {
