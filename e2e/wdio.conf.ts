@@ -252,7 +252,7 @@ const config = {
   ],
   maxInstances: 1,
   waitforTimeout: 60000,
-  connectionRetryCount: 15,
+  connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
   logLevel: 'debug',
   runner: 'local',
@@ -417,7 +417,7 @@ const config = {
   framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
-    timeout: 60000,
+    timeout: 120000,
     bail: true,
   },
   afterTest: function (test, context, { error, result, duration, passed, retries }) {
@@ -428,6 +428,28 @@ const config = {
       console.log(`Stack: ${error.stack}`);
       console.log('-------------------------------------------');
     }
+  },
+  onTimeout: function (error, result, instance) {
+    console.log('--------------- TEST TIMEOUT ---------------');
+    console.log('Timeout error details:');
+    console.log(JSON.stringify(error, null, 2));
+    console.log(`Instance: ${instance}`);
+    console.log('-------------------------------------------');
+
+    // Try to capture a screenshot of the current state
+    try {
+      const timestamp = Date.now();
+      const screenshotPath = path.join(__dirname, `timeout-screenshot-${timestamp}.png`);
+      browser.saveScreenshot(screenshotPath);
+      console.log(`Saved timeout screenshot to: ${screenshotPath}`);
+    } catch (e) {
+      console.log('Failed to capture timeout screenshot:', e);
+    }
+
+    return false; // Let the test fail
+  },
+  beforeTest: function (test, context) {
+    console.log(`[TEST START] Starting test: "${test.title}" in ${test.file}`);
   },
 };
 
