@@ -8,9 +8,6 @@ inputs:
   mode:
     description: "The app mode being tested (e.g. basic, handlers, reducers, redux, custom)"
     required: true
-  os:
-    description: "The operating system the test is running on"
-    required: true
 
 runs:
   using: "composite"
@@ -18,59 +15,86 @@ runs:
     - name: Print Logs
       shell: bash
       run: |
-        # Use standardized log directory name format - matches wdio.conf.ts
+        # Use standardized log directory name format
         STANDARD_MODE="${{ inputs.app }}-${{ inputs.mode }}"
         LOG_DIR="./e2e/wdio-logs-${STANDARD_MODE}"
+        EARLY_DEBUG_DIR="./e2e/early-debug-logs"
 
         echo "Looking for logs in: ${LOG_DIR}"
 
-        # Report OS information
-        echo "==== OS Info ===="
-        echo "Running on ${{ inputs.os }}"
-        uname -a || echo "uname command not available"
+        # First check early debug logs - these should be available even if WDIO never initialized
+        if [ -d "${EARLY_DEBUG_DIR}" ]; then
+          echo "==== Early Debug Logs ===="
+          find "${EARLY_DEBUG_DIR}" -type f -name "*.log" -o -name "*.txt" | while read file; do
+            echo "=== Contents of ${file} ==="
+            cat "${file}"
+            echo ""
+          done
+        else
+          echo "No early debug logs found in ${EARLY_DEBUG_DIR}"
+        fi
 
-        # Create early errors diagnostic file if it doesn't exist
-        if [ -f "./e2e/early-wdio-init.log" ]; then
-          echo "==== Early initialization log ===="
-          cat "./e2e/early-wdio-init.log"
+        # Also check for root early-debug-logs folder
+        if [ -d "./early-debug-logs" ]; then
+          echo "==== Root Early Debug Logs ===="
+          find "./early-debug-logs" -type f -name "*.log" -o -name "*.txt" | while read file; do
+            echo "=== Contents of ${file} ==="
+            cat "${file}"
+            echo ""
+          done
         fi
 
         # Check if log directory exists and contains logs
         if ls ${LOG_DIR}/*.log 1> /dev/null 2>&1; then
-          echo "==== Found logs in ${LOG_DIR} ===="
-          ls -la ${LOG_DIR}
-
-          # Print brief summary of each log file
-          for logfile in ${LOG_DIR}/*.log; do
-            echo "=== First 10 lines of $(basename ${logfile}) ==="
-            head -n 10 ${logfile}
-
-            echo "=== Last 20 lines of $(basename ${logfile}) ==="
-            tail -n 20 ${logfile}
-
-            # Extract and display any error messages
-            echo "=== Errors in $(basename ${logfile}) ==="
-            grep -i "error\|exception\|crash\|fail" ${logfile} || echo "No errors found"
-            echo ""
-          done
+          echo "==== Full logs ===="
+          cat ${LOG_DIR}/*.log
         else
           echo "No log files found in ${LOG_DIR}"
+        fi
 
-          # Check for logs with similar names in case of path mismatches
-          echo "Searching for any wdio log directories:"
-          find ./e2e -name "wdio-logs-*" -type d || echo "No wdio-logs directories found"
+        # Check for early error logs
+        if [ -f ${LOG_DIR}/early-errors.log ]; then
+          echo "==== Early error logs ===="
+          cat ${LOG_DIR}/early-errors.log
+        fi
+
+        # Check for browser setup logs
+        if [ -f ${LOG_DIR}/browser-setup.log ]; then
+          echo "==== Browser setup logs ===="
+          cat ${LOG_DIR}/browser-setup.log
+        fi
+
+        # Check for summary files
+        if [ -f ${LOG_DIR}/log-summary.txt ]; then
+          echo "==== Log summary ===="
+          cat ${LOG_DIR}/log-summary.txt
         fi
 
         # List all directories to check what's there
         echo "==== Directory listing ===="
-        ls -la ./e2e/
-        find ./e2e -name "*.log" || echo "No log files found in e2e directory"
+        find ./e2e -type d | sort
+        find ./e2e -name "*.log" | sort
+
+        # Check if Electron-specific logs exist
+        echo "==== Checking for Electron logs ===="
+        ELECTRON_LOGS_DIR="${HOME}/Library/Logs/zubridge-electron-example-basic"
+        if [ -d "${ELECTRON_LOGS_DIR}" ]; then
+          echo "Found Electron logs in ${ELECTRON_LOGS_DIR}"
+          find "${ELECTRON_LOGS_DIR}" -type f | while read file; do
+            echo "=== Contents of ${file} ==="
+            cat "${file}"
+            echo ""
+          done
+        else
+          echo "No Electron logs found in ${ELECTRON_LOGS_DIR}"
+        fi
 
     - name: Upload logs as artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: e2e-logs-${{ inputs.app }}-${{ inputs.mode }}-${{ inputs.os }}
+        name: e2e-logs-${{ inputs.app }}-${{ inputs.mode }}
         path: |
-          e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/**
-          e2e/early-wdio-init.log
-        if-no-files-found: warn
+          e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/*
+          e2e/early-debug-logs/*
+          early-debug-logs/*
+        if-no-files-found: ignore
