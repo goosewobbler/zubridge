@@ -2,6 +2,8 @@ import url from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
+import os from 'node:os';
 
 import type { NormalizedPackageJson } from 'read-package-up';
 
@@ -136,17 +138,47 @@ if (currentPlatform === 'darwin' && binaryPath && fs.existsSync(binaryPath)) {
   }
 }
 
-// Generate a unique user data directory
-const userDataDir = path.join(__dirname, `.electron-user-data-${mode}-${Date.now()}`);
-try {
-  if (!fs.existsSync(userDataDir)) {
-    fs.mkdirSync(userDataDir, { recursive: true });
+// Function to clean up old user data directories
+function cleanupOldUserDataDirs() {
+  try {
+    const e2eDir = __dirname;
+    const dirEntries = fs.readdirSync(e2eDir);
+    const userDataDirPattern = new RegExp(`^\\.electron-user-data-${mode}-.*$`);
+
+    let cleanedCount = 0;
+    for (const entry of dirEntries) {
+      if (userDataDirPattern.test(entry)) {
+        const fullPath = path.join(e2eDir, entry);
+        try {
+          // Check if the directory is old (more than 1 hour)
+          const stats = fs.statSync(fullPath);
+          const ageInHours = (Date.now() - stats.mtimeMs) / (1000 * 60 * 60);
+
+          if (ageInHours > 1) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            cleanedCount++;
+          }
+        } catch (e) {
+          console.log(`[DEBUG] Error cleaning up directory ${fullPath}: ${e}`);
+        }
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`[DEBUG] Cleaned up ${cleanedCount} old user data directories`);
+    }
+  } catch (e) {
+    console.error(`[ERROR] Failed to clean up old user data directories: ${e}`);
   }
-  console.log(`[DEBUG] Using user data directory: ${userDataDir}`);
-} catch (e) {
-  console.error(`[ERROR] Failed to create user data directory ${userDataDir}:`, e);
-  // Fallback or rethrow if this is critical
 }
+
+// Clean up old user data directories before starting
+cleanupOldUserDataDirs();
+
+// Base directory for user data - we won't create actual directories here,
+// this is just for constructing unique paths later
+const userDataDirBase = path.join(__dirname, `.electron-user-data-${mode}-${Date.now()}`);
+console.log(`[DEBUG] User data directory base: ${userDataDirBase}`);
 
 // Additional flags for macOS
 const macOSFlags =
@@ -310,31 +342,51 @@ const config = {
     }
   },
   onWorkerStart: function (cid, caps, specs, args, execArgv) {
-    // Create a unique user data directory for each worker
+    // Create a highly unique user data directory for each worker
     const workerId = cid.split('-')[1];
-    const workerUserDataDir = `${userDataDir}-worker${workerId}`;
+    const uniqueId = crypto.randomUUID();
+    const tempDir = path.join(os.tmpdir(), `zubridge-electron-test-${mode}-${workerId}-${uniqueId}`);
 
     try {
-      if (!fs.existsSync(workerUserDataDir)) {
-        fs.mkdirSync(workerUserDataDir, { recursive: true });
+      // Create a completely fresh directory for each test
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
       }
-      console.log(`[DEBUG] Created worker-specific user data directory: ${workerUserDataDir}`);
+
+      fs.mkdirSync(tempDir, { recursive: true });
+      console.log(`[DEBUG] Created worker-specific user data directory: ${tempDir}`);
 
       // Add the user data dir to the appArgs for this specific worker
       if (caps['wdio:electronServiceOptions']) {
         // Add user data dir to app args
-        const userDataDirArg = `--user-data-dir=${workerUserDataDir}`;
+        const userDataDirArg = `--user-data-dir=${tempDir}`;
+
+        // Add to both configs to be absolutely sure it's used
+        caps['wdio:electronServiceOptions'].appArgs = caps['wdio:electronServiceOptions'].appArgs.filter(
+          (arg) => !arg.startsWith('--user-data-dir='),
+        );
         caps['wdio:electronServiceOptions'].appArgs.push(userDataDirArg);
 
         // Also add to chromeOptions if it exists
         if (caps['goog:chromeOptions'] && caps['goog:chromeOptions'].args) {
+          caps['goog:chromeOptions'].args = caps['goog:chromeOptions'].args.filter(
+            (arg) => !arg.startsWith('--user-data-dir='),
+          );
           caps['goog:chromeOptions'].args.push(userDataDirArg);
         }
 
         console.log(`[DEBUG] Added worker-specific user data dir to appArgs: ${userDataDirArg}`);
       }
     } catch (e) {
-      console.error(`[ERROR] Failed to create worker user data directory ${workerUserDataDir}:`, e);
+      console.error(`[ERROR] Failed to create worker user data directory ${tempDir}:`, e);
+    }
+  },
+  onComplete: function () {
+    try {
+      // Clean up any user data directories we created
+      cleanupOldUserDataDirs();
+    } catch (e) {
+      console.error(`[ERROR] Error during cleanup: ${e}`);
     }
   },
   tsConfigPath: path.join(__dirname, 'tsconfig.json'),
