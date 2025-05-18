@@ -147,7 +147,15 @@ try {
   // Fallback or rethrow if this is critical
 }
 
-const baseArgs = ['--no-sandbox', '--disable-gpu', `--user-data-dir=${userDataDir}`];
+// Additional flags for macOS
+const macOSFlags =
+  currentPlatform === 'darwin'
+    ? ['--disable-dev-shm-usage', '--disable-renderer-backgrounding', '--disable-software-rasterizer']
+    : [];
+
+const baseArgs = ['--no-sandbox', '--disable-gpu', ...macOSFlags];
+
+// Note: The actual user data dir will be populated with worker ID in capabilities
 const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
 
 // Determine which spec files to run based on the mode
@@ -268,6 +276,34 @@ const config = {
       }
     } else {
       console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
+    }
+  },
+  onWorkerStart: function (cid, caps, specs, args, execArgv) {
+    // Create a unique user data directory for each worker
+    const workerId = cid.split('-')[1];
+    const workerUserDataDir = `${userDataDir}-worker${workerId}`;
+
+    try {
+      if (!fs.existsSync(workerUserDataDir)) {
+        fs.mkdirSync(workerUserDataDir, { recursive: true });
+      }
+      console.log(`[DEBUG] Created worker-specific user data directory: ${workerUserDataDir}`);
+
+      // Add the user data dir to the appArgs for this specific worker
+      if (caps['wdio:electronServiceOptions']) {
+        // Add user data dir to app args
+        const userDataDirArg = `--user-data-dir=${workerUserDataDir}`;
+        caps['wdio:electronServiceOptions'].appArgs.push(userDataDirArg);
+
+        // Also add to chromeOptions if it exists
+        if (caps['goog:chromeOptions'] && caps['goog:chromeOptions'].args) {
+          caps['goog:chromeOptions'].args.push(userDataDirArg);
+        }
+
+        console.log(`[DEBUG] Added worker-specific user data dir to appArgs: ${userDataDirArg}`);
+      }
+    } catch (e) {
+      console.error(`[ERROR] Failed to create worker user data directory ${workerUserDataDir}:`, e);
     }
   },
   tsConfigPath: path.join(__dirname, 'tsconfig.json'),
