@@ -180,30 +180,17 @@ cleanupOldUserDataDirs();
 const userDataDirBase = path.join(__dirname, `.electron-user-data-${mode}-${Date.now()}`);
 console.log(`[DEBUG] User data directory base: ${userDataDirBase}`);
 
-// Additional flags for macOS
-const macOSFlags =
-  currentPlatform === 'darwin'
-    ? [
-        '--disable-dev-shm-usage',
-        '--disable-renderer-backgrounding',
-        '--disable-software-rasterizer',
-        '--no-verify-signature',
-        '--no-proxy-server',
-        '--ignore-certificate-errors',
-        '--allow-insecure-localhost',
-        '--disable-web-security',
-        '--trace-warnings',
-        '--remote-debugging-port=9222',
-        '--disable-features=ElectronDisablePopupBlocking,ElectronDisableSecurityWarnings',
-        '--disable-notifications',
-        '--disable-infobars',
-        '--disable-restore-session-state',
-        '--disable-session-crashed-bubble',
-        // Don't use --user-data-dir at all
-      ]
-    : [];
+// Additional flags for better stability across all platforms
+const stabilityFlags = [
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--no-sandbox',
+  '--disable-extensions',
+  '--disable-popup-blocking',
+  '--remote-debugging-port=9222',
+];
 
-const baseArgs = ['--no-sandbox', '--disable-gpu', ...macOSFlags];
+const baseArgs = stabilityFlags;
 
 // Note: The actual user data dir will be populated with worker ID in capabilities
 const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
@@ -242,7 +229,6 @@ const config = {
           ELECTRON_ENABLE_LOGGING: '1',
           ELECTRON_ENABLE_STACK_DUMPING: '1',
           NODE_ENV: 'test',
-          DEBUG: '*',
         },
         browserVersion: electronVersion,
         restoreMocks: true,
@@ -250,7 +236,7 @@ const config = {
       },
     },
   ],
-  maxInstances: 1,
+  maxInstances: 1, // Run one test at a time for stability
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
@@ -259,168 +245,67 @@ const config = {
   outputDir: `wdio-logs-${mode}`,
   specs: [specPattern],
   baseUrl: `file://${__dirname}`,
-  onPrepare: function (config, capabilities) {
-    console.log('[DEBUG] Starting test preparation with WebdriverIO');
-
-    // Remove quarantine attribute for macOS apps
-    if (currentPlatform === 'darwin' && binaryPath) {
-      try {
-        console.log('[DEBUG] Removing quarantine attribute from macOS app bundle');
-        const appBundle = binaryPath.split('/Contents/MacOS/')[0];
-        execSync(`xattr -r -d com.apple.quarantine "${appBundle}" || true`, { stdio: 'inherit' });
-        console.log('[DEBUG] Quarantine removal complete');
-      } catch (err) {
-        console.error('[ERROR] Failed to remove quarantine attributes:', err);
-      }
-    }
-
-    // Log the spec files that will be executed
-    console.log('[DEBUG] Spec pattern to be executed:');
-    if (Array.isArray(config.specs)) {
-      config.specs.forEach((spec, index) => {
-        console.log(`[DEBUG] Spec[${index}]: ${spec}`);
-
-        // For specific files (not glob patterns), check if they exist
-        if (!spec.includes('*')) {
-          const exists = fs.existsSync(spec) ? 'EXISTS' : 'NOT_FOUND';
-          console.log(`[DEBUG] File ${spec} ${exists}`);
-
-          if (exists === 'EXISTS') {
-            try {
-              const stats = fs.statSync(spec);
-              console.log(`[DEBUG] Spec file permissions: ${stats.mode.toString(8)}`);
-            } catch (err) {
-              console.error(`[ERROR] Failed to check permissions for ${spec}:`, err);
-            }
-          }
-        } else {
-          console.log(`[DEBUG] Using glob pattern: ${spec}`);
-
-          // For glob patterns, try to list matching files for debugging
-          const baseDir = spec.split('*')[0]; // Get directory part before wildcard
-          if (fs.existsSync(baseDir)) {
-            try {
-              console.log(`[DEBUG] Base directory ${baseDir} exists. Contents:`);
-              const files = fs.readdirSync(baseDir);
-              files.forEach((file) => {
-                const fullPath = path.join(baseDir, file);
-                const stats = fs.statSync(fullPath);
-                console.log(`[DEBUG]   - ${file} (${stats.isDirectory() ? 'dir' : 'file'})`);
-              });
-            } catch (err) {
-              console.error(`[ERROR] Failed to list directory ${baseDir}:`, err);
-            }
-          } else {
-            console.error(`[ERROR] Base directory ${baseDir} does not exist`);
-          }
-        }
-      });
-    } else {
-      console.log(`[DEBUG] Spec: ${config.specs}`);
-    }
-
-    // Check app binary exists and has proper permissions
-    if (binaryPath && fs.existsSync(binaryPath)) {
-      try {
-        const stats = fs.statSync(binaryPath);
-        console.log(`[DEBUG] Binary file permissions: ${stats.mode.toString(8)}`);
-
-        // On Linux/Mac, check if binary is executable
-        if (currentPlatform !== 'win32') {
-          const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
-          console.log(`[DEBUG] Binary is executable: ${isExecutable}`);
-
-          if (!isExecutable) {
-            console.log('[DEBUG] Making binary executable...');
-            try {
-              fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
-              console.log('[DEBUG] Binary made executable');
-            } catch (err) {
-              console.error('[ERROR] Failed to make binary executable:', err);
-            }
-          }
-        }
-      } catch (err) {
-        console.error(`[ERROR] Failed to check binary permissions:`, err);
-      }
-    } else {
-      console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
-    }
-  },
-  onWorkerStart: function (cid, caps, specs, args, execArgv) {
-    // We'll avoid using --user-data-dir completely for macOS CI
-    if (currentPlatform !== 'darwin') {
-      // Create a highly unique user data directory for each worker, only for non-macOS
-      const workerId = cid.split('-')[1];
-      const uniqueId = crypto.randomUUID();
-      const tempDir = path.join(os.tmpdir(), `zubridge-electron-test-${mode}-${workerId}-${uniqueId}`);
-
-      try {
-        // Create a completely fresh directory for each test
-        if (fs.existsSync(tempDir)) {
-          fs.rmSync(tempDir, { recursive: true, force: true });
-        }
-
-        fs.mkdirSync(tempDir, { recursive: true });
-        console.log(`[DEBUG] Created worker-specific user data directory: ${tempDir}`);
-
-        // Add the user data dir to the appArgs for this specific worker
-        if (caps['wdio:electronServiceOptions']) {
-          // Add user data dir to app args
-          const userDataDirArg = `--user-data-dir=${tempDir}`;
-
-          // Add to both configs to be absolutely sure it's used
-          caps['wdio:electronServiceOptions'].appArgs = caps['wdio:electronServiceOptions'].appArgs.filter(
-            (arg) => !arg.startsWith('--user-data-dir='),
-          );
-          caps['wdio:electronServiceOptions'].appArgs.push(userDataDirArg);
-
-          // Also add to chromeOptions if it exists
-          if (caps['goog:chromeOptions'] && caps['goog:chromeOptions'].args) {
-            caps['goog:chromeOptions'].args = caps['goog:chromeOptions'].args.filter(
-              (arg) => !arg.startsWith('--user-data-dir='),
-            );
-            caps['goog:chromeOptions'].args.push(userDataDirArg);
-          }
-
-          console.log(`[DEBUG] Added worker-specific user data dir to appArgs: ${userDataDirArg}`);
-        }
-      } catch (e) {
-        console.error(`[ERROR] Failed to create worker user data directory ${tempDir}:`, e);
-      }
-    } else {
-      // For macOS, explicitly remove any user-data-dir args
-      if (caps['wdio:electronServiceOptions']) {
-        caps['wdio:electronServiceOptions'].appArgs = caps['wdio:electronServiceOptions'].appArgs.filter(
-          (arg) => !arg.startsWith('--user-data-dir='),
-        );
-
-        if (caps['goog:chromeOptions'] && caps['goog:chromeOptions'].args) {
-          caps['goog:chromeOptions'].args = caps['goog:chromeOptions'].args.filter(
-            (arg) => !arg.startsWith('--user-data-dir='),
-          );
-        }
-
-        console.log(`[DEBUG] Removed user-data-dir arguments for macOS`);
-      }
-    }
-  },
-  onComplete: function () {
-    try {
-      // Clean up any user data directories we created
-      cleanupOldUserDataDirs();
-    } catch (e) {
-      console.error(`[ERROR] Error during cleanup: ${e}`);
-    }
-  },
-  tsConfigPath: path.join(__dirname, 'tsconfig.json'),
-  framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
-    timeout: 120000,
+    timeout: 60000,
     bail: true,
   },
-  afterTest: function (test, context, { error, result, duration, passed, retries }) {
+
+  // Hook to clean quarantine attribute on macOS
+  onPrepare: function () {
+    console.log('[DEBUG] Starting test preparation with WebdriverIO');
+
+    // On macOS, remove the quarantine attribute which can prevent execution
+    if (process.platform === 'darwin') {
+      try {
+        console.log('[DEBUG] Removing quarantine attribute from macOS app bundle');
+        // xattr -r -d com.apple.quarantine /path/to/app.app
+        execSync(`xattr -r -d com.apple.quarantine ${binaryPath}`, { stdio: 'pipe' });
+        console.log('[DEBUG] Quarantine removal complete');
+      } catch (error) {
+        console.log('[DEBUG] Error removing quarantine attribute:', error);
+      }
+    }
+
+    // Display spec pattern and available tests
+    console.log('[DEBUG] Spec pattern to be executed:');
+    console.log(`[DEBUG] Spec[0]: ${specPattern}`);
+
+    // Display info about the binary
+    try {
+      console.log(`[DEBUG] Using glob pattern: ${specPattern}`);
+      const testDir = path.join(__dirname, 'test');
+      if (fs.existsSync(testDir)) {
+        console.log(`[DEBUG] Base directory ${testDir} exists. Contents:`);
+        const files = fs.readdirSync(testDir);
+        files.forEach((file) => {
+          const stats = fs.statSync(path.join(testDir, file));
+          console.log(`[DEBUG]   - ${file} (${stats.isDirectory() ? 'directory' : 'file'})`);
+        });
+      }
+
+      const binaryStats = fs.statSync(binaryPath);
+      const octalPermissions = '1' + (binaryStats.mode & parseInt('777', 8)).toString(8);
+      console.log(`[DEBUG] Binary file permissions: ${octalPermissions}`);
+      // Check if executable
+      console.log(`[DEBUG] Binary is executable: ${(binaryStats.mode & fs.constants.S_IXUSR) !== 0}`);
+
+      // Ensure the binary is executable
+      if ((binaryStats.mode & fs.constants.S_IXUSR) === 0) {
+        fs.chmodSync(binaryPath, binaryStats.mode | fs.constants.S_IXUSR);
+        console.log('[DEBUG] Making macOS binary executable...');
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error checking app binary:', error);
+    }
+  },
+
+  // Simple logging for test lifecycle
+  beforeTest: function (test) {
+    console.log(`[TEST START] Starting test: "${test.title}" in ${test.file}`);
+  },
+
+  afterTest: function (test, context, { error }) {
     if (error) {
       console.log('--------------- TEST FAILURE ---------------');
       console.log(`Test: ${test.title}`);
@@ -428,28 +313,6 @@ const config = {
       console.log(`Stack: ${error.stack}`);
       console.log('-------------------------------------------');
     }
-  },
-  onTimeout: function (error, result, instance) {
-    console.log('--------------- TEST TIMEOUT ---------------');
-    console.log('Timeout error details:');
-    console.log(JSON.stringify(error, null, 2));
-    console.log(`Instance: ${instance}`);
-    console.log('-------------------------------------------');
-
-    // Try to capture a screenshot of the current state
-    try {
-      const timestamp = Date.now();
-      const screenshotPath = path.join(__dirname, `timeout-screenshot-${timestamp}.png`);
-      browser.saveScreenshot(screenshotPath);
-      console.log(`Saved timeout screenshot to: ${screenshotPath}`);
-    } catch (e) {
-      console.log('Failed to capture timeout screenshot:', e);
-    }
-
-    return false; // Let the test fail
-  },
-  beforeTest: function (test, context) {
-    console.log(`[TEST START] Starting test: "${test.title}" in ${test.file}`);
   },
 };
 
