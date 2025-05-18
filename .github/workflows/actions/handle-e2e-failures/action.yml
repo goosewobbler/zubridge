@@ -1,30 +1,76 @@
-name: 'Handle E2E Failures'
-description: 'Show logs and upload artifacts on test failure'
+name: "Handle E2E Failures"
+description: "Run commands to debug E2E test failures"
 
 inputs:
-  os:
-    description: "Operating system tests ran on"
-    required: true
   app:
-    description: "Type of application tested"
+    description: "The app being tested (e.g. electron, tauri)"
     required: true
   mode:
-    description: "Test mode"
+    description: "The app mode being tested (e.g. basic, handlers, reducers, redux, custom)"
+    required: true
+  os:
+    description: "The operating system the test is running on"
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Show Test Logs
-      if: inputs.app == 'electron'
-      run: cat ./e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/*.log || echo "No log files found"
+    - name: Print Logs
       shell: bash
+      run: |
+        # Use standardized log directory name format - matches wdio.conf.ts
+        STANDARD_MODE="${{ inputs.app }}-${{ inputs.mode }}"
+        LOG_DIR="./e2e/wdio-logs-${STANDARD_MODE}"
 
-    - name: Upload Test Logs
+        echo "Looking for logs in: ${LOG_DIR}"
+
+        # Report OS information
+        echo "==== OS Info ===="
+        echo "Running on ${{ inputs.os }}"
+        uname -a || echo "uname command not available"
+
+        # Create early errors diagnostic file if it doesn't exist
+        if [ -f "./e2e/early-wdio-init.log" ]; then
+          echo "==== Early initialization log ===="
+          cat "./e2e/early-wdio-init.log"
+        fi
+
+        # Check if log directory exists and contains logs
+        if ls ${LOG_DIR}/*.log 1> /dev/null 2>&1; then
+          echo "==== Found logs in ${LOG_DIR} ===="
+          ls -la ${LOG_DIR}
+
+          # Print brief summary of each log file
+          for logfile in ${LOG_DIR}/*.log; do
+            echo "=== First 10 lines of $(basename ${logfile}) ==="
+            head -n 10 ${logfile}
+
+            echo "=== Last 20 lines of $(basename ${logfile}) ==="
+            tail -n 20 ${logfile}
+
+            # Extract and display any error messages
+            echo "=== Errors in $(basename ${logfile}) ==="
+            grep -i "error\|exception\|crash\|fail" ${logfile} || echo "No errors found"
+            echo ""
+          done
+        else
+          echo "No log files found in ${LOG_DIR}"
+
+          # Check for logs with similar names in case of path mismatches
+          echo "Searching for any wdio log directories:"
+          find ./e2e -name "wdio-logs-*" -type d || echo "No wdio-logs directories found"
+        fi
+
+        # List all directories to check what's there
+        echo "==== Directory listing ===="
+        ls -la ./e2e/
+        find ./e2e -name "*.log" || echo "No log files found in e2e directory"
+
+    - name: Upload logs as artifacts
       uses: actions/upload-artifact@v4
-      if: inputs.app == 'electron'
       with:
-        name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
-        path: e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/*.log
-        retention-days: 30
+        name: e2e-logs-${{ inputs.app }}-${{ inputs.mode }}-${{ inputs.os }}
+        path: |
+          e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/**
+          e2e/early-wdio-init.log
         if-no-files-found: warn
