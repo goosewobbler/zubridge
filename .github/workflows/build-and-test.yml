@@ -95,10 +95,45 @@ jobs:
         id: build-app
         shell: bash
         run: |
+          APP_NAME_FULL="zubridge-${{ inputs.app }}-example"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
           else
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+            # Run Vite build first
+            echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec vite build
+
+            # Determine config file and property name
+            CONFIG_FILE_PATH="apps/$APP_NAME_FULL/src-tauri/tauri.conf.json"
+            DIST_PROPERTY_NAME="distDir" # Default for v1
+            if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
+              DIST_PROPERTY_NAME="frontendDist"
+            fi
+
+            # Calculate absolute path for dist dir
+            # GITHUB_WORKSPACE is the root of the checkout
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_NAME_FULL/dist"
+
+            echo "--- Modifying $CONFIG_FILE_PATH to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            # Use Node to modify the JSON config file to set the dist property to an absolute path
+            # This is more robust than sed/awk for JSON manipulation
+            node -e "\
+              const fs = require('fs');\
+              const path = require('path');\
+              const configFile = path.resolve('$CONFIG_FILE_PATH');\
+              const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+              config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+              fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+              console.log('Successfully updated $DIST_PROPERTY_NAME in', configFile);"
+
+            # For debugging: print the modified config
+            echo "--- Contents of $CONFIG_FILE_PATH after modification ---"
+            cat $CONFIG_FILE_PATH
+            echo "--- End of modified config ---"
+
+            # Now run Tauri build
+            echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec pnpm tauri build
           fi
         continue-on-error: true
 
@@ -171,10 +206,41 @@ jobs:
         id: build-app
         shell: bash
         run: |
+          APP_NAME_FULL="zubridge-${{ inputs.app }}-example"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
           else
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+            # Run Vite build first
+            echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec vite build
+
+            # Determine config file and property name
+            CONFIG_FILE_PATH="apps/$APP_NAME_FULL/src-tauri/tauri.conf.json"
+            DIST_PROPERTY_NAME="distDir" # Default for v1
+            if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
+              DIST_PROPERTY_NAME="frontendDist"
+            fi
+
+            # Calculate absolute path for dist dir
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_NAME_FULL/dist"
+
+            echo "--- Modifying $CONFIG_FILE_PATH to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            node -e "\
+              const fs = require('fs');\
+              const path = require('path');\
+              const configFile = path.resolve('$CONFIG_FILE_PATH');\
+              const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+              config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+              fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+              console.log('Successfully updated $DIST_PROPERTY_NAME in', configFile);"
+
+            echo "--- Contents of $CONFIG_FILE_PATH after modification ---"
+            cat $CONFIG_FILE_PATH
+            echo "--- End of modified config ---"
+
+            # Now run Tauri build
+            echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec pnpm tauri build
           fi
         continue-on-error: true
 
@@ -247,10 +313,41 @@ jobs:
         id: build-app
         shell: bash
         run: |
+          APP_NAME_FULL="zubridge-${{ inputs.app }}-example"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
           else
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }}
+            # Run Vite build first
+            echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec vite build
+
+            # Determine config file and property name
+            CONFIG_FILE_PATH="apps/$APP_NAME_FULL/src-tauri/tauri.conf.json"
+            DIST_PROPERTY_NAME="distDir" # Default for v1
+            if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
+              DIST_PROPERTY_NAME="frontendDist"
+            fi
+
+            # Calculate absolute path for dist dir
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_NAME_FULL/dist"
+
+            echo "--- Modifying $CONFIG_FILE_PATH to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            node -e "\
+              const fs = require('fs');\
+              const path = require('path');\
+              const configFile = path.resolve('$CONFIG_FILE_PATH');\
+              const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+              config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+              fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+              console.log('Successfully updated $DIST_PROPERTY_NAME in', configFile);"
+
+            echo "--- Contents of $CONFIG_FILE_PATH after modification ---"
+            cat $CONFIG_FILE_PATH
+            echo "--- End of modified config ---"
+
+            # Now run Tauri build
+            echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec pnpm tauri build
           fi
         continue-on-error: true
 
