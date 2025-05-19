@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app } from 'electron';
+import fs from 'node:fs';
 
 /**
  * Get the equivalent of __dirname for the caller's module
@@ -22,9 +23,18 @@ export const getDirname = (): string => {
 export const getPreloadPath = (): string => {
   // In production, the app is packaged and the paths are different
   if (app.isPackaged) {
-    // In production, the preload script is in the app.asar archive
-    const preloadPath = path.join(process.resourcesPath, 'app.asar', 'preload', 'index.cjs');
-    console.log(`[Path Utils] Production preload path: ${preloadPath}`);
+    // Determine if the app is packed as an ASAR archive or as a directory
+    const asarPath = path.join(process.resourcesPath, 'app.asar');
+    let preloadPath;
+    if (fs.existsSync(asarPath)) {
+      // Packaged as ASAR
+      preloadPath = path.join(asarPath, 'preload', 'index.cjs');
+      console.log(`[Path Utils] Production preload path (ASAR): ${preloadPath}`);
+    } else {
+      // Packaged as a directory (asar: false)
+      preloadPath = path.join(process.resourcesPath, 'app', 'preload', 'index.cjs');
+      console.log(`[Path Utils] Production preload path (unpacked): ${preloadPath}`);
+    }
     return preloadPath;
   }
 

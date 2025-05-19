@@ -95,24 +95,68 @@ app
     // Initialize the store
     debug.log('example-app:init', 'Initializing store');
     await initStore();
-    debug.log('example-app:init', 'Store initialized');
+    // debug.log('example-app:init', 'Store initialized'); // DEBUG logs not showing on CI
+    console.log('MAIN_INDEX_LOG: Store initialized');
 
-    // Import middleware package
-    const { initZubridgeMiddleware } = await import('@zubridge/middleware');
+    let bridge: any; // Declare bridge outside try/catch
+    let subscribe: any; // Declare subscribe outside try/catch
 
-    // Initialize middleware for logging
-    const middleware = initZubridgeMiddleware({
-      logging: {
-        enabled: true,
-        websocketPort: 9000,
-        consoleOutput: true,
-      },
-    });
+    try {
+      console.log('MAIN_INDEX_LOG: Attempting to createRequire...');
+      const { createRequire } = await import('node:module');
+      const customRequire = createRequire(import.meta.url);
+      console.log('MAIN_INDEX_LOG: customRequire created. Attempting to require "@zubridge/middleware"...');
 
-    // Create bridge with middleware
-    const bridge = await createBridge(store, middleware);
+      const middlewareModule = customRequire('@zubridge/middleware');
+      console.log(
+        'MAIN_INDEX_LOG: "@zubridge/middleware" required successfully. Module keys:',
+        Object.keys(middlewareModule),
+      );
 
-    debug.log('example-app:init', 'Bridge created successfully, setting up subscribers');
+      const { initZubridgeMiddleware } = middlewareModule;
+
+      if (typeof initZubridgeMiddleware !== 'function') {
+        console.error('MAIN_INDEX_LOG: CRITICAL ERROR - initZubridgeMiddleware is NOT a function after require!');
+        throw new Error('initZubridgeMiddleware is not a function'); // Ensure it throws to be caught
+      }
+      console.log('MAIN_INDEX_LOG: initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
+
+      const middleware = initZubridgeMiddleware({
+        logging: {
+          enabled: true,
+          websocketPort: 9000,
+          consoleOutput: true,
+        },
+      });
+      console.log('MAIN_INDEX_LOG: Middleware instance initialized successfully.');
+
+      // Assign to the outer scope bridge
+      bridge = await createBridge(store, middleware);
+      console.log('MAIN_INDEX_LOG: Bridge created successfully.');
+
+      // Assign to the outer scope subscribe
+      if (bridge && typeof bridge.subscribe === 'function') {
+        subscribe = bridge.subscribe;
+        console.log('MAIN_INDEX_LOG: Subscribe function retrieved from bridge.');
+      } else {
+        console.error('MAIN_INDEX_LOG: CRITICAL ERROR - Bridge or bridge.subscribe is not available!');
+        throw new Error('Bridge or bridge.subscribe not available');
+      }
+    } catch (error) {
+      console.error(
+        'MAIN_INDEX_LOG: CRITICAL ERROR during middleware import/initialization or bridge creation:',
+        error,
+      );
+      // For CI, re-throw to ensure the process exits with an error if this setup fails
+      // This makes the CI job fail clearly.
+      throw error;
+    }
+
+    // These debug logs might not show, but console logs confirmed the bridge part was not reached.
+    // debug.log('example-app:init', 'Initializing middleware');
+    // console.log('example-app:init', 'Initializing middleware'); // This was the old log spot
+
+    // debug.log('example-app:init', 'Bridge created successfully, setting up subscribers');
 
     // Create a more general array that accepts different window/view types
     const windowsAndViews: WrapperOrWebContents[] = [];
@@ -141,16 +185,16 @@ app
     }
 
     debug.log('example-app:init', `Subscribing ${windowsAndViews.length} windows/views to the bridge`);
-    bridge.subscribe(windowsAndViews);
+    subscribe(windowsAndViews);
 
     // Create the system tray
     debug.log('example-app:init', 'Creating system tray');
     const trayInstance = tray(store, initialMainWindow);
     debug.log('example-app:init', 'System tray created');
 
-    // Get the subscribe function from the bridge
-    const { subscribe } = bridge;
-    debug.log('example-app:init', 'Retrieved subscribe function from bridge');
+    // Get the subscribe function from the bridge (already assigned if successful)
+    // const { subscribe } = bridge; // No longer needed here
+    // debug.log('example-app:init', 'Retrieved subscribe function from bridge');
 
     // On macOS activate, ensure all primary windows are handled
     app.on('activate', () => {
@@ -301,7 +345,13 @@ app
         debug.log('example-app:init', 'Cleaning up resources on quit');
         clearInterval(windowTrackingInterval);
         trayInstance.destroy();
-        bridge.unsubscribe();
+        if (bridge && typeof bridge.unsubscribe === 'function') {
+          // Check if bridge and unsubscribe exist
+          bridge.unsubscribe();
+          console.log('MAIN_INDEX_LOG: Bridge unsubscribed during app quit.');
+        } else {
+          console.warn('MAIN_INDEX_LOG: Bridge or unsubscribe function not available during app quit.');
+        }
 
         // Clean up all windows
         debug.log('example-app:init', 'Cleaning up windows');
@@ -354,11 +404,12 @@ app
     });
 
     // Set up handler for window-created event
-    ipcMain.handle(AppIpcChannel.WINDOW_CREATED, (_event) => {
-      debug.log('example-app:init', 'Window created event received');
-      // Immediately track the new window
-      trackNewWindows();
-      return true;
+    ipcMain.handle(AppIpcChannel.WINDOW_CREATED, (event) => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      const windowId = window ? window.id : event.sender.id;
+      debug.log('example-app:init', `WINDOW_CREATED event handled for window ID: ${windowId}`);
+      // Acknowledge the event
+      return { success: true, windowId };
     });
 
     // Set up handler to check if the window is the main window

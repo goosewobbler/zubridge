@@ -232,7 +232,6 @@ const config = {
         },
         browserVersion: electronVersion,
         restoreMocks: true,
-        electronStdio: 'inherit', // See stdout/stderr from Electron process
       },
     },
   ],
@@ -240,7 +239,7 @@ const config = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: 'debug',
+  logLevel: 'info',
   runner: 'local',
   outputDir: `wdio-logs-${mode}`,
   specs: [specPattern],

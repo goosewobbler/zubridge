@@ -11,18 +11,44 @@ export const windowHandles: string[] = [];
  */
 export const refreshWindowHandles = async () => {
   try {
-    const handles = await browser.getWindowHandles();
+    // For macOS, add extra retries
+    const maxRetries = process.platform === 'darwin' ? 3 : 1;
+    let handles: string[] = [];
+
+    // Try multiple times on macOS
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        handles = await browser.getWindowHandles();
+        if (handles.length > 0) break;
+
+        // If we didn't get any handles, wait a bit and try again
+        if (attempt < maxRetries - 1) {
+          console.log(`No window handles found on attempt ${attempt + 1}, retrying...`);
+          await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
+        }
+      } catch (error: any) {
+        console.error(`Error getting window handles on attempt ${attempt + 1}: ${error}`);
+        if (attempt < maxRetries - 1) {
+          await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
+        }
+      }
+    }
+
     windowHandles.length = 0;
 
     for (const handle of handles) {
       try {
         await browser.switchToWindow(handle);
-        await browser.pause(50);
+        // Use platform-specific pause after switching
+        await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
         windowHandles.push(handle);
-      } catch (error) {
+      } catch (error: any) {
         // Skip window handle - might be closing
+        console.log(`Skipping handle: ${error.message}`);
       }
     }
+
+    console.log(`refreshWindowHandles found ${windowHandles.length} windows`);
     return handles.length;
   } catch (error) {
     console.error(`Error refreshing window handles: ${error}`);
@@ -44,9 +70,11 @@ export const waitUntilWindowsAvailable = async (desiredWindows: number) => {
           const windowCount = await refreshWindowHandles();
           if (windowCount !== lastCount) {
             lastCount = windowCount;
+            console.log(`Current window count: ${windowCount}, waiting for ${desiredWindows}`);
           }
           return windowCount === desiredWindows;
         } catch (error) {
+          console.error(`Error in waitUntilWindowsAvailable: ${error}`);
           return desiredWindows === 0;
         }
       },
@@ -68,34 +96,79 @@ export const switchToWindow = async (index: number) => {
     await refreshWindowHandles();
     if (index >= 0 && index < windowHandles.length) {
       const handle = windowHandles[index];
-      try {
-        await browser.switchToWindow(handle);
-        await browser.pause(100);
-        return true;
-      } catch (error) {
-        return false;
+
+      // For macOS, try multiple times
+      const maxAttempts = process.platform === 'darwin' ? 3 : 1;
+      let success = false;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          console.log(`Switching to window ${index} (attempt ${attempt + 1})`);
+          await browser.switchToWindow(handle);
+          await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
+
+          // Verify switch worked by checking for a known element
+          const pageTitle = await browser.getTitle();
+          console.log(`Window ${index} title: ${pageTitle}`);
+          success = true;
+          break;
+        } catch (error) {
+          console.error(`Error switching to window ${index} on attempt ${attempt + 1}: ${error}`);
+          if (attempt < maxAttempts - 1) {
+            await browser.pause(TIMING.WINDOW_SWITCH_PAUSE * 2);
+          }
+        }
       }
+
+      return success;
     } else {
+      console.warn(`Cannot switch to window ${index}, only have ${windowHandles.length} handles`);
       return false;
     }
   } catch (error) {
+    console.error(`Top-level error in switchToWindow(${index}): ${error}`);
     return false;
   }
 };
 
 export const getButtonInCurrentWindow = async (buttonType: 'increment' | 'decrement' | 'create' | 'close') => {
-  switch (buttonType) {
-    case 'increment':
-      return await browser.$('button=+');
-    case 'decrement':
-      return await browser.$('button=-');
-    case 'create':
-      return await browser.$('button=Create Window');
-    case 'close':
-      return await browser.$('button=Close Window');
-    default:
-      throw new Error(`Unknown button type: ${buttonType}`);
+  // For macOS, add retries
+  const maxAttempts = process.platform === 'darwin' ? 3 : 1;
+  let element;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      switch (buttonType) {
+        case 'increment':
+          element = await browser.$('button=+');
+          break;
+        case 'decrement':
+          element = await browser.$('button=-');
+          break;
+        case 'create':
+          element = await browser.$('button=Create Window');
+          break;
+        case 'close':
+          element = await browser.$('button=Close Window');
+          break;
+        default:
+          throw new Error(`Unknown button type: ${buttonType}`);
+      }
+
+      if (element) {
+        // Verify element is present
+        await element.waitForExist({ timeout: TIMING.WINDOW_WAIT_INTERVAL * 2 });
+        return element;
+      }
+    } catch (error) {
+      console.error(`Error finding ${buttonType} button on attempt ${attempt + 1}: ${error}`);
+      if (attempt < maxAttempts - 1) {
+        await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
+      }
+    }
   }
+
+  throw new Error(`Failed to find ${buttonType} button after ${maxAttempts} attempts`);
 };
 
 /**

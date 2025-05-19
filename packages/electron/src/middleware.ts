@@ -1,12 +1,20 @@
-import type { Action, AnyState } from '@zubridge/types';
+import type { Action as TypesAction, AnyState } from '@zubridge/types';
 import { debug } from './utils/debug.js';
 
+// Local definition for the Action type expected by the NAPI middleware
+// This is used if direct import `from '@zubridge/middleware'` fails for type resolution.
+interface NapiAction {
+  type: string;
+  payload?: string;
+}
+
 /**
- * Interface that defines a Zubridge Middleware instance from @zubridge/middleware
+ * Interface that defines a Zubridge Middleware instance from @zubridge/middleware.
+ * This should match the actual signature of the object returned by initZubridgeMiddleware.
  */
 export interface ZubridgeMiddleware {
-  processAction: (action: Action) => Promise<void> | void;
-  setState: (state: AnyState) => Promise<void> | void;
+  processAction: (action: NapiAction) => Promise<void> | void;
+  setState: (stateJson: string) => Promise<void> | void;
   destroy?: () => Promise<void> | void;
 }
 
@@ -40,21 +48,56 @@ export interface ZubridgeMiddleware {
 export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
   return {
     // Process actions before they reach the store
-    beforeProcessAction: async (action: Action) => {
+    beforeProcessAction: async (action: TypesAction) => {
       try {
         debug('core', 'Applying middleware.processAction to action:', action);
-        await middleware.processAction(action);
+
+        // Prepare action for the NAPI middleware which expects payload to be string | undefined
+        let payloadForNapi: string | undefined = undefined;
+        if (action.payload !== undefined && action.payload !== null) {
+          if (typeof action.payload === 'string') {
+            payloadForNapi = action.payload;
+          } else {
+            try {
+              payloadForNapi = JSON.stringify(action.payload);
+            } catch (stringifyError) {
+              console.error(
+                '[zubridge-electron] Error stringifying action payload for NAPI middleware:',
+                stringifyError,
+              );
+              // Optionally, send a specific error object as payload or nothing
+              payloadForNapi = JSON.stringify({ error: 'Payload stringification failed' });
+            }
+          }
+        }
+
+        // Create an action conforming to the NAPI middleware's expected Action type
+        const napiCompliantAction: NapiAction = {
+          type: action.type,
+          payload: payloadForNapi,
+        };
+
+        // The middleware.processAction expects an Action where payload is string | undefined
+        await middleware.processAction(napiCompliantAction);
       } catch (error) {
         debug('core', 'Error in zubridge middleware processAction:', error);
       }
-      return action;
+      return action; // Return the original action for further processing by the bridge
     },
 
     // Update middleware state after state changes
     afterStateChange: async (state: AnyState) => {
       try {
         debug('core', 'Applying middleware.setState with updated state');
-        await middleware.setState(state);
+        let stateJson: string;
+        try {
+          stateJson = JSON.stringify(state);
+        } catch (stringifyError) {
+          console.error('[zubridge-electron] Error stringifying state for NAPI middleware:', stringifyError);
+          // Send an error object as state or handle differently
+          stateJson = JSON.stringify({ error: 'State stringification failed' });
+        }
+        await middleware.setState(stateJson);
       } catch (error) {
         debug('core', 'Error in zubridge middleware setState:', error);
       }
