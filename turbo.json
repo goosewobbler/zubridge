@@ -31,7 +31,7 @@
         "zubridge-electron-example#build:redux",
         "zubridge-electron-example#build:custom"
       ],
-      "cache": true
+      "cache": false
     },
     "clean": {
       "cache": false
@@ -91,6 +91,9 @@
     },
     "test:e2e:tauri-v1-basic": {
       "dependsOn": ["build:packages", "zubridge-tauri-v1-example#build"],
+      "cache": false
+    },
+    "@zubridge/middleware#build": {
       "cache": false
     },
     "@zubridge/types#build": {

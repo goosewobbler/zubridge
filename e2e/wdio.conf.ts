@@ -239,7 +239,7 @@ const config = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: 'info',
+  logLevel: 'warn',
   runner: 'local',
   outputDir: `wdio-logs-${mode}`,
   specs: [specPattern],
