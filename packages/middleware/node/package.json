@@ -31,8 +31,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "napi build --platform --release && node ./scripts/add-loader-logging.js",
-    "build:debug": "napi build --platform && node ./scripts/add-loader-logging.js",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version"
   },
