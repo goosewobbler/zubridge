@@ -78,29 +78,21 @@ if ! gh release download "$RELEASE_TAG_INPUT" -p "$DOWNLOADED_APP_ARTIFACT_NAME"
   # Let's assume it IS zipped and the name of the zip file matches ARTIFACT_NAME_INPUT
   # If the artifact uploaded was a directory, `gh run download` creates a zip file.
   # We need to find that zip. Often it's simply named after the artifact.
-  # For safety, let's assume the downloaded zip from 'gh run download' is named ARTIFACT_NAME_INPUT.zip
-  # If 'gh run download' downloads a single file, it uses that name. If it's a directory artifact, it zips it.
-  # The name of the artifact in `upload-artifact` is $ARTIFACT_NAME_INPUT.
-  # So, `gh run download -n "$ARTIFACT_NAME_INPUT"` should produce a file named "$ARTIFACT_NAME_INPUT.zip"
-  # if the uploaded artifact was a directory.
-  # Let's check for it.
-  if [ ! -f "$ARTIFACT_NAME_INPUT.zip" ]; then
-      echo "::warning:: Workflow artifact $ARTIFACT_NAME_INPUT.zip not found. Trying to find any .zip file."
-      # Try to find any zip file if the exact name isn't there
-      FOUND_ZIP=$(find . -maxdepth 1 -name '*.zip' -print -quit)
-      if [ -f "$FOUND_ZIP" ]; then
-          echo "Found zip file: $FOUND_ZIP. Renaming to $DOWNLOADED_APP_ARTIFACT_NAME for unzipping."
-          mv "$FOUND_ZIP" "$DOWNLOADED_APP_ARTIFACT_NAME"
-      else
-          echo "::error:: No .zip artifact found after workflow download."
-          ls -la .
-          exit 1
-      fi
-  else
-      # If ARTIFACT_NAME_INPUT.zip exists, make sure DOWNLOADED_APP_ARTIFACT_NAME points to it
-      DOWNLOADED_APP_ARTIFACT_NAME="$ARTIFACT_NAME_INPUT.zip"
-  fi
+  # The `gh run download -n "$ARTIFACT_NAME_INPUT"` command downloads the artifact, which is a zip file,
+  # and names it "$ARTIFACT_NAME_INPUT" (without an additional .zip extension).
 
+  # DOWNLOADED_APP_ARTIFACT_NAME is still "${ARTIFACT_NAME_INPUT}.zip" for the unzip step later
+  # The actual downloaded file from `gh run download` will be named "$ARTIFACT_NAME_INPUT"
+  ACTUAL_DOWNLOADED_FILE_FROM_RUN="$ARTIFACT_NAME_INPUT"
+
+  if [ ! -f "$ACTUAL_DOWNLOADED_FILE_FROM_RUN" ]; then
+      echo "::error:: Workflow artifact $ACTUAL_DOWNLOADED_FILE_FROM_RUN not found after gh run download."
+      ls -la .
+      exit 1
+  else
+      echo "Successfully found workflow artifact $ACTUAL_DOWNLOADED_FILE_FROM_RUN. Renaming to $DOWNLOADED_APP_ARTIFACT_NAME for unzipping."
+      mv "$ACTUAL_DOWNLOADED_FILE_FROM_RUN" "$DOWNLOADED_APP_ARTIFACT_NAME"
+  fi
 else
   echo "Successfully downloaded $DOWNLOADED_APP_ARTIFACT_NAME from release."
 fi
