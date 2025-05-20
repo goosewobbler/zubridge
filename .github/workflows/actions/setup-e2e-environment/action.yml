@@ -15,6 +15,11 @@ inputs:
     description: "Test mode"
     required: true
 
+outputs:
+  app_path:
+    description: "Path to the prepared application executable/bundle"
+    value: ${{ steps.prepare-executable.outputs.app_path }}
+
 runs:
   using: "composite"
   steps:
@@ -29,89 +34,123 @@ runs:
       run: |
         if [[ "${{ runner.os }}" == "Linux" ]]; then
           echo "platform=linux" >> $GITHUB_OUTPUT
+          echo "app_ext=.AppImage" >> $GITHUB_OUTPUT
+          # Assuming AppImage is named like zubridge-tauri-example_0.1.0_amd64.AppImage or similar
+          # This might need adjustment based on actual bundle output name
+          echo "executable_name=zubridge-${{ inputs.app }}-example*.AppImage" >> $GITHUB_OUTPUT
         elif [[ "${{ runner.os }}" == "macOS" ]]; then
           echo "platform=macos" >> $GITHUB_OUTPUT
+          echo "app_ext=.dmg" >> $GITHUB_OUTPUT # Or .app if we extract from dmg
+          echo "executable_name=zubridge-${{ inputs.app }}-example.app" >> $GITHUB_OUTPUT # Path inside .app is Contents/MacOS/AppName
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
           echo "platform=windows" >> $GITHUB_OUTPUT
+          echo "app_ext=.exe" >> $GITHUB_OUTPUT # Could be .msi too
+          echo "executable_name=zubridge-${{ inputs.app }}-example*.exe" >> $GITHUB_OUTPUT
         fi
       shell: bash
+
+    - name: Define Artifact Download Path
+      id: artifact-paths
+      shell: bash
+      run: |
+        if [ "${{ inputs.app }}" == "electron" ]; then
+          echo "download_path=./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT
+          echo "final_app_path=./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT # For electron, it's more complex
+        else # Tauri apps
+          echo "download_path=./apps/${{ inputs.app }}-example/build_output" >> $GITHUB_OUTPUT
+          echo "final_app_path=./apps/${{ inputs.app }}-example/build_output" >> $GITHUB_OUTPUT # Will be refined based on OS below
+        fi
 
     - name: Download Build Artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.artifact_name }}
-        path: ${{ inputs.app == 'electron' && format('./apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('./apps/{0}-example', inputs.app) }}
+        path: ${{ steps.artifact-paths.outputs.download_path }}
 
-    - name: Show Download Information
+    - name: Show Download Information and Prepare Executable
       run: |
-        echo "Artifact ${{ inputs.artifact_name }} downloaded to target location"
-        if [ "${{ inputs.app }}" == "electron" ]; then
-          TARGET_DIR="./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}"
-          echo "Electron artifacts in $TARGET_DIR:"
-          ls -la "$TARGET_DIR"
+        DOWNLOAD_PATH="${{ steps.artifact-paths.outputs.download_path }}"
+        echo "Artifact ${{ inputs.artifact_name }} downloaded to $DOWNLOAD_PATH"
+        ls -la "$DOWNLOAD_PATH"
 
-          # Check platform-specific directories
+        if [ "${{ inputs.app }}" == "electron" ]; then
+          TARGET_DIR="$DOWNLOAD_PATH"
+          echo "Electron artifacts in $TARGET_DIR:"
+          # Existing Electron logic (can be kept or refined)
           if [[ "${{ runner.os }}" == "Linux" ]]; then
-            echo "Linux build directory:"
-            if [ -d "$TARGET_DIR/linux-unpacked" ]; then
-              ls -la "$TARGET_DIR/linux-unpacked"
-              if [ -f "$TARGET_DIR/linux-unpacked/zubridge-electron-example-${{ inputs.mode }}" ]; then
-                echo "Executable exists and permissions:"
-                ls -la "$TARGET_DIR/linux-unpacked/zubridge-electron-example-${{ inputs.mode }}"
-              else
-                echo "ERROR: Executable not found!"
-              fi
-            else
-              echo "WARNING: linux-unpacked directory not found!"
-            fi
+            if [ -d "$TARGET_DIR/linux-unpacked" ]; then ls -la "$TARGET_DIR/linux-unpacked"; fi
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            echo "macOS build directory:"
-            if [ -d "$TARGET_DIR/mac" ]; then
-              ls -la "$TARGET_DIR/mac"
-              if [ -d "$TARGET_DIR/mac/zubridge-electron-example-${{ inputs.mode }}.app" ]; then
-                echo "App bundle exists:"
-                ls -la "$TARGET_DIR/mac/zubridge-electron-example-${{ inputs.mode }}.app/Contents/MacOS/"
-              else
-                echo "ERROR: App bundle not found!"
-              fi
-            else
-              echo "WARNING: mac directory not found!"
-            fi
+            if [ -d "$TARGET_DIR/mac" ]; then ls -la "$TARGET_DIR/mac"; fi
           elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            echo "Windows build directory:"
-            if [ -d "$TARGET_DIR/win-unpacked" ]; then
-              ls -la "$TARGET_DIR/win-unpacked"
-              if [ -f "$TARGET_DIR/win-unpacked/zubridge-electron-example-${{ inputs.mode }}.exe" ]; then
-                echo "Executable exists:"
-                ls -la "$TARGET_DIR/win-unpacked/zubridge-electron-example-${{ inputs.mode }}.exe"
-              else
-                echo "ERROR: Executable not found!"
-              fi
-            else
-              echo "WARNING: win-unpacked directory not found!"
-            fi
+            if [ -d "$TARGET_DIR/win-unpacked" ]; then ls -la "$TARGET_DIR/win-unpacked"; fi
           fi
         elif [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
-          TARGET_DIR="./apps/${{ inputs.app }}-example"
-          echo "Tauri artifacts in $TARGET_DIR:"
-          ls -la "$TARGET_DIR"
+          echo "Tauri artifacts in $DOWNLOAD_PATH:"
+          ls -la "$DOWNLOAD_PATH"
 
-          # Check expected sub-directories
-          if [ -d "$TARGET_DIR/src-tauri/target/release" ]; then
-            echo "release/ directory found"
-            ls -la "$TARGET_DIR/src-tauri/target/release"
+          ACTUAL_EXECUTABLE_PATH=""
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            # Find the AppImage, assuming it's the primary target for E2E
+            # Adjust glob pattern if AppImage name is different
+            APPIMAGE_FILES=($DOWNLOAD_PATH/*.AppImage)
+            if [ -f "${APPIMAGE_FILES[0]}" ]; then
+              echo "Found AppImage: ${APPIMAGE_FILES[0]}"
+              chmod +x "${APPIMAGE_FILES[0]}"
+              ACTUAL_EXECUTABLE_PATH="${APPIMAGE_FILES[0]}"
+              echo "::set-output name=app_path::${APPIMAGE_FILES[0]}"
+            else
+              echo "ERROR: AppImage not found in $DOWNLOAD_PATH!"
+              ls -la "$DOWNLOAD_PATH" # Show contents for debugging
+              exit 1
+            fi
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            # For macOS, E2E tests often target the .app bundle directly.
+            # Assuming the .dmg contains a .app bundle named like the project.
+            # This might require extracting the .app from .dmg first, or adjusting E2E to mount & run.
+            # For simplicity, let's assume a .app might be directly available or E2E handles .dmg
+            APP_BUNDLE_PATH="$DOWNLOAD_PATH/$(ls $DOWNLOAD_PATH | grep .app | head -n 1)" # Basic way to find .app
+            if [ -d "$APP_BUNDLE_PATH" ]; then
+              echo "Found .app bundle: $APP_BUNDLE_PATH"
+              # The executable is inside $APP_BUNDLE_PATH/Contents/MacOS/<AppName>
+              # WebdriverIO might need the .app path
+              ACTUAL_EXECUTABLE_PATH="$APP_BUNDLE_PATH"
+              echo "::set-output name=app_path::$APP_BUNDLE_PATH"
+            else
+              echo "WARNING: .app bundle not found directly in $DOWNLOAD_PATH. E2E might need to handle .dmg."
+              ls -la "$DOWNLOAD_PATH"
+              # Set a placeholder or let it fail if .app is strictly needed here
+            fi
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            # Find .exe (could be installer or portable)
+            EXE_FILES=($DOWNLOAD_PATH/*.exe)
+            if [ -f "${EXE_FILES[0]}" ]; then
+              echo "Found executable: ${EXE_FILES[0]}"
+              ACTUAL_EXECUTABLE_PATH="${EXE_FILES[0]}"
+              echo "::set-output name=app_path::${EXE_FILES[0]}"
+            else
+              # Check for MSI as well
+              MSI_FILES=($DOWNLOAD_PATH/*.msi)
+              if [ -f "${MSI_FILES[0]}" ]; then
+                echo "Found MSI installer: ${MSI_FILES[0]}"
+                # E2E tests usually can't run .msi directly, needs install or point to installed .exe
+                # For now, just note it. Test setup needs to handle this.
+                ACTUAL_EXECUTABLE_PATH="${MSI_FILES[0]}"
+                echo "::set-output name=app_path::${MSI_FILES[0]}"
+              else
+                echo "ERROR: .exe or .msi not found in $DOWNLOAD_PATH!"
+                ls -la "$DOWNLOAD_PATH"
+                exit 1
+              fi
+            fi
           fi
-
-          if [ -d "$TARGET_DIR/src-tauri/target/release/bundle" ]; then
-            echo "release/bundle/ directory found"
-            ls -la "$TARGET_DIR/src-tauri/target/release/bundle"
-          fi
+          echo "Final executable path for E2E tests: $ACTUAL_EXECUTABLE_PATH"
         fi
+      id: prepare-executable
       shell: bash
 
     - name: Show Build Information
       run: |
-        echo "::notice::Running E2E tests for ${{ inputs.app }}:${{ inputs.mode }} mode on ${{ inputs.os }} with build ID"
+        echo "::notice::Running E2E tests for ${{ inputs.app }}:${{ inputs.mode }} mode on ${{ inputs.os }} with build ID. App Path: ${{ steps.prepare-executable.outputs.app_path }}"
       shell: bash
 
     - name: Apply Linux Kernel Workaround

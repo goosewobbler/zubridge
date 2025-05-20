@@ -229,7 +229,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
+          path: |
+            ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release/bundle/', inputs.app) }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -377,7 +378,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
+          path: |
+            ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release/bundle/', inputs.app) }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -525,7 +527,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
-          path: ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri', inputs.app) }}
+          path: |
+            ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release/bundle/', inputs.app) }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -548,173 +551,9 @@ jobs:
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Setup E2E Environment
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        with:
-          os: ubuntu-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
-
-      - name: Execute E2E Tests
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-        shell: bash
-
-      - name: Handle Test Failures
-        if: failure()
-        uses: ./.github/workflows/actions/handle-e2e-failures
-        with:
-          os: ubuntu-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-
-  # E2E Tests for macOS
-  macos-test:
-    needs: macos-build
-    if: needs.macos-build.outputs.success == 'true'
-    name: macOS E2E
-    runs-on: macOS-latest
-    env:
-      TURBO_TELEMETRY_DISABLED: 1
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-      TURBO_API: ${{ secrets.TURBO_API }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Setup E2E Environment
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        with:
-          os: macOS-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
-
-      - name: Execute E2E Tests
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-        shell: bash
-
-      - name: Handle Test Failures
-        if: failure()
-        uses: ./.github/workflows/actions/handle-e2e-failures
-        with:
-          os: macOS-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-
-  # E2E Tests for Windows
-  windows-test:
-    needs: windows-build
-    if: needs.windows-build.outputs.success == 'true'
-    name: Windows E2E
-    runs-on: windows-latest
-    env:
-      TURBO_TELEMETRY_DISABLED: 1
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-      TURBO_API: ${{ secrets.TURBO_API }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Setup E2E Environment
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        with:
-          os: windows-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
-
-      - name: Execute E2E Tests
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-        shell: bash
-
-      - name: Handle Test Failures
-        if: failure()
-        uses: ./.github/workflows/actions/handle-e2e-failures
-        with:
-          os: windows-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-
-  # Final status aggregation
-  ci-status:
-    name: Status
-    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test]
-    if: always()
-    runs-on: ubuntu-latest
-    outputs:
-      success: ${{ steps.check-status.outputs.success }}
-    steps:
-      - name: Check status
-        id: check-status
-        run: |
-          if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "At least one job passed successfully"
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "All jobs failed"
-            exit 1
-          fi
-
-  # Run E2E tests
-  run-e2e-tests:
-    name: ${{ matrix.os }} E2E Tests
-    needs: [linux-build, macos-build, windows-build]
-    if: always() && (needs.linux-build.outputs.success == 'true' || needs.macos-build.outputs.success == 'true' || needs.windows-build.outputs.success == 'true')
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-      fail-fast: false
-    steps:
       # Install Linux dependencies for Tauri apps before running E2E tests
       - name: Install Linux dependencies for E2E
-        if: runner.os == 'Linux' && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         run: |
           sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
           deb http://archive.ubuntu.com/ubuntu jammy main universe
@@ -775,12 +614,15 @@ jobs:
       - name: Setup E2E Environment
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
-          os: ${{ matrix.os }}
+          os: ubuntu-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
           artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
 
       - name: Execute E2E Tests
+        env:
+          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
+          DEBUG: "zubridge:*"
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 
@@ -788,6 +630,129 @@ jobs:
         if: failure()
         uses: ./.github/workflows/actions/handle-e2e-failures
         with:
-          os: ${{ matrix.os }}
+          os: ubuntu-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
+
+  # E2E Tests for macOS
+  macos-test:
+    needs: macos-build
+    if: needs.macos-build.outputs.success == 'true'
+    name: macOS E2E
+    runs-on: macOS-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      - name: Setup E2E Environment
+        uses: ./.github/workflows/actions/setup-e2e-environment
+        with:
+          os: macOS-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
+
+      - name: Execute E2E Tests
+        env:
+          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
+          DEBUG: "zubridge:*"
+        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        shell: bash
+
+      - name: Handle Test Failures
+        if: failure()
+        uses: ./.github/workflows/actions/handle-e2e-failures
+        with:
+          os: macOS-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+
+  # E2E Tests for Windows
+  windows-test:
+    needs: windows-build
+    if: needs.windows-build.outputs.success == 'true'
+    name: Windows E2E
+    runs-on: windows-latest
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      - name: Setup E2E Environment
+        uses: ./.github/workflows/actions/setup-e2e-environment
+        with:
+          os: windows-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
+
+      - name: Execute E2E Tests
+        env:
+          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
+          DEBUG: "zubridge:*"
+        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        shell: bash
+
+      - name: Handle Test Failures
+        if: failure()
+        uses: ./.github/workflows/actions/handle-e2e-failures
+        with:
+          os: windows-latest
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+
+  # Final status aggregation
+  ci-status:
+    name: Status
+    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      success: ${{ steps.check-status.outputs.success }}
+    steps:
+      - name: Check status
+        id: check-status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "At least one job passed successfully"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "All jobs failed"
+            exit 1
+          fi
