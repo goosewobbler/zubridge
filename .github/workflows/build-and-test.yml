@@ -595,6 +595,22 @@ jobs:
           find /usr /lib -name "glib-2.0.pc" -ls 2>/dev/null || echo "glib-2.0.pc not found in /usr or /lib (E2E)"
           echo "--- End verification (E2E) ---"
 
+      - name: Install tauri-driver
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          echo "Installing tauri-driver..."
+          cargo install tauri-driver
+          echo "tauri-driver installation complete."
+          # Verify installation
+          if [ -f ~/.cargo/bin/tauri-driver ]; then
+            echo "tauri-driver found in ~/.cargo/bin"
+          else
+            echo "tauri-driver NOT found in ~/.cargo/bin after install attempt!"
+            command -v tauri-driver || echo "tauri-driver not in PATH"
+            exit 1 # Exit if not found, as it's critical
+          fi
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -612,6 +628,7 @@ jobs:
           path: packages
 
       - name: Setup E2E Environment
+        id: setup_e2e
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: ubuntu-latest
@@ -623,6 +640,7 @@ jobs:
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 
@@ -637,7 +655,7 @@ jobs:
   # E2E Tests for macOS
   macos-test:
     needs: macos-build
-    if: needs.macos-build.outputs.success == 'true'
+    if: needs.macos-build.outputs.success == 'true' && inputs.app == 'electron' # Only run for successful electron builds
     name: macOS E2E
     runs-on: macOS-latest
     env:
@@ -662,8 +680,26 @@ jobs:
           name: shared-packages
           path: packages
 
+      - name: Install tauri-driver
+        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1') && runner.os != 'macOS' # Don't install if tauri on macOS
+        shell: bash
+        run: |
+          echo "Installing tauri-driver..."
+          cargo install tauri-driver
+          echo "tauri-driver installation complete."
+          # Verify installation
+          if [ -f ~/.cargo/bin/tauri-driver ]; then
+            echo "tauri-driver found in ~/.cargo/bin"
+          else
+            echo "tauri-driver NOT found in ~/.cargo/bin after install attempt!"
+            command -v tauri-driver || echo "tauri-driver not in PATH"
+            exit 1 # Exit if not found, as it's critical
+          fi
+
       - name: Setup E2E Environment
+        id: setup_e2e
         uses: ./.github/workflows/actions/setup-e2e-environment
+        if: inputs.app == 'electron' # Skip for non-electron on macos
         with:
           os: macOS-latest
           app: ${{ inputs.app }}
@@ -674,11 +710,13 @@ jobs:
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
+        if: inputs.app == 'electron' # Skip for non-electron on macos
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 
       - name: Handle Test Failures
-        if: failure()
+        if: failure() && inputs.app == 'electron' # Skip for non-electron on macos if previous steps were skipped
         uses: ./.github/workflows/actions/handle-e2e-failures
         with:
           os: macOS-latest
@@ -713,7 +751,29 @@ jobs:
           name: shared-packages
           path: packages
 
+      - name: Install tauri-driver
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          echo "Installing tauri-driver..."
+          cargo install tauri-driver
+          echo "tauri-driver installation complete."
+          # Verify installation path for Windows
+          CARGO_HOME_BIN="$HOME/.cargo/bin/tauri-driver"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            CARGO_HOME_BIN="$USERPROFILE/.cargo/bin/tauri-driver.exe"
+          fi
+
+          if [ -f "$CARGO_HOME_BIN" ]; then
+            echo "tauri-driver found in $CARGO_HOME_BIN"
+          else
+            echo "tauri-driver NOT found in $CARGO_HOME_BIN after install attempt!"
+            command -v tauri-driver || echo "tauri-driver not in PATH"
+            exit 1 # Exit if not found, as it's critical
+          fi
+
       - name: Setup E2E Environment
+        id: setup_e2e
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: windows-latest
@@ -725,6 +785,7 @@ jobs:
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 

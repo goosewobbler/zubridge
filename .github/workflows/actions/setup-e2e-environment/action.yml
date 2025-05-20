@@ -92,7 +92,13 @@ runs:
           if [[ "${{ runner.os }}" == "Linux" ]]; then
             # Find the AppImage, assuming it's the primary target for E2E
             # Adjust glob pattern if AppImage name is different
-            APPIMAGE_FILES=($DOWNLOAD_PATH/*.AppImage)
+            APPIMAGE_SUBDIR="$DOWNLOAD_PATH/appimage"
+            if [ -d "$APPIMAGE_SUBDIR" ]; then
+              APPIMAGE_FILES=($APPIMAGE_SUBDIR/*.AppImage)
+            else
+              APPIMAGE_FILES=($DOWNLOAD_PATH/*.AppImage) # Fallback to root if no subdir
+            fi
+
             if [ -f "${APPIMAGE_FILES[0]}" ]; then
               echo "Found AppImage: ${APPIMAGE_FILES[0]}"
               chmod +x "${APPIMAGE_FILES[0]}"
@@ -122,25 +128,45 @@ runs:
             fi
           elif [[ "${{ runner.os }}" == "Windows" ]]; then
             # Find .exe (could be installer or portable)
-            EXE_FILES=($DOWNLOAD_PATH/*.exe)
+            # Prioritize NSIS (.exe) then MSI, checking subdirectories first
+            NSIS_SUBDIR="$DOWNLOAD_PATH/nsis"
+            MSI_SUBDIR="$DOWNLOAD_PATH/msi"
+            EXE_FILES=()
+            MSI_FILES=()
+
+            if [ -d "$NSIS_SUBDIR" ]; then
+              EXE_FILES=($NSIS_SUBDIR/*.exe)
+            fi
+
+            if [ ${#EXE_FILES[@]} -eq 0 ] && [ -d "$MSI_SUBDIR" ]; then # Only check MSI if no EXE found in nsis subdir
+              MSI_FILES=($MSI_SUBDIR/*.msi)
+            fi
+
+            # Fallback to root if not found in subdirectories
+            if [ ${#EXE_FILES[@]} -eq 0 ] && [ ${#MSI_FILES[@]} -eq 0 ]; then
+              EXE_FILES=($DOWNLOAD_PATH/*.exe)
+              if [ ${#EXE_FILES[@]} -eq 0 ]; then # Only check root MSI if no root EXE found
+                MSI_FILES=($DOWNLOAD_PATH/*.msi)
+              fi
+            fi
+
             if [ -f "${EXE_FILES[0]}" ]; then
               echo "Found executable: ${EXE_FILES[0]}"
               ACTUAL_EXECUTABLE_PATH="${EXE_FILES[0]}"
               echo "::set-output name=app_path::${EXE_FILES[0]}"
+            elif [ -f "${MSI_FILES[0]}" ]; then
+              echo "Found MSI installer: ${MSI_FILES[0]}"
+              # E2E tests usually can't run .msi directly, needs install or point to installed .exe
+              # For now, just note it. Test setup needs to handle this.
+              ACTUAL_EXECUTABLE_PATH="${MSI_FILES[0]}"
+              echo "::set-output name=app_path::${MSI_FILES[0]}"
             else
-              # Check for MSI as well
-              MSI_FILES=($DOWNLOAD_PATH/*.msi)
-              if [ -f "${MSI_FILES[0]}" ]; then
-                echo "Found MSI installer: ${MSI_FILES[0]}"
-                # E2E tests usually can't run .msi directly, needs install or point to installed .exe
-                # For now, just note it. Test setup needs to handle this.
-                ACTUAL_EXECUTABLE_PATH="${MSI_FILES[0]}"
-                echo "::set-output name=app_path::${MSI_FILES[0]}"
-              else
-                echo "ERROR: .exe or .msi not found in $DOWNLOAD_PATH!"
-                ls -la "$DOWNLOAD_PATH"
-                exit 1
-              fi
+              echo "ERROR: .exe or .msi not found in $DOWNLOAD_PATH or its subdirectories (nsis/, msi/)!"
+              echo "Contents of $DOWNLOAD_PATH:"
+              ls -la "$DOWNLOAD_PATH"
+              if [ -d "$NSIS_SUBDIR" ]; then echo "Contents of $NSIS_SUBDIR:"; ls -la "$NSIS_SUBDIR"; fi
+              if [ -d "$MSI_SUBDIR" ]; then echo "Contents of $MSI_SUBDIR:"; ls -la "$MSI_SUBDIR"; fi
+              exit 1
             fi
           fi
           echo "Final executable path for E2E tests: $ACTUAL_EXECUTABLE_PATH"

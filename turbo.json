@@ -86,11 +86,11 @@
       "cache": false
     },
     "test:e2e:tauri-basic": {
-      "dependsOn": ["build:packages", "zubridge-tauri-example#build"],
+      "dependsOn": ["build:packages"],
       "cache": false
     },
     "test:e2e:tauri-v1-basic": {
-      "dependsOn": ["build:packages", "zubridge-tauri-v1-example#build"],
+      "dependsOn": ["build:packages"],
       "cache": false
     },
     "@zubridge/middleware#build": {
