@@ -5,26 +5,39 @@ inputs:
   os:
     description: "Operating system tests ran on"
     required: true
-  app:
+  app_type:
     description: "Type of application tested"
     required: true
   mode:
     description: "Test mode"
+    required: true
+  log_path:
+    description: "Path to the log files"
+    required: true
+  screenshot_path:
+    description: "Path to the screenshot file"
     required: true
 
 runs:
   using: "composite"
   steps:
     - name: Show Test Logs
-      if: inputs.app == 'electron'
+      if: inputs.app_type == 'electron'
       run: cat ./e2e/wdio-logs-${{ inputs.mode }}/*.log || echo "No log files found"
       shell: bash
 
     - name: Upload Test Logs
       uses: actions/upload-artifact@v4
-      if: inputs.app == 'electron'
+      if: inputs.app_type == 'electron'
       with:
-        name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
+        name: e2e-logs-${{ inputs.os }}-${{ inputs.app_type }}-${{ inputs.mode }}
         path: e2e/wdio-logs-${{ inputs.mode }}/*.log
         retention-days: 30
         if-no-files-found: warn
+
+    - name: Upload Screenshot
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-screenshot-${{ inputs.os }}-${{ inputs.app_type }}-${{ inputs.mode }}
+        path: e2e/screenshots/*.png
+        retention-days: 30
