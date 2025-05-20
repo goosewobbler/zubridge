@@ -293,14 +293,48 @@ if (e2eAppType.startsWith('tauri')) {
   ];
 
   onPrepareHook = () => {
-    // For Electron, if APP_PATH points to a .app bundle, remove quarantine.
-    // If binaryPath is the direct executable inside .app, this might not be needed here but doesn't hurt.
-    if (currentPlatform === 'darwin' && binaryPath && binaryPath.endsWith('.app') && fs.existsSync(binaryPath)) {
-      try {
-        console.log('[DEBUG] Removing quarantine attribute from macOS Electron app bundle');
-        execSync(`xattr -r -d com.apple.quarantine "${binaryPath}"`, { stdio: 'pipe' });
-      } catch (error) {
-        console.warn('[WARN] Error removing quarantine for Electron app bundle:', error);
+    if (currentPlatform === 'darwin' && binaryPath && binaryPath.includes('.app/Contents/MacOS/')) {
+      // If binaryPath is already the internal executable, we need to find the .app bundle path
+      const appBundlePath = binaryPath.substring(0, binaryPath.indexOf('.app') + 4);
+      console.log(`[DEBUG] onPrepare Electron macOS: appBinaryPath is internal, derived .app bundle: ${appBundlePath}`);
+      if (fs.existsSync(appBundlePath)) {
+        try {
+          console.log(
+            `[DEBUG] onPrepare Electron macOS: Removing quarantine attribute from app bundle: "${appBundlePath}"`,
+          );
+          execSync(`xattr -r -d com.apple.quarantine "${appBundlePath}"`, { stdio: 'pipe' });
+          console.log(`[DEBUG] onPrepare Electron macOS: Quarantine removal command executed for "${appBundlePath}".`);
+        } catch (error) {
+          console.warn(
+            `[WARN] onPrepare Electron macOS: Error removing quarantine for app bundle "${appBundlePath}":`,
+            error.status,
+            error.message,
+            error.stderr?.toString(),
+            error.stdout?.toString(),
+          );
+        }
+      }
+    } else if (currentPlatform === 'darwin' && resolvedAppPathFromEnv && resolvedAppPathFromEnv.endsWith('.app')) {
+      // This case handles when APP_PATH pointed directly to the .app bundle
+      console.log(`[DEBUG] onPrepare Electron macOS: resolvedAppPathFromEnv is .app bundle: ${resolvedAppPathFromEnv}`);
+      if (fs.existsSync(resolvedAppPathFromEnv)) {
+        try {
+          console.log(
+            `[DEBUG] onPrepare Electron macOS: Removing quarantine attribute from app bundle: "${resolvedAppPathFromEnv}"`,
+          );
+          execSync(`xattr -r -d com.apple.quarantine "${resolvedAppPathFromEnv}"`, { stdio: 'pipe' });
+          console.log(
+            `[DEBUG] onPrepare Electron macOS: Quarantine removal command executed for "${resolvedAppPathFromEnv}".`,
+          );
+        } catch (error) {
+          console.warn(
+            `[WARN] onPrepare Electron macOS: Error removing quarantine for app bundle "${resolvedAppPathFromEnv}":`,
+            error.status,
+            error.message,
+            error.stderr?.toString(),
+            error.stdout?.toString(),
+          );
+        }
       }
     }
   };
@@ -357,7 +391,7 @@ const config: any = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: 'warn',
+  logLevel: 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${e2eAppType}-${mode}`,
   specs: [specPattern],

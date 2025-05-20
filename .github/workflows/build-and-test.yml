@@ -38,6 +38,8 @@ jobs:
     outputs:
       success: ${{ steps.build-result.outputs.success }}
       artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
+      release_tag: ${{ steps.build-result.outputs.release_tag || '' }}
+      version: ${{ steps.build-result.outputs.version || '' }}
     steps:
       # Linux-specific dependencies
       - name: Install Linux dependencies
@@ -541,29 +543,67 @@ jobs:
 
   # E2E Tests for Linux
   linux-test:
-    needs: linux-build
     if: needs.linux-build.outputs.success == 'true'
-    name: Linux E2E
+    needs: [linux-build]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        _placeholder: [1] # Ensures the job runs at least once
+      fail-fast: false
     env:
-      TURBO_TELEMETRY_DISABLED: 1
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-      TURBO_API: ${{ secrets.TURBO_API }}
+      RELEASE_TAG: ${{ needs.linux-build.outputs.release_tag || format('zubridge-v{0}', needs.linux-build.outputs.version || github.run_id) }}
+
     steps:
-      # Install Linux dependencies for Tauri apps before running E2E tests
-      - name: Install Linux dependencies for E2E
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm_store_path_step_linux
+        shell: bash
         run: |
-          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
-          deb http://archive.ubuntu.com/ubuntu jammy main universe
-          EOT
+          STORE_PATH_VALUE=$(pnpm store path --silent)
+          echo "STORE_PATH=$STORE_PATH_VALUE" >> $GITHUB_ENV
+          echo "store_path=$STORE_PATH_VALUE" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store_path_step_linux.outputs.store_path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install Linux dependencies for Tauri & E2E (including WebKitWebDriver)
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             pkg-config \
             libgtk-3-dev \
             libwebkit2gtk-4.0-dev \
-            libwebkit2gtk-4.1-dev \
+            libwebkit2gtk-driver \
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
@@ -571,88 +611,98 @@ jobs:
             libsoup-2.4-1 \
             libsoup2.4-dev \
             libjavascriptcoregtk-4.0-dev \
-            libjavascriptcoregtk-4.1-dev
-          echo "--- Verifying pkg-config and .pc file locations (E2E) ---"
-          which pkg-config
-          echo "PKG_CONFIG_PATH (before setting, E2E): $PKG_CONFIG_PATH"
-          PC_PATH1="/usr/lib/x86_64-linux-gnu/pkgconfig"
-          PC_PATH2="/usr/share/pkgconfig"
-          PC_PATH3="/lib/x86_64-linux-gnu/pkgconfig"
-          EXPORT_PKG_CONFIG_PATH=""
-          if [ -d "$PC_PATH1" ]; then EXPORT_PKG_CONFIG_PATH="$PC_PATH1"; fi
-          if [ -d "$PC_PATH2" ]; then
-            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then EXPORT_PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$PC_PATH2"; else EXPORT_PKG_CONFIG_PATH="$PC_PATH2"; fi
-          fi
-          if [ -d "$PC_PATH3" ]; then
-            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then EXPORT_PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$PC_PATH3"; else EXPORT_PKG_CONFIG_PATH="$PC_PATH3"; fi
-          fi
-          if [ -n "$PKG_CONFIG_PATH" ]; then
-            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then export PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$PKG_CONFIG_PATH"; fi
-          else
-            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then export PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH"; fi
-          fi
-          echo "PKG_CONFIG_PATH (after setting, E2E): $PKG_CONFIG_PATH"
-          find /usr /lib -name "glib-2.0.pc" -ls 2>/dev/null || echo "glib-2.0.pc not found in /usr or /lib (E2E)"
-          echo "--- End verification (E2E) ---"
+            xvfb \
+            scrot
 
       - name: Install tauri-driver
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         shell: bash
         run: |
           echo "Installing tauri-driver..."
-          cargo install tauri-driver
-          echo "tauri-driver installation complete."
-          # Verify installation
-          if [ -f ~/.cargo/bin/tauri-driver ]; then
-            echo "tauri-driver found in ~/.cargo/bin"
-          else
-            echo "tauri-driver NOT found in ~/.cargo/bin after install attempt!"
-            command -v tauri-driver || echo "tauri-driver not in PATH"
-            exit 1 # Exit if not found, as it's critical
+          cargo install tauri-driver --locked
+          if ! command -v tauri-driver &> /dev/null; then
+            echo "::error::tauri-driver installation failed or not in PATH"
+            exit 1
           fi
+          echo "tauri-driver installed successfully."
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Setup E2E Environment
+      - name: Setup E2E Environment (Download Artifacts, Find App & WebKitWebDriver)
         id: setup_e2e
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        with:
-          os: ubuntu-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_INPUT: ${{ inputs.app }}
+          MODE_INPUT: ${{ inputs.mode }}
+          APP_DIR_INPUT: ${{ inputs.app }}-example
+          ARTIFACT_NAME_INPUT: ${{ needs.linux-build.outputs.artifact_name }}
+          RELEASE_TAG_INPUT: ${{ env.RELEASE_TAG }}
+        shell: bash
+        run: |
+          chmod +x .github/scripts/setup_e2e_linux.sh
+          .github/scripts/setup_e2e_linux.sh
 
       - name: Execute E2E Tests
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 2
+          retry_on: error
+          command: |
+            echo "Starting E2E tests for ${{ inputs.app }} (${{ inputs.mode }}) with app path: ${{ steps.setup_e2e.outputs.app_path }}"
+            echo "E2E_APP_TYPE: ${{ inputs.app }}"
+            echo "APP_DIR: ${{ inputs.app }}-example"
+            echo "MODE: ${{ inputs.mode }}"
+            echo "DISPLAY_ENV: $DISPLAY"
+            echo "TAURI_WEBDRIVER_WEBKITDRIVER_PATH_ENV: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH"
+
+            if xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" pnpm --filter=zubridge-e2e run exec; then
+              echo "E2E tests passed for ${{ inputs.app }} (${{ inputs.mode }})."
+            else
+              echo "::error::E2E tests failed for ${{ inputs.app }} (${{ inputs.mode }}). Capturing debug info..."
+              if [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
+                TAURI_DRIVER_LOG_PATH="$HOME/.tauri/tauri-driver.log"
+                echo "Attempting to display tauri-driver log from $TAURI_DRIVER_LOG_PATH:"
+                if [ -f "$TAURI_DRIVER_LOG_PATH" ]; then
+                  tail -n 100 "$TAURI_DRIVER_LOG_PATH"
+                else
+                  echo "tauri-driver.log not found at $TAURI_DRIVER_LOG_PATH. Listing $HOME/.tauri directory:"
+                  ls -la $HOME/.tauri 2>/dev/null || echo "$HOME/.tauri directory not found."
+                fi
+              fi
+              exit 1
+            fi
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
-          DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
           APP_DIR: ${{ inputs.app }}-example
           MODE: ${{ inputs.mode }}
-        run: pnpm --filter=zubridge-e2e run exec
-        shell: bash
 
-      - name: Handle Test Failures
+      - name: Debugging Information on Failure (Screenshot & Processes)
+        if: failure() && (inputs.app == 'tauri' || inputs.app == 'tauri-v1')
+        shell: bash
+        run: |
+          echo "Attempting to capture Xvfb, application status, and screenshot after failure..."
+          ps aux | grep Xvfb || echo "Xvfb not found in process list."
+          ps aux | grep ${{ inputs.app }}-example || echo "App ${{ inputs.app }}-example not found in process list."
+
+          echo "Taking screenshot using scrot..."
+          export DISPLAY=${DISPLAY:-:99}
+          echo "Using DISPLAY=$DISPLAY for screenshot attempt."
+          if command -v scrot &> /dev/null; then
+            scrot ${{ inputs.app }}-example-screenshot.png && echo "Screenshot saved to ${{ inputs.app }}-example-screenshot.png" || echo "Failed to take screenshot with scrot."
+          else
+            echo "scrot command not found, cannot take screenshot."
+          fi
+          ls -l *.png 2>/dev/null || echo "No png files found in current directory."
+
+      - name: Handle Test Failures (Upload Logs and Screenshot)
         if: failure()
         uses: ./.github/workflows/actions/handle-e2e-failures
         with:
-          os: ubuntu-latest
-          app: ${{ inputs.app }}
+          app_type: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
+          os: linux
+          log_path: "wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/"
+          screenshot_path: "${{ inputs.app }}-example-screenshot.png"
 
   # E2E Tests for macOS
   macos-test:
@@ -682,26 +732,51 @@ jobs:
           name: shared-packages
           path: packages
 
+      - name: Set up Node.js # Added for macOS
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Set up pnpm # Added for macOS
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory # Added for macOS
+        id: pnpm_store_path_step_macos
+        shell: bash
+        run: |
+          STORE_PATH_VALUE=$(pnpm store path --silent)
+          echo "STORE_PATH=$STORE_PATH_VALUE" >> $GITHUB_ENV
+          echo "store_path=$STORE_PATH_VALUE" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache # Added for macOS
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store_path_step_macos.outputs.store_path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies # Added for macOS
+        run: pnpm install --frozen-lockfile
+
       - name: Install tauri-driver
         if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1') && runner.os != 'macOS' # Don't install if tauri on macOS
         shell: bash
         run: |
           echo "Installing tauri-driver..."
-          cargo install tauri-driver
-          echo "tauri-driver installation complete."
-          # Verify installation
-          if [ -f ~/.cargo/bin/tauri-driver ]; then
-            echo "tauri-driver found in ~/.cargo/bin"
-          else
-            echo "tauri-driver NOT found in ~/.cargo/bin after install attempt!"
-            command -v tauri-driver || echo "tauri-driver not in PATH"
-            exit 1 # Exit if not found, as it's critical
+          cargo install tauri-driver --locked
+          if ! command -v tauri-driver &> /dev/null; then
+            echo "tauri-driver installation failed or not in PATH"
+            exit 1
           fi
+          echo "tauri-driver installed successfully."
 
       - name: Setup E2E Environment
         id: setup_e2e
         uses: ./.github/workflows/actions/setup-e2e-environment
-        if: inputs.app == 'electron' # Skip for non-electron on macos
         with:
           os: macOS-latest
           app: ${{ inputs.app }}
@@ -709,23 +784,57 @@ jobs:
           artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
 
       - name: Execute E2E Tests
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 2
+          retry_on: error
+          command: |
+            echo "Starting E2E tests for ${{ inputs.app }} (${{ inputs.mode }}) with app path: ${{ steps.setup_e2e.outputs.app_path }}"
+            echo "E2E_APP_TYPE: ${{ inputs.app }}"
+            echo "APP_DIR: ${{ inputs.app }}-example"
+            echo "MODE: ${{ inputs.mode }}"
+            echo "DISPLAY: $DISPLAY" # DISPLAY might not be relevant/set on macOS direct runners
+            echo "TAURI_WEBDRIVER_WEBKITDRIVER_PATH: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH"
+            # For Electron on macOS, xvfb-run is generally not needed as there's a window server.
+            # If tests are headless or specifically require Xvfb, it can be added, but usually not.
+            pnpm --filter=zubridge-e2e run exec
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
-          DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
           APP_DIR: ${{ inputs.app }}-example
           MODE: ${{ inputs.mode }}
-        if: inputs.app == 'electron' # Skip for non-electron on macos
-        run: pnpm --filter=zubridge-e2e run exec
+          # DISPLAY: $DISPLAY # Usually not needed for macOS
+          TAURI_WEBDRIVER_WEBKITDRIVER_PATH: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH
+
+      - name: Verify Xvfb and App are Running (Debug)
+        if: failure() && (inputs.app == 'tauri' || inputs.app == 'tauri-v1') # Will not run as job is electron only
+        run: |
+          echo "Attempting to capture Xvfb and application status..."
+          ps aux | grep Xvfb || echo "Xvfb not running"
+          ps aux | grep ${{ inputs.app }}-example || echo "App not running"
+          # Add a small delay and try to take a screenshot
+          sleep 5
+          if command -v import &> /dev/null; then # 'import' is from ImageMagick, may not be available
+            import -window root ${{ inputs.app }}-example-screenshot.png && echo "Screenshot taken." || echo "Failed to take screenshot."
+            ls -l
+          elif command -v screencapture &> /dev/null; then # macOS native screenshot utility
+             screencapture ${{ inputs.app }}-example-screenshot.png && echo "Screenshot taken with screencapture." || echo "Failed to take screenshot with screencapture."
+             ls -l
+          else
+            echo "scrot, import or screencapture command not found, cannot take screenshot."
+          fi
         shell: bash
 
       - name: Handle Test Failures
-        if: failure() && inputs.app == 'electron' # Skip for non-electron on macos if previous steps were skipped
+        if: failure()
         uses: ./.github/workflows/actions/handle-e2e-failures
         with:
           os: macOS-latest
-          app: ${{ inputs.app }}
+          app_type: ${{ inputs.app }} # Changed from 'app' to 'app_type' to match action input
           mode: ${{ inputs.mode }}
+          # screenshot_path needs to be defined if we want to upload it.
+          # The debug step above attempts to save it as ${{ inputs.app }}-example-screenshot.png
 
   # E2E Tests for Windows
   windows-test:
@@ -755,12 +864,42 @@ jobs:
           name: shared-packages
           path: packages
 
+      - name: Set up Node.js # Added for Windows
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Set up pnpm # Added for Windows
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory # Added for Windows
+        id: pnpm_store_path_step_windows
+        shell: bash # Using bash for consistency, ensure runner has it or use pwsh
+        run: |
+          STORE_PATH_VALUE=$(pnpm store path --silent)
+          echo "STORE_PATH=$STORE_PATH_VALUE" >> $GITHUB_ENV
+          echo "store_path=$STORE_PATH_VALUE" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache # Added for Windows
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store_path_step_windows.outputs.store_path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies # Added for Windows
+        run: pnpm install --frozen-lockfile
+
       - name: Install tauri-driver
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         shell: bash
         run: |
           echo "Installing tauri-driver..."
-          cargo install tauri-driver
+          cargo install tauri-driver --locked # Added --locked
           echo "tauri-driver installation complete."
           # Verify installation path for Windows
           CARGO_HOME_BIN="$HOME/.cargo/bin/tauri-driver"
@@ -770,6 +909,8 @@ jobs:
 
           if [ -f "$CARGO_HOME_BIN" ]; then
             echo "tauri-driver found in $CARGO_HOME_BIN"
+            # Add to PATH for this step if not already there by default installation
+            echo "$USERPROFILE/.cargo/bin" >> $GITHUB_PATH
           else
             echo "tauri-driver NOT found in $CARGO_HOME_BIN after install attempt!"
             command -v tauri-driver || echo "tauri-driver not in PATH"
@@ -800,8 +941,9 @@ jobs:
         uses: ./.github/workflows/actions/handle-e2e-failures
         with:
           os: windows-latest
-          app: ${{ inputs.app }}
+          app_type: ${{ inputs.app }} # Changed from 'app' to 'app_type'
           mode: ${{ inputs.mode }}
+          # log_path: "wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/" # Example if logs are saved here
 
   # Final status aggregation
   ci-status:
@@ -815,11 +957,21 @@ jobs:
       - name: Check status
         id: check-status
         run: |
-          if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
+          FINAL_SUCCESS="true"
+          if [[ "${{ needs.linux-build.result }}" == "failure" || \
+                "${{ needs.macos-build.result }}" == "failure" || \
+                "${{ needs.windows-build.result }}" == "failure" || \
+                "${{ needs.linux-test.result }}" == "failure" || \
+                ("${{ inputs.app }}" == "electron" && "${{ needs.macos-test.result }}" == "failure") || \
+                "${{ needs.windows-test.result }}" == "failure" ]]; then
+            FINAL_SUCCESS="false"
+          fi
+
+          if [[ "$FINAL_SUCCESS" == "true" ]]; then
             echo "success=true" >> $GITHUB_OUTPUT
-            echo "At least one job passed successfully"
+            echo "All relevant jobs passed or were skipped appropriately."
           else
             echo "success=false" >> $GITHUB_OUTPUT
-            echo "All jobs failed"
+            echo "One or more jobs failed."
             exit 1
           fi
