@@ -128,14 +128,40 @@ if [[ "$APP_INPUT" == "electron" ]]; then
   EXECUTABLE_NAME=$(find . -name "*.AppImage" -type f -print -quit || true)
 
   if [ -z "$EXECUTABLE_NAME" ] || [ ! -f "$EXECUTABLE_NAME" ]; then
-    # If no AppImage, look for a common executable name pattern (e.g., app name)
-    # This needs to be robust. The build output dir is dist-{mode}.
-    # The executable is often 'electron-example' or similar within a subdirectory.
-    # Let's search for any executable that looks like the app name.
-    # The structure is often './linux-unpacked/appname' or just './appname'
     echo "No AppImage found. Searching for other executables..."
-    # Search more broadly for any executable file not in a hidden dir
-    EXECUTABLE_NAME=$(find . -type f -executable ! -path "*/.*" -print -quit || true)
+    # Try to find an executable matching the app name in common unpacked directories
+    # APP_DIR_INPUT is like 'electron-example', PRODUCT_NAME is often similar or defined in package.json
+    # A common pattern is 'appname' or 'AppName'
+    # We'll look for a file that doesn't end with .so, and preferably matches parts of APP_DIR_INPUT
+
+    # Heuristic: derive a possible product name (e.g., electron-example -> electron-example)
+    # This is a simplification; a real productName might be different.
+    POSSIBLE_PRODUCT_NAME="${APP_DIR_INPUT}"
+
+    # Search in 'linux-unpacked' or similar directory patterns first
+    # We want an executable file that is NOT a .so and ideally matches the product name.
+    # If not, take any executable that's not a .so file.
+    SEARCH_DIRS=(".") # Start with current directory
+    # Add common unpacked dir names if they exist to prioritize them
+    if [ -d "./linux-unpacked" ]; then SEARCH_DIRS+=("./linux-unpacked"); fi
+    if [ -d "./linux-x64-unpacked" ]; then SEARCH_DIRS+=("./linux-x64-unpacked"); fi # Another common pattern
+
+    FOUND_EXEC=""
+    for search_dir in "${SEARCH_DIRS[@]}"; do
+      if [ -d "$search_dir" ]; then
+        # Prioritize executable matching the possible product name (case-insensitive)
+        FOUND_EXEC=$(find "$search_dir" -maxdepth 1 -type f -iname "$POSSIBLE_PRODUCT_NAME" -executable ! -name "*.so" -print -quit || true)
+        if [ -f "$FOUND_EXEC" ]; then
+          break
+        fi
+        # Fallback: any executable in this dir not ending in .so
+        FOUND_EXEC=$(find "$search_dir" -maxdepth 1 -type f -executable ! -name "*.so" -print -quit || true)
+        if [ -f "$FOUND_EXEC" ]; then
+          break
+        fi
+      fi
+    done
+    EXECUTABLE_NAME="$FOUND_EXEC"
   fi
 
   if [ -f "$EXECUTABLE_NAME" ]; then
