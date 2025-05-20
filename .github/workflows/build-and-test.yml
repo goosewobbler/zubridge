@@ -608,13 +608,15 @@ jobs:
             xvfb \
             scrot"
 
-          TAURI_V1_DEPS="\
-            libwebkit2gtk-4.0-dev \
+          TAURI_V1_DEPS=\
+            "libwebkit2gtk-4.0-dev \
             libwebkit2gtk-driver \
+            webkitgtk-webdriver \
             libjavascriptcoregtk-4.0-dev"
 
-          TAURI_V2_DEPS="\
-            libwebkit2gtk-4.1-dev \
+          TAURI_V2_DEPS=\
+            "libwebkit2gtk-4.1-dev \
+            webkitgtk-webdriver \
             libjavascriptcoregtk-4.1-dev"
 
           if [[ "${{ inputs.app }}" == "tauri-v1" ]]; then

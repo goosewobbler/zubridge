@@ -41,10 +41,12 @@ if [[ "$APP_INPUT" == "tauri" || "$APP_INPUT" == "tauri-v1" ]]; then
   if [ -z "$WEBKIT_DRIVER_PATH" ] || [ ! -f "$WEBKIT_DRIVER_PATH" ]; then
     echo "::warning::WebKitWebDriver still not found. Attempting apt-file search..."
     if command -v apt-file &> /dev/null; then
-      PACKAGE_PROVIDING_WEBKITDRIVER=$(apt-file search --fixed-string --non-interactive WebKitWebDriver | awk -F':' '{print $1}' | head -n 1 || true)
+      # Search for a path ending with WebKitWebDriver, get the package name (part before :)
+      PACKAGE_PROVIDING_WEBKITDRIVER=$(apt-file search WebKitWebDriver | grep -E '/WebKitWebDriver$' | awk -F':' '{print $1}' | sort -u | head -n 1 || true)
       if [ ! -z "$PACKAGE_PROVIDING_WEBKITDRIVER" ]; then
         echo "apt-file suggests WebKitWebDriver might be provided by package: $PACKAGE_PROVIDING_WEBKITDRIVER"
         echo "Attempting to install $PACKAGE_PROVIDING_WEBKITDRIVER..."
+        sudo apt-get update # Ensure package lists are up-to-date
         sudo apt-get install -y "$PACKAGE_PROVIDING_WEBKITDRIVER"
         echo "Installation of $PACKAGE_PROVIDING_WEBKITDRIVER attempted. Re-searching for WebKitWebDriver..."
 
