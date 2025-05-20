@@ -108,12 +108,12 @@
     "@zubridge/tauri#build": {
       "dependsOn": ["@zubridge/types#build"],
       "outputs": ["dist/**"],
-      "cache": true
+      "cache": false
     },
     "@zubridge/apps-shared#build": {
       "dependsOn": ["@zubridge/types#build"],
       "outputs": ["dist/**"],
-      "cache": true
+      "cache": false
     },
     "@zubridge/ui#build": {
       "outputs": ["dist/**"],
@@ -243,9 +243,6 @@
       ],
       "outputs": ["apps/tauri-v1-example/dist/**", "apps/tauri-v1-example/src-tauri/target/**"],
       "cache": false
-    },
-    "tauri-plugin#build": {
-      "outputs": ["target/**"]
     }
   }
 }

@@ -48,6 +48,7 @@ jobs:
           EOT
           sudo apt-get update
           sudo apt-get install -y \
+            pkg-config \
             libgtk-3-dev \
             libwebkit2gtk-4.0-dev \
             libwebkit2gtk-4.1-dev \
@@ -59,6 +60,45 @@ jobs:
             libsoup2.4-dev \
             libjavascriptcoregtk-4.0-dev \
             libjavascriptcoregtk-4.1-dev
+          echo "--- Verifying pkg-config and .pc file locations ---"
+          which pkg-config
+          echo "PKG_CONFIG_PATH (before setting): $PKG_CONFIG_PATH"
+          # Common paths for .pc files on Ubuntu
+          PC_PATH1="/usr/lib/x86_64-linux-gnu/pkgconfig"
+          PC_PATH2="/usr/share/pkgconfig"
+          PC_PATH3="/lib/x86_64-linux-gnu/pkgconfig"
+
+          EXPORT_PKG_CONFIG_PATH=""
+          if [ -d "$PC_PATH1" ]; then
+            EXPORT_PKG_CONFIG_PATH="$PC_PATH1"
+          fi
+          if [ -d "$PC_PATH2" ]; then
+            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then
+              EXPORT_PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$PC_PATH2"
+            else
+              EXPORT_PKG_CONFIG_PATH="$PC_PATH2"
+            fi
+          fi
+          if [ -d "$PC_PATH3" ]; then
+            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then
+              EXPORT_PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$PC_PATH3"
+            else
+              EXPORT_PKG_CONFIG_PATH="$PC_PATH3"
+            fi
+          fi
+
+          if [ -n "$PKG_CONFIG_PATH" ]; then
+            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then
+              export PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$PKG_CONFIG_PATH"
+            fi
+          else
+            if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then
+              export PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH"
+            fi
+          fi
+          echo "PKG_CONFIG_PATH (after setting): $PKG_CONFIG_PATH"
+          find /usr /lib -name "glib-2.0.pc" -ls 2>/dev/null || echo "glib-2.0.pc not found in /usr or /lib"
+          echo "--- End verification ---"
 
       # Checkout and setup
       - name: Checkout Repository
@@ -95,45 +135,79 @@ jobs:
         id: build-app
         shell: bash
         run: |
-          APP_NAME_FULL="zubridge-${{ inputs.app }}-example"
+          PACKAGE_NAME="zubridge-${{ inputs.app }}-example"
+          APP_DIR_NAME="${{ inputs.app }}-example"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
           else
+            echo "--- Initial check: Listing contents of $GITHUB_WORKSPACE/apps/$APP_DIR_NAME ---"
+            ls -la "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME"
+            echo "--- Initial check: Listing contents of $GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri ---"
+            ls -la "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri"
+            echo "--- End Initial check ---"
+
             # Run Vite build first
             echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
-            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec vite build
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec vite build
 
             # Determine config file and property name
-            CONFIG_FILE_PATH="apps/$APP_NAME_FULL/src-tauri/tauri.conf.json"
+            RELATIVE_CONFIG_FILE_PATH="apps/$APP_DIR_NAME/src-tauri/tauri.conf.json"
+            ABSOLUTE_CONFIG_FILE_PATH_SHELL="$GITHUB_WORKSPACE/$RELATIVE_CONFIG_FILE_PATH"
             DIST_PROPERTY_NAME="distDir" # Default for v1
             if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
               DIST_PROPERTY_NAME="frontendDist"
             fi
 
             # Calculate absolute path for dist dir
-            # GITHUB_WORKSPACE is the root of the checkout
-            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_NAME_FULL/dist"
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/dist"
 
-            echo "--- Modifying $CONFIG_FILE_PATH to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
-            # Use Node to modify the JSON config file to set the dist property to an absolute path
-            # This is more robust than sed/awk for JSON manipulation
+            # Shell debugging: Check if file exists and list directory
+            echo "--- Shell: Checking if config file exists at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            if [ -f "$ABSOLUTE_CONFIG_FILE_PATH_SHELL" ]; then
+              echo "--- Shell: Config file FOUND at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            else
+              echo "--- Shell: Config file NOT FOUND at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            fi
+            echo "--- Shell: Listing contents of $(dirname "$ABSOLUTE_CONFIG_FILE_PATH_SHELL") ---"
+            ls -la "$(dirname "$ABSOLUTE_CONFIG_FILE_PATH_SHELL")"
+            echo "--- End Shell Debugging ---"
+
+            echo "--- Modifying $ABSOLUTE_CONFIG_FILE_PATH_SHELL to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
             node -e "\
               const fs = require('fs');\
               const path = require('path');\
-              const configFile = path.resolve('$CONFIG_FILE_PATH');\
-              const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
-              config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
-              fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
-              console.log('Successfully updated $DIST_PROPERTY_NAME in', configFile);"
+              const workspaceDir = process.env.GITHUB_WORKSPACE;\
+              const configFile = path.join(workspaceDir, '$RELATIVE_CONFIG_FILE_PATH');\
+              console.log('Node: Attempting to read config from:', configFile);\
+              try { \
+                const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+                config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+                fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+                console.log('Node: Successfully updated $DIST_PROPERTY_NAME in', configFile);\
+              } catch (err) { \
+                console.error('Node: Error processing config file:', configFile, err); \
+                process.exit(1); \
+              }"
 
-            # For debugging: print the modified config
-            echo "--- Contents of $CONFIG_FILE_PATH after modification ---"
-            cat $CONFIG_FILE_PATH
+            echo "--- Contents of $ABSOLUTE_CONFIG_FILE_PATH_SHELL after modification ---"
+            cat "$ABSOLUTE_CONFIG_FILE_PATH_SHELL"
             echo "--- End of modified config ---"
+
+            echo "--- Debugging Cargo Paths for $PACKAGE_NAME ---"
+            echo "Current PWD:"
+            pwd
+            echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+            echo "Listing $GITHUB_WORKSPACE/packages:"
+            ls -la "$GITHUB_WORKSPACE/packages" || echo "Failed to list $GITHUB_WORKSPACE/packages"
+            echo "Listing $GITHUB_WORKSPACE/packages/tauri-plugin:"
+            ls -la "$GITHUB_WORKSPACE/packages/tauri-plugin" || echo "Failed to list $GITHUB_WORKSPACE/packages/tauri-plugin"
+            echo "Verifying Cargo.toml content in app ($APP_DIR_NAME):"
+            cat "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri/Cargo.toml" || echo "Failed to cat $GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri/Cargo.toml"
+            echo "--- End Cargo Path Debugging ---"
 
             # Now run Tauri build
             echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
-            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec pnpm tauri build
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec pnpm tauri build
           fi
         continue-on-error: true
 
@@ -206,41 +280,79 @@ jobs:
         id: build-app
         shell: bash
         run: |
-          APP_NAME_FULL="zubridge-${{ inputs.app }}-example"
+          PACKAGE_NAME="zubridge-${{ inputs.app }}-example"
+          APP_DIR_NAME="${{ inputs.app }}-example"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
           else
+            echo "--- Initial check: Listing contents of $GITHUB_WORKSPACE/apps/$APP_DIR_NAME ---"
+            ls -la "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME"
+            echo "--- Initial check: Listing contents of $GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri ---"
+            ls -la "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri"
+            echo "--- End Initial check ---"
+
             # Run Vite build first
             echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
-            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec vite build
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec vite build
 
             # Determine config file and property name
-            CONFIG_FILE_PATH="apps/$APP_NAME_FULL/src-tauri/tauri.conf.json"
+            RELATIVE_CONFIG_FILE_PATH="apps/$APP_DIR_NAME/src-tauri/tauri.conf.json"
+            ABSOLUTE_CONFIG_FILE_PATH_SHELL="$GITHUB_WORKSPACE/$RELATIVE_CONFIG_FILE_PATH"
             DIST_PROPERTY_NAME="distDir" # Default for v1
             if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
               DIST_PROPERTY_NAME="frontendDist"
             fi
 
             # Calculate absolute path for dist dir
-            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_NAME_FULL/dist"
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/dist"
 
-            echo "--- Modifying $CONFIG_FILE_PATH to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            # Shell debugging: Check if file exists and list directory
+            echo "--- Shell: Checking if config file exists at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            if [ -f "$ABSOLUTE_CONFIG_FILE_PATH_SHELL" ]; then
+              echo "--- Shell: Config file FOUND at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            else
+              echo "--- Shell: Config file NOT FOUND at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            fi
+            echo "--- Shell: Listing contents of $(dirname "$ABSOLUTE_CONFIG_FILE_PATH_SHELL") ---"
+            ls -la "$(dirname "$ABSOLUTE_CONFIG_FILE_PATH_SHELL")"
+            echo "--- End Shell Debugging ---"
+
+            echo "--- Modifying $ABSOLUTE_CONFIG_FILE_PATH_SHELL to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
             node -e "\
               const fs = require('fs');\
               const path = require('path');\
-              const configFile = path.resolve('$CONFIG_FILE_PATH');\
-              const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
-              config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
-              fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
-              console.log('Successfully updated $DIST_PROPERTY_NAME in', configFile);"
+              const workspaceDir = process.env.GITHUB_WORKSPACE;\
+              const configFile = path.join(workspaceDir, '$RELATIVE_CONFIG_FILE_PATH');\
+              console.log('Node: Attempting to read config from:', configFile);\
+              try { \
+                const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+                config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+                fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+                console.log('Node: Successfully updated $DIST_PROPERTY_NAME in', configFile);\
+              } catch (err) { \
+                console.error('Node: Error processing config file:', configFile, err); \
+                process.exit(1); \
+              }"
 
-            echo "--- Contents of $CONFIG_FILE_PATH after modification ---"
-            cat $CONFIG_FILE_PATH
+            echo "--- Contents of $ABSOLUTE_CONFIG_FILE_PATH_SHELL after modification ---"
+            cat "$ABSOLUTE_CONFIG_FILE_PATH_SHELL"
             echo "--- End of modified config ---"
+
+            echo "--- Debugging Cargo Paths for $PACKAGE_NAME ---"
+            echo "Current PWD:"
+            pwd
+            echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+            echo "Listing $GITHUB_WORKSPACE/packages:"
+            ls -la "$GITHUB_WORKSPACE/packages" || echo "Failed to list $GITHUB_WORKSPACE/packages"
+            echo "Listing $GITHUB_WORKSPACE/packages/tauri-plugin:"
+            ls -la "$GITHUB_WORKSPACE/packages/tauri-plugin" || echo "Failed to list $GITHUB_WORKSPACE/packages/tauri-plugin"
+            echo "Verifying Cargo.toml content in app ($APP_DIR_NAME):"
+            cat "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri/Cargo.toml" || echo "Failed to cat $GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri/Cargo.toml"
+            echo "--- End Cargo Path Debugging ---"
 
             # Now run Tauri build
             echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
-            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec pnpm tauri build
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec pnpm tauri build
           fi
         continue-on-error: true
 
@@ -313,41 +425,79 @@ jobs:
         id: build-app
         shell: bash
         run: |
-          APP_NAME_FULL="zubridge-${{ inputs.app }}-example"
+          PACKAGE_NAME="zubridge-${{ inputs.app }}-example"
+          APP_DIR_NAME="${{ inputs.app }}-example"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
           else
+            echo "--- Initial check: Listing contents of $GITHUB_WORKSPACE/apps/$APP_DIR_NAME ---"
+            ls -la "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME"
+            echo "--- Initial check: Listing contents of $GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri ---"
+            ls -la "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri"
+            echo "--- End Initial check ---"
+
             # Run Vite build first
             echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
-            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec vite build
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec vite build
 
             # Determine config file and property name
-            CONFIG_FILE_PATH="apps/$APP_NAME_FULL/src-tauri/tauri.conf.json"
+            RELATIVE_CONFIG_FILE_PATH="apps/$APP_DIR_NAME/src-tauri/tauri.conf.json"
+            ABSOLUTE_CONFIG_FILE_PATH_SHELL="$GITHUB_WORKSPACE/$RELATIVE_CONFIG_FILE_PATH"
             DIST_PROPERTY_NAME="distDir" # Default for v1
             if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
               DIST_PROPERTY_NAME="frontendDist"
             fi
 
             # Calculate absolute path for dist dir
-            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_NAME_FULL/dist"
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/dist"
 
-            echo "--- Modifying $CONFIG_FILE_PATH to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            # Shell debugging: Check if file exists and list directory
+            echo "--- Shell: Checking if config file exists at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            if [ -f "$ABSOLUTE_CONFIG_FILE_PATH_SHELL" ]; then
+              echo "--- Shell: Config file FOUND at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            else
+              echo "--- Shell: Config file NOT FOUND at $ABSOLUTE_CONFIG_FILE_PATH_SHELL ---"
+            fi
+            echo "--- Shell: Listing contents of $(dirname "$ABSOLUTE_CONFIG_FILE_PATH_SHELL") ---"
+            ls -la "$(dirname "$ABSOLUTE_CONFIG_FILE_PATH_SHELL")"
+            echo "--- End Shell Debugging ---"
+
+            echo "--- Modifying $ABSOLUTE_CONFIG_FILE_PATH_SHELL to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
             node -e "\
               const fs = require('fs');\
               const path = require('path');\
-              const configFile = path.resolve('$CONFIG_FILE_PATH');\
-              const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
-              config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
-              fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
-              console.log('Successfully updated $DIST_PROPERTY_NAME in', configFile);"
+              const workspaceDir = process.env.GITHUB_WORKSPACE;\
+              const configFile = path.join(workspaceDir, '$RELATIVE_CONFIG_FILE_PATH');\
+              console.log('Node: Attempting to read config from:', configFile);\
+              try { \
+                const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+                config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+                fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+                console.log('Node: Successfully updated $DIST_PROPERTY_NAME in', configFile);\
+              } catch (err) { \
+                console.error('Node: Error processing config file:', configFile, err); \
+                process.exit(1); \
+              }"
 
-            echo "--- Contents of $CONFIG_FILE_PATH after modification ---"
-            cat $CONFIG_FILE_PATH
+            echo "--- Contents of $ABSOLUTE_CONFIG_FILE_PATH_SHELL after modification ---"
+            cat "$ABSOLUTE_CONFIG_FILE_PATH_SHELL"
             echo "--- End of modified config ---"
+
+            echo "--- Debugging Cargo Paths for $PACKAGE_NAME ---"
+            echo "Current PWD:"
+            pwd
+            echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+            echo "Listing $GITHUB_WORKSPACE/packages:"
+            ls -la "$GITHUB_WORKSPACE/packages" || echo "Failed to list $GITHUB_WORKSPACE/packages"
+            echo "Listing $GITHUB_WORKSPACE/packages/tauri-plugin:"
+            ls -la "$GITHUB_WORKSPACE/packages/tauri-plugin" || echo "Failed to list $GITHUB_WORKSPACE/packages/tauri-plugin"
+            echo "Verifying Cargo.toml content in app ($APP_DIR_NAME):"
+            cat "$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri/Cargo.toml" || echo "Failed to cat $GITHUB_WORKSPACE/apps/$APP_DIR_NAME/src-tauri/Cargo.toml"
+            echo "--- End Cargo Path Debugging ---"
 
             # Now run Tauri build
             echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
-            cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$APP_NAME_FULL exec pnpm tauri build
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec pnpm tauri build
           fi
         continue-on-error: true
 
@@ -399,6 +549,12 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
       - name: Setup E2E Environment
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
@@ -441,6 +597,12 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
       - name: Setup E2E Environment
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
@@ -482,6 +644,12 @@ jobs:
         uses: ./.github/workflows/actions/setup-workspace
         with:
           node-version: "20"
+
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
 
       - name: Setup E2E Environment
         uses: ./.github/workflows/actions/setup-e2e-environment
