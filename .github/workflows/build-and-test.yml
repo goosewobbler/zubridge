@@ -622,7 +622,12 @@ jobs:
             echo "Installing dependencies for Tauri v1"
             sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V1_DEPS
           elif [[ "${{ inputs.app }}" == "tauri" ]]; then
-            echo "Installing dependencies for Tauri v2"
+            echo "Installing dependencies for Tauri v2 on Ubuntu 24.04 (Noble)"
+            echo "--- Searching for webdriver packages ---"
+            apt-cache search webkitgtk-.*driver || echo "apt-cache search for webkitgtk-.*driver failed or found nothing"
+            apt-cache search gir1.2-webkit2 || echo "apt-cache search for gir1.2-webkit2 failed or found nothing"
+            apt-cache search libwebkit2gtk || echo "apt-cache search for libwebkit2gtk failed or found nothing"
+            echo "--- End search --- Gtk/WebKit --- Version 4.1 Packages --- Output For Debugging --- "
             sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
           else
             echo "::warning:: Unknown Tauri app type for dependency installation: ${{ inputs.app }}"
