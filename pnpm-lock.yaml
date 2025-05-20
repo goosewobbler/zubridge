@@ -258,6 +258,9 @@ importers:
       '@wdio/mocha-framework':
         specifier: ^9.14.0
         version: 9.14.0
+      '@wdio/spec-reporter':
+        specifier: ^9.14.0
+        version: 9.14.0
       read-package-up:
         specifier: ^11.0.0
         version: 11.0.0
@@ -1751,6 +1754,10 @@ packages:
     resolution: {integrity: sha512-4HhNLXcKKzphlQvxY2nvJLj1mE+yd87rIvhldEO3HleMDq0h9C1K+m45J0SxzQmT5i7VVBuhiuXzgZV300bh8g==}
     engines: {node: '>=18.20.0'}
 
+  '@wdio/spec-reporter@9.14.0':
+    resolution: {integrity: sha512-k9uFEn/SHQCmPMn5DlcUdCLlCwyWodaLECr7YLpkfdywuwrBLrB7R8YME7g63lSQzH3CAzLzPhgMiokQWLUu4w==}
+    engines: {node: '>=18.20.0'}
+
   '@wdio/types@9.14.0':
     resolution: {integrity: sha512-Zqc4sxaQLIXdI1EHItIuVIOn7LvPmDvl9JEANwiJ35ck82Xlj+X55Gd9NtELSwChzKgODD0OBzlLgXyxTr69KA==}
     engines: {node: '>=18.20.0'}
@@ -2454,6 +2461,9 @@ packages:
 
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
+
+  easy-table@1.2.0:
+    resolution: {integrity: sha512-OFzVOv03YpvtcWGe5AayU5G2hgybsg3iqA6drU8UaoZyB9jLGMTrz9+asnLp/E+6qPh88yEI1gvyZFZ41dmgww==}
 
   edge-paths@3.0.5:
     resolution: {integrity: sha512-sB7vSrDnFa4ezWQk9nZ/n0FdpdUuC6R1EOrlU3DL+bovcNFK28rqu2emmAUjujYEJTWIgQGqgVVWUZXMnc8iWg==}
@@ -6538,6 +6548,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@wdio/spec-reporter@9.14.0':
+    dependencies:
+      '@wdio/reporter': 9.14.0
+      '@wdio/types': 9.14.0
+      chalk: 5.4.1
+      easy-table: 1.2.0
+      pretty-ms: 9.2.0
+
   '@wdio/types@9.14.0':
     dependencies:
       '@types/node': 20.17.48
@@ -7307,6 +7325,12 @@ snapshots:
       gopd: 1.2.0
 
   eastasianwidth@0.2.0: {}
+
+  easy-table@1.2.0:
+    dependencies:
+      ansi-regex: 5.0.1
+    optionalDependencies:
+      wcwidth: 1.0.1
 
   edge-paths@3.0.5:
     dependencies:
