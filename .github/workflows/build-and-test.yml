@@ -633,7 +633,7 @@ jobs:
             echo "--- apt-cache search libjavascriptcoregtk-4.1-dev ---"
             apt-cache search libjavascriptcoregtk-4.1-dev || echo "apt-cache search libjavascriptcoregtk-4.1-dev failed"
             echo "--- End diagnostic searches ---"
-            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
+            sudo apt-get install -y $COMMON_DEPS $TAURI_V2_DEPS
           else
             echo "::warning:: Unknown Tauri app type for dependency installation: ${{ inputs.app }}"
             # As a fallback, attempt to install common and v2 deps, but this might fail or be incorrect
@@ -651,6 +651,13 @@ jobs:
             exit 1
           fi
           echo "tauri-driver installed successfully."
+
+      - name: Install apt-file and update cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-file
+          sudo apt-file update
 
       - name: Download shared packages artifact
         uses: actions/download-artifact@v4
