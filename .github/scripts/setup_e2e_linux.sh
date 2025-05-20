@@ -80,18 +80,23 @@ if ! gh release download "$RELEASE_TAG_INPUT" -p "$DOWNLOADED_APP_ARTIFACT_NAME"
   # We need to find that zip. Often it's simply named after the artifact.
   # The `gh run download -n "$ARTIFACT_NAME_INPUT"` command downloads the artifact, which is a zip file,
   # and names it "$ARTIFACT_NAME_INPUT" (without an additional .zip extension).
+  # --- Correction: `gh run download` when given an artifact name that was a directory upload,
+  # actually creates a .zip file on disk. The exact name of this .zip file can vary.
+  # It might be named after the artifact itself, or it might be named based on the contents (e.g. productName).
+  # So, we should look for a single .zip file after the download.
 
   # DOWNLOADED_APP_ARTIFACT_NAME is still "${ARTIFACT_NAME_INPUT}.zip" for the unzip step later
-  # The actual downloaded file from `gh run download` will be named "$ARTIFACT_NAME_INPUT"
-  ACTUAL_DOWNLOADED_FILE_FROM_RUN="$ARTIFACT_NAME_INPUT"
 
-  if [ ! -f "$ACTUAL_DOWNLOADED_FILE_FROM_RUN" ]; then
-      echo "::error:: Workflow artifact $ACTUAL_DOWNLOADED_FILE_FROM_RUN not found after gh run download."
+  # Find the downloaded zip file (should be only one)
+  FOUND_ZIP_FROM_RUN=$(find . -maxdepth 1 -name '*.zip' -type f -print -quit || true)
+
+  if [ -z "$FOUND_ZIP_FROM_RUN" ] || [ ! -f "$FOUND_ZIP_FROM_RUN" ]; then
+      echo "::error:: No .zip file found in current directory after gh run download."
       ls -la .
       exit 1
   else
-      echo "Successfully found workflow artifact $ACTUAL_DOWNLOADED_FILE_FROM_RUN. Renaming to $DOWNLOADED_APP_ARTIFACT_NAME for unzipping."
-      mv "$ACTUAL_DOWNLOADED_FILE_FROM_RUN" "$DOWNLOADED_APP_ARTIFACT_NAME"
+      echo "Found downloaded workflow artifact: $FOUND_ZIP_FROM_RUN. Renaming to $DOWNLOADED_APP_ARTIFACT_NAME for unzipping."
+      mv "$FOUND_ZIP_FROM_RUN" "$DOWNLOADED_APP_ARTIFACT_NAME"
   fi
 else
   echo "Successfully downloaded $DOWNLOADED_APP_ARTIFACT_NAME from release."
@@ -141,14 +146,27 @@ if [[ "$APP_INPUT" == "electron" ]]; then
     FOUND_EXEC=""
     for search_dir in "${SEARCH_DIRS[@]}"; do
       if [ -d "$search_dir" ]; then
-        # Prioritize executable matching the possible product name (case-insensitive)
-        FOUND_EXEC=$(find "$search_dir" -maxdepth 1 -type f -iname "$POSSIBLE_PRODUCT_NAME" -executable ! -name "*.so" -print -quit || true)
-        if [ -f "$FOUND_EXEC" ]; then
-          break
+        # 1. Try to find by POSSIBLE_PRODUCT_NAME (case-insensitive), ignoring initial executable flag
+        CANDIDATE_EXEC=$(find "$search_dir" -maxdepth 1 -type f -iname "$POSSIBLE_PRODUCT_NAME" ! -name "*.so" -print -quit || true)
+        if [ -f "$CANDIDATE_EXEC" ]; then
+          echo "Found candidate by name: $CANDIDATE_EXEC"
+          chmod +x "$CANDIDATE_EXEC"
+          # Verify it's now executable
+          if [ -x "$CANDIDATE_EXEC" ]; then
+            echo "Candidate $CANDIDATE_EXEC is now executable. Using it."
+            FOUND_EXEC="$CANDIDATE_EXEC"
+            break
+          else
+            echo "::warning:: Candidate $CANDIDATE_EXEC found by name but could not be made executable."
+          fi
         fi
-        # Fallback: any executable in this dir not ending in .so
-        FOUND_EXEC=$(find "$search_dir" -maxdepth 1 -type f -executable ! -name "*.so" -print -quit || true)
-        if [ -f "$FOUND_EXEC" ]; then
+
+        # 2. Fallback: any executable in this dir not ending in .so (original fallback)
+        echo "No suitable candidate by name in $search_dir, or it could not be made executable. Looking for any other executable..."
+        CANDIDATE_EXEC=$(find "$search_dir" -maxdepth 1 -type f -executable ! -name "*.so" -print -quit || true)
+        if [ -f "$CANDIDATE_EXEC" ]; then
+          echo "Found other executable: $CANDIDATE_EXEC"
+          FOUND_EXEC="$CANDIDATE_EXEC"
           break
         fi
       fi
