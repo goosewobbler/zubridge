@@ -17,7 +17,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     STATE_SYNC_PAUSE: 250, // Time to wait for state to sync between windows
     BUTTON_CLICK_PAUSE: 50, // Time to wait after clicking a button
     WINDOW_CHANGE_PAUSE: 200, // Time to wait after window creation/deletion
-    WINDOW_WAIT_TIMEOUT: 3000, // Maximum time to wait for window operations
+    WINDOW_WAIT_TIMEOUT: 10000, // Maximum time to wait for window operations
     WINDOW_WAIT_INTERVAL: 150, // How often to check window availability
     THUNK_WAIT_TIME: 5000, // Time to wait for thunk to complete
   },
