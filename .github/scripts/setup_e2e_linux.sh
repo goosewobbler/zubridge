@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e # Exit immediately if a command exits with a non-zero status.
 
-echo "Setting up E2E environment for $APP ($MODE) on Linux"
+echo "Setting up E2E environment for $APP_INPUT ($MODE_INPUT) on Linux"
 echo "APP_DIR: $APP_DIR_INPUT"
 echo "MODE: $MODE_INPUT"
 
@@ -46,102 +46,126 @@ if [[ "$APP_INPUT" == "tauri" || "$APP_INPUT" == "tauri-v1" ]]; then
   fi
 fi
 
-# Download shared packages artifact
-echo "Downloading shared-packages artifact..."
-RETRY_COUNT=0
-MAX_RETRIES=3
-RETRY_DELAY=5
-DOWNLOAD_SUCCESS=false
-until [ $DOWNLOAD_SUCCESS = true ] || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
-  if gh release download shared-packages -A shared-packages.zip --repo $GITHUB_REPOSITORY -p "*" --clobber; then
-    DOWNLOAD_SUCCESS=true
-  else
-    RETRY_COUNT=$((RETRY_COUNT+1))
-    echo "Attempt $RETRY_COUNT to download shared-packages.zip failed. Retrying in $RETRY_DELAY seconds..."
-    sleep $RETRY_DELAY
-  fi
-done
+# shared-packages artifact is now downloaded by the workflow YAML
 
-if [ -f "shared-packages.zip" ]; then
-  unzip -o shared-packages.zip -d .
-  rm shared-packages.zip
-  echo "Shared packages artifact downloaded and extracted."
-  echo "Listing contents of packages/tauri-plugin (if exists):"
-  ls -R packages/tauri-plugin 2>/dev/null || echo "packages/tauri-plugin not found or empty."
-else
-  echo "::warning::shared-packages.zip not found after $MAX_RETRIES retries."
-fi
+echo "Listing contents of packages/ (after shared-packages download by workflow):"
+ls -R packages/ 2>/dev/null || echo "packages/ directory not found or empty."
+echo "Listing contents of packages/tauri-plugin (if exists):"
+ls -R packages/tauri-plugin 2>/dev/null || echo "packages/tauri-plugin not found or empty."
+
 
 # Download build artifact for the specific app
-ARTIFACT_NAME="${APP_INPUT}-${MODE_INPUT}-${OS_FOR_ARTIFACT_INPUT}"
-echo "Attempting to download app artifact: $ARTIFACT_NAME from tag $RELEASE_TAG_INPUT"
+# ARTIFACT_NAME_INPUT is expected to be like 'app-mode-os-buildid'
+echo "Attempting to download app artifact: $ARTIFACT_NAME_INPUT using tag $RELEASE_TAG_INPUT"
 
-mkdir -p apps/${APP_DIR_INPUT}/build_output
-cd apps/${APP_DIR_INPUT}/build_output
+mkdir -p apps/"$APP_DIR_INPUT"/build_output
+cd apps/"$APP_DIR_INPUT"/build_output
 
-echo "Attempting to download from GitHub Release: $RELEASE_TAG_INPUT artifact ${ARTIFACT_NAME}.zip"
-if ! gh release download "$RELEASE_TAG_INPUT" -A "${ARTIFACT_NAME}.zip" --repo $GITHUB_REPOSITORY --clobber; then
-  echo "Failed to download ${ARTIFACT_NAME}.zip from release. Attempting to download from workflow artifacts (run_id: $GITHUB_RUN_ID)..."
-  if ! gh run download "$GITHUB_RUN_ID" -n "$ARTIFACT_NAME" --repo $GITHUB_REPOSITORY; then
-    echo "::error::Failed to download $ARTIFACT_NAME from release AND workflow run."
+DOWNLOADED_APP_ARTIFACT_NAME="${ARTIFACT_NAME_INPUT}.zip" # Default to .zip for release assets
+
+echo "Attempting to download from GitHub Release: $RELEASE_TAG_INPUT asset pattern ${DOWNLOADED_APP_ARTIFACT_NAME}"
+if ! gh release download "$RELEASE_TAG_INPUT" -p "$DOWNLOADED_APP_ARTIFACT_NAME" --repo "$GITHUB_REPOSITORY" --clobber; then
+  echo "Failed to download $DOWNLOADED_APP_ARTIFACT_NAME from release. Attempting to download $ARTIFACT_NAME_INPUT from workflow artifacts (run_id: $GITHUB_RUN_ID)..."
+  # gh run download downloads the artifact as a zip if it's a directory upload
+  if ! gh run download "$GITHUB_RUN_ID" -n "$ARTIFACT_NAME_INPUT" --repo "$GITHUB_REPOSITORY"; then
+    echo "::error::Failed to download app artifact from release (as $DOWNLOADED_APP_ARTIFACT_NAME) AND from workflow run (as $ARTIFACT_NAME_INPUT)."
     exit 1
   fi
-  echo "Successfully downloaded $ARTIFACT_NAME artifact from workflow run."
+  echo "Successfully downloaded $ARTIFACT_NAME_INPUT artifact from workflow run (this will be a .zip file)."
+  # If downloaded from workflow, the file will be named $ARTIFACT_NAME_INPUT.zip
+  # (gh run download automatically zips directory artifacts and appends .zip if no specific file given)
+  # However, the -n flag downloads the artifact preserving its name. If it was a dir, it's zipped.
+  # Let's assume it IS zipped and the name of the zip file matches ARTIFACT_NAME_INPUT
+  # If the artifact uploaded was a directory, `gh run download` creates a zip file.
+  # We need to find that zip. Often it's simply named after the artifact.
+  # For safety, let's assume the downloaded zip from 'gh run download' is named ARTIFACT_NAME_INPUT.zip
+  # If 'gh run download' downloads a single file, it uses that name. If it's a directory artifact, it zips it.
+  # The name of the artifact in `upload-artifact` is $ARTIFACT_NAME_INPUT.
+  # So, `gh run download -n "$ARTIFACT_NAME_INPUT"` should produce a file named "$ARTIFACT_NAME_INPUT.zip"
+  # if the uploaded artifact was a directory.
+  # Let's check for it.
+  if [ ! -f "$ARTIFACT_NAME_INPUT.zip" ]; then
+      echo "::warning:: Workflow artifact $ARTIFACT_NAME_INPUT.zip not found. Trying to find any .zip file."
+      # Try to find any zip file if the exact name isn't there
+      FOUND_ZIP=$(find . -maxdepth 1 -name '*.zip' -print -quit)
+      if [ -f "$FOUND_ZIP" ]; then
+          echo "Found zip file: $FOUND_ZIP. Renaming to $DOWNLOADED_APP_ARTIFACT_NAME for unzipping."
+          mv "$FOUND_ZIP" "$DOWNLOADED_APP_ARTIFACT_NAME"
+      else
+          echo "::error:: No .zip artifact found after workflow download."
+          ls -la .
+          exit 1
+      fi
+  else
+      # If ARTIFACT_NAME_INPUT.zip exists, make sure DOWNLOADED_APP_ARTIFACT_NAME points to it
+      DOWNLOADED_APP_ARTIFACT_NAME="$ARTIFACT_NAME_INPUT.zip"
+  fi
+
 else
-  echo "Successfully downloaded ${ARTIFACT_NAME}.zip from release."
+  echo "Successfully downloaded $DOWNLOADED_APP_ARTIFACT_NAME from release."
 fi
 
-if [ ! -f "${ARTIFACT_NAME}.zip" ]; then
-  echo "::error::Artifact zip file ${ARTIFACT_NAME}.zip not found after download attempts."
+if [ ! -f "$DOWNLOADED_APP_ARTIFACT_NAME" ]; then
+  echo "::error::Artifact zip file $DOWNLOADED_APP_ARTIFACT_NAME not found after download attempts."
   ls -la .
   exit 1
 fi
 
-unzip -o "${ARTIFACT_NAME}.zip"
-rm "${ARTIFACT_NAME}.zip"
+unzip -o "$DOWNLOADED_APP_ARTIFACT_NAME"
+rm "$DOWNLOADED_APP_ARTIFACT_NAME"
 echo "Artifact contents after download and extraction:"
 ls -R .
 
 # Determine APP_PATH_OUTPUT
 APP_PATH_OUTPUT=""
-if [[ "${APP_INPUT}" == "electron" ]]; then
-  EXECUTABLE_NAME=$(find . -maxdepth 2 -type f -name "*.AppImage" -print -quit || true)
+if [[ "$APP_INPUT" == "electron" ]]; then
+  # For Electron, the build process creates a directory like 'linux-unpacked' or similar containing the executable
+  # Or it could be an AppImage directly.
+  # The artifact uploaded for electron is apps/electron-example/dist-{mode} which contains the packaged app.
+  # Inside this, for Linux, we expect something like an AppImage or a directory with the executable.
+
+  # Search for AppImage first within the extracted contents
+  EXECUTABLE_NAME=$(find . -name "*.AppImage" -type f -print -quit || true)
+
   if [ -z "$EXECUTABLE_NAME" ] || [ ! -f "$EXECUTABLE_NAME" ]; then
-      EXECUTABLE_NAME=$(find . -maxdepth 2 -type f -name "*${APP_DIR_INPUT}*${MODE_INPUT}*" ! -name "*.blockmap" -print -quit || true)
-  fi
-  if [ -z "$EXECUTABLE_NAME" ] || [ ! -f "$EXECUTABLE_NAME" ]; then
-      EXECUTABLE_NAME=$(find . -maxdepth 2 -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.snap" -o -name "*.tar.gz" \) -print -quit || true)
+    # If no AppImage, look for a common executable name pattern (e.g., app name)
+    # This needs to be robust. The build output dir is dist-{mode}.
+    # The executable is often 'electron-example' or similar within a subdirectory.
+    # Let's search for any executable that looks like the app name.
+    # The structure is often './linux-unpacked/appname' or just './appname'
+    echo "No AppImage found. Searching for other executables..."
+    # Search more broadly for any executable file not in a hidden dir
+    EXECUTABLE_NAME=$(find . -type f -executable ! -path "*/.*" -print -quit || true)
   fi
 
   if [ -f "$EXECUTABLE_NAME" ]; then
     chmod +x "$EXECUTABLE_NAME"
     APP_PATH_OUTPUT=$(realpath "$EXECUTABLE_NAME")
   else
-    echo "::error::Electron executable not found."
-    ls -R .
+    echo "::error::Electron executable not found after extraction."
+    ls -R . # Show what was extracted
     exit 1
   fi
-elif [[ "${APP_INPUT}" == "tauri" || "${APP_INPUT}" == "tauri-v1" ]]; then
-  APPIMAGE_PATH=$(find . -path "*/appimage/*.AppImage" -type f -print -quit || true)
-  if [ -z "$APPIMAGE_PATH" ] || [ ! -f "$APPIMAGE_PATH" ]; then
-      APPIMAGE_PATH=$(find . -path "./*${APP_DIR_INPUT}*/*.AppImage" -type f -print -quit || true)
-  fi
-  if [ -z "$APPIMAGE_PATH" ] || [ ! -f "$APPIMAGE_PATH" ]; then
-      APPIMAGE_PATH=$(find . -name "*.AppImage" -type f -print -quit || true)
-  fi
+elif [[ "$APP_INPUT" == "tauri" || "$APP_INPUT" == "tauri-v1" ]]; then
+  # Tauri apps on Linux are typically .AppImage or .deb
+  # The artifact uploaded for tauri is apps/{APP_NAME}-example/src-tauri/target/release/bundle/
+  # which contains appimage/, deb/, etc. subdirectories.
+
+  # Look for AppImage inside an 'appimage' directory or directly
+  APPIMAGE_PATH=$(find . -path "*/appimage/*.AppImage" -o -name "*.AppImage" -type f -print -quit || true)
 
   if [ -f "$APPIMAGE_PATH" ]; then
     chmod +x "$APPIMAGE_PATH"
     APP_PATH_OUTPUT=$(realpath "$APPIMAGE_PATH")
   else
-    echo "::warning::Tauri AppImage not found. Checking for .deb."
-    DEB_PATH=$(find . -name "*.deb" -type f -print -quit || true)
+    echo "::warning::Tauri AppImage not found. Checking for .deb package."
+    DEB_PATH=$(find . -path "*/deb/*.deb" -o -name "*.deb" -type f -print -quit || true)
     if [ -f "$DEB_PATH" ]; then
-      echo "Found .deb package: $DEB_PATH."
-      APP_PATH_OUTPUT=$(realpath "$DEB_PATH")
+      echo "Found .deb package: $DEB_PATH. E2E tests might not be able to directly execute this type of artifact."
+      APP_PATH_OUTPUT=$(realpath "$DEB_PATH") # WDIO might not be able to use a .deb directly
     else
-      echo "::error::No AppImage or .deb found for Tauri app."
-      ls -R .
+      echo "::error::No AppImage or .deb found for Tauri app after extraction."
+      ls -R . # Show what was extracted
       exit 1
     fi
   fi
@@ -155,4 +179,4 @@ fi
 
 echo "Final determined APP_PATH_OUTPUT: $APP_PATH_OUTPUT"
 echo "app_path=$APP_PATH_OUTPUT" >> "$GITHUB_OUTPUT"
-cd ../../..
+cd ../../.. # Go back to the workspace root relative to where we were (apps/APP_DIR/build_output)

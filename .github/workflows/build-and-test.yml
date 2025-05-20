@@ -586,6 +586,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Rust toolchain
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -595,20 +596,39 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          COMMON_DEPS="\
             pkg-config \
             libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libwebkit2gtk-driver \
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
             libglib2.0-dev \
             libsoup-2.4-1 \
             libsoup2.4-dev \
-            libjavascriptcoregtk-4.0-dev \
             xvfb \
-            scrot
+            scrot"
+
+          TAURI_V1_DEPS="\
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-driver \
+            libjavascriptcoregtk-4.0-dev"
+
+          TAURI_V2_DEPS="\
+            libwebkit2gtk-4.1-dev \
+            webkitgtk-webdriver \
+            libjavascriptcoregtk-4.1-dev"
+
+          if [[ "${{ inputs.app }}" == "tauri-v1" ]]; then
+            echo "Installing dependencies for Tauri v1"
+            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V1_DEPS
+          elif [[ "${{ inputs.app }}" == "tauri" ]]; then
+            echo "Installing dependencies for Tauri v2"
+            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
+          else
+            echo "::warning:: Unknown Tauri app type for dependency installation: ${{ inputs.app }}"
+            # As a fallback, attempt to install common and v2 deps, but this might fail or be incorrect
+            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
+          fi
 
       - name: Install tauri-driver
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
@@ -621,6 +641,12 @@ jobs:
             exit 1
           fi
           echo "tauri-driver installed successfully."
+
+      - name: Download shared packages artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages/
 
       - name: Setup E2E Environment (Download Artifacts, Find App & WebKitWebDriver)
         id: setup_e2e
@@ -637,35 +663,30 @@ jobs:
           .github/scripts/setup_e2e_linux.sh
 
       - name: Execute E2E Tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 20
-          max_attempts: 2
-          retry_on: error
-          command: |
-            echo "Starting E2E tests for ${{ inputs.app }} (${{ inputs.mode }}) with app path: ${{ steps.setup_e2e.outputs.app_path }}"
-            echo "E2E_APP_TYPE: ${{ inputs.app }}"
-            echo "APP_DIR: ${{ inputs.app }}-example"
-            echo "MODE: ${{ inputs.mode }}"
-            echo "DISPLAY_ENV: $DISPLAY"
-            echo "TAURI_WEBDRIVER_WEBKITDRIVER_PATH_ENV: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH"
+        run: |
+          echo "Starting E2E tests for ${{ inputs.app }} (${{ inputs.mode }}) with app path: ${{ steps.setup_e2e.outputs.app_path }}"
+          echo "E2E_APP_TYPE: ${{ inputs.app }}"
+          echo "APP_DIR: ${{ inputs.app }}-example"
+          echo "MODE: ${{ inputs.mode }}"
+          echo "DISPLAY_ENV: $DISPLAY"
+          echo "TAURI_WEBDRIVER_WEBKITDRIVER_PATH_ENV: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH"
 
-            if xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" pnpm --filter=zubridge-e2e run exec; then
-              echo "E2E tests passed for ${{ inputs.app }} (${{ inputs.mode }})."
-            else
-              echo "::error::E2E tests failed for ${{ inputs.app }} (${{ inputs.mode }}). Capturing debug info..."
-              if [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
-                TAURI_DRIVER_LOG_PATH="$HOME/.tauri/tauri-driver.log"
-                echo "Attempting to display tauri-driver log from $TAURI_DRIVER_LOG_PATH:"
-                if [ -f "$TAURI_DRIVER_LOG_PATH" ]; then
-                  tail -n 100 "$TAURI_DRIVER_LOG_PATH"
-                else
-                  echo "tauri-driver.log not found at $TAURI_DRIVER_LOG_PATH. Listing $HOME/.tauri directory:"
-                  ls -la $HOME/.tauri 2>/dev/null || echo "$HOME/.tauri directory not found."
-                fi
+          if xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" pnpm --filter=zubridge-e2e run exec; then
+            echo "E2E tests passed for ${{ inputs.app }} (${{ inputs.mode }})."
+          else
+            echo "::error::E2E tests failed for ${{ inputs.app }} (${{ inputs.mode }}). Capturing debug info..."
+            if [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
+              TAURI_DRIVER_LOG_PATH="$HOME/.tauri/tauri-driver.log"
+              echo "Attempting to display tauri-driver log from $TAURI_DRIVER_LOG_PATH:"
+              if [ -f "$TAURI_DRIVER_LOG_PATH" ]; then
+                tail -n 100 "$TAURI_DRIVER_LOG_PATH"
+              else
+                echo "tauri-driver.log not found at $TAURI_DRIVER_LOG_PATH. Listing $HOME/.tauri directory:"
+                ls -la $HOME/.tauri 2>/dev/null || echo "$HOME/.tauri directory not found."
               fi
-              exit 1
             fi
+            exit 1
+          fi
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           E2E_APP_TYPE: ${{ inputs.app }}
@@ -779,21 +800,16 @@ jobs:
           artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
 
       - name: Execute E2E Tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 15
-          max_attempts: 2
-          retry_on: error
-          command: |
-            echo "Starting E2E tests for ${{ inputs.app }} (${{ inputs.mode }}) with app path: ${{ steps.setup_e2e.outputs.app_path }}"
-            echo "E2E_APP_TYPE: ${{ inputs.app }}"
-            echo "APP_DIR: ${{ inputs.app }}-example"
-            echo "MODE: ${{ inputs.mode }}"
-            echo "DISPLAY: $DISPLAY" # DISPLAY might not be relevant/set on macOS direct runners
-            echo "TAURI_WEBDRIVER_WEBKITDRIVER_PATH: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH"
-            # For Electron on macOS, xvfb-run is generally not needed as there's a window server.
-            # If tests are headless or specifically require Xvfb, it can be added, but usually not.
-            pnpm --filter=zubridge-e2e run exec
+        run: |
+          echo "Starting E2E tests for ${{ inputs.app }} (${{ inputs.mode }}) with app path: ${{ steps.setup_e2e.outputs.app_path }}"
+          echo "E2E_APP_TYPE: ${{ inputs.app }}"
+          echo "APP_DIR: ${{ inputs.app }}-example"
+          echo "MODE: ${{ inputs.mode }}"
+          echo "DISPLAY: $DISPLAY" # DISPLAY might not be relevant/set on macOS direct runners
+          echo "TAURI_WEBDRIVER_WEBKITDRIVER_PATH: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH"
+          # For Electron on macOS, xvfb-run is generally not needed as there's a window server.
+          # If tests are headless or specifically require Xvfb, it can be added, but usually not.
+          pnpm --filter=zubridge-e2e run exec
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           E2E_APP_TYPE: ${{ inputs.app }}
@@ -884,6 +900,9 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies # Added for Windows
+        run: pnpm install --frozen-lockfile
 
       - name: Install tauri-driver
         if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
