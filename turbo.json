@@ -93,6 +93,9 @@
       "dependsOn": ["build:packages"],
       "cache": false
     },
+    "zubridge-e2e#exec": {
+      "cache": false
+    },
     "@zubridge/middleware#build": {
       "cache": false
     },

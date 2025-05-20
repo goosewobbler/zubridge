@@ -1,7 +1,7 @@
 import url from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import os from 'node:os';
 // import crypto from 'node:crypto'; // Not used
 // import os from 'node:os'; // Not used
@@ -25,7 +25,13 @@ console.log(`[DEBUG] APP_PATH (from env): ${appPathFromEnv}`);
 console.log(`[DEBUG] APP_DIR (for fallback/electron dev): ${appDir}`);
 console.log(`[DEBUG] MODE: ${mode}`);
 
-let binaryPath: string | undefined = appPathFromEnv; // Use APP_PATH directly if available
+console.log(`[DEBUG] wdio.conf.ts: Initial process.env.APP_PATH = "${process.env.APP_PATH}"`);
+console.log(`[DEBUG] wdio.conf.ts: Initial process.env.E2E_APP_TYPE = "${process.env.E2E_APP_TYPE}"`);
+console.log(`[DEBUG] wdio.conf.ts: Initial process.env.APP_DIR = "${process.env.APP_DIR}"`);
+console.log(`[DEBUG] wdio.conf.ts: Initial process.env.MODE = "${process.env.MODE}"`);
+
+let binaryPath: string | undefined; // This will be the final path used by the service
+let resolvedAppPathFromEnv: string | undefined; // Store APP_PATH if valid, for later specific handling
 let services: string[] = [];
 let capabilities: any[] = [];
 let beforeSessionHook: (() => void) | undefined = undefined;
@@ -50,12 +56,76 @@ const stabilityFlags = [
   '--remote-debugging-port=9222',
 ];
 
+if (appPathFromEnv) {
+  const absoluteAppPath = path.resolve(__dirname, '..', appPathFromEnv);
+  console.log(`[DEBUG] APP_PATH from env: "${appPathFromEnv}", resolved to absolute: "${absoluteAppPath}"`);
+  // Trust that if APP_PATH is provided by CI (via setup-e2e-environment), it's valid.
+  // The setup-e2e-environment action is responsible for verifying existence.
+  resolvedAppPathFromEnv = absoluteAppPath;
+  console.log(`[DEBUG] Assuming resolved APP_PATH from env is valid: "${resolvedAppPathFromEnv}"`);
+} else {
+  console.log('[DEBUG] APP_PATH (from env) is not set. Fallback will be attempted.');
+}
+
 if (e2eAppType.startsWith('tauri')) {
-  if (!binaryPath || !fs.existsSync(binaryPath)) {
-    console.error(`[ERROR] Tauri app type specified, but APP_PATH is not valid: ${binaryPath}`);
-    process.exit(1);
+  if (resolvedAppPathFromEnv) {
+    // APP_PATH was provided and valid
+    binaryPath = resolvedAppPathFromEnv;
+    console.log(`[DEBUG] Tauri: Using binaryPath from resolved APP_PATH: ${binaryPath}`);
+  } else {
+    // Fallback logic for Tauri if APP_PATH wasn't helpful
+    console.log(`[DEBUG] Tauri: APP_PATH not set or invalid. Attempting to find local dev build.`);
+    const tauriAppBaseDir = path.join(__dirname, '..', 'apps', appDir);
+    const bundleDir = path.join(tauriAppBaseDir, 'src-tauri', 'target', 'release', 'bundle');
+    let foundPath: string | undefined;
+
+    if (fs.existsSync(bundleDir)) {
+      if (currentPlatform === 'linux') {
+        const appimageDir = path.join(bundleDir, 'appimage');
+        if (fs.existsSync(appimageDir)) {
+          const files = fs.readdirSync(appimageDir).filter((f) => f.endsWith('.AppImage'));
+          if (files.length > 0) {
+            files.sort(
+              (a, b) => fs.statSync(path.join(appimageDir, b)).mtimeMs - fs.statSync(path.join(appimageDir, a)).mtimeMs,
+            );
+            foundPath = path.join(appimageDir, files[0]);
+          }
+        }
+      } else if (currentPlatform === 'win32') {
+        const nsisDir = path.join(bundleDir, 'nsis');
+        const msiDir = path.join(bundleDir, 'msi');
+        let exeFiles: string[] = [];
+        if (fs.existsSync(nsisDir)) {
+          exeFiles = fs.readdirSync(nsisDir).filter((f) => f.endsWith('.exe'));
+          if (exeFiles.length > 0) {
+            exeFiles.sort(
+              (a, b) => fs.statSync(path.join(nsisDir, b)).mtimeMs - fs.statSync(path.join(nsisDir, a)).mtimeMs,
+            );
+            foundPath = path.join(nsisDir, exeFiles[0]);
+          }
+        }
+        if (!foundPath && fs.existsSync(msiDir)) {
+          const msiFiles = fs.readdirSync(msiDir).filter((f) => f.endsWith('.msi'));
+          if (msiFiles.length > 0) {
+            msiFiles.sort(
+              (a, b) => fs.statSync(path.join(msiDir, b)).mtimeMs - fs.statSync(path.join(msiDir, a)).mtimeMs,
+            );
+            foundPath = path.join(msiDir, msiFiles[0]);
+            console.log('[INFO] Tauri: Found MSI. Note: E2E test might not run MSI directly.');
+          }
+        }
+      } // macOS for Tauri is disabled in CI, local usage would require manual APP_PATH or .app handling.
+    }
+
+    if (foundPath && fs.existsSync(foundPath)) {
+      binaryPath = foundPath;
+      console.log(`[DEBUG] Tauri: Auto-discovered local build: ${binaryPath}`);
+    } else {
+      console.error(`[ERROR] Tauri: APP_PATH not set and local build not found in expected location: ${bundleDir}`);
+      process.exit(1);
+    }
   }
-  console.log(`[DEBUG] Using Tauri binary from APP_PATH: ${binaryPath}`);
+  console.log(`[DEBUG] Using Tauri binary from (final path): ${binaryPath}`);
   // Ensure executable for non-Windows
   if (currentPlatform !== 'win32') {
     try {
@@ -143,94 +213,42 @@ if (e2eAppType.startsWith('tauri')) {
     console.warn(`[WARN] package.json not found at ${packageJsonPath} for Electron version retrieval.`);
   }
 
-  // Find binary path for current platform (Electron specific logic)
-  // This part is only relevant if appPathFromEnv (binaryPath) was NOT provided or not valid for Electron dev
-  if (!binaryPath || !fs.existsSync(binaryPath)) {
-    console.log('[DEBUG] Electron: APP_PATH not valid or not provided, attempting to find local dev binary.');
-    const findMacBinary = () => {
-      const macDirs = currentArch === 'arm64' ? ['mac-arm64', 'mac'] : ['mac', 'mac-arm64'];
-      for (const dir of macDirs) {
-        const binPath = path.join(
-          electronExampleAppPath,
-          `dist-${mode}`,
-          dir,
-          `zubridge-electron-example-${mode}.app`,
-          'Contents',
-          'MacOS',
-          `zubridge-electron-example-${mode}`,
-        );
-        if (fs.existsSync(binPath)) return binPath;
-      }
-      const distDir = path.join(electronExampleAppPath, `dist-${mode}`);
-      if (fs.existsSync(distDir)) {
-        try {
-          const macFolders = fs
-            .readdirSync(distDir)
-            .filter((dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory());
-          for (const folder of macFolders) {
-            const binPath = path.join(
-              distDir,
-              folder,
-              `zubridge-electron-example-${mode}.app`,
-              'Contents',
-              'MacOS',
-              `zubridge-electron-example-${mode}`,
-            );
-            if (fs.existsSync(binPath)) return binPath;
-          }
-        } catch (err) {
-          /* ignore */
-        }
-      }
-      return '';
-    };
-
-    const binaryFinders = {
-      darwin: findMacBinary,
-      win32: () => {
-        const binPath = path.join(
-          electronExampleAppPath,
-          `dist-${mode}`,
-          'win-unpacked',
-          `zubridge-electron-example-${mode}.exe`,
-        );
-        return fs.existsSync(binPath) ? binPath : '';
-      },
-      linux: () => {
-        const binPath = path.join(
-          electronExampleAppPath,
-          `dist-${mode}`,
-          'linux-unpacked',
-          `zubridge-electron-example-${mode}`,
-        );
-        return fs.existsSync(binPath) ? binPath : '';
-      },
-    };
-
-    if (binaryFinders[currentPlatform]) {
-      binaryPath = binaryFinders[currentPlatform]();
-    }
-
-    if (!binaryPath) {
-      console.log('[DEBUG] Electron: Attempting fallback to direct Electron execution for dev');
-      const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
-      const appMain = path.join(electronExampleAppPath, `out-${mode}`, 'main', 'index.js');
-      if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
-        binaryPath = electronBin; // This is the electron executable itself
-        process.env.ELECTRON_APP_PATH = appMain; // The service will use this to load the app
-        console.log(`[DEBUG] Electron: Using electron binary ${binaryPath} with main script: ${appMain}`);
+  if (resolvedAppPathFromEnv) {
+    console.log(`[DEBUG] Electron: Attempting to use resolved APP_PATH: ${resolvedAppPathFromEnv}`);
+    if (currentPlatform === 'darwin' && resolvedAppPathFromEnv.endsWith('.app')) {
+      const executableName = `zubridge-${appDir}-${mode}`; // appDir and mode from env
+      const internalExecutable = path.join(resolvedAppPathFromEnv, 'Contents', 'MacOS', executableName);
+      if (fs.existsSync(internalExecutable)) {
+        console.log(`[DEBUG] Electron macOS: APP_PATH is .app, using internal executable: "${internalExecutable}"`);
+        binaryPath = internalExecutable;
       } else {
-        console.error(
-          `[ERROR] Electron: No suitable binary or main script found for dev execution on platform ${currentPlatform}`,
+        console.warn(
+          `[WARN] Electron macOS: Internal executable "${executableName}" not found inside .app bundle "${resolvedAppPathFromEnv}". Will attempt full fallback.`,
         );
-        process.exit(1);
       }
+    } else {
+      // For non-macOS .app cases (e.g. Linux executable, Windows .exe from APP_PATH)
+      binaryPath = resolvedAppPathFromEnv;
+      console.log(`[DEBUG] Electron: Using binaryPath from resolved APP_PATH (non-macOS.app): ${binaryPath}`);
     }
   }
 
+  // Fallback logic for Electron if binaryPath was not successfully determined from APP_PATH
   if (!binaryPath) {
-    console.error('[ERROR] Electron: binaryPath is still not set after all checks.');
-    process.exit(1);
+    console.log('[DEBUG] Electron: binaryPath not set from APP_PATH. Using full fallback discovery.');
+    const electronExampleAppPath = path.join(__dirname, '..', 'apps', appDir || 'electron-example'); // Use appDir from env if available
+    const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
+    const appMain = path.join(electronExampleAppPath, `out-${mode}`, 'main', 'index.js');
+    if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
+      binaryPath = electronBin; // This is the electron executable itself
+      process.env.ELECTRON_APP_PATH = appMain; // The service will use this to load the app
+      console.log(`[DEBUG] Electron: Using electron binary ${binaryPath} with main script: ${appMain}`);
+    } else {
+      console.error(
+        `[ERROR] Electron: No suitable binary or main script found for dev execution on platform ${currentPlatform}`,
+      );
+      process.exit(1);
+    }
   }
 
   console.log(`[DEBUG] Electron: Final binary/executable path: ${binaryPath}`);
@@ -367,5 +385,7 @@ const config: any = {
 };
 
 process.env.TEST = 'true';
+
+console.log('[DEBUG] Final WebdriverIO Config:', JSON.stringify(config, null, 2));
 
 export { config };

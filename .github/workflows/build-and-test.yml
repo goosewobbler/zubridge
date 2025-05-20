@@ -641,7 +641,9 @@ jobs:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+          APP_DIR: ${{ inputs.app }}-example
+          MODE: ${{ inputs.mode }}
+        run: pnpm --filter=zubridge-e2e run exec
         shell: bash
 
       - name: Handle Test Failures
@@ -711,8 +713,10 @@ jobs:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
+          APP_DIR: ${{ inputs.app }}-example
+          MODE: ${{ inputs.mode }}
         if: inputs.app == 'electron' # Skip for non-electron on macos
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        run: pnpm --filter=zubridge-e2e run exec
         shell: bash
 
       - name: Handle Test Failures
@@ -786,7 +790,9 @@ jobs:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+          APP_DIR: ${{ inputs.app }}-example
+          MODE: ${{ inputs.mode }}
+        run: pnpm --filter=zubridge-e2e run exec
         shell: bash
 
       - name: Handle Test Failures

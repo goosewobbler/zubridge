@@ -76,13 +76,44 @@ runs:
         if [ "${{ inputs.app }}" == "electron" ]; then
           TARGET_DIR="$DOWNLOAD_PATH"
           echo "Electron artifacts in $TARGET_DIR:"
-          # Existing Electron logic (can be kept or refined)
+          ACTUAL_EXECUTABLE_PATH=""
+
           if [[ "${{ runner.os }}" == "Linux" ]]; then
+            EXECUTABLE_NAME="zubridge-${{ inputs.app }}-example-${{ inputs.mode }}"
+            PROPOSED_PATH="$TARGET_DIR/linux-unpacked/$EXECUTABLE_NAME"
+            if [ -f "$PROPOSED_PATH" ]; then
+              ACTUAL_EXECUTABLE_PATH="$PROPOSED_PATH"
+              chmod +x "$ACTUAL_EXECUTABLE_PATH"
+            fi
             if [ -d "$TARGET_DIR/linux-unpacked" ]; then ls -la "$TARGET_DIR/linux-unpacked"; fi
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            EXECUTABLE_NAME="zubridge-${{ inputs.app }}-example-${{ inputs.mode }}.app"
+            # Check common mac directories
+            MAC_DIRS=("mac" "mac-arm64")
+            for mac_dir in "${MAC_DIRS[@]}"; do
+              PROPOSED_PATH="$TARGET_DIR/$mac_dir/$EXECUTABLE_NAME"
+              if [ -d "$PROPOSED_PATH" ]; then
+                ACTUAL_EXECUTABLE_PATH="$PROPOSED_PATH"
+                break
+              fi
+            done
             if [ -d "$TARGET_DIR/mac" ]; then ls -la "$TARGET_DIR/mac"; fi
+            if [ -d "$TARGET_DIR/mac-arm64" ]; then ls -la "$TARGET_DIR/mac-arm64"; fi
           elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            EXECUTABLE_NAME="zubridge-${{ inputs.app }}-example-${{ inputs.mode }}.exe"
+            PROPOSED_PATH="$TARGET_DIR/win-unpacked/$EXECUTABLE_NAME"
+            if [ -f "$PROPOSED_PATH" ]; then
+              ACTUAL_EXECUTABLE_PATH="$PROPOSED_PATH"
+            fi
             if [ -d "$TARGET_DIR/win-unpacked" ]; then ls -la "$TARGET_DIR/win-unpacked"; fi
+          fi
+
+          if [ -n "$ACTUAL_EXECUTABLE_PATH" ]; then
+            echo "Found Electron executable/bundle: $ACTUAL_EXECUTABLE_PATH"
+            echo "app_path=$ACTUAL_EXECUTABLE_PATH" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: Electron executable/bundle not found in expected location within $TARGET_DIR!"
+            exit 1
           fi
         elif [[ "${{ inputs.app }}" == "tauri" || "${{ inputs.app }}" == "tauri-v1" ]]; then
           echo "Tauri artifacts in $DOWNLOAD_PATH:"
@@ -103,7 +134,7 @@ runs:
               echo "Found AppImage: ${APPIMAGE_FILES[0]}"
               chmod +x "${APPIMAGE_FILES[0]}"
               ACTUAL_EXECUTABLE_PATH="${APPIMAGE_FILES[0]}"
-              echo "::set-output name=app_path::${APPIMAGE_FILES[0]}"
+              echo "app_path=${APPIMAGE_FILES[0]}" >> $GITHUB_OUTPUT
             else
               echo "ERROR: AppImage not found in $DOWNLOAD_PATH!"
               ls -la "$DOWNLOAD_PATH" # Show contents for debugging
@@ -120,7 +151,7 @@ runs:
               # The executable is inside $APP_BUNDLE_PATH/Contents/MacOS/<AppName>
               # WebdriverIO might need the .app path
               ACTUAL_EXECUTABLE_PATH="$APP_BUNDLE_PATH"
-              echo "::set-output name=app_path::$APP_BUNDLE_PATH"
+              echo "app_path=$APP_BUNDLE_PATH" >> $GITHUB_OUTPUT
             else
               echo "WARNING: .app bundle not found directly in $DOWNLOAD_PATH. E2E might need to handle .dmg."
               ls -la "$DOWNLOAD_PATH"
@@ -153,13 +184,13 @@ runs:
             if [ -f "${EXE_FILES[0]}" ]; then
               echo "Found executable: ${EXE_FILES[0]}"
               ACTUAL_EXECUTABLE_PATH="${EXE_FILES[0]}"
-              echo "::set-output name=app_path::${EXE_FILES[0]}"
+              echo "app_path=${EXE_FILES[0]}" >> $GITHUB_OUTPUT
             elif [ -f "${MSI_FILES[0]}" ]; then
               echo "Found MSI installer: ${MSI_FILES[0]}"
               # E2E tests usually can't run .msi directly, needs install or point to installed .exe
               # For now, just note it. Test setup needs to handle this.
               ACTUAL_EXECUTABLE_PATH="${MSI_FILES[0]}"
-              echo "::set-output name=app_path::${MSI_FILES[0]}"
+              echo "app_path=${MSI_FILES[0]}" >> $GITHUB_OUTPUT
             else
               echo "ERROR: .exe or .msi not found in $DOWNLOAD_PATH or its subdirectories (nsis/, msi/)!"
               echo "Contents of $DOWNLOAD_PATH:"

@@ -14,6 +14,7 @@
     "build:electron-custom": "turbo run build:custom --filter=zubridge-electron-example --force",
     "build:tauri-basic": "turbo run build --filter=zubridge-tauri-example --force",
     "build:tauri-v1-basic": "turbo run build --filter=zubridge-tauri-v1-example --force",
+    "ci:e2e": "turbo run --filter=zubridge-e2e exec",
     "format": "prettier -w .",
     "format:check": "prettier -c .",
     "graph:e2e": "tsx ./scripts/create-task-graph.ts ./e2e-graph.png test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom",
