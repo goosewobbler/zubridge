@@ -825,6 +825,8 @@ jobs:
           E2E_APP_TYPE: ${{ inputs.app }}
           APP_DIR: ${{ inputs.app }}-example
           MODE: ${{ inputs.mode }}
+          ELECTRON_ENABLE_LOGGING: "1"
+          ELECTRON_ENABLE_STACK_DUMPING: "1"
           # DISPLAY: $DISPLAY # Usually not needed for macOS
           TAURI_WEBDRIVER_WEBKITDRIVER_PATH: $TAURI_WEBDRIVER_WEBKITDRIVER_PATH
 
@@ -854,6 +856,7 @@ jobs:
           os: macOS-latest
           app_type: ${{ inputs.app }} # Changed from 'app' to 'app_type' to match action input
           mode: ${{ inputs.mode }}
+          chromedriver_log_path: "e2e/wdio-chromedriver-${{ inputs.app }}-${{ inputs.mode }}.log"
           # screenshot_path needs to be defined if we want to upload it.
           # The debug step above attempts to save it as ${{ inputs.app }}-example-screenshot.png
 

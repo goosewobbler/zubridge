@@ -274,7 +274,8 @@ if (e2eAppType.startsWith('tauri')) {
   const electronServiceOptions: any = {
     appBinaryPath: binaryPath, // Can be the app itself or the electron executable
     appArgs: process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...stabilityFlags] : stabilityFlags,
-    chromeDriverArgs: ['--verbose'],
+    chromeDriverArgs: ['--verbose', '--disable-dev-shm-usage'],
+    chromeDriverLogPath: path.join(__dirname, `wdio-chromedriver-${e2eAppType}-${mode}.log`),
     appEnv: {
       ZUBRIDGE_MODE: mode,
       ELECTRON_ENABLE_LOGGING: '1',
