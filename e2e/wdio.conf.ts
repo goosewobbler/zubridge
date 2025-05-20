@@ -139,7 +139,7 @@ if (e2eAppType.startsWith('tauri')) {
   capabilities = [
     {
       'maxInstances': 1,
-      'browserName': 'wry', // Or chrome, depending on what tauri-driver expects/reports
+      'browserName': 'chrome', // Or wry, depending on what tauri-driver expects/reports
       'tauri:options': {
         application: binaryPath,
       },
