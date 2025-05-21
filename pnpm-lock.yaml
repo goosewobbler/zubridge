@@ -47,6 +47,9 @@ importers:
       '@zubridge/apps-shared':
         specifier: workspace:*
         version: link:../../packages/apps-shared
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../../packages/electron

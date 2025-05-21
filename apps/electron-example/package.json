@@ -41,6 +41,7 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.7.0",
     "@zubridge/apps-shared": "workspace:*",
+    "@zubridge/core": "workspace:*",
     "@zubridge/electron": "workspace:*",
     "@zubridge/middleware": "workspace:*",
     "@zubridge/ui": "workspace:*",
