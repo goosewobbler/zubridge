@@ -29,7 +29,7 @@ runs:
         if-no-files-found: warn
 
     - name: 🐛 Debug Build
-      uses: goosewobbler/vscode-server-action@v1
+      uses: goosewobbler/vscode-server-action@v1.2.0
       if: failure()
       with:
         machineName: zubridge-e2e-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
