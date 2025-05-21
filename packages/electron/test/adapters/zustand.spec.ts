@@ -4,7 +4,7 @@ import type { AnyState, RootReducer, Action } from '@zubridge/types';
 import { createZustandAdapter, ZustandOptions } from '../../src/adapters/zustand.js';
 
 // Mock the debug utility
-vi.mock('../../src/utils/debug.js', () => ({
+vi.mock('@zubridge/core', () => ({
   debug: vi.fn(), // Simplified mock
 }));
 

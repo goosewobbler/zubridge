@@ -1,6 +1,6 @@
 import type { WebContents } from 'electron';
 import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
-import { debug } from './debug.js';
+import { debug } from '@zubridge/core';
 
 /**
  * Type guard to check if an object is an Electron WebContents

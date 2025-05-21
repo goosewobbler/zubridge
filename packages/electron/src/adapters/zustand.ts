@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/types';
 import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
-import { debug } from '../utils/debug.js';
+import { debug } from '@zubridge/core';
 
 /**
  * Helper to check if a value is a Promise

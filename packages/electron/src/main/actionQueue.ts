@@ -1,6 +1,6 @@
 import type { Action as BaseAction } from '@zubridge/types';
 import { getThunkTracker, ThunkState } from '../lib/thunkTracker.js';
-import { debug } from '../utils/debug.js';
+import { debug } from '@zubridge/core';
 
 // Get the global ThunkTracker for action queueing decisions
 const thunkTracker = getThunkTracker();

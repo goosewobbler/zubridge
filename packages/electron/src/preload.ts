@@ -3,7 +3,7 @@ import type { IpcRendererEvent } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Handlers, Thunk } from '@zubridge/types';
 import { IpcChannel } from './constants.js';
-import { debug } from './utils/debug.js';
+import { debug } from '@zubridge/core';
 import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 

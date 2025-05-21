@@ -1,5 +1,5 @@
 import type { Handler } from '@zubridge/types';
-import { debug } from './debug.js';
+import { debug } from '@zubridge/core';
 
 /**
  * Helper function to find a case-insensitive match in an object

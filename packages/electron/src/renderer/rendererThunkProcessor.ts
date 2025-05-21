@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch } from '@zubridge/types';
-import { debug } from '../utils/debug.js';
+import { debug } from '@zubridge/core';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;

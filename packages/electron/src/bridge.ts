@@ -16,14 +16,14 @@ import {
 } from './utils/windows.js';
 import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
-import { debug } from './utils/debug.js';
+import { debug } from '@zubridge/core';
 import { actionQueue } from './main/actionQueue.js';
 import { getThunkTracker } from './lib/thunkTracker.js';
 import { getMainThunkProcessor } from './main/mainThunkProcessor.js';
 import { MainThunkProcessor } from './main/mainThunkProcessor.js';
 
 // Get the global ThunkTracker
-const thunkTracker = getThunkTracker(true);
+const thunkTracker = getThunkTracker();
 
 // Extend the Action type to include source window ID for internal use
 interface ActionWithSource extends Action {
@@ -84,7 +84,7 @@ export function createCoreBridge<State extends AnyState>(
     // Only pass the timeout if it's defined
     if (actionCompletionTimeoutMs !== undefined) {
       // Create a new instance with the timeout
-      return new MainThunkProcessor(true, actionCompletionTimeoutMs);
+      return new MainThunkProcessor(actionCompletionTimeoutMs);
     }
 
     // Use the existing processor

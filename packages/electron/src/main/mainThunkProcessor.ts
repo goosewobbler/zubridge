@@ -3,7 +3,7 @@ import type { Action, AnyState, Thunk, Dispatch, StateManager, ProcessResult } f
 import { getThunkTracker } from '../lib/thunkTracker.js';
 import { IpcChannel } from '../constants.js';
 import { BrowserWindow } from 'electron';
-import { debug } from '../utils/debug.js';
+import { debug } from '@zubridge/core';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;

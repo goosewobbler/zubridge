@@ -51,7 +51,7 @@ vi.mock('../src/utils/windows.js', () => ({
 }));
 
 // Mock the debug utility
-vi.mock('../src/utils/debug.js', () => ({
+vi.mock('@zubridge/core', () => ({
   debug: vi.fn(), // Simplified mock
 }));
 

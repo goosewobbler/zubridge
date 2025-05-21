@@ -5,7 +5,7 @@ import type { AnyState, Action } from '@zubridge/types';
 import { createReduxAdapter } from '../../src/adapters/redux.js';
 
 // Mock the debug utility
-vi.mock('../../src/utils/debug.js', () => ({
+vi.mock('@zubridge/core', () => ({
   debug: vi.fn(), // Simplified mock
 }));
 

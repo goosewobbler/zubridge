@@ -4,7 +4,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import { ZustandOptions } from '../adapters/zustand.js';
 import { ReduxOptions } from '../adapters/redux.js';
 import { getStateManager } from '../lib/stateManagerRegistry.js';
-import { debug } from '../utils/debug.js';
+import { debug } from '@zubridge/core';
 import { getMainThunkProcessor } from './mainThunkProcessor.js';
 import { v4 as uuidv4 } from 'uuid';
 

@@ -1,7 +1,7 @@
 import type { Store } from 'redux';
 import type { AnyState, Action, Handler, StateManager } from '@zubridge/types';
 import { resolveHandler } from '../utils/handlers.js';
-import { debug } from '../utils/debug.js';
+import { debug } from '@zubridge/core';
 
 /**
  * Helper to check if a value is a Promise
