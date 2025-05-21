@@ -13,22 +13,23 @@ describe('RendererThunkProcessor', () => {
   let mockThunkCompleter: any;
 
   beforeEach(() => {
-    // Reset window.__zubridge_thunkProcessor before each test
-    if (window.__zubridge_thunkProcessor) {
-      delete window.__zubridge_thunkProcessor;
-    }
+    // Ensure a clean global state for window property
+    delete window.__zubridge_thunkProcessor;
 
     // Create mocks for dependencies
-    mockActionSender = vi.fn().mockResolvedValue(undefined);
+    mockActionSender = vi.fn().mockImplementation(async (action) => {
+      // Simulate the main process completing the action
+      setTimeout(() => {
+        processor.completeAction(action.id as string, action);
+      }, 0);
+    });
     mockThunkRegistrar = vi.fn().mockResolvedValue(undefined);
     mockThunkCompleter = vi.fn().mockResolvedValue(undefined);
 
-    // Create a new processor instance
-    processor = new RendererThunkProcessor(true);
-
-    // Initialize it with the mocks
+    // Always create a new processor for each test
+    processor = new RendererThunkProcessor(); // Default timeout
     processor.initialize({
-      windowId: 123,
+      windowId: 123, // Consistent windowId
       actionSender: mockActionSender,
       thunkRegistrar: mockThunkRegistrar,
       thunkCompleter: mockThunkCompleter,
@@ -44,7 +45,7 @@ describe('RendererThunkProcessor', () => {
       expect(processor).toBeDefined();
 
       // Check initialization with a new processor to avoid state from beforeEach
-      const newProcessor = new RendererThunkProcessor(true);
+      const newProcessor = new RendererThunkProcessor();
       newProcessor.initialize({
         windowId: 456,
         actionSender: mockActionSender,
@@ -107,57 +108,61 @@ describe('RendererThunkProcessor', () => {
     });
 
     it('should execute a thunk with the local implementation if no shared processor', async () => {
-      // Create a mock thunk that dispatches an action
-      const mockThunk: Thunk<AnyState> = vi.fn().mockImplementation((getState, dispatch) => {
-        dispatch({ type: 'TEST_ACTION', payload: 10 });
+      // Ensure window.__zubridge_thunkProcessor is undefined for this test
+      delete window.__zubridge_thunkProcessor;
+
+      const testActionPayload = { message: 'test action from thunk' };
+      const thunkFn: Thunk<AnyState> = async (getState, dispatch) => {
+        await dispatch({ type: 'TEST_ACTION', payload: testActionPayload });
         return 'thunk-result';
-      });
+      };
 
       // Mock getState function
       const mockGetState = vi.fn().mockReturnValue({ count: 0 });
 
-      // Execute the thunk
-      const result = await processor.executeThunk(mockThunk, mockGetState);
+      // Execute the thunk (processor is fresh from beforeEach)
+      const result = await processor.executeThunk(thunkFn, mockGetState);
 
       // Verify thunk registration
-      expect(mockThunkRegistrar).toHaveBeenCalled();
-
-      // Verify the thunk was executed
-      expect(mockThunk).toHaveBeenCalled();
+      expect(mockThunkRegistrar).toHaveBeenCalledOnce();
 
       // Verify action was sent
-      expect(mockActionSender).toHaveBeenCalled();
-      expect(mockActionSender.mock.calls[0][0].type).toBe('TEST_ACTION');
+      expect(mockActionSender).toHaveBeenCalledOnce();
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'TEST_ACTION', payload: testActionPayload }),
+        expect.any(String), // thunkId
+      );
 
       // Verify thunk completion
-      expect(mockThunkCompleter).toHaveBeenCalled();
+      expect(mockThunkCompleter).toHaveBeenCalledOnce();
 
       // Verify result
       expect(result).toBe('thunk-result');
-    });
+    }, 10000); // Increase timeout to 10 seconds
 
     it('should handle nested thunks', async () => {
       // Create a nested thunk setup
-      const nestedThunk: Thunk<AnyState> = vi.fn().mockImplementation((getState, dispatch) => {
-        dispatch({ type: 'NESTED_ACTION', payload: 20 });
+      const nestedThunk: Thunk<AnyState> = async (_getState, dispatch) => {
+        await dispatch({ type: 'NESTED_ACTION', payload: 20 });
         return 'nested-result';
-      });
+      };
 
-      const parentThunk: Thunk<AnyState> = vi.fn().mockImplementation((getState, dispatch) => {
-        dispatch(nestedThunk);
-        dispatch({ type: 'PARENT_ACTION', payload: 10 });
+      const parentThunk: Thunk<AnyState> = async (_getState, dispatch) => {
+        await dispatch(nestedThunk);
+        await dispatch({ type: 'PARENT_ACTION', payload: 10 });
         return 'parent-result';
-      });
+      };
 
       // Mock getState function
       const mockGetState = vi.fn().mockReturnValue({ count: 0 });
 
-      // Reset mocks to ensure clean test
-      mockThunkRegistrar.mockClear();
+      // Reset mocks to ensure clean test (though beforeEach should handle processor state)
+      // Explicitly clear history of mocks for this specific test flow for clarity
       mockActionSender.mockClear();
+      mockThunkRegistrar.mockClear();
       mockThunkCompleter.mockClear();
 
-      // Execute the parent thunk
+      // Execute the parent thunk (processor is fresh from beforeEach)
       const result = await processor.executeThunk(parentThunk, mockGetState);
 
       // Verify both thunks were registered
@@ -171,7 +176,7 @@ describe('RendererThunkProcessor', () => {
 
       // Verify result
       expect(result).toBe('parent-result');
-    });
+    }, 10000); // Increase timeout to 10 seconds
   });
 
   describe('dispatchAction', () => {

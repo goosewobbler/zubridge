@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch } from '@zubridge/types';
+import { debug } from '../utils/debug.js';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
@@ -43,12 +44,9 @@ export class RendererThunkProcessor {
   // Configuration options
   private actionCompletionTimeoutMs: number;
 
-  constructor(
-    private debugLogging = false,
-    actionCompletionTimeoutMs?: number,
-  ) {
+  constructor(actionCompletionTimeoutMs?: number) {
     this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
-    if (debugLogging) console.log('[RENDERER_THUNK] Initialized with timeout:', this.actionCompletionTimeoutMs);
+    debug('ipc', '[RENDERER_THUNK] Initialized with timeout:', this.actionCompletionTimeoutMs);
   }
 
   /**
@@ -62,7 +60,7 @@ export class RendererThunkProcessor {
     actionCompletionHandler?: (actionId: string, callback: (result: any) => void) => () => void;
     actionCompletionTimeoutMs?: number;
   }): void {
-    console.log('[RENDERER_THUNK] Initializing with options:', options);
+    debug('ipc', '[RENDERER_THUNK] Initializing with options:', options);
     this.currentWindowId = options.windowId;
     this.actionSender = options.actionSender;
     this.thunkRegistrar = options.thunkRegistrar;
@@ -71,14 +69,12 @@ export class RendererThunkProcessor {
     // Update timeout configuration if provided - use direct assignment
     if (options.actionCompletionTimeoutMs !== undefined) {
       this.actionCompletionTimeoutMs = options.actionCompletionTimeoutMs;
-      if (this.debugLogging) {
-        console.log('[RENDERER_THUNK] Updated timeout:', this.actionCompletionTimeoutMs);
-      }
+      debug('ipc', '[RENDERER_THUNK] Updated timeout:', this.actionCompletionTimeoutMs);
     }
 
-    console.log('[RENDERER_THUNK] Action sender:', this.actionSender);
+    debug('ipc', '[RENDERER_THUNK] Action sender:', this.actionSender);
 
-    if (this.debugLogging) console.log(`[RENDERER_THUNK] Initialized with window ID ${options.windowId}`);
+    debug('ipc', `[RENDERER_THUNK] Initialized with window ID ${options.windowId}`);
   }
 
   /**
@@ -86,16 +82,12 @@ export class RendererThunkProcessor {
    * This should be called when an action acknowledgment is received from the main process
    */
   public completeAction(actionId: string, result: any): void {
-    if (this.debugLogging) {
-      console.log(`[RENDERER_THUNK] Action completed: ${actionId}`);
-    }
+    debug('ipc', `[RENDERER_THUNK] Action completed: ${actionId}`);
 
     // Clear any pending timeout for this action
     const timeout = this.actionTimeouts.get(actionId);
     if (timeout) {
-      if (this.debugLogging) {
-        console.log(`[RENDERER_THUNK] Clearing timeout for action ${actionId}`);
-      }
+      debug('ipc', `[RENDERER_THUNK] Clearing timeout for action ${actionId}`);
       clearTimeout(timeout);
       this.actionTimeouts.delete(actionId);
     }
@@ -105,24 +97,21 @@ export class RendererThunkProcessor {
     // to ensure any getState calls know it's done
     const callback = this.actionCompletionCallbacks.get(actionId);
     if (callback) {
-      if (this.debugLogging) {
-        console.log(`[RENDERER_THUNK] Executing completion callback for action ${actionId}`);
-      }
+      debug('ipc', `[RENDERER_THUNK] Executing completion callback for action ${actionId}`);
       callback(result);
       this.actionCompletionCallbacks.delete(actionId);
-    } else if (this.debugLogging) {
-      console.log(`[RENDERER_THUNK] No completion callback found for action ${actionId}`);
+    } else {
+      debug('ipc', `[RENDERER_THUNK] No completion callback found for action ${actionId}`);
     }
 
     // Now remove from pending dispatches after callback completes
     this.pendingDispatches.delete(actionId);
-    if (this.debugLogging) {
-      console.log(
-        `[RENDERER_THUNK] Removed ${actionId} from pending dispatches, remaining: ${this.pendingDispatches.size}`,
-      );
-      if (this.pendingDispatches.size > 0) {
-        console.log(`[RENDERER_THUNK] Remaining dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
-      }
+    debug(
+      'ipc',
+      `[RENDERER_THUNK] Removed ${actionId} from pending dispatches, remaining: ${this.pendingDispatches.size}`,
+    );
+    if (this.pendingDispatches.size > 0) {
+      debug('ipc', `[RENDERER_THUNK] Remaining dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
     }
   }
 
@@ -136,7 +125,7 @@ export class RendererThunkProcessor {
   ): Promise<any> {
     // Check if we should use the shared thunk processor from preload
     if (typeof window !== 'undefined' && window.__zubridge_thunkProcessor) {
-      if (this.debugLogging) console.log('[RENDERER_THUNK] Using shared thunk processor from preload');
+      debug('ipc', '[RENDERER_THUNK] Using shared thunk processor from preload');
       // Use the shared processor exposed from preload
       return window.__zubridge_thunkProcessor.executeThunk(thunk, getOriginalState, parentId);
     }
@@ -145,29 +134,27 @@ export class RendererThunkProcessor {
 
     // Generate a unique ID for this thunk
     const thunkId = uuidv4();
-    if (this.debugLogging) console.log(`[RENDERER_THUNK] Executing thunk ${thunkId}`);
+    debug('ipc', `[RENDERER_THUNK] Executing thunk ${thunkId}`);
 
     // Register the thunk with main process
     if (this.thunkRegistrar && this.currentWindowId) {
       try {
-        if (this.debugLogging) console.log(`[RENDERER_THUNK] Registering thunk ${thunkId} with main process`);
+        debug('ipc', `[RENDERER_THUNK] Registering thunk ${thunkId} with main process`);
         await this.thunkRegistrar(thunkId, parentId);
-        if (this.debugLogging) console.log(`[RENDERER_THUNK] Thunk ${thunkId} registered successfully`);
+        debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} registered successfully`);
       } catch (error) {
-        if (this.debugLogging) console.log(`[RENDERER_THUNK] Error registering thunk: ${error}`);
+        debug('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
       }
     }
 
     try {
       // Create a dispatch function for this thunk that tracks each action
       const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
-        if (this.debugLogging) {
-          console.log('[RENDERER_THUNK] Dispatching action:', action);
-        }
+        debug('ipc', '[RENDERER_THUNK] Dispatching action:', action);
 
         // Handle nested thunks
         if (typeof action === 'function') {
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Handling nested thunk in ${thunkId}`);
+          debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunkId}`);
           // For nested thunks, we use the current thunk ID as the parent
           return this.executeThunk(action, getOriginalState, thunkId);
         }
@@ -182,41 +169,36 @@ export class RendererThunkProcessor {
         }
         const actionId = actionObj.id as string;
 
-        if (this.debugLogging)
-          console.log(`[RENDERER_THUNK] Thunk ${thunkId} dispatching action ${actionObj.type} (${actionId})`);
+        debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} dispatching action ${actionObj.type} (${actionId})`);
 
         // Add to pending dispatches BEFORE creating the promise to ensure
         // getState can find it immediately
         this.pendingDispatches.add(actionId);
-        if (this.debugLogging)
-          console.log(
-            `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}`,
-          );
+        debug(
+          'ipc',
+          `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}`,
+        );
 
         // Create a promise that will resolve when this action completes
         const actionPromise = new Promise<Action>((resolve) => {
           // Store the callback to be called when action acknowledgment is received
           this.actionCompletionCallbacks.set(actionId, (result) => {
-            if (this.debugLogging)
-              console.log(`[RENDERER_THUNK] Action ${actionId} completion callback called with result`, result);
+            debug('ipc', `[RENDERER_THUNK] Action ${actionId} completion callback called with result`, result);
             resolve(result || actionObj);
           });
 
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Set completion callback for action ${actionId}`);
+          debug('ipc', `[RENDERER_THUNK] Set completion callback for action ${actionId}`);
 
           // Set up a safety timeout in case we don't receive an acknowledgment
-          if (this.debugLogging) {
-            console.log(`[RENDERER_THUNK] Setting up safety timeout for action ${actionId}`);
-          }
+          debug('ipc', `[RENDERER_THUNK] Setting up safety timeout for action ${actionId}`);
 
           const safetyTimeout = setTimeout(() => {
             // If we still have a pending callback for this action, resolve it
             if (this.actionCompletionCallbacks.has(actionId)) {
-              if (this.debugLogging) {
-                console.log(
-                  `[RENDERER_THUNK] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
-                );
-              }
+              debug(
+                'ipc',
+                `[RENDERER_THUNK] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
+              );
               this.completeAction(actionId, actionObj);
             }
           }, this.actionCompletionTimeoutMs);
@@ -226,16 +208,14 @@ export class RendererThunkProcessor {
         });
 
         // Send the action to the main process
-        if (this.debugLogging) {
-          console.log('[RENDERER_THUNK] Sending action to main process:', actionObj);
-          console.log('[RENDERER_THUNK] Thunk ID:', thunkId);
-        }
+        debug('ipc', '[RENDERER_THUNK] Sending action to main process:', actionObj);
+        debug('ipc', '[RENDERER_THUNK] Thunk ID:', thunkId);
 
         if (this.actionSender) {
           try {
-            if (this.debugLogging) console.log(`[RENDERER_THUNK] Sending action ${actionId} to main process`);
+            debug('ipc', `[RENDERER_THUNK] Sending action ${actionId} to main process`);
             await this.actionSender(actionObj, thunkId as any);
-            if (this.debugLogging) console.log(`[RENDERER_THUNK] Action ${actionId} sent to main process`);
+            debug('ipc', `[RENDERER_THUNK] Action ${actionId} sent to main process`);
           } catch (error) {
             // If sending fails, clear any pending timeout
             const timeout = this.actionTimeouts.get(actionId);
@@ -247,159 +227,126 @@ export class RendererThunkProcessor {
             // Remove from pending and reject
             this.pendingDispatches.delete(actionId);
             this.actionCompletionCallbacks.delete(actionId);
+            debug('ipc:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
             throw error;
           }
         } else {
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] ERROR: No actionSender available for thunk ${thunkId}`);
-
-          // Clear any pending timeout
-          const timeout = this.actionTimeouts.get(actionId);
-          if (timeout) {
-            clearTimeout(timeout);
-            this.actionTimeouts.delete(actionId);
-          }
-
-          // If no sender is available, remove from pending and resolve with original action
-          this.pendingDispatches.delete(actionId);
-          this.actionCompletionCallbacks.delete(actionId);
-          return actionObj;
+          debug('ipc:error', `[RENDERER_THUNK] No action sender configured, cannot send action ${actionId}`);
+          throw new Error('Action sender not configured for renderer thunk processor');
         }
 
-        if (this.debugLogging) console.log(`[RENDERER_THUNK] Waiting for action ${actionId} to complete`);
-        // Return the action promise
         return actionPromise;
       };
 
-      // Create a getState function that waits for pending dispatches
+      // Get current state (potentially async)
+      debug('ipc', `[RENDERER_THUNK] Getting current state for thunk ${thunkId}`);
+      const state = await getOriginalState();
+      debug('ipc', `[RENDERER_THUNK] Current state for thunk ${thunkId}:`, state);
+
+      // Wrapper for getState within the thunk to ensure it doesn't run while an action is pending
       const getState = async (): Promise<S> => {
-        // Helper function to get the current state safely
-        const getCurrentState = async (): Promise<S> => {
-          if (typeof getOriginalState !== 'function') {
-            return getOriginalState;
-          }
+        debug('ipc', `[RENDERER_THUNK] getState called within thunk ${thunkId}`);
 
-          const state = getOriginalState();
-          if (state instanceof Promise) {
-            return await state;
-          }
-
-          return state;
+        const invokeGetOriginalState = async (): Promise<S> => {
+          const currentState = getOriginalState(); // Invoke it
+          return currentState instanceof Promise ? await currentState : currentState;
         };
 
         if (this.pendingDispatches.size === 0) {
-          // No pending dispatches, return state immediately
-          if (this.debugLogging) {
-            console.log(`[RENDERER_THUNK] getState: No pending dispatches, returning state immediately`);
-          }
-          return getCurrentState();
+          debug('ipc', `[RENDERER_THUNK] getState: No pending dispatches, returning state immediately`);
+          return invokeGetOriginalState();
         }
 
-        if (this.debugLogging) {
-          console.log(
-            `[RENDERER_THUNK] getState called with ${this.pendingDispatches.size} pending dispatches, waiting...`,
-          );
-          console.log(`[RENDERER_THUNK] Pending dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
-        }
+        debug(
+          'ipc',
+          `[RENDERER_THUNK] getState called with ${this.pendingDispatches.size} pending dispatches, waiting...`,
+        );
+        // Log pending dispatch IDs for clarity
+        debug('ipc', `[RENDERER_THUNK] Pending dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
 
-        // Create promises for all pending dispatches
         const pendingPromises = Array.from(this.pendingDispatches).map(
           (actionId) =>
-            new Promise<void>((resolve) => {
-              // If we already have a callback for this action, wrap it to also resolve our promise
+            new Promise<void>((resolvePromise) => {
               const existingCallback = this.actionCompletionCallbacks.get(actionId);
-              if (existingCallback) {
-                this.actionCompletionCallbacks.set(actionId, (result) => {
-                  existingCallback(result);
-                  resolve();
-                });
-              } else {
-                // Otherwise, register a new callback just for our promise
-                this.actionCompletionCallbacks.set(actionId, () => {
-                  resolve();
-                });
-              }
+              // Augment or set the callback for this actionId to resolve our promise
+              this.actionCompletionCallbacks.set(actionId, (result) => {
+                if (existingCallback) {
+                  existingCallback(result); // Call original callback if it existed
+                }
+                resolvePromise(); // Resolve the promise for this specific action
+              });
             }),
         );
 
-        if (this.debugLogging) {
-          console.log(`[RENDERER_THUNK] Waiting for ${pendingPromises.length} action promises to resolve`);
-        }
-
-        // Wait for all pending dispatches to complete
+        debug('ipc', `[RENDERER_THUNK] Waiting for ${pendingPromises.length} action promises to resolve`);
         await Promise.all(pendingPromises);
-
-        if (this.debugLogging) {
-          console.log('[RENDERER_THUNK] All dispatches complete, returning state');
-        }
-
-        // Return the current state
-        return getCurrentState();
+        debug('ipc', '[RENDERER_THUNK] All dispatches complete, returning state');
+        return invokeGetOriginalState();
       };
 
-      if (this.debugLogging) console.log(`[RENDERER_THUNK] Executing thunk function for ${thunkId}`);
-      // Execute the thunk with our async getState and dispatch functions
+      // Execute the thunk with the dispatch function and current state
+      debug('ipc', `[RENDERER_THUNK] Executing thunk function for ${thunkId}`);
       const result = await thunk(getState, dispatch);
-      if (this.debugLogging) console.log(`[RENDERER_THUNK] Thunk ${thunkId} completed with result:`, result);
-
-      // Notify main process of completion
-      if (this.thunkCompleter) {
-        try {
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Notifying main process of thunk ${thunkId} completion`);
-          await this.thunkCompleter(thunkId);
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Main process notified of thunk ${thunkId} completion`);
-        } catch (error) {
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Error completing thunk: ${error}`);
-        }
-      }
-
+      debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} execution completed, result:`, result);
       return result;
     } catch (error) {
-      // Notify main process of completion (with error)
-      if (this.thunkCompleter) {
+      debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunkId}:`, error);
+      throw error; // Rethrow to be caught by caller
+    } finally {
+      // Notify main process that thunk has completed
+      if (this.thunkCompleter && this.currentWindowId) {
         try {
+          debug('ipc', `[RENDERER_THUNK] Notifying main process of thunk ${thunkId} completion`);
           await this.thunkCompleter(thunkId);
-        } catch (completeError) {
-          if (this.debugLogging) console.log(`[RENDERER_THUNK] Error completing thunk: ${completeError}`);
+          debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} completion notified`);
+        } catch (e) {
+          debug('ipc:error', `[RENDERER_THUNK] Error notifying thunk completion: ${e}`);
         }
       }
-
-      throw error;
     }
   }
 
   /**
-   * Dispatches a single action to the main process
+   * Dispatch an action to the main process (for non-thunk scenarios)
    */
   public async dispatchAction(action: Action | string, payload?: unknown, parentId?: string): Promise<void> {
-    // Check if we should use the shared thunk processor from preload
+    debug('ipc', '[RENDERER_THUNK] dispatchAction called with:', { action, payload, parentId });
+
+    // Use the shared processor if available (called from preload context)
+    // This allows non-thunk dispatches from preload to also use the main processor for consistency
     if (typeof window !== 'undefined' && window.__zubridge_thunkProcessor) {
-      if (this.debugLogging) console.log('[RENDERER_THUNK] Using shared dispatch from preload');
-      // Use the shared processor exposed from preload
+      debug('ipc', '[RENDERER_THUNK] Using shared thunk processor from preload for dispatchAction');
       return window.__zubridge_thunkProcessor.dispatchAction(action, payload, parentId);
     }
 
-    const actionObj: Action = typeof action === 'string' ? { type: action, payload, id: uuidv4() } : action;
+    // If no actionSender, this instance can't dispatch directly
+    if (!this.actionSender) {
+      debug('ipc:error', '[RENDERER_THUNK] dispatchAction: No action sender configured, cannot dispatch.');
+      throw new Error('Action sender not configured for direct dispatch.');
+    }
 
-    // Ensure action has an ID
+    const actionObj: Action = typeof action === 'string' ? { type: action, payload, id: uuidv4() } : (action as Action);
+
     if (!actionObj.id) {
       actionObj.id = uuidv4();
     }
 
-    if (this.debugLogging) console.log(`[RENDERER_THUNK] Dispatching action: ${actionObj.type}`);
-
-    // Send to main process
-    if (this.actionSender) {
-      await this.actionSender(actionObj, parentId as any);
-    }
+    debug('ipc', `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.id})`);
+    await this.actionSender(actionObj, parentId);
+    debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.id} sent.`);
   }
 }
 
-// Create a singleton instance
-const globalThunkProcessor = new RendererThunkProcessor(true);
+// Singleton instance of the thunk processor
+let globalThunkProcessor: RendererThunkProcessor | undefined;
 
 /**
- * Get the global renderer thunk processor
+ * Get the singleton instance of the RendererThunkProcessor
  */
 export const getThunkProcessor = (): RendererThunkProcessor => {
+  if (!globalThunkProcessor) {
+    globalThunkProcessor = new RendererThunkProcessor(/* Action completion timeout can be passed here if needed */);
+    debug('ipc', '[RENDERER_THUNK] Created new RendererThunkProcessor instance (global)');
+  }
   return globalThunkProcessor;
 };
