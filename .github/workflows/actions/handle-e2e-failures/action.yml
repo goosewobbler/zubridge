@@ -1,15 +1,14 @@
-name: 'Handle E2E Failures'
-description: 'Show logs and upload artifacts on test failure'
-
+name: 'Handle E2E Test Failures'
+description: 'Uploads logs and enables debugging on E2E test failure'
 inputs:
   os:
-    description: "Operating system tests ran on"
+    description: 'Operating system of the runner'
     required: true
   app:
-    description: "Type of application tested"
+    description: 'Type of application (electron, tauri, tauri-v1)'
     required: true
   mode:
-    description: "Test mode"
+    description: 'Application mode (basic, handlers, etc.)'
     required: true
 
 runs:
@@ -28,3 +27,11 @@ runs:
         path: e2e/wdio-logs-${{ inputs.mode }}/*.log
         retention-days: 30
         if-no-files-found: warn
+
+    - name: 🐛 Debug Build
+      uses: goosewobbler/vscode-server-action@v1
+      if: failure()
+      with:
+        machineName: zubridge-e2e-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
+        timeout: '60000'
+
