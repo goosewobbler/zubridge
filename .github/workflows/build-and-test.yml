@@ -236,10 +236,10 @@ jobs:
 
       # Debug on failure
       - name: Debug on Failure
-        uses: goosewobbler/vscode-server-action@v1.2.0
+        uses: goosewobbler/vscode-server-action@v1.3.0
         if: failure()
         with:
-          timeout: "180000"
+          timeout: "120000"
 
   # Build on macOS
   macos-build:
@@ -385,10 +385,10 @@ jobs:
 
       # Debug on failure
       - name: Debug on Failure
-        uses: goosewobbler/vscode-server-action@v1.2.0
+        uses: goosewobbler/vscode-server-action@v1.3.0
         if: failure()
         with:
-          timeout: "180000"
+          timeout: "120000"
 
   # Build on Windows
   windows-build:
@@ -534,10 +534,10 @@ jobs:
 
       # Debug on failure
       - name: Debug on Failure
-        uses: goosewobbler/vscode-server-action@v1.2.0
+        uses: goosewobbler/vscode-server-action@v1.3.0
         if: failure()
         with:
-          timeout: "180000"
+          timeout: "120000"
 
   # E2E Tests for Linux
   linux-test:
@@ -662,6 +662,13 @@ jobs:
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
 
+      - name: 🐛 Debug Build
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          machineName: zubridge-e2e-linux-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
+          timeout: '120000'
+
   # E2E Tests for macOS
   macos-test:
     needs: macos-build
@@ -734,6 +741,13 @@ jobs:
           os: macOS-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
+
+      - name: 🐛 Debug Build
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          machineName: zubridge-e2e-macos-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
+          timeout: '120000'
 
   # E2E Tests for Windows
   windows-test:
@@ -810,6 +824,13 @@ jobs:
           os: windows-latest
           app: ${{ inputs.app }}
           mode: ${{ inputs.mode }}
+
+      - name: 🐛 Debug Build
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          machineName: zubridge-e2e-windows-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
+          timeout: '120000'
 
   # Final status aggregation
   ci-status:
