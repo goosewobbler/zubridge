@@ -5,52 +5,53 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { debug } from '@zubridge/core';
 
 import type { Plugin } from 'vite';
 
 // Get __dirname equivalent in ES modules
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-console.log('ZUBRIDGE_MODE', process.env.ZUBRIDGE_MODE);
+debug('vite:config', 'ZUBRIDGE_MODE', process.env.ZUBRIDGE_MODE);
 
 // Get the current mode from environment variables
 const mode = process.env.ZUBRIDGE_MODE || 'basic'; // Default to basic if not specified
 const outDir = `out-${mode}`; // Create mode-specific output directory
 const shouldWatchUI = process.env.WATCH_UI === 'true';
 
-console.log(`[DEBUG] Mode: ${mode}, OutDir: ${outDir}, Watch UI: ${shouldWatchUI}`);
+debug('vite:config', `Mode: ${mode}, OutDir: ${outDir}, Watch UI: ${shouldWatchUI}`);
 
 // Debug plugin to show output of main build
 const debugPlugin = () => ({
   name: 'debug-plugin',
   buildStart() {
-    console.log('[DEBUG] Main build start');
+    debug('vite:config', 'Main build start');
   },
   buildEnd() {
-    console.log('[DEBUG] Main build end');
+    debug('vite:config', 'Main build end');
   },
   writeBundle(options, bundle) {
-    console.log('[DEBUG] Write bundle called');
-    console.log('[DEBUG] Bundle output directory:', options.dir);
-    console.log('[DEBUG] Files in bundle:');
+    debug('vite:config', 'Write bundle called');
+    debug('vite:config', 'Bundle output directory:', options.dir);
+    debug('vite:config', 'Files in bundle:');
     Object.keys(bundle).forEach((file) => {
-      console.log(`- ${file}`);
+      debug('vite:config', `- ${file}`);
     });
   },
   closeBundle() {
-    console.log('[DEBUG] Main closeBundle called');
-    console.log('[DEBUG] Checking output directory content');
+    debug('vite:config', 'Main closeBundle called');
+    debug('vite:config', 'Checking output directory content');
     try {
       const outputDir = resolve(__dirname, outDir);
       if (fs.existsSync(outputDir)) {
-        console.log(`[DEBUG] Files in ${outDir}:`);
+        debug('vite:config', `Files in ${outDir}:`);
         const files = fs.readdirSync(outputDir);
-        console.log(files);
+        debug('vite:config', 'Output directory files:', files);
       } else {
-        console.log(`[DEBUG] Output directory does not exist: ${outDir}`);
+        debug('vite:config', `Output directory does not exist: ${outDir}`);
       }
     } catch (error) {
-      console.error('[DEBUG] Error checking output directory:', error);
+      debug('vite:config:error', 'Error checking output directory:', error);
     }
   },
 });
@@ -62,7 +63,7 @@ const externalCssResolverPlugin = (): Plugin => {
     // Load hook to intercept and handle CSS imports
     load(id) {
       if (id === '@zubridge/ui/styles.css') {
-        console.log('[DEBUG] UI styles requested, searching for CSS file...');
+        debug('vite:config', 'UI styles requested, searching for CSS file...');
 
         const possiblePaths = [
           // Try to find in node_modules first
@@ -74,24 +75,24 @@ const externalCssResolverPlugin = (): Plugin => {
         // Debug each path
         possiblePaths.forEach((path) => {
           const exists = fs.existsSync(path);
-          console.log(`[DEBUG] Checking path: ${path}, exists: ${exists}`);
+          debug('vite:config', `Checking path: ${path}, exists: ${exists}`);
         });
 
         // Find the first existing path
         const cssPath = possiblePaths.find((path) => fs.existsSync(path));
 
         if (cssPath) {
-          console.log(`[DEBUG] Found UI styles at ${cssPath}`);
+          debug('vite:config', `Found UI styles at ${cssPath}`);
           try {
             const content = fs.readFileSync(cssPath, 'utf8');
-            console.log(`[DEBUG] Read ${content.length} characters from styles.css`);
+            debug('vite:config', `Read ${content.length} characters from styles.css`);
             return content;
           } catch (err) {
-            console.error(`[DEBUG] Error reading CSS file: ${err}`);
+            debug('vite:config:error', `Error reading CSS file: ${err}`);
           }
         }
 
-        console.warn('[DEBUG] UI styles not found, returning empty CSS');
+        debug('vite:config:warn', 'UI styles not found, returning empty CSS');
 
         // Return an empty CSS file
         return '/* No styles found */';
@@ -117,13 +118,13 @@ const getRendererPlugins = async () => {
 
   // Only add the UI watcher plugin if WATCH_UI=true
   if (shouldWatchUI) {
-    console.log('[DEBUG] Adding UI watcher plugin');
+    debug('vite:config', 'Adding UI watcher plugin');
     // Import our custom UI watcher plugin
     try {
       const { watchUIPackage } = await import('@zubridge/ui/vite-plugin');
       plugins.push(watchUIPackage());
     } catch (error) {
-      console.error('[DEBUG] Error adding UI watcher plugin:', error);
+      debug('vite:config:error', 'Error adding UI watcher plugin:', error);
     }
   }
 
@@ -169,7 +170,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '@': resolve('src/renderer'),
-        // Add an alias for @zubridge/electron to use a browser-safe version
+        // Add aliases of core packages to use browser-safe versions
+        '@zubridge/core': resolve(__dirname, '../../packages/core/dist/index.js'),
         '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/index.js'),
         '@zubridge/middleware': resolve(__dirname, '../../packages/middleware/dist/index.js'),
         '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
