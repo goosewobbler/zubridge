@@ -236,7 +236,7 @@ jobs:
 
       # Debug on failure
       - name: Debug on Failure
-        uses: stateful/vscode-server-action@v1.1.0
+        uses: goosewobbler/vscode-server-action@v1
         if: failure()
         with:
           timeout: "180000"
@@ -385,7 +385,7 @@ jobs:
 
       # Debug on failure
       - name: Debug on Failure
-        uses: stateful/vscode-server-action@v1.1.0
+        uses: goosewobbler/vscode-server-action@v1
         if: failure()
         with:
           timeout: "180000"
@@ -534,7 +534,7 @@ jobs:
 
       # Debug on failure
       - name: Debug on Failure
-        uses: stateful/vscode-server-action@v1.1.0
+        uses: goosewobbler/vscode-server-action@v1
         if: failure()
         with:
           timeout: "180000"
