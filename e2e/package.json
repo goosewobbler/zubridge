@@ -9,6 +9,8 @@
     "url": "https://github.com/goosewobbler/zubridge.git"
   },
   "scripts": {
+    "clean": "pnpm run clean:output && pnpx shx rm -rf node_modules",
+    "clean:output": "pnpx shx rm -rf ./wdio-logs-*",
     "test:e2e": "pnpm test:e2e:basic && pnpm test:e2e:handlers && pnpm test:e2e:reducers && pnpm test:e2e:redux && pnpm test:e2e:custom",
     "test:e2e:electron-basic": "cross-env APP_DIR=electron-example MODE=basic pnpm run exec",
     "test:e2e:electron-handlers": "cross-env APP_DIR=electron-example MODE=handlers pnpm run exec",
@@ -22,11 +24,12 @@
   "dependencies": {
     "@wdio/electron-utils": "^8.1.0",
     "cross-env": "^7.0.3",
-    "electron": "^36.2.1"
+    "electron": "35.0.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.14.0",
+    "@types/ws": "^8.18.1",
     "@wdio/cli": "^9.14.0",
     "@wdio/globals": "^9.14.0",
     "@wdio/local-runner": "^9.14.0",
@@ -35,6 +38,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "wdio-electron-service": "^8.0.1",
+    "ws": "^8.18.2",
     "xvfb-maybe": "^0.2.1"
   }
 }

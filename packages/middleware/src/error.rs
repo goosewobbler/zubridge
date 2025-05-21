@@ -8,9 +8,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Error types that can occur in Zubridge middleware
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Errors related to serialization/deserialization
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
+    /// Errors related to JSON serialization/deserialization
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
 
     /// Errors related to MessagePack serialization/deserialization
     #[error("MessagePack error: {0}")]

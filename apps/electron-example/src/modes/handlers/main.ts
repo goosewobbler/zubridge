@@ -1,6 +1,6 @@
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
-import type { ZustandBridge } from '@zubridge/electron/main';
+import type { ZustandBridge, ZubridgeMiddleware } from '@zubridge/electron/main';
 
 // Import counter handlers
 import {
@@ -35,14 +35,18 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
  * Creates a bridge using the handlers approach
  * In this approach, we provide separate action handlers
  */
-export const createHandlersBridge = <S extends BaseState, Store extends StoreApi<S>>(store: Store): ZustandBridge => {
+export const createHandlersBridge = <S extends BaseState, Store extends StoreApi<S>>(
+  store: Store,
+  middleware?: ZubridgeMiddleware,
+): ZustandBridge => {
   console.log('[Handlers Mode] Creating bridge with separate handlers');
 
   // Define action handlers
   const handlers = createHandlers(store);
 
-  // Create bridge with handlers
+  // Create bridge with handlers and middleware if provided
   return createZustandBridge<S>(store, {
     handlers,
+    middleware,
   });
 };

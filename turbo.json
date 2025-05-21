@@ -31,7 +31,7 @@
         "zubridge-electron-example#build:redux",
         "zubridge-electron-example#build:custom"
       ],
-      "cache": true
+      "cache": false
     },
     "clean": {
       "cache": false
@@ -63,35 +63,38 @@
         "test:e2e:tauri-basic",
         "test:e2e:tauri-v1-basic"
       ],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-reducers": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:reducers"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-handlers": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:handlers"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-basic": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:basic"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-redux": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:redux"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:electron-custom": {
       "dependsOn": ["build:packages", "zubridge-electron-example#build:custom"],
-      "cache": true
+      "cache": false
     },
     "test:e2e:tauri-basic": {
-      "dependsOn": ["build:packages", "zubridge-tauri-example#build"],
-      "cache": true
+      "dependsOn": ["build:packages"],
+      "cache": false
     },
     "test:e2e:tauri-v1-basic": {
-      "dependsOn": ["build:packages", "zubridge-tauri-v1-example#build"],
-      "cache": true
+      "dependsOn": ["build:packages"],
+      "cache": false
+    },
+    "@zubridge/middleware#build": {
+      "cache": false
     },
     "@zubridge/types#build": {
       "outputs": ["dist/**"],
@@ -105,12 +108,12 @@
     "@zubridge/tauri#build": {
       "dependsOn": ["@zubridge/types#build"],
       "outputs": ["dist/**"],
-      "cache": true
+      "cache": false
     },
     "@zubridge/apps-shared#build": {
       "dependsOn": ["@zubridge/types#build"],
       "outputs": ["dist/**"],
-      "cache": true
+      "cache": false
     },
     "@zubridge/ui#build": {
       "outputs": ["dist/**"],
@@ -132,47 +135,114 @@
         "zubridge-electron-example#build:redux",
         "zubridge-electron-example#build:custom"
       ],
-      "cache": true
+      "cache": false
     },
     "zubridge-electron-example#build:reducers": {
-      "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
-      "cache": true
+      "dependsOn": [
+        "@zubridge/electron#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
+      "cache": false
     },
     "zubridge-electron-example#build:handlers": {
-      "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
-      "cache": true
+      "dependsOn": [
+        "@zubridge/electron#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
+      "cache": false
     },
     "zubridge-electron-example#build:basic": {
-      "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
-      "cache": true
+      "dependsOn": [
+        "@zubridge/electron#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
+      "cache": false
     },
     "zubridge-electron-example#build:redux": {
-      "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
-      "cache": true
+      "dependsOn": [
+        "@zubridge/electron#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
+      "cache": false
     },
     "zubridge-electron-example#build:custom": {
-      "dependsOn": ["@zubridge/electron#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
-      "cache": true
+      "dependsOn": [
+        "@zubridge/electron#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
+      "cache": false
     },
     "zubridge-tauri-example#build": {
-      "dependsOn": ["@zubridge/tauri#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
+      "dependsOn": [
+        "@zubridge/tauri#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
       "outputs": ["apps/tauri-example/dist/**", "apps/tauri-example/src-tauri/target/**"],
-      "cache": true
+      "cache": false
     },
     "zubridge-tauri-v1-example#build": {
-      "dependsOn": ["@zubridge/tauri#build", "@zubridge/ui#build", "@zubridge/apps-shared#build"],
-      "inputs": ["packages/electron/dist/**", "packages/ui/dist/**", "packages/apps-shared/dist/**"],
+      "dependsOn": [
+        "@zubridge/tauri#build",
+        "@zubridge/ui#build",
+        "@zubridge/apps-shared#build",
+        "@zubridge/middleware#build"
+      ],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
       "outputs": ["apps/tauri-v1-example/dist/**", "apps/tauri-v1-example/src-tauri/target/**"],
-      "cache": true
-    },
-    "tauri-plugin#build": {
-      "outputs": ["target/**"]
+      "cache": false
     }
   }
 }

@@ -132,7 +132,12 @@ const getRendererPlugins = async () => {
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ['@zubridge/electron'] }), debugPlugin()],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: ['@zubridge/electron', '@zubridge/apps-shared'],
+      }),
+      debugPlugin(),
+    ],
     build: {
       outDir: join(outDir, 'main'),
       rollupOptions: {
@@ -166,10 +171,8 @@ export default defineConfig({
         '@': resolve('src/renderer'),
         // Add an alias for @zubridge/electron to use a browser-safe version
         '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/index.js'),
+        '@zubridge/middleware': resolve(__dirname, '../../packages/middleware/dist/index.js'),
         '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
-        // Add aliases for direct imports from UI package
-        '@zubridge/ui-app': resolve(__dirname, '../../packages/ui/dist/components/AppBase'),
-        '@zubridge/ui-electron': resolve(__dirname, '../../packages/ui/dist/electron'),
       },
     },
     plugins: await getRendererPlugins(),

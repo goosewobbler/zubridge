@@ -38,7 +38,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shared-packages
-          path: packages/*/dist
+          path: |
+            packages/*/dist
+            packages/tauri-plugin
           retention-days: 1
 
   # E2E tests - using matrix strategy

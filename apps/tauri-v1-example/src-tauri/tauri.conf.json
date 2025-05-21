@@ -1,10 +1,8 @@
 {
   "build": {
-    "beforeDevCommand": "pnpm dev:vite",
+    "beforeDevCommand": "pnpm vite dev",
     "beforeBuildCommand": "pnpm vite build",
-    "devPath": "http://localhost:5173",
-    "distDir": "../dist",
-    "withGlobalTauri": true
+    "distDir": "../dist"
   },
   "package": {
     "productName": "zubridge-tauri-v1-example",
