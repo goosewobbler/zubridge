@@ -87,48 +87,53 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
   // Initialize the thunk processor
   const setupThunkProcessor = async () => {
-    // Get the current window ID
-    const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
-    console.log(`[PRELOAD] Got current window ID: ${windowId}`);
+    try {
+      // Get the current window ID
+      const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+      console.log(`[PRELOAD] Got current window ID: ${windowId}`);
 
-    // Initialize the thunk processor with required functions
-    thunkProcessor.initialize({
-      windowId,
-      // Function to send actions to main process
-      actionSender: async (action: Action, parentId?: string) => {
-        console.log(
-          `[PRELOAD-SEND] Sending action: ${action.type}, id: ${action.id}, timestamp: ${Date.now()}${
-            parentId ? `, parent: ${parentId}` : ''
-          }`,
-        );
+      // Initialize the thunk processor with required functions
+      thunkProcessor.initialize({
+        windowId,
+        // Function to send actions to main process
+        actionSender: async (action: Action, parentId?: string) => {
+          console.log(
+            `[PRELOAD-SEND] Sending action: ${action.type}, id: ${action.id}, timestamp: ${Date.now()}${
+              parentId ? `, parent: ${parentId}` : ''
+            }`,
+          );
 
-        ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
-        console.log(`[PRELOAD-SEND] Action sent: ${action.type}, id: ${action.id}`);
-      },
-      // Function to register thunks with main process
-      thunkRegistrar: async (thunkId: string, parentId?: string) => {
-        ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId });
-      },
-      // Function to notify thunk completion (not currently used)
-      thunkCompleter: async (thunkId: string) => {
-        console.log(`[PRELOAD] Notifying main process of thunk completion: ${thunkId}`);
-        ipcRenderer.send(IpcChannel.COMPLETE_THUNK, { thunkId });
-        console.log(`[PRELOAD] Thunk completion notification sent: ${thunkId}`);
-      },
-    });
-
-    console.log('[PRELOAD] Renderer thunk processor initialized');
-
-    // Make the thunk processor available to the renderer via context bridge
-    if (contextBridge) {
-      console.log('[PRELOAD] Exposing thunk processor to renderer via contextBridge');
-      contextBridge.exposeInMainWorld('__zubridge_thunkProcessor', {
-        executeThunk: (thunk: any, getState: any, parentId?: string) =>
-          thunkProcessor.executeThunk(thunk, getState, parentId),
-        completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
-        dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>
-          thunkProcessor.dispatchAction(action, payload, parentId),
+          ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
+          console.log(`[PRELOAD-SEND] Action sent: ${action.type}, id: ${action.id}`);
+        },
+        // Function to register thunks with main process
+        thunkRegistrar: async (thunkId: string, parentId?: string) => {
+          ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId });
+        },
+        // Function to notify thunk completion (not currently used)
+        thunkCompleter: async (thunkId: string) => {
+          console.log(`[PRELOAD] Notifying main process of thunk completion: ${thunkId}`);
+          ipcRenderer.send(IpcChannel.COMPLETE_THUNK, { thunkId });
+          console.log(`[PRELOAD] Thunk completion notification sent: ${thunkId}`);
+        },
       });
+
+      console.log('[PRELOAD] Renderer thunk processor initialized');
+
+      // Make the thunk processor available to the renderer via context bridge
+      if (contextBridge) {
+        console.log('[PRELOAD] Exposing thunk processor to renderer via contextBridge');
+        contextBridge.exposeInMainWorld('__zubridge_thunkProcessor', {
+          executeThunk: (thunk: any, getState: any, parentId?: string) =>
+            thunkProcessor.executeThunk(thunk, getState, parentId),
+          completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
+          dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>
+            thunkProcessor.dispatchAction(action, payload, parentId),
+        });
+      }
+    } catch (error) {
+      console.error('[PRELOAD] Error initializing thunk processor:', error);
+      throw error;
     }
   };
 
@@ -175,7 +180,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         return state as S;
       } catch (error) {
         console.error('[PRELOAD] Error getting state:', error);
-        return {} as S;
+        // It's often better to rethrow or handle more gracefully
+        // For now, rethrowing to make the failure visible if __app_main_ready__ also fails
+        throw error;
       }
     },
 
