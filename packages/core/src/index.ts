@@ -1,1 +1,1 @@
-export * from './utils/debug';
+export * from './utils/debug.js';
