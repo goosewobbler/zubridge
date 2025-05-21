@@ -1,10 +1,8 @@
 import url from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import os from 'node:os';
-// import crypto from 'node:crypto'; // Not used
-// import os from 'node:os'; // Not used
 
 import type { NormalizedPackageJson } from 'read-package-up';
 // import type { Options } from '@wdio/types'; // Kept as any for now
@@ -69,7 +67,7 @@ if (e2eAppType.startsWith('tauri')) {
   capabilities = [
     {
       'maxInstances': 1,
-      'browserName': 'wry', // Or chrome, depending on what tauri-driver expects/reports
+      'browserName': 'chrome', // Or wry, depending on what tauri-driver expects/reports
       'tauri:options': {
         application: binaryPath,
       },
@@ -367,5 +365,7 @@ const config: any = {
 };
 
 process.env.TEST = 'true';
+
+console.log('[DEBUG] Final WebdriverIO Config:', JSON.stringify(config, null, 2));
 
 export { config };
