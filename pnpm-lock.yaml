@@ -47,6 +47,9 @@ importers:
       '@zubridge/apps-shared':
         specifier: workspace:*
         version: link:../../packages/apps-shared
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../../packages/electron
@@ -126,6 +129,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.4.1
         version: 2.5.0
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../../packages/tauri
@@ -178,6 +184,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^1.5.3
         version: 1.6.0
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../../packages/tauri
@@ -290,11 +299,27 @@ importers:
         specifier: ^5.0.4
         version: 5.8.3
 
+  packages/core:
+    dependencies:
+      weald:
+        specifier: ^1.0.4
+        version: 1.0.4
+    devDependencies:
+      shx:
+        specifier: ^0.4.0
+        version: 0.4.0
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.3
+
   packages/electron:
     dependencies:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../core
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types

@@ -1,20 +1,20 @@
 /**
- * Debug logging utility for the electron package
+ * Debug logging utility for Zubridge packages
  *
- * This provides a way to centrally control debug logging throughout the package.
+ * This provides a way to centrally control debug logging.
  * This implementation uses the 'debug' package.
  */
-import debug from 'weald';
+import debug, { Debugger } from 'weald';
 
 // Define type for the areas object with index signature
 interface DebugAreas {
-  core: debug.Debugger;
-  ipc: debug.Debugger;
-  store: debug.Debugger;
-  adapters: debug.Debugger;
-  windows: debug.Debugger;
-  serialization: debug.Debugger;
-  [key: string]: debug.Debugger;
+  core: Debugger;
+  ipc: Debugger;
+  store: Debugger;
+  adapters: Debugger;
+  windows: Debugger;
+  serialization: Debugger;
+  [key: string]: Debugger;
 }
 
 // Create debug namespaces for different areas
@@ -28,7 +28,7 @@ const areas: DebugAreas = {
 };
 
 // Allow dynamic creation of debug areas
-const createAreaDebugger = (area: string): debug.Debugger => {
+const createAreaDebugger = (area: string): Debugger => {
   // Create a new debug instance for this area if it doesn't exist
   if (!(area in areas)) {
     areas[area] = debug(`zubridge:${area}`);

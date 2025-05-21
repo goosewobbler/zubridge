@@ -14,6 +14,7 @@
     "build:packages": {
       "dependsOn": [
         "@zubridge/types#build",
+        "@zubridge/core#build",
         "@zubridge/electron#build",
         "@zubridge/tauri#build",
         "@zubridge/ui#build",
@@ -214,6 +215,7 @@
     },
     "zubridge-tauri-example#build": {
       "dependsOn": [
+        "@zubridge/core#build",
         "@zubridge/tauri#build",
         "@zubridge/ui#build",
         "@zubridge/apps-shared#build",
@@ -230,6 +232,7 @@
     },
     "zubridge-tauri-v1-example#build": {
       "dependsOn": [
+        "@zubridge/core#build",
         "@zubridge/tauri#build",
         "@zubridge/ui#build",
         "@zubridge/apps-shared#build",
@@ -243,6 +246,11 @@
       ],
       "outputs": ["apps/tauri-v1-example/dist/**", "apps/tauri-v1-example/src-tauri/target/**"],
       "cache": false
+    },
+    "@zubridge/core#build": {
+      "dependsOn": ["@zubridge/types#build"],
+      "outputs": ["dist/**"],
+      "cache": true
     }
   }
 }
