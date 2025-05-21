@@ -59,7 +59,7 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
                     );
                   })
                   .catch((error) => {
-                    console.error(`Error in async handler for ${action.type}:`, error);
+                    debug('adapters:error', `Error in async handler for ${action.type}:`, error);
                   }),
               };
             } else {
@@ -76,8 +76,7 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
         store.dispatch(action as any);
         return { isSync: true }; // Redux dispatch is synchronous
       } catch (error) {
-        debug('adapters', 'Error processing Redux action:', error);
-        console.error('Error processing Redux action:', error);
+        debug('adapters:error', 'Error processing Redux action:', error);
         return { isSync: true }; // Default to sync if error occurred
       }
     },

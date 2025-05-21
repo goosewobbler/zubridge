@@ -61,7 +61,8 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
             try {
               payloadForNapi = JSON.stringify(action.payload);
             } catch (stringifyError) {
-              console.error(
+              debug(
+                'core',
                 '[zubridge-electron] Error stringifying action payload for NAPI middleware:',
                 stringifyError,
               );
@@ -80,7 +81,7 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
         // The middleware.processAction expects an Action where payload is string | undefined
         await middleware.processAction(napiCompliantAction);
       } catch (error) {
-        debug('core', 'Error in zubridge middleware processAction:', error);
+        debug('core:error', 'Error in zubridge middleware processAction:', error);
       }
       return action; // Return the original action for further processing by the bridge
     },
@@ -93,13 +94,13 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
         try {
           stateJson = JSON.stringify(state);
         } catch (stringifyError) {
-          console.error('[zubridge-electron] Error stringifying state for NAPI middleware:', stringifyError);
+          debug('core:error', '[zubridge-electron] Error stringifying state for NAPI middleware:', stringifyError);
           // Send an error object as state or handle differently
           stateJson = JSON.stringify({ error: 'State stringification failed' });
         }
         await middleware.setState(stateJson);
       } catch (error) {
-        debug('core', 'Error in zubridge middleware setState:', error);
+        debug('core:error', 'Error in zubridge middleware setState:', error);
       }
     },
 
@@ -110,7 +111,7 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
           debug('core', 'Destroying middleware instance');
           await middleware.destroy();
         } catch (error) {
-          debug('core', 'Error destroying zubridge middleware:', error);
+          debug('core:error', 'Error destroying zubridge middleware:', error);
         }
       }
     },

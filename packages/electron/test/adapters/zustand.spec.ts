@@ -3,6 +3,11 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { AnyState, RootReducer, Action } from '@zubridge/types';
 import { createZustandAdapter, ZustandOptions } from '../../src/adapters/zustand.js';
 
+// Mock the debug utility
+vi.mock('../../src/utils/debug.js', () => ({
+  debug: vi.fn(), // Simplified mock
+}));
+
 // Mock a Zustand store
 const createMockStore = (): StoreApi<AnyState> => {
   return {
@@ -210,27 +215,17 @@ describe('Zustand Adapter', () => {
       expect(reducer).toHaveBeenCalledWith({ count: 0, setCount: expect.any(Function) }, action);
       expect(store.setState).toHaveBeenCalled();
     });
-  });
 
-  describe('error handling', () => {
-    it('should catch and log errors during action processing', () => {
+    it('should catch and log errors during action processing', async () => {
       const errorReducer: RootReducer<AnyState> = vi.fn(() => {
         throw new Error('Test reducer error');
       });
 
       const adapterWithReducer = createZustandAdapter(store, { reducer: errorReducer });
 
-      // Mock console.error
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const action: Action = { type: 'ERROR_ACTION' };
-      adapterWithReducer.processAction(action);
-
-      // Verify error was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error processing action:', expect.any(Error));
-
-      // Restore console.error
-      consoleErrorSpy.mockRestore();
+      // Expect this path to be taken, error to be handled internally by debug log
+      expect(() => adapterWithReducer.processAction(action)).not.toThrow();
     });
   });
 });

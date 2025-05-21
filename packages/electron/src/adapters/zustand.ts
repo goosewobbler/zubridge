@@ -18,7 +18,7 @@ function toVoidPromise<T>(promise: Promise<T>): Promise<void> {
   return promise
     .then(() => undefined)
     .catch((error) => {
-      console.error(`[PROMISE_ERROR] Error in promise:`, error);
+      debug('adapters:error', '[PROMISE_ERROR] Error in promise:', error);
       // Re-throw to ensure errors are propagated
       throw error;
     });
@@ -66,7 +66,8 @@ export function createZustandAdapter<S extends AnyState>(
 
               // Add unique ID for tracking this promise
               const promiseId = Math.random().toString(36).substring(2, 10);
-              console.log(
+              debug(
+                'adapters',
                 `[ADAPTER_DEBUG] [${promiseId}] Creating async handler promise wrapper for action: ${action.type}`,
               );
 
@@ -74,14 +75,15 @@ export function createZustandAdapter<S extends AnyState>(
               const voidPromise = toVoidPromise(
                 result.then(() => {
                   const endTime = new Date().getTime();
-                  console.log(
+                  debug(
+                    'adapters',
                     `[ADAPTER_DEBUG] [${promiseId}] Async handler promise for ${action.type} RESOLVED after ${endTime - startTime}ms`,
                   );
                   debug(
                     'adapters',
                     `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
                   );
-                  console.log(`[ADAPTER_DEBUG] [${promiseId}] STATE IS NOW UPDATED for ${action.type}`);
+                  debug('adapters', `[ADAPTER_DEBUG] [${promiseId}] STATE IS NOW UPDATED for ${action.type}`);
                 }),
               );
 
@@ -169,8 +171,7 @@ export function createZustandAdapter<S extends AnyState>(
           return { isSync: true }; // Default to sync if no handler found
         }
       } catch (error) {
-        debug('adapters', 'Error processing action:', error);
-        console.error('Error processing action:', error);
+        debug('adapters:error', 'Error processing action:', error);
         return { isSync: true }; // Default to sync if error occurred
       }
     },
