@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { debugUtils } from '../utils/debug.js';
+import { debug } from '../utils/debug.js';
 
 /**
  * Possible states of a thunk during its lifecycle
@@ -70,25 +70,8 @@ export class ThunkTracker {
   // Global thunk state version - increments on every thunk state change
   private stateVersion: number = 1;
 
-  // Debug mode flag
-  private debugLogging: boolean;
-
-  constructor(debugLogging = false) {
-    this.debugLogging = debugLogging;
-    this.logDebug('ThunkTracker initialized');
-  }
-
-  /**
-   * Log debug messages if debug mode is enabled
-   */
-  private logDebug(message: string, data?: any): void {
-    if (this.debugLogging) {
-      if (data) {
-        debugUtils.log('thunkTracker', message, data);
-      } else {
-        debugUtils.log('thunkTracker', message);
-      }
-    }
+  constructor() {
+    debug('core', '[THUNK_TRACKER] Initialized');
   }
 
   /**
@@ -117,11 +100,11 @@ export class ThunkTracker {
       const parentInfo = this.thunks.get(parentId)!;
       parentInfo.childIds.add(thunkId);
       parentInfo.pendingChildIds.add(thunkId);
-      this.logDebug(`Added thunk ${thunkId} as child of ${parentId}`);
+      debug('core', `Added thunk ${thunkId} as child of ${parentId}`);
     } else {
       // This is a root thunk
       this.rootThunkIds.add(thunkId);
-      this.logDebug(`Registered root thunk ${thunkId}`);
+      debug('core', `Registered root thunk ${thunkId}`);
     }
 
     // Return control functions for this thunk
@@ -134,11 +117,10 @@ export class ThunkTracker {
           info.state = ThunkState.EXECUTING;
           this.activeThunkIds.add(thunkId);
           this.notifyStateChange(thunkId, info.state, info);
-          this.logDebug(`Thunk ${thunkId} started executing`);
+          debug('core', `[THUNK_TRACKER] Thunk ${thunkId} marked as EXECUTING, global state updated`);
 
           // Increment state version on thunk execution start
           this.incrementStateVersion();
-          console.log(`[THUNK_TRACKER] Thunk ${thunkId} marked as EXECUTING, global state updated`);
         }
       },
 
@@ -165,11 +147,11 @@ export class ThunkTracker {
           if (info.parentId && this.thunks.has(info.parentId)) {
             const parentInfo = this.thunks.get(info.parentId)!;
             parentInfo.pendingChildIds.delete(thunkId);
-            this.logDebug(`Notified parent ${info.parentId} that child ${thunkId} completed`);
+            debug('core', `Notified parent ${info.parentId} that child ${thunkId} completed`);
           }
 
           this.notifyStateChange(thunkId, info.state, info);
-          this.logDebug(`Thunk ${thunkId} completed`, {
+          debug('core', `[THUNK_TRACKER] Thunk ${thunkId} marked as COMPLETED, global state updated`, {
             duration: info.endTime - info.startTime,
             childCount: info.childIds.size,
             actionCount: info.actionIds.size,
@@ -178,7 +160,6 @@ export class ThunkTracker {
 
           // Increment state version on thunk completion
           this.incrementStateVersion();
-          console.log(`[THUNK_TRACKER] Thunk ${thunkId} marked as COMPLETED, global state updated`);
         }
       },
 
@@ -205,11 +186,11 @@ export class ThunkTracker {
           if (info.parentId && this.thunks.has(info.parentId)) {
             const parentInfo = this.thunks.get(info.parentId)!;
             parentInfo.pendingChildIds.delete(thunkId);
-            this.logDebug(`Notified parent ${info.parentId} that child ${thunkId} failed`);
+            debug('core', `Notified parent ${info.parentId} that child ${thunkId} failed`);
           }
 
           this.notifyStateChange(thunkId, info.state, info);
-          this.logDebug(`Thunk ${thunkId} failed`, {
+          debug('core', `Thunk ${thunkId} failed`, {
             duration: info.endTime - info.startTime,
             error: error.message,
           });
@@ -221,7 +202,7 @@ export class ThunkTracker {
         if (info) {
           info.childIds.add(childId);
           info.pendingChildIds.add(childId);
-          this.logDebug(`Added child thunk ${childId} to parent ${thunkId}`);
+          debug('core', `Added child thunk ${childId} to parent ${thunkId}`);
         }
       },
 
@@ -229,7 +210,7 @@ export class ThunkTracker {
         const info = this.thunks.get(thunkId);
         if (info) {
           info.pendingChildIds.delete(childId);
-          this.logDebug(`Child thunk ${childId} completed for parent ${thunkId}`);
+          debug('core', `Child thunk ${childId} completed for parent ${thunkId}`);
         }
       },
 
@@ -237,14 +218,14 @@ export class ThunkTracker {
         const info = this.thunks.get(thunkId);
         if (info) {
           info.actionIds.add(actionId);
-          this.logDebug(`Added action ${actionId} to thunk ${thunkId}`);
+          debug('core', `Added action ${actionId} to thunk ${thunkId}`);
         }
       },
 
       setSourceWindowId: (windowId: number) => {
         const info = this.thunks.get(thunkId);
         if (info) {
-          console.log(`[THUNK_TRACKER] Setting source window ID ${windowId} for thunk ${thunkId}`);
+          debug('core', `[THUNK_TRACKER] Setting source window ID ${windowId} for thunk ${thunkId}`);
           info.sourceWindowId = windowId;
 
           // Add to window tracking map
@@ -252,17 +233,17 @@ export class ThunkTracker {
           if (!windowThunks) {
             windowThunks = new Set<string>();
             this.thunksByWindow.set(windowId, windowThunks);
-            console.log(`[THUNK_TRACKER] Created new window tracking set for window ${windowId}`);
+            debug('core', `[THUNK_TRACKER] Created new window tracking set for window ${windowId}`);
           }
           windowThunks.add(thunkId);
 
           // Debug output to verify
-          console.log(`[THUNK_TRACKER] Window ${windowId} now has ${windowThunks.size} active thunks`);
-          console.log(`[THUNK_TRACKER] All tracked windows: [${Array.from(this.thunksByWindow.keys()).join(', ')}]`);
+          debug('core', `[THUNK_TRACKER] Window ${windowId} now has ${windowThunks.size} active thunks`);
+          debug('core', `[THUNK_TRACKER] All tracked windows: [${Array.from(this.thunksByWindow.keys()).join(', ')}]`);
 
-          this.logDebug(`Set source window ID ${windowId} for thunk ${thunkId}`);
+          debug('core', `Set source window ID ${windowId} for thunk ${thunkId}`);
         } else {
-          console.warn(`[THUNK_TRACKER] Could not find thunk ${thunkId} to set window ID ${windowId}`);
+          debug('warn', `[THUNK_TRACKER] Could not find thunk ${thunkId} to set window ID ${windowId}`);
         }
       },
     };
@@ -296,11 +277,11 @@ export class ThunkTracker {
       const parentInfo = this.thunks.get(parentId)!;
       parentInfo.childIds.add(thunkId);
       parentInfo.pendingChildIds.add(thunkId);
-      this.logDebug(`Added thunk ${thunkId} as child of ${parentId}`);
+      debug('core', `Added thunk ${thunkId} as child of ${parentId}`);
     } else {
       // This is a root thunk
       this.rootThunkIds.add(thunkId);
-      this.logDebug(`Registered root thunk ${thunkId}`);
+      debug('core', `Registered root thunk ${thunkId}`);
     }
 
     // Return the same interface as registerThunk
@@ -326,11 +307,10 @@ export class ThunkTracker {
       info.state = ThunkState.EXECUTING;
       this.activeThunkIds.add(thunkId);
       this.notifyStateChange(thunkId, info.state, info);
-      this.logDebug(`Thunk ${thunkId} started executing`);
+      debug('core', `[THUNK_TRACKER] Thunk ${thunkId} marked as EXECUTING, global state updated`);
 
       // Increment state version
       this.incrementStateVersion();
-      console.log(`[THUNK_TRACKER] Thunk ${thunkId} marked as EXECUTING, global state updated`);
     }
   }
 
@@ -362,11 +342,11 @@ export class ThunkTracker {
       if (info.parentId && this.thunks.has(info.parentId)) {
         const parentInfo = this.thunks.get(info.parentId)!;
         parentInfo.pendingChildIds.delete(thunkId);
-        this.logDebug(`Notified parent ${info.parentId} that child ${thunkId} failed`);
+        debug('core', `Notified parent ${info.parentId} that child ${thunkId} failed`);
       }
 
       this.notifyStateChange(thunkId, info.state, info);
-      this.logDebug(`Thunk ${thunkId} failed`, {
+      debug('core', `Thunk ${thunkId} failed`, {
         duration: info.endTime - info.startTime,
         error: error.message,
       });
@@ -386,7 +366,7 @@ export class ThunkTracker {
     if (info) {
       info.childIds.add(childId);
       info.pendingChildIds.add(childId);
-      this.logDebug(`Added child thunk ${childId} to parent ${parentId}`);
+      debug('core', `Added child thunk ${childId} to parent ${parentId}`);
     }
   }
 
@@ -399,7 +379,7 @@ export class ThunkTracker {
     const info = this.thunks.get(parentId);
     if (info) {
       info.pendingChildIds.delete(childId);
-      this.logDebug(`Child thunk ${childId} completed for parent ${parentId}`);
+      debug('core', `Child thunk ${childId} completed for parent ${parentId}`);
     }
   }
 
@@ -412,7 +392,7 @@ export class ThunkTracker {
     const info = this.thunks.get(thunkId);
     if (info) {
       info.actionIds.add(actionId);
-      this.logDebug(`Added action ${actionId} to thunk ${thunkId}`);
+      debug('core', `Added action ${actionId} to thunk ${thunkId}`);
     }
   }
 
@@ -424,7 +404,7 @@ export class ThunkTracker {
   public setSourceWindowId(thunkId: string, windowId: number): void {
     const info = this.thunks.get(thunkId);
     if (info) {
-      console.log(`[THUNK_TRACKER] Setting source window ID ${windowId} for thunk ${thunkId}`);
+      debug('core', `[THUNK_TRACKER] Setting source window ID ${windowId} for thunk ${thunkId}`);
       info.sourceWindowId = windowId;
 
       // Add to window tracking map
@@ -432,17 +412,17 @@ export class ThunkTracker {
       if (!windowThunks) {
         windowThunks = new Set<string>();
         this.thunksByWindow.set(windowId, windowThunks);
-        console.log(`[THUNK_TRACKER] Created new window tracking set for window ${windowId}`);
+        debug('core', `[THUNK_TRACKER] Created new window tracking set for window ${windowId}`);
       }
       windowThunks.add(thunkId);
 
       // Debug output to verify
-      console.log(`[THUNK_TRACKER] Window ${windowId} now has ${windowThunks.size} active thunks`);
-      console.log(`[THUNK_TRACKER] All tracked windows: [${Array.from(this.thunksByWindow.keys()).join(', ')}]`);
+      debug('core', `[THUNK_TRACKER] Window ${windowId} now has ${windowThunks.size} active thunks`);
+      debug('core', `[THUNK_TRACKER] All tracked windows: [${Array.from(this.thunksByWindow.keys()).join(', ')}]`);
 
-      this.logDebug(`Set source window ID ${windowId} for thunk ${thunkId}`);
+      debug('core', `Set source window ID ${windowId} for thunk ${thunkId}`);
     } else {
-      console.warn(`[THUNK_TRACKER] Could not find thunk ${thunkId} to set window ID ${windowId}`);
+      debug('warn', `[THUNK_TRACKER] Could not find thunk ${thunkId} to set window ID ${windowId}`);
     }
   }
 
@@ -495,14 +475,17 @@ export class ThunkTracker {
    */
   public hasActiveThunks(): boolean {
     // Log the thunks in the map for debugging
-    console.log(`[THUNK_TRACKER] hasActiveThunks - Checking ${this.thunks.size} total thunks`);
-    console.log(
-      `[THUNK_TRACKER] Active thunk IDs set has ${this.activeThunkIds.size} entries: [${Array.from(this.activeThunkIds).join(', ')}]`,
+    debug('core', `[THUNK_TRACKER] hasActiveThunks - Checking ${this.thunks.size} total thunks`);
+    debug(
+      'core',
+      `[THUNK_TRACKER] Active thunk IDs set has ${this.activeThunkIds.size} entries: [${Array.from(
+        this.activeThunkIds,
+      ).join(', ')}]`,
     );
 
     if (this.thunks.size > 0) {
       this.thunks.forEach((thunk, id) => {
-        console.log(`[THUNK_TRACKER] Thunk ${id} state: ${thunk.state}, window: ${thunk.sourceWindowId}`);
+        debug('core', `[THUNK_TRACKER] Thunk ${id} state: ${thunk.state}, window: ${thunk.sourceWindowId}`);
       });
     }
 
@@ -516,26 +499,27 @@ export class ThunkTracker {
    */
   public hasActiveThunksForWindow(windowId: number): boolean {
     const windowThunks = this.thunksByWindow.get(windowId);
-    console.log(
+    debug(
+      'core',
       `[THUNK_TRACKER] Checking if window ${windowId} has active thunks. Window in tracking map: ${!!windowThunks}`,
     );
 
     if (!windowThunks) return false;
 
     // Debug log the thunks found for this window
-    console.log(`[THUNK_TRACKER] Window ${windowId} has ${windowThunks.size} tracked thunks`);
+    debug('core', `[THUNK_TRACKER] Window ${windowId} has ${windowThunks.size} tracked thunks`);
 
     let hasActiveThunk = false;
     for (const thunkId of windowThunks) {
       const record = this.thunks.get(thunkId);
       if (record && record.state === ThunkState.EXECUTING) {
-        console.log(`[THUNK_TRACKER] Found active thunk ${thunkId} in window ${windowId}`);
+        debug('core', `[THUNK_TRACKER] Found active thunk ${thunkId} in window ${windowId}`);
         hasActiveThunk = true;
         break;
       }
     }
 
-    console.log(`[THUNK_TRACKER] hasActiveThunksForWindow(${windowId}) returning ${hasActiveThunk}`);
+    debug('core', `[THUNK_TRACKER] hasActiveThunksForWindow(${windowId}) returning ${hasActiveThunk}`);
     return hasActiveThunk;
   }
 
@@ -588,7 +572,7 @@ export class ThunkTracker {
       try {
         callback(thunkId, state, { ...info });
       } catch (err) {
-        console.error('Error in thunk state change callback:', err);
+        debug('core:error', 'Error in thunk state change callback:', err);
       }
     }
   }
@@ -601,7 +585,7 @@ export class ThunkTracker {
     this.rootThunkIds.clear();
     this.activeThunkIds.clear();
     this.thunksByWindow.clear();
-    this.logDebug('Registry cleared');
+    debug('core', 'Registry cleared');
   }
 
   /**
@@ -631,23 +615,22 @@ export class ThunkTracker {
       if (info.parentId && this.thunks.has(info.parentId)) {
         const parentInfo = this.thunks.get(info.parentId)!;
         parentInfo.pendingChildIds.delete(thunkId);
-        this.logDebug(`Notified parent ${info.parentId} that child ${thunkId} completed`);
+        debug('core', `Notified parent ${info.parentId} that child ${thunkId} completed`);
       }
 
       this.notifyStateChange(thunkId, info.state, info);
-      this.logDebug(`Thunk ${thunkId} completed`, {
+      debug('core', `[THUNK_TRACKER] Thunk ${thunkId} marked as COMPLETED, global state updated`, {
         duration: info.endTime - info.startTime,
         childCount: info.childIds.size,
         actionCount: info.actionIds.size,
         result,
       });
-      console.log(`[THUNK_TRACKER] Thunk ${thunkId} marked as COMPLETED externally`);
+      debug('core', `[THUNK_TRACKER] Thunk ${thunkId} marked as COMPLETED externally`);
 
       // Increment state version when thunk completes externally
       this.incrementStateVersion();
-      console.log(`[THUNK_TRACKER] Thunk state version updated after external completion of ${thunkId}`);
     } else {
-      console.log(`[THUNK_TRACKER] Cannot mark non-existent thunk ${thunkId} as completed`);
+      debug('warn', `[THUNK_TRACKER] Cannot mark non-existent thunk ${thunkId} as completed`);
     }
   }
 
@@ -664,7 +647,7 @@ export class ThunkTracker {
    */
   private incrementStateVersion(): number {
     this.stateVersion += 1;
-    console.log(`[THUNK_TRACKER] Global thunk state version incremented to ${this.stateVersion}`);
+    debug('core', `[THUNK_TRACKER] Global thunk state version incremented to ${this.stateVersion}`);
     return this.stateVersion;
   }
 
@@ -701,9 +684,9 @@ let globalThunkTracker: ThunkTracker | undefined;
 /**
  * Get or create the global thunk tracker
  */
-export const getThunkTracker = (debugLogging = false): ThunkTracker => {
+export const getThunkTracker = (): ThunkTracker => {
   if (!globalThunkTracker) {
-    globalThunkTracker = new ThunkTracker(debugLogging);
+    globalThunkTracker = new ThunkTracker();
   }
 
   return globalThunkTracker;
