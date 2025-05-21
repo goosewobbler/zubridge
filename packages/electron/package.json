@@ -105,6 +105,7 @@
   ],
   "dependencies": {
     "@types/debug": "^4.1.12",
+    "@zubridge/core": "workspace:*",
     "@zubridge/types": "workspace:*",
     "uuid": "^11.1.0",
     "weald": "^1.0.4",
