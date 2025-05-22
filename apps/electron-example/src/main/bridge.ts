@@ -1,6 +1,7 @@
 import type { StoreApi } from 'zustand';
 import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import type { Store as ReduxStore } from 'redux';
+import { debug } from '@zubridge/core';
 
 import { getZubridgeMode } from '../utils/mode.js';
 import type { BaseState } from '../types.js';
@@ -13,7 +14,7 @@ export const createBridge = async <S extends BaseState, Store extends StoreApi<S
   middleware?: ZubridgeMiddleware,
 ): Promise<ZustandBridge> => {
   const mode = getZubridgeMode();
-  console.log(`[Main] Using Zubridge mode: ${mode}`);
+  debug('core', `[Main] Using Zubridge mode: ${mode}`);
 
   switch (mode) {
     case 'basic':
@@ -38,7 +39,7 @@ export const createBridge = async <S extends BaseState, Store extends StoreApi<S
 
     default:
       // This should never happen due to validation in getZubridgeMode
-      console.warn(`[Main] Unknown mode: ${mode}, falling back to reducers mode`);
+      debug('core', `[Main] Unknown mode: ${mode}, falling back to reducers mode`);
       const { createReducersBridge: fallback } = await import('../modes/reducers/main.js');
       return fallback(store as Store, middleware);
   }

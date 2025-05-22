@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { getZubridgeMode } from '../utils/mode.js';
 import type { State } from '../types.js';
 import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
+import { debug } from '@zubridge/core';
 
 // Singleton store instance
 let store: UnifiedStore<State>;
@@ -12,7 +13,7 @@ let store: UnifiedStore<State>;
  */
 export async function createModeStore(): Promise<UnifiedStore<State>> {
   const mode = getZubridgeMode();
-  console.log('Creating store for mode:', mode);
+  debug('store', 'Creating store for mode:', mode);
 
   switch (mode) {
     case 'basic':
@@ -39,7 +40,7 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
 
     case 'custom':
       // For custom mode, get our EventEmitter-based store
-      console.log('[Store] Custom mode detected - loading custom store');
+      debug('store', '[Store] Custom mode detected - loading custom store');
       const { getCustomStore } = await import('../modes/custom/store.js');
 
       // Get the custom store which implements StateManager
@@ -49,7 +50,7 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
       return createCustomAdapter(customStore);
 
     default:
-      console.warn('Unknown mode, falling back to basic store');
+      debug('store', 'Unknown mode, falling back to basic store');
       return createZustandAdapter(
         create<State>()(() => {
           return {

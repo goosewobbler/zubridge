@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand';
 import type { RootReducer } from '@zubridge/types';
 import type { ZustandBridge } from '@zubridge/electron/main';
 import type { ZubridgeMiddleware } from '@zubridge/electron/main';
+import { debug } from '@zubridge/core';
 
 // Import root reducer
 import { rootReducer } from './features/index.js';
@@ -16,17 +17,17 @@ export const createReducersBridge = <S extends BaseState, Store extends StoreApi
   store: Store,
   middleware?: ZubridgeMiddleware,
 ): ZustandBridge => {
-  console.log('[Reducers Mode] Creating bridge with root reducer');
+  debug('core', '[Reducers Mode] Creating bridge with root reducer');
 
   // Add debugging wrapper around reducer
   const debugReducer: RootReducer<S> = (state, action) => {
-    console.log('[Reducers] Action received:', action);
-    console.log('[Reducers] Current state:', state);
+    debug('store', '[Reducers] Action received:', action);
+    debug('store', '[Reducers] Current state:', state);
 
     // Call the actual reducer
     const newState = rootReducer(state, action);
 
-    console.log('[Reducers] New state:', newState);
+    debug('store', '[Reducers] New state:', newState);
     return newState as S;
   };
 
