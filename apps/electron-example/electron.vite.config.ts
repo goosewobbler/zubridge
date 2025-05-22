@@ -135,7 +135,7 @@ export default defineConfig({
   main: {
     plugins: [
       externalizeDepsPlugin({
-        exclude: ['@zubridge/electron', '@zubridge/apps-shared'],
+        exclude: ['@zubridge/core', '@zubridge/electron', '@zubridge/apps-shared'],
       }),
       debugPlugin(),
     ],
