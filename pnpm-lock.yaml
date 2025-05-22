@@ -129,6 +129,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.4.1
         version: 2.5.0
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../../packages/tauri
@@ -181,6 +184,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^1.5.3
         version: 1.6.0
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../../packages/tauri
@@ -390,6 +396,9 @@ importers:
 
   packages/tauri:
     dependencies:
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../core
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types
@@ -454,6 +463,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@zubridge/core':
+        specifier: workspace:*
+        version: link:../core
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../electron
