@@ -52,11 +52,26 @@ jobs:
       calculated_version: ${{ steps.calculate_versions.outputs.calculated_version }}
     needs: ['check']
     steps:
+      - name: Determine Checkout Ref
+        id: determine_checkout_ref
+        shell: bash
+        run: |
+          CHECKOUT_REF="main" # Default to main
+          if [ -n "${{ inputs.packages }}" ]; then
+            # If specific packages are listed, we need their package.json,
+            # which might only exist on the current commit/branch (e.g., for new packages).
+            echo "Specific packages provided ('${{ inputs.packages }}'). Using current commit SHA (${{ github.sha }}) for checkout to ensure package.json is found."
+            CHECKOUT_REF="${{ github.sha }}"
+          else
+            echo "No specific packages provided. Defaulting to 'main' branch for checkout."
+          fi
+          echo "checkout_ref=${CHECKOUT_REF}" >> $GITHUB_OUTPUT
+
       - name: 👷 Checkout repository
         uses: actions/checkout@v4
         with:
-          # Always checkout main first to calculate the target branch
-          ref: 'main'
+          ref: ${{ steps.determine_checkout_ref.outputs.checkout_ref }}
+          fetch-depth: 0 # Fetch all history for versioning tools
 
       - name: 🧮 Calculate version numbers
         id: calculate_versions
