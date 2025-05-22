@@ -131,29 +131,43 @@ export const switchToWindow = async (index: number) => {
   }
 };
 
-export const getButtonInCurrentWindow = async (buttonType: 'increment' | 'decrement' | 'create' | 'close') => {
+// Helper to get a button by its type in the current window
+export const getButtonInCurrentWindow = async (
+  buttonType: 'increment' | 'decrement' | 'create' | 'close' | 'doubleRendererSlow' | 'doubleMainSlow',
+) => {
+  let selector = '';
+  switch (buttonType) {
+    case 'increment':
+      selector = 'button=+';
+      break;
+    case 'decrement':
+      selector = 'button=-';
+      break;
+    case 'create':
+      selector = 'button=Create Window';
+      break;
+    case 'close':
+      selector = 'button=Close Window';
+      break;
+    case 'doubleRendererSlow':
+      selector = 'button=Double (Renderer Slow Thunk)';
+      break;
+    case 'doubleMainSlow':
+      selector = 'button=Double (Main Slow Thunk)';
+      break;
+    default:
+      // Ensure all cases are handled, or throw an error for an unhandled button type.
+      // This helps catch issues if new button types are added to the union type but not here.
+      throw new Error(`Unknown button type: ${buttonType}`);
+  }
+
   // For macOS, add retries
   const maxAttempts = process.platform === 'darwin' ? 3 : 1;
   let element;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      switch (buttonType) {
-        case 'increment':
-          element = await browser.$('button=+');
-          break;
-        case 'decrement':
-          element = await browser.$('button=-');
-          break;
-        case 'create':
-          element = await browser.$('button=Create Window');
-          break;
-        case 'close':
-          element = await browser.$('button=Close Window');
-          break;
-        default:
-          throw new Error(`Unknown button type: ${buttonType}`);
-      }
+      element = await browser.$(selector);
 
       if (element) {
         // Verify element is present
