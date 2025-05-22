@@ -149,29 +149,35 @@ jobs:
         shell: bash
         env:
           BRANCH_TYPE: ${{ inputs.branch }}
+          RELEASE_TYPE: ${{ inputs.release_version }}
           FEATURE_MAJOR_VERSION: ${{ steps.calculate_versions.outputs.feature-major-version}}
-          # Get the CURRENT feature major version
           CURRENT_FEATURE_MAJOR_VERSION: ${{ steps.calculate_versions.outputs.current-feature-major-version}}
-          # Get the package name from the previous step
           PACKAGE_NAME: ${{ steps.calculate_versions.outputs.package_name }}
         run: |
           TARGET_BRANCH_NAME=""
           NEXT_BRANCH_NAME=""
 
           if [ "${BRANCH_TYPE}" == 'feature' ]; then
-            # For feature branches, target the NEXT feature branch line
-            TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
-            echo "target_branch=${TARGET_BRANCH_NAME}"
-            echo "target_branch=${TARGET_BRANCH_NAME}" >> $GITHUB_OUTPUT
+            # If the release is 'major' or 'premajor', it establishes the NEXT feature branch line.
+            # Otherwise, for 'prerelease', 'prepatch', 'preminor' from a feature branch,
+            # it targets the CURRENT feature branch line.
+            if [ "${RELEASE_TYPE}" == "major" ] || [ "${RELEASE_TYPE}" == "premajor" ]; then
+              TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
+            else
+              TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${CURRENT_FEATURE_MAJOR_VERSION}.x"
+            fi
+            echo "Calculated target branch for feature release: ${TARGET_BRANCH_NAME}"
+            echo "target_branch=${TARGET_BRANCH_NAME}" >> "$GITHUB_OUTPUT"
           else
-            # For main, use as-is
+            # For main branch releases (patch, minor, prerelease), target is the branch itself (e.g., 'main').
             TARGET_BRANCH_NAME="${BRANCH_TYPE}"
-            echo "target_branch=${TARGET_BRANCH_NAME}" >> $GITHUB_OUTPUT
+            echo "Calculated target branch for non-feature release: ${TARGET_BRANCH_NAME}"
+            echo "target_branch=${TARGET_BRANCH_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
-          # The next version branch ALWAYS uses the NEXT major version
+          # The next_version_branch (for creating future feature branches) ALWAYS uses the NEXT major version.
           NEXT_BRANCH_NAME="feature/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
-          echo "next_version_branch=${NEXT_BRANCH_NAME}"
+          echo "Calculated next version branch: ${NEXT_BRANCH_NAME}"
           echo "next_version_branch=${NEXT_BRANCH_NAME}" >>"${GITHUB_OUTPUT}"
 
       - name: 🔍 Verify branch exists
