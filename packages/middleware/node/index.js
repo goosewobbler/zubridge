@@ -60,24 +60,16 @@ switch (platform) {
     }
     break;
   case 'win32':
-    console.log(`[Middleware Loader] Windows: arch=${arch}, __dirname=${__dirname}`);
     switch (arch) {
       case 'x64':
         localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.win32-x64-msvc.node'));
         try {
           if (localFileExisted) {
-            console.log(
-              "[Middleware Loader] Windows X64: Attempting local require: './zubridge-middleware.win32-x64-msvc.node'",
-            );
             nativeBinding = require('./zubridge-middleware.win32-x64-msvc.node');
           } else {
-            console.log(
-              "[Middleware Loader] Windows X64: Attempting package require: '@zubridge/middleware-win32-x64-msvc'",
-            );
             nativeBinding = require('@zubridge/middleware-win32-x64-msvc');
           }
         } catch (e) {
-          console.error('[Middleware Loader] Windows X64: Error loading binding:', e);
           loadError = e;
         }
         break;
@@ -85,18 +77,11 @@ switch (platform) {
         localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.win32-ia32-msvc.node'));
         try {
           if (localFileExisted) {
-            console.log(
-              "[Middleware Loader] Windows IA32: Attempting local require: './zubridge-middleware.win32-ia32-msvc.node'",
-            );
             nativeBinding = require('./zubridge-middleware.win32-ia32-msvc.node');
           } else {
-            console.log(
-              "[Middleware Loader] Windows IA32: Attempting package require: '@zubridge/middleware-win32-ia32-msvc'",
-            );
             nativeBinding = require('@zubridge/middleware-win32-ia32-msvc');
           }
         } catch (e) {
-          console.error('[Middleware Loader] Windows IA32: Error loading binding:', e);
           loadError = e;
         }
         break;
@@ -104,18 +89,11 @@ switch (platform) {
         localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.win32-arm64-msvc.node'));
         try {
           if (localFileExisted) {
-            console.log(
-              "[Middleware Loader] Windows ARM64: Attempting local require: './zubridge-middleware.win32-arm64-msvc.node'",
-            );
             nativeBinding = require('./zubridge-middleware.win32-arm64-msvc.node');
           } else {
-            console.log(
-              "[Middleware Loader] Windows ARM64: Attempting package require: '@zubridge/middleware-win32-arm64-msvc'",
-            );
             nativeBinding = require('@zubridge/middleware-win32-arm64-msvc');
           }
         } catch (e) {
-          console.error('[Middleware Loader] Windows ARM64: Error loading binding:', e);
           loadError = e;
         }
         break;
@@ -124,18 +102,11 @@ switch (platform) {
     }
     break;
   case 'darwin':
-    console.log(`[Middleware Loader] Darwin: arch=${arch}, __dirname=${__dirname}`);
     localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.darwin-universal.node'));
     try {
       if (localFileExisted) {
-        console.log(
-          "[Middleware Loader] Darwin Universal: Attempting local require: './zubridge-middleware.darwin-universal.node'",
-        );
         nativeBinding = require('./zubridge-middleware.darwin-universal.node');
       } else {
-        console.log(
-          "[Middleware Loader] Darwin Universal: Attempting package require: '@zubridge/middleware-darwin-universal'",
-        );
         nativeBinding = require('@zubridge/middleware-darwin-universal');
       }
       break;
@@ -145,19 +116,11 @@ switch (platform) {
         localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.darwin-x64.node'));
         try {
           if (localFileExisted) {
-            console.log(
-              "[Middleware Loader] Darwin X64: Attempting local require: './zubridge-middleware.darwin-x64.node'",
-            );
             nativeBinding = require('./zubridge-middleware.darwin-x64.node');
           } else {
-            console.log(
-              "[Middleware Loader] Darwin X64: Attempting package require: '@zubridge/middleware-darwin-x64'",
-            );
             nativeBinding = require('@zubridge/middleware-darwin-x64');
           }
         } catch (e) {
-          console.error('[Middleware Loader] Darwin X64: Error loading binding:', e);
-          console.error('[Middleware Loader] Darwin Universal: Error loading binding:', e);
           loadError = e;
         }
         break;
@@ -165,18 +128,11 @@ switch (platform) {
         localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.darwin-arm64.node'));
         try {
           if (localFileExisted) {
-            console.log(
-              "[Middleware Loader] Darwin Arm64: Attempting local require: './zubridge-middleware.darwin-arm64.node'",
-            );
             nativeBinding = require('./zubridge-middleware.darwin-arm64.node');
           } else {
-            console.log(
-              "[Middleware Loader] Darwin Arm64: Attempting package require: '@zubridge/middleware-darwin-arm64'",
-            );
             nativeBinding = require('@zubridge/middleware-darwin-arm64');
           }
         } catch (e) {
-          console.error('[Middleware Loader] Darwin Arm64: Error loading binding:', e);
           loadError = e;
         }
         break;
@@ -200,43 +156,28 @@ switch (platform) {
     }
     break;
   case 'linux':
-    console.log(`[Middleware Loader] Linux: arch=${arch}, __dirname=${__dirname}`);
     switch (arch) {
       case 'x64':
         if (isMusl()) {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-x64-musl.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux x64-musl: Attempting local require: './zubridge-middleware.linux-x64-musl.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-x64-musl.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux x64-musl: Attempting package require: '@zubridge/middleware-linux-x64-musl'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-x64-musl');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux x64-musl: Error loading binding:', e);
             loadError = e;
           }
         } else {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-x64-gnu.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux x64-gnu: Attempting local require: './zubridge-middleware.linux-x64-gnu.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-x64-gnu.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux x64-gnu: Attempting package require: '@zubridge/middleware-linux-x64-gnu'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-x64-gnu');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux x64-gnu: Error loading binding:', e);
             loadError = e;
           }
         }
@@ -246,36 +187,22 @@ switch (platform) {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-arm64-musl.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux arm64-musl: Attempting local require: './zubridge-middleware.linux-arm64-musl.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-arm64-musl.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux arm64-musl: Attempting package require: '@zubridge/middleware-linux-arm64-musl'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-arm64-musl');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux arm64-musl: Error loading binding:', e);
             loadError = e;
           }
         } else {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-arm64-gnu.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux arm64-gnu: Attempting local require: './zubridge-middleware.linux-arm64-gnu.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-arm64-gnu.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux arm64-gnu: Attempting package require: '@zubridge/middleware-linux-arm64-gnu'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-arm64-gnu');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux arm64-gnu: Error loading binding:', e);
             loadError = e;
           }
         }
@@ -296,18 +223,11 @@ switch (platform) {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-arm-gnueabihf.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux arm-gnu: Attempting local require: './zubridge-middleware.linux-arm-gnueabihf.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-arm-gnueabihf.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux arm-gnu: Attempting package require: '@zubridge/middleware-linux-arm-gnueabihf'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-arm-gnueabihf');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux arm-gnu: Error loading binding:', e);
             loadError = e;
           }
         }
@@ -317,36 +237,22 @@ switch (platform) {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-riscv64-musl.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux riscv64-musl: Attempting local require: './zubridge-middleware.linux-riscv64-musl.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-riscv64-musl.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux riscv64-musl: Attempting package require: '@zubridge/middleware-linux-riscv64-musl'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-riscv64-musl');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux riscv64-musl: Error loading binding:', e);
             loadError = e;
           }
         } else {
           localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-riscv64-gnu.node'));
           try {
             if (localFileExisted) {
-              console.log(
-                "[Middleware Loader] Linux riscv64-gnu: Attempting local require: './zubridge-middleware.linux-riscv64-gnu.node'",
-              );
               nativeBinding = require('./zubridge-middleware.linux-riscv64-gnu.node');
             } else {
-              console.log(
-                "[Middleware Loader] Linux riscv64-gnu: Attempting package require: '@zubridge/middleware-linux-riscv64-gnu'",
-              );
               nativeBinding = require('@zubridge/middleware-linux-riscv64-gnu');
             }
           } catch (e) {
-            console.error('[Middleware Loader] Linux riscv64-gnu: Error loading binding:', e);
             loadError = e;
           }
         }
@@ -355,18 +261,11 @@ switch (platform) {
         localFileExisted = existsSync(join(__dirname, 'zubridge-middleware.linux-s390x-gnu.node'));
         try {
           if (localFileExisted) {
-            console.log(
-              "[Middleware Loader] Linux s390x-gnu: Attempting local require: './zubridge-middleware.linux-s390x-gnu.node'",
-            );
             nativeBinding = require('./zubridge-middleware.linux-s390x-gnu.node');
           } else {
-            console.log(
-              "[Middleware Loader] Linux s390x-gnu: Attempting package require: '@zubridge/middleware-linux-s390x-gnu'",
-            );
             nativeBinding = require('@zubridge/middleware-linux-s390x-gnu');
           }
         } catch (e) {
-          console.error('[Middleware Loader] Linux s390x-gnu: Error loading binding:', e);
           loadError = e;
         }
         break;
