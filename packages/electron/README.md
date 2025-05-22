@@ -104,7 +104,7 @@ Zubridge uses the popular [debug](https://www.npmjs.com/package/debug) package f
 3. **Programmatically**:
 
    ```typescript
-   import { debug } from '@zubridge/electron';
+   import { debug } from '@zubridge/core';
 
    // Enable all debugging
    debug.enable();
