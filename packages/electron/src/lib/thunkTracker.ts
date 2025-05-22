@@ -676,6 +676,54 @@ export class ThunkTracker {
   public isThunkActive(thunkId: string): boolean {
     return this.activeThunkIds.has(thunkId);
   }
+
+  /**
+   * Get the ultimate root parent of a thunk.
+   * If the thunkId itself is a root or not found, it returns the thunkId or undefined respectively.
+   */
+  public getUltimateRootParent(thunkId: string): string | undefined {
+    let currentId: string | undefined = thunkId;
+    let currentRecord = this.thunks.get(currentId);
+    let ultimateRootId: string | undefined = currentId;
+
+    if (!currentRecord) {
+      return undefined; // Thunk not found
+    }
+
+    while (currentRecord && currentRecord.parentId) {
+      const parentRecord = this.thunks.get(currentRecord.parentId);
+      if (!parentRecord) {
+        // Should not happen if data is consistent, but break to prevent infinite loop
+        break;
+      }
+      ultimateRootId = currentRecord.parentId;
+      currentRecord = parentRecord;
+    }
+    return ultimateRootId;
+  }
+
+  /**
+   * Check if a thunk and all its descendants are in a final state (COMPLETED or FAILED).
+   */
+  public isThunkTreeComplete(thunkId: string): boolean {
+    const record = this.thunks.get(thunkId);
+    if (!record) {
+      debug('core:warn', `[THUNK_TRACKER] isThunkTreeComplete: Thunk ${thunkId} not found, assuming complete.`);
+      return true; // Or false, depending on desired strictness. True means it won't block indefinitely.
+    }
+
+    if (record.state !== ThunkState.COMPLETED && record.state !== ThunkState.FAILED) {
+      return false; // This thunk itself is not complete
+    }
+
+    for (const childId of record.childIds) {
+      if (!this.isThunkTreeComplete(childId)) {
+        return false; // A child in the tree is not complete
+      }
+    }
+
+    return true; // All thunks in this tree are complete
+  }
 }
 
 // Create a singleton instance for global use

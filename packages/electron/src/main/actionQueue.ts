@@ -60,14 +60,25 @@ export class ActionQueueManager {
     thunks: Array<{ id: string; windowId: number; parentId?: string }>,
   ) => void;
 
+  // ID of the root thunk currently being processed. Undefined if no thunk is exclusively processing.
+  private currentProcessingRootThunkId: string | undefined = undefined;
+
   constructor() {
     debug('queue', 'Main action queue manager initialized');
 
-    // Subscribe to thunk state changes to process queue when any thunk completes
+    // Subscribe to thunk state changes
     thunkTracker.onStateChange((thunkId, state, _info) => {
-      if (state === ThunkState.COMPLETED) {
-        debug('queue', `Detected thunk ${thunkId} completion via state change, reprocessing queue`);
-        this.completeThunk(thunkId);
+      // Original logic for any thunk completion
+      if (state === ThunkState.COMPLETED || state === ThunkState.FAILED) {
+        debug('queue', `Detected thunk ${thunkId} final state (${state}) via state change, reprocessing queue`);
+        // this.completeThunk(thunkId); // Original completeThunk logic is now effectively part of this handler
+
+        // New logic: Check if the completed/failed thunk was the one we were locking to
+        if (this.currentProcessingRootThunkId && thunkTracker.isThunkTreeComplete(this.currentProcessingRootThunkId)) {
+          debug('queue', `Root thunk tree for ${this.currentProcessingRootThunkId} is now complete. Unlocking queue.`);
+          this.currentProcessingRootThunkId = undefined;
+        }
+        this.processQueue(); // Always reprocess queue on any thunk completion/failure
       }
     });
   }
@@ -94,7 +105,6 @@ export class ActionQueueManager {
    * Get the current thunk state
    */
   public getThunkState(): { version: number; thunks: Array<{ id: string; windowId: number; parentId?: string }> } {
-    // Get thunk state from ThunkTracker instead of managing it ourselves
     return thunkTracker.getActiveThunksSummary();
   }
 
@@ -103,36 +113,17 @@ export class ActionQueueManager {
    */
   public registerThunk(thunkId: string, windowId: number, parentId?: string): void {
     debug('queue', `Registering thunk ${thunkId} from window ${windowId}${parentId ? ` with parent ${parentId}` : ''}`);
-
-    // No need to maintain our own tracking anymore - ThunkTracker handles this
-
-    // Process the queue in case there are pending actions
     this.processQueue();
   }
 
   /**
-   * Complete a thunk from a renderer process
+   * Complete a thunk from a renderer process (deprecated in favor of direct onStateChange handling)
+   * Kept for now if other parts of the system rely on it, but its core responsibility moved.
    */
   public completeThunk(thunkId: string): void {
-    debug('queue', `Completing thunk ${thunkId}`);
-
-    // No need to maintain our own tracking anymore - ThunkTracker handles this
-
-    // Force deferred action re-evaluation
-    if (this.actionQueue.length > 0) {
-      debug('queue', `Found ${this.actionQueue.length} actions in queue after thunk ${thunkId} completed`);
-
-      // Log the currently queued actions for debugging
-      this.actionQueue.forEach((queuedAction, index) => {
-        debug(
-          'queue',
-          `Queued action ${index}: ${queuedAction.action.type} from window ${queuedAction.sourceWindowId}`,
-        );
-      });
-    }
-
-    // Process the queue now that a thunk has completed
-    debug('queue', `Thunk ${thunkId} completed, reprocessing queue to handle previously deferred actions`);
+    debug('queue', `Thunk ${thunkId} completion reported (may be redundant due to onStateChange)`);
+    // The actual check for currentProcessingRootThunkId and reprocessing is now in onStateChange.
+    // We might still call processQueue here to be safe if there are edge cases not caught by onStateChange.
     this.processQueue();
   }
 
@@ -140,51 +131,61 @@ export class ActionQueueManager {
    * Determine if an action should be processed now or queued
    */
   private shouldDeferAction(action: Action, sourceWindowId: number): boolean {
-    // Use ThunkTracker to check if there are any active thunks
-    const hasActiveThunks = thunkTracker.hasActiveThunks();
-    if (!hasActiveThunks) {
-      debug('queue', `Not deferring action ${action.type} - no active thunks`);
-      return false;
-    }
+    const actionThunkParentId = action.__thunkParentId;
+    let actionUltimateRootId: string | undefined = undefined;
 
-    // If action has thunk parent, check if it's an active thunk
-    if (action.__thunkParentId) {
-      // Check if this thunk is in the active thunks list
-      const activeThunkRecords = thunkTracker.getActiveThunks();
-      const isChildOfActiveThunk = activeThunkRecords.some((thunk) => thunk.id === action.__thunkParentId);
-      if (isChildOfActiveThunk) {
-        debug('queue', `Not deferring action ${action.type} - child of active thunk ${action.__thunkParentId}`);
-        return false;
+    if (actionThunkParentId) {
+      actionUltimateRootId = thunkTracker.getUltimateRootParent(actionThunkParentId);
+      // If getUltimateRootParent returns undefined but the direct parentId exists on the action,
+      // it implies actionThunkParentId was intended to be a root, or it's an orphaned thunk action.
+      // We should treat actionThunkParentId as its own root if no deeper root is found by getUltimateRootParent.
+      if (!actionUltimateRootId && thunkTracker.getThunkRecord(actionThunkParentId)) {
+        actionUltimateRootId = actionThunkParentId;
       }
     }
 
-    // If a window has active thunks, we should defer all non-thunk actions from that window
-    // This ensures proper sequencing of actions
-    const windowHasActiveThunks = thunkTracker.hasActiveThunksForWindow(sourceWindowId);
-    if (windowHasActiveThunks) {
-      // Only allow actions that are explicitly part of a thunk
-      if (action.__thunkParentId) {
-        debug('queue', `Not deferring action ${action.type} - has thunk parent ${action.__thunkParentId}`);
-        return false;
-      } else {
+    if (this.currentProcessingRootThunkId) {
+      // A root thunk is currently "locked in" for processing.
+      if (actionUltimateRootId === this.currentProcessingRootThunkId) {
+        // Action belongs to the actively processing root thunk tree. Do not defer.
         debug(
           'queue',
-          `Deferring action ${action.type} - from window ${sourceWindowId} with active thunks but not part of a thunk`,
+          `Not deferring action ${action.type} - belongs to current root ${this.currentProcessingRootThunkId}`,
+        );
+        return false;
+      } else {
+        // Action belongs to a different thunk tree or is a non-thunk action. Defer.
+        debug(
+          'queue',
+          `Deferring action ${action.type} - currentProcessingRootThunkId is ${this.currentProcessingRootThunkId}, action root is ${actionUltimateRootId || 'none'}`,
         );
         return true;
       }
+    } else {
+      // No root thunk is currently "locked in".
+      if (actionUltimateRootId) {
+        // This action is part of a thunk tree. It can proceed and potentially "lock in" its root.
+        // The actual locking happens when this action is chosen by processNextAction.
+        debug(
+          'queue',
+          `Not deferring action ${action.type} - part of potential new root ${actionUltimateRootId}, no current lock.`,
+        );
+        return false;
+      } else {
+        // This is a non-thunk action. Defer it if ANY thunk is active or pending, to prioritize thunk work.
+        const allThunks = thunkTracker.getAllThunks();
+        const hasPendingOrActiveThunks = allThunks.some(
+          (t) => t.state === ThunkState.PENDING || t.state === ThunkState.EXECUTING,
+        );
+        if (hasPendingOrActiveThunks) {
+          debug('queue', `Deferring non-thunk action ${action.type} - thunks are active or pending.`);
+          return true;
+        }
+        // No thunks active or pending, non-thunk action can proceed.
+        debug('queue', `Not deferring non-thunk action ${action.type} - no active/pending thunks.`);
+        return false;
+      }
     }
-
-    // Get active thunks for logging
-    const activeThunks = thunkTracker.getActiveThunks();
-    const activeWindowIds = activeThunks.map((thunk) => thunk.sourceWindowId).filter(Boolean);
-
-    // If any other window has active thunks, defer this action to maintain cross-window ordering
-    debug(
-      'queue',
-      `Deferring action ${action.type} from window ${sourceWindowId} - windows ${activeWindowIds.join(', ')} have active thunks`,
-    );
-    return true;
   }
 
   /**
@@ -194,18 +195,14 @@ export class ActionQueueManager {
   private findProcessableActionIndex(): number {
     for (let i = 0; i < this.actionQueue.length; i++) {
       const queuedAction = this.actionQueue[i];
-
       if (!this.shouldDeferAction(queuedAction.action, queuedAction.sourceWindowId)) {
         return i;
       }
-
       debug(
         'queue',
         `Action ${queuedAction.action.type} from window ${queuedAction.sourceWindowId} is deferred - checking next`,
       );
     }
-
-    // No processable actions found
     debug('queue', `All ${this.actionQueue.length} actions in queue are deferred - will retry later`);
     return -1;
   }
@@ -218,20 +215,37 @@ export class ActionQueueManager {
       return;
     }
 
-    // Find the next action that can be processed
     const actionIndex = this.findProcessableActionIndex();
-
-    // If no processable actions, return and wait for thunks to complete
     if (actionIndex === -1) {
       return;
     }
 
-    // Get the action and remove it from the queue
     const queuedAction = this.actionQueue[actionIndex];
-    this.actionQueue.splice(actionIndex, 1);
 
-    // Process the action
-    debug('queue', `Processing action: ${queuedAction.action.type} from window ${queuedAction.sourceWindowId}`);
+    // Lock to this action's root thunk if no lock is currently active
+    if (!this.currentProcessingRootThunkId) {
+      const actionThunkParentId = queuedAction.action.__thunkParentId;
+      if (actionThunkParentId) {
+        let rootId = thunkTracker.getUltimateRootParent(actionThunkParentId);
+        if (!rootId && thunkTracker.getThunkRecord(actionThunkParentId)) {
+          rootId = actionThunkParentId; // Treat direct parent as root if no further parent found
+        }
+        if (rootId) {
+          this.currentProcessingRootThunkId = rootId;
+          debug(
+            'queue',
+            `Locked processing to root thunk: ${this.currentProcessingRootThunkId} for action ${queuedAction.action.type}`,
+          );
+        }
+      }
+    }
+
+    // Now that locking is potentially set, remove from queue and process
+    this.actionQueue.splice(actionIndex, 1);
+    debug(
+      'queue',
+      `Processing action: ${queuedAction.action.type} (id: ${queuedAction.action.id}) from window ${queuedAction.sourceWindowId}`,
+    );
 
     try {
       await this.actionProcessor(queuedAction.action);
@@ -241,9 +255,31 @@ export class ActionQueueManager {
       debug('queue:error', `Error processing action ${queuedAction.action.type}: ${error as string}`);
     }
 
-    // Continue processing queue
+    // If the current root thunk tree is now complete, unlock and immediately reprocess for next root thunk.
+    if (this.currentProcessingRootThunkId && thunkTracker.isThunkTreeComplete(this.currentProcessingRootThunkId)) {
+      debug(
+        'queue',
+        `Root thunk tree for ${this.currentProcessingRootThunkId} completed after action. Unlocking queue for next potential root.`,
+      );
+      this.currentProcessingRootThunkId = undefined;
+      // No need to call processQueue() here, it will be called by the onStateChange listener or the loop below
+    }
+
     if (this.actionQueue.length > 0) {
-      await this.processNextAction();
+      // Add a microtask delay to allow other events (like thunk completion state changes) to be processed
+      // before potentially starting the next action from the same thunk tree or a new one.
+      Promise.resolve()
+        .then(() => this.processNextAction())
+        .catch((err) => {
+          debug('queue:error', `Error in microtask continuation of processNextAction: ${err as string}`);
+        });
+    } else if (this.currentProcessingRootThunkId) {
+      // Queue is empty, but we might still be locked to a root thunk that is finishing up (e.g. no more actions but children still running)
+      // The onStateChange handler will eventually unlock if this is the case.
+      debug(
+        'queue',
+        `Queue empty, but still locked to root thunk ${this.currentProcessingRootThunkId}. Waiting for its completion.`,
+      );
     }
   }
 
@@ -251,13 +287,11 @@ export class ActionQueueManager {
    * Enqueue an action for processing
    */
   public enqueueAction(action: Action, sourceWindowId: number, parentThunkId?: string): void {
-    // Set the thunk parentId on the action
     if (parentThunkId) {
-      debug('queue', `Action ${action.type} (${action.id}) is child of thunk ${parentThunkId}`);
       action.__thunkParentId = parentThunkId;
     }
+    action.__sourceWindowId = sourceWindowId; // Ensure sourceWindowId is on the action itself for shouldDeferAction
 
-    // Add to queue
     debug(
       'queue',
       `Enqueueing action: ${action.type} (id: ${action.id}) from window ${sourceWindowId}${parentThunkId ? `, parent thunk: ${parentThunkId}` : ''}`,
@@ -269,25 +303,6 @@ export class ActionQueueManager {
       receivedTime: Date.now(),
     });
 
-    // Check if we should defer processing this action
-    const shouldDefer = this.shouldDeferAction(action, sourceWindowId);
-
-    if (shouldDefer) {
-      debug('queue', `🔄 DEFERRED action ${action.type} (${action.id}) - will process when thunks complete`);
-      debug('queue', `Current queue length: ${this.actionQueue.length}`);
-
-      // Log active thunks for debugging
-      const activeThunks = thunkTracker.getActiveThunks();
-      debug(
-        'queue',
-        `Active thunks preventing immediate execution: ${activeThunks.map((t) => `${t.id} (window ${t.sourceWindowId})`).join(', ')}`,
-      );
-      return;
-    }
-
-    debug('queue', `✅ IMMEDIATE processing of action ${action.type} (${action.id}) - no blocking thunks`);
-
-    // Process the queue
     this.processQueue();
   }
 
@@ -299,40 +314,40 @@ export class ActionQueueManager {
       debug('queue', 'No action processor set, cannot process queue');
       return;
     }
-
-    if (this.actionQueue.length === 0) {
-      debug('queue', 'Action queue is empty, nothing to process');
+    if (this.actionQueue.length === 0 && !this.currentProcessingRootThunkId) {
+      // If queue is empty AND we are not waiting for a root thunk to complete, nothing to do.
+      // If currentProcessingRootThunkId is set, even with an empty queue, it means we are waiting for that thunk tree to fully complete.
+      debug('queue', 'Action queue is empty and no root thunk is locked, nothing to process');
       return;
     }
-
-    debug('queue', `Processing queue with ${this.actionQueue.length} actions`);
-
-    // Log the currently queued actions for debugging
+    debug(
+      'queue',
+      `Processing queue. Actions: ${this.actionQueue.length}, Locked Root: ${this.currentProcessingRootThunkId || 'none'}`,
+    );
     this.actionQueue.forEach((queuedAction, index) => {
-      debug('queue', `Queue position ${index}: ${queuedAction.action.type} from window ${queuedAction.sourceWindowId}`);
-    });
-
-    // Recheck the active thunk state for debugging
-    const activeThunks = thunkTracker.getActiveThunks();
-    if (activeThunks.length > 0) {
-      debug('queue', `Active thunks during queue processing: ${activeThunks.map((t) => t.id).join(', ')}`);
       debug(
         'queue',
-        `Active thunk windows: ${activeThunks
-          .map((t) => t.sourceWindowId)
-          .filter(Boolean)
-          .join(', ')}`,
+        `Queue position ${index}: ${queuedAction.action.type} (id: ${queuedAction.action.id}) from window ${queuedAction.sourceWindowId}`,
       );
-    } else {
-      debug('queue', 'No active thunks during queue processing');
-    }
-
-    // Process the first action in the queue
-    this.processNextAction().catch((error) => {
-      debug('queue:error', `Error in processQueue: ${error as string}`);
     });
+
+    // Avoid re-entrant calls if already processing or about to process via microtask
+    // Basic re-entrancy guard, could be more sophisticated if needed.
+    if (this.processingScheduled) return;
+    this.processingScheduled = true;
+
+    Promise.resolve()
+      .then(async () => {
+        await this.processNextAction();
+      })
+      .catch((error) => {
+        debug('queue:error', `Error in processQueue's call to processNextAction: ${error as string}`);
+      })
+      .finally(() => {
+        this.processingScheduled = false;
+      });
   }
+  private processingScheduled = false; // Re-entrancy guard for processQueue
 }
 
-// Create a singleton instance
 export const actionQueue = new ActionQueueManager();
