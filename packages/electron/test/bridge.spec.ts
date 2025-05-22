@@ -165,7 +165,7 @@ describe('bridge.ts', () => {
       expect(ipcMain.handle).toHaveBeenCalledWith(IpcChannel.GET_STATE, expect.any(Function));
     });
 
-    it('should process actions received through IPC', () => {
+    it('should process actions received through IPC', async () => {
       const stateManager = createMockStateManager();
       createCoreBridge(stateManager);
 
@@ -194,6 +194,9 @@ describe('bridge.ts', () => {
           action,
           parentId: undefined,
         });
+
+        // Allow the async action queue processing to occur
+        await Promise.resolve();
 
         // Verify that processAction was called with the action, accepting additional fields
         expect(stateManager.processAction).toHaveBeenCalledWith(
