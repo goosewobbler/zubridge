@@ -1,0 +1,41 @@
+{
+  "name": "@zubridge/core",
+  "version": "1.1.0",
+  "author": "Sam Maister <goosewobbler@protonmail.com>",
+  "description": "Core utilities and shared functionality for Zubridge packages",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "shx rm -rf dist",
+    "clean:cache": "shx rm -rf .turbo",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "weald": "^1.0.4"
+  },
+  "devDependencies": {
+    "shx": "^0.4.0",
+    "typescript": "^5.8.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goosewobbler/zubridge.git"
+  },
+  "keywords": [
+    "zubridge",
+    "core",
+    "utilities"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/goosewobbler/zubridge/issues"
+  },
+  "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/core#readme"
+}
