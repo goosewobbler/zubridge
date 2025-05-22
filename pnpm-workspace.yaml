@@ -3,6 +3,7 @@ packages:
   - 'apps/tauri-example'
   - 'apps/tauri-v1-example'
   - 'e2e'
+  - 'packages/core'
   - 'packages/electron'
   - 'packages/tauri'
   - 'packages/tauri-plugin'
