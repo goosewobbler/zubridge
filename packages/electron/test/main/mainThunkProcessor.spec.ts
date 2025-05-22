@@ -2,8 +2,8 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MainThunkProcessor, getMainThunkProcessor } from '../../src/main/mainThunkProcessor';
 import type { Action, AnyState, Thunk, StateManager } from '@zubridge/types';
 
-// Mock thunkTracker
-vi.mock('../../src/lib/thunkTracker', () => {
+// Mock ThunkManager
+vi.mock('../../src/lib/ThunkManager', () => {
   const mockThunkHandle = {
     thunkId: 'test-thunk-id',
     markExecuting: vi.fn(),
@@ -16,7 +16,13 @@ vi.mock('../../src/lib/thunkTracker', () => {
   };
 
   return {
-    getThunkTracker: vi.fn().mockReturnValue({
+    ThunkState: {
+      PENDING: 'pending',
+      EXECUTING: 'executing',
+      COMPLETED: 'completed',
+      FAILED: 'failed',
+    },
+    getThunkManager: vi.fn().mockReturnValue({
       registerThunk: vi.fn().mockReturnValue(mockThunkHandle),
       registerThunkWithId: vi.fn().mockReturnValue(mockThunkHandle),
       markThunkExecuting: vi.fn(),

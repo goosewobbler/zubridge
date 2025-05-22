@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch, StateManager, ProcessResult } from '@zubridge/types';
-import { getThunkTracker } from '../lib/thunkTracker.js';
+import { getThunkManager } from '../lib/ThunkManager.js';
 import { IpcChannel } from '../constants.js';
 import { BrowserWindow } from 'electron';
 import { debug } from '@zubridge/core';
@@ -59,8 +59,8 @@ export class MainThunkProcessor {
       }
 
       // Get thunk state to include with the acknowledgment
-      const thunkTracker = getThunkTracker();
-      const thunkState = thunkTracker.getActiveThunksSummary();
+      const thunkManager = getThunkManager();
+      const thunkState = thunkManager.getActiveThunksSummary();
 
       debug('core', `[MAIN_THUNK] Sending acknowledgment for action ${actionId} to window ${sourceWindowId}`);
       debug(
@@ -109,12 +109,12 @@ export class MainThunkProcessor {
       throw new Error('State manager not set. Call initialize() before executing thunks.');
     }
 
-    // Get the ThunkTracker for coordinating with renderer
-    const thunkTracker = getThunkTracker();
+    // Get the ThunkManager for coordinating with renderer
+    const thunkManager = getThunkManager();
 
     // Register thunk with tracker
     const thunkId = uuidv4();
-    const thunkHandle = thunkTracker.registerThunk(parentId || undefined);
+    const thunkHandle = thunkManager.registerThunk(parentId);
 
     // Mark as executing
     thunkHandle.markExecuting();
@@ -248,41 +248,51 @@ export class MainThunkProcessor {
       // No type assertion needed as this now matches the Thunk<S> type
       const result = await thunk(asyncGetState, dispatch);
 
-      // Mark thunk as completed
+      // Mark the thunk as completed
+      debug('core', `[MAIN_THUNK] Thunk ${thunkHandle.thunkId} completed successfully`);
       thunkHandle.markCompleted(result);
 
       return result;
     } catch (error) {
-      // Mark thunk as failed
+      // Mark the thunk as failed
+      debug('core:error', `[MAIN_THUNK] Thunk ${thunkHandle.thunkId} failed:`, error);
       thunkHandle.markFailed(error as Error);
+
+      // Re-throw to allow for further handling
       throw error;
     }
   }
 
   /**
-   * Process a direct action
+   * Process an action with our state manager
    */
   public processAction(action: Action | string, payload?: unknown): void {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before processing actions.');
     }
 
+    // Convert string actions to object form
     const actionObj: Action =
       typeof action === 'string' ? { type: action, payload, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
 
-    // Mark action as originating from the main process
+    // Mark the action as originating from the main process
     (actionObj as any).__isFromMainProcess = true;
 
+    // Process the action
+    debug('core', `[MAIN_THUNK] Processing standalone action: ${actionObj.type}`);
     this.stateManager.processAction(actionObj);
   }
 }
 
-// Create a global singleton instance
-const globalMainThunkProcessor = new MainThunkProcessor();
+// Singleton instance
+let mainThunkProcessorInstance: MainThunkProcessor | undefined;
 
 /**
- * Get the global singleton main process thunk processor
+ * Get the global MainThunkProcessor instance
  */
 export const getMainThunkProcessor = (): MainThunkProcessor => {
-  return globalMainThunkProcessor;
+  if (!mainThunkProcessorInstance) {
+    mainThunkProcessorInstance = new MainThunkProcessor();
+  }
+  return mainThunkProcessorInstance;
 };
