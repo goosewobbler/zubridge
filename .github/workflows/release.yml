@@ -23,11 +23,12 @@ on:
         default: 'electron'
         type: choice
         options:
+          - core
           - electron
           - middleware
           - tauri
-          - types
           - tauri-plugin
+          - types
       dry_run:
         description: 'Do not touch or write anything. Show the commands.'
         required: true
