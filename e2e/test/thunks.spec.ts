@@ -480,16 +480,28 @@ describe('Thunk Execution and Behavior', () => {
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
+      // Dispatch first thunk from window 1
+      console.log('Clicking renderer slow thunk button in window 1');
       const rendererSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow1.click();
 
+      // Wait for the first thunk to start processing (counter should change to 2)
+      console.log('Waiting for first thunk to start processing');
+      await waitForSpecificValue(2);
+      console.log('First thunk has started processing (counter value is 2)');
+
+      // Switch to second window and dispatch second thunk
       const newWindowIndex = windowHandles.length - 1;
+      console.log(`Switching to window ${newWindowIndex}`);
       await switchToWindow(newWindowIndex);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
+      console.log('Clicking renderer slow thunk button in window 2');
       const rendererSlowThunkButtonWindow2 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow2.click();
 
+      // Wait for both thunks to complete
+      console.log('Waiting for both thunks to complete');
       await browser.pause(TIMING.THUNK_WAIT_TIME * 2.5);
 
       let finalValueInNewWindow = await getCounterValue();
@@ -513,9 +525,21 @@ describe('Thunk Execution and Behavior', () => {
       const rendererSlowThunkButton = await getButtonInCurrentWindow('doubleRendererSlow');
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
 
+      // Dispatch the first thunk
+      console.log('Clicking renderer slow thunk button');
       rendererSlowThunkButton.click();
+
+      // Wait for the first thunk to start processing (counter should change to 2)
+      console.log('Waiting for first thunk to start processing');
+      await waitForSpecificValue(2);
+      console.log('First thunk has started processing (counter value is 2)');
+
+      // Now dispatch the second thunk
+      console.log('Clicking main slow thunk button');
       mainSlowThunkButton.click();
 
+      // Wait for both thunks to complete
+      console.log('Waiting for both thunks to complete');
       await browser.pause(TIMING.THUNK_WAIT_TIME * 2.5);
 
       const finalValue = await getCounterValue();
@@ -535,16 +559,28 @@ describe('Thunk Execution and Behavior', () => {
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
+      // Dispatch first thunk from window 1
+      console.log('Clicking main slow thunk button in window 1');
       const mainSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow1.click();
 
+      // Wait for the first thunk to start processing (counter should change to 2)
+      console.log('Waiting for first thunk to start processing');
+      await waitForSpecificValue(2);
+      console.log('First thunk has started processing (counter value is 2)');
+
+      // Switch to second window and dispatch second thunk
       const newWindowIndex = windowHandles.length - 1;
+      console.log(`Switching to window ${newWindowIndex}`);
       await switchToWindow(newWindowIndex);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
+      console.log('Clicking main slow thunk button in window 2');
       const mainSlowThunkButtonWindow2 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow2.click();
 
+      // Wait for both thunks to complete
+      console.log('Waiting for both thunks to complete');
       await browser.pause(TIMING.THUNK_WAIT_TIME * 2.5);
 
       let finalValueInNewWindowCtx = await getCounterValue();
