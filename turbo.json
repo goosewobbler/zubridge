@@ -102,21 +102,22 @@
       "cache": true
     },
     "@zubridge/electron#build": {
-      "dependsOn": ["@zubridge/types#build"],
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"],
       "cache": true
     },
     "@zubridge/tauri#build": {
-      "dependsOn": ["@zubridge/types#build"],
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"],
       "cache": false
     },
     "@zubridge/apps-shared#build": {
-      "dependsOn": ["@zubridge/types#build"],
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"],
       "cache": false
     },
     "@zubridge/ui#build": {
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"],
       "cache": true
     },
