@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { createStore } from 'zustand/vanilla';
-
-import type { UnlistenFn } from '@tauri-apps/api/event';
+import { debug } from '@zubridge/core';
 import type {
   AnyState,
   Action,
@@ -11,6 +10,7 @@ import type {
   BridgeEvent,
   BackendOptions as BaseBackendOptions,
 } from '@zubridge/types';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 
 // Add type declaration reference if vite-env.d.ts is used
 /// <reference types="./vite-env" />
@@ -95,14 +95,14 @@ async function invokeWithFallback<R>(
     activeCommands.dispatchAction = DEFAULT_COMMANDS.PLUGIN_DISPATCH_ACTION;
     return result;
   } catch (pluginError) {
-    console.log('Zubridge Tauri: Plugin format failed, trying direct format...');
+    debug('tauri', 'Plugin format failed, trying direct format...');
     try {
       const result = await invoke<R>(DEFAULT_COMMANDS.DIRECT_GET_INITIAL_STATE, args);
       activeCommands.getInitialState = DEFAULT_COMMANDS.DIRECT_GET_INITIAL_STATE;
       activeCommands.dispatchAction = DEFAULT_COMMANDS.DIRECT_DISPATCH_ACTION;
       return result;
     } catch (directError) {
-      console.error('Zubridge Tauri: Both command formats failed:', { pluginError, directError });
+      debug('tauri:error', 'Both command formats failed:', { pluginError, directError });
       throw new Error(
         `Zubridge Tauri: Failed to connect to backend. Tried both plugin and direct formats. ` +
           `Consider providing explicit command names in the options.`,
@@ -170,9 +170,11 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
         true, // Replace state
       );
 
-      console.log(`Zubridge Tauri: Setting up state update listener on ${activeCommands.stateUpdateEvent}...`);
+      // Set up state update listener for receiving store changes from backend
+      debug('tauri', `Setting up state update listener on ${activeCommands.stateUpdateEvent}...`);
+
       unlistenStateUpdate = await currentListen(activeCommands.stateUpdateEvent, (event: BridgeEvent<AnyState>) => {
-        console.log('Zubridge Tauri: Received state update event.', event.payload);
+        debug('tauri', 'Zubridge Tauri: Received state update event.', event.payload);
         internalStore.setState(
           (prevState: BridgeState) => {
             return {
@@ -183,13 +185,14 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
           true, // Replace state
         );
       });
-      console.log('Zubridge Tauri: State update listener active.');
+
+      debug('tauri', 'State update listener active.');
 
       // Set status to ready NOW THAT LISTENER IS ACTIVE
       internalStore.setState((s: BridgeState) => ({ ...s, __bridge_status: 'ready' as const }));
-      console.log(`Zubridge Tauri: Initialization successful. Using commands: ${JSON.stringify(activeCommands)}`);
+      debug('tauri', `Initialization successful. Using commands: ${JSON.stringify(activeCommands)}`);
     } catch (error) {
-      console.error('Zubridge Tauri: Initialization failed!', error);
+      debug('tauri:error', 'Initialization failed!', error);
       // Clean up listener if partially set up
       if (unlistenStateUpdate) {
         unlistenStateUpdate();
@@ -281,7 +284,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
         // Execute the thunk with getState and dispatch functions
         return (actionOrThunk as Thunk<S>)(() => Promise.resolve(internalStore.getState() as S), dispatch);
       } catch (error) {
-        console.error('Zubridge Tauri: Error executing thunk:', error);
+        debug('tauri:error', 'Error executing thunk:', error);
         throw error;
       }
     }
@@ -291,7 +294,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
 
     // Ensure invoke was provided during initialization
     if (!providedInvoke) {
-      console.error('Zubridge Tauri: Dispatch failed. Bridge not initialized with invoke function.');
+      debug('tauri:error', 'Dispatch failed. Bridge not initialized with invoke function.');
       throw new Error('Zubridge is not initialized (missing invoke function).');
     }
     const currentInvoke = providedInvoke; // Capture for async use
@@ -301,31 +304,26 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
     // If not ready, wait for initialization to complete (if it's in progress)
     if (status !== 'ready') {
       if (initializePromise) {
-        console.log(`Zubridge Tauri: Dispatch waiting for initialization (${status})...`);
+        debug('tauri', `Dispatch waiting for initialization (${status})...`);
         try {
           await initializePromise;
           status = internalStore.getState().__bridge_status; // Re-check status after waiting
           if (status !== 'ready') {
             // Initialization finished but resulted in an error or unexpected state
             const error = internalStore.getState().__bridge_error;
-            console.error(
-              `Zubridge Tauri: Initialization finished with status '${status}'. Cannot dispatch. Error:`,
-              error,
-            );
+            debug('tauri:error', `Initialization finished with status '${status}'. Cannot dispatch. Error:`, error);
             throw new Error(`Zubridge initialization failed with status: ${status}`);
           }
-          console.log(`Zubridge Tauri: Initialization complete, proceeding with dispatch.`);
+          debug('tauri', 'Initialization complete, proceeding with dispatch.');
         } catch (initError) {
-          console.error(
-            `Zubridge Tauri: Initialization failed while waiting in dispatch. Cannot dispatch. Error:`,
-            initError,
-          );
+          debug('tauri:error', `Initialization failed while waiting in dispatch. Cannot dispatch. Error:`, initError);
           throw initError; // Re-throw the initialization error
         }
       } else {
         // Not ready and no initialization promise exists (shouldn't happen if initializeBridge was called)
-        console.error(
-          `Zubridge Tauri: Dispatch called while status is '${status}' and initialization promise is missing. Cannot dispatch. Action:`,
+        debug(
+          'tauri:error',
+          `Dispatch called while status is '${status}' and initialization promise is missing. Cannot dispatch. Action:`,
           action,
         );
         throw new Error(`Zubridge is not initialized and initialization is not in progress.`);
@@ -334,7 +332,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
 
     // Ensure we have an active dispatch command
     if (!activeCommands.dispatchAction) {
-      console.error('Zubridge Tauri: No active dispatch command found. Cannot dispatch action.');
+      debug('tauri:error', 'No active dispatch command found. Cannot dispatch action.');
       throw new Error('Zubridge dispatch command not determined. Try reinitializing the bridge.');
     }
 
@@ -353,7 +351,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
       return Promise.resolve();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[useZubridgeDispatch] Error invoking dispatch action for ${action.type}:`, errorMessage, error);
+      debug(`[useZubridgeDispatch] Error invoking dispatch action for ${action.type}:`, errorMessage, error);
       // Rethrow or handle error as needed by the application
       throw error;
     }
@@ -379,7 +377,7 @@ export async function getState(): Promise<AnyState> {
     const response = await providedInvoke(activeCommands.getInitialState);
     return (response as { value: AnyState }).value;
   } catch (error) {
-    console.error('Zubridge Tauri: Failed to get state directly:', error);
+    debug('tauri:error', 'Failed to get state directly:', error);
     throw error;
   }
 }
@@ -396,7 +394,7 @@ export async function updateState(state: AnyState): Promise<void> {
   try {
     await providedInvoke('update_state', { state: { value: state } });
   } catch (error) {
-    console.error('Zubridge Tauri: Failed to update state directly:', error);
+    debug('tauri:error', 'Failed to update state directly:', error);
     throw error;
   }
 }
