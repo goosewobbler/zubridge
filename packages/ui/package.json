@@ -60,6 +60,7 @@
     "vite": "^6.3.3"
   },
   "dependencies": {
+    "@zubridge/core": "workspace:*",
     "clsx": "^2.1.1"
   },
   "peerDependencies": {

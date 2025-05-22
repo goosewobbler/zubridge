@@ -1,4 +1,5 @@
 import { useEffect, useCallback, ReactNode } from 'react';
+import { debug } from '@zubridge/core';
 import { WindowDisplay } from '../WindowDisplay';
 import { Counter } from '../Counter';
 import { ThemeToggle } from '../ThemeToggle';
@@ -97,9 +98,9 @@ export function ZubridgeApp({
   }
 
   // Add console log to track the bridge status
-  console.log('[ZubridgeApp] Bridge status:', bridgeStatus);
-  console.log('[ZubridgeApp] Counter value:', counter);
-  console.log('[ZubridgeApp] Theme mode:', isDarkMode ? 'dark' : 'light');
+  debug('ui', 'Bridge status:', bridgeStatus);
+  debug('ui', 'Counter value:', counter);
+  debug('ui', 'Theme mode:', isDarkMode ? 'dark' : 'light');
 
   // Apply theme based on state
   useEffect(() => {
@@ -128,40 +129,40 @@ export function ZubridgeApp({
       if (method === 'thunk') {
         // Use the actionHandlers thunk if available
         if (actionHandlers.doubleCounter) {
-          console.log(`[DEBUG] Using shared thunk for method: ${method}`);
+          debug('ui', `Using shared thunk for method: ${method}`);
           return dispatch(actionHandlers.doubleCounter(counter));
         }
       } else if (method === 'slow-thunk') {
         // Use the slow thunk if available
         if (actionHandlers.doubleCounterSlow) {
-          console.log(`[DEBUG] Using shared slow thunk for method: ${method}`);
+          debug('ui', `Using shared slow thunk for method: ${method}`);
           return dispatch(actionHandlers.doubleCounterSlow(counter));
         }
       } else if (method === 'main-thunk') {
-        console.log(`[DEBUG] Starting ${method} execution`);
+        debug('ui', `Starting ${method} execution`);
         const result = window.counter?.executeMainThunk();
-        console.log(`[DEBUG] ${method} returned:`, result);
+        debug('ui', `${method} returned:`, result);
         return result;
       } else if (method === 'slow-main-thunk') {
-        console.log(`[DEBUG] Starting ${method} execution`);
+        debug('ui', `Starting ${method} execution`);
         const result = window.counter?.executeMainThunkSlow();
-        console.log(`[DEBUG] ${method} returned:`, result);
+        debug('ui', `${method} returned:`, result);
         return result;
       } else if (method === 'slow-object') {
-        console.log(`[DEBUG] Dispatching slow action for ${method}`);
+        debug('ui', `Dispatching slow action for ${method}`);
         const result = dispatch({
           type: 'COUNTER:SET:SLOW',
           payload: counter * 2,
         });
-        console.log(`[DEBUG] Slow action dispatch returned:`, result);
+        debug('ui', `Slow action dispatch returned:`, result);
         return result;
       } else {
-        console.log(`[DEBUG] Dispatching regular action for ${method}`);
+        debug('ui', `Dispatching regular action for ${method}`);
         const result = dispatch({
           type: 'COUNTER:SET',
           payload: counter * 2,
         });
-        console.log(`[DEBUG] Regular action dispatch returned:`, result);
+        debug('ui', `Regular action dispatch returned:`, result);
         return result;
       }
     },
