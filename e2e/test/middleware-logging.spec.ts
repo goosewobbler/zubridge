@@ -3,6 +3,7 @@ import { it, describe, before, beforeEach, after } from 'mocha';
 import WebSocket from 'ws';
 import assert from 'node:assert';
 import { browser } from 'wdio-electron-service';
+import { getButtonInCurrentWindow } from '../utils/window.js';
 /**
  * E2E test for the IPC traffic logging middleware
  * Tests the WebSocket server functionality by connecting to it and
@@ -83,7 +84,7 @@ describe('IPC Traffic Logging Middleware', () => {
     }
 
     // Find and click the increment button
-    const incrementButton = await browser.$('button=+');
+    const incrementButton = await getButtonInCurrentWindow('increment');
     expect(incrementButton).toBeExisting();
     await incrementButton.click();
 
@@ -152,7 +153,7 @@ describe('IPC Traffic Logging Middleware', () => {
     }
 
     // Find and click the increment button twice to generate delta
-    const incrementButton = await browser.$('button=+');
+    const incrementButton = await getButtonInCurrentWindow('increment');
     expect(incrementButton).toBeExisting();
     await incrementButton.click();
 

@@ -1,10 +1,9 @@
 import { expect } from '@wdio/globals';
 import { it, describe, before } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import { setupTestEnvironment } from '../utils/window.js';
-import { getCounterValue, resetCounter } from '../utils/counter.js';
+import { setupTestEnvironment, getButtonInCurrentWindow } from '../utils/window.js';
+import { getCounterValue, resetCounter, waitForSpecificValue } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
-import { waitForSpecificValue } from '../utils/counter.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
@@ -32,7 +31,7 @@ describe('Async action awaiting behavior', () => {
     await resetCounter();
 
     // Increment to a known value (2)
-    const incrementButton = await browser.$('button=+');
+    const incrementButton = await getButtonInCurrentWindow('increment');
     await incrementButton.click();
     await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
     await incrementButton.click();

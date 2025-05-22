@@ -7,9 +7,8 @@ import {
   switchToWindow,
   getButtonInCurrentWindow,
 } from '../utils/window.js';
-import { getCounterValue, resetCounter } from '../utils/counter.js';
+import { getCounterValue, resetCounter, waitForSpecificValue } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
-import { waitForSpecificValue } from '../utils/counter.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
@@ -38,7 +37,7 @@ describe('Basic State Synchronization', () => {
 
   describe('basic counter operations', () => {
     it('should increment the counter', async () => {
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
 
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
@@ -57,7 +56,8 @@ describe('Basic State Synchronization', () => {
     });
 
     it('should decrement the counter', async () => {
-      const decrementButton = await browser.$('button=-');
+      const decrementButton = await getButtonInCurrentWindow('decrement');
+      // Counter is 3 from the previous test
 
       await decrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
@@ -78,7 +78,7 @@ describe('Basic State Synchronization', () => {
     it('should double the counter using an action object', async () => {
       // First, increment to a known value
       await resetCounter();
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -112,7 +112,7 @@ describe('Basic State Synchronization', () => {
   describe('basic window synchronization', () => {
     it('should create a new window', async () => {
       // No need to switch to window 0, beforeEach handles it
-      const createWindowButton = await browser.$('button=Create Window');
+      const createWindowButton = await getButtonInCurrentWindow('create');
       await createWindowButton.click();
 
       // Give the new window more time to appear before checking

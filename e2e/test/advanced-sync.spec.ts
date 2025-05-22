@@ -45,7 +45,7 @@ describe('Advanced State Synchronization', () => {
 
       // Increment counter in main window
       console.log('Incrementing counter in main window');
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(20);
       await incrementButton.click();
@@ -60,7 +60,7 @@ describe('Advanced State Synchronization', () => {
 
       // Create new window using the button
       console.log('Creating new window via button click');
-      const createWindowButton = await browser.$('button=Create Window');
+      const createWindowButton = await getButtonInCurrentWindow('create');
       await createWindowButton.click();
 
       // Give the new window more time to appear and register

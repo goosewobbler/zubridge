@@ -133,7 +133,15 @@ export const switchToWindow = async (index: number) => {
 
 // Helper to get a button by its type in the current window
 export const getButtonInCurrentWindow = async (
-  buttonType: 'increment' | 'decrement' | 'create' | 'close' | 'doubleRendererSlow' | 'doubleMainSlow',
+  buttonType:
+    | 'increment'
+    | 'decrement'
+    | 'create'
+    | 'close'
+    | 'doubleRendererSlow'
+    | 'doubleMainSlow'
+    | 'doubleRenderer'
+    | 'doubleMain',
 ) => {
   let selector = '';
   switch (buttonType) {
@@ -154,6 +162,12 @@ export const getButtonInCurrentWindow = async (
       break;
     case 'doubleMainSlow':
       selector = 'button=Double (Main Slow Thunk)';
+      break;
+    case 'doubleRenderer':
+      selector = 'button=Double (Renderer Thunk)';
+      break;
+    case 'doubleMain':
+      selector = 'button=Double (Main Thunk)';
       break;
     default:
       // Ensure all cases are handled, or throw an error for an unhandled button type.

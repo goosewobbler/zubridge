@@ -41,7 +41,7 @@ describe('Thunk Execution and Behavior', () => {
     it('should double the counter using a thunk', async () => {
       // First, increment to a known value
       await resetCounter();
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -53,7 +53,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Click the double button - this should execute the thunk
       console.log('Clicking Double (Renderer Thunk) button to execute async thunk');
-      const doubleButton = await browser.$('button=Double (Renderer Thunk)');
+      const doubleButton = await getButtonInCurrentWindow('doubleRenderer');
       // Check intermediate value - the behavior should be:
       // 1. First operation multiplies by 2 (4)
       // 2. Second operation multiplies by 2 (8)
@@ -80,7 +80,7 @@ describe('Thunk Execution and Behavior', () => {
     it('should double the counter using a main process thunk', async () => {
       // First, increment to a known value
       await resetCounter();
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -92,7 +92,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Click the main process thunk button
       console.log('Clicking Double (Main Thunk) button to execute main process thunk');
-      const mainThunkButton = await browser.$('button=Double (Main Thunk)');
+      const mainThunkButton = await getButtonInCurrentWindow('doubleMain');
 
       // Check intermediate value - the behavior should be:
       // 1. First operation multiplies by 2 (4)
@@ -124,7 +124,7 @@ describe('Thunk Execution and Behavior', () => {
       await resetCounter();
 
       // Increment to a known value (2)
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -137,7 +137,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Start the thunk
       console.log('Triggering renderer thunk...');
-      const rendererThunkButton = await browser.$('button=Double (Renderer Thunk)');
+      const rendererThunkButton = await getButtonInCurrentWindow('doubleRenderer');
 
       // Kick off the thunk sequence
       rendererThunkButton.click();
@@ -168,7 +168,7 @@ describe('Thunk Execution and Behavior', () => {
       await resetCounter();
 
       // Increment to a known value (2)
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -180,7 +180,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Start the thunk
       console.log('Triggering main process thunk...');
-      const mainThunkButton = await browser.$('button=Double (Main Thunk)');
+      const mainThunkButton = await getButtonInCurrentWindow('doubleMain');
 
       // Kick off the thunk sequence
       await mainThunkButton.click();
@@ -215,7 +215,7 @@ describe('Thunk Execution and Behavior', () => {
       await resetCounter();
 
       // Increment to a known value (2)
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -227,7 +227,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Create a new window for cross-window testing
       console.log('Creating a second window for cross-window testing');
-      const createWindowButton = await browser.$('button=Create Window');
+      const createWindowButton = await getButtonInCurrentWindow('create');
       await createWindowButton.click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
@@ -237,7 +237,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Start sequence in main window
       console.log('Starting main process thunk in main window...');
-      const mainThunkButton = await browser.$('button=Double (Main Thunk)');
+      const mainThunkButton = await getButtonInCurrentWindow('doubleMain');
       await mainThunkButton.click();
 
       // After a small delay, switch to second window and click increment
@@ -285,7 +285,7 @@ describe('Thunk Execution and Behavior', () => {
       await resetCounter();
 
       // Increment to a known value (2)
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -297,7 +297,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Create a new window for cross-window testing
       console.log('Creating a second window for cross-window testing');
-      const createWindowButton = await browser.$('button=Create Window');
+      const createWindowButton = await getButtonInCurrentWindow('create');
       await createWindowButton.click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
@@ -307,7 +307,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Start sequence in main window
       console.log('Starting renderer thunk in main window...');
-      const rendererThunkButton = await browser.$('button=Double (Renderer Thunk)');
+      const rendererThunkButton = await getButtonInCurrentWindow('doubleRenderer');
       await rendererThunkButton.click();
 
       // After a small delay, switch to second window and click increment
@@ -355,7 +355,7 @@ describe('Thunk Execution and Behavior', () => {
       await resetCounter();
 
       // Increment to a known value (2)
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -367,7 +367,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Click the Double button which now uses COUNTER:SET:SLOW in its sequence
       console.log('[ASYNC TEST] Clicking Double button which uses SLOW action in its sequence');
-      const doubleButton = await browser.$('button=Double (Renderer Slow Thunk)');
+      const doubleButton = await getButtonInCurrentWindow('doubleRendererSlow');
 
       // The first change should happen quickly (regular COUNTER:SET)
       console.log('[ASYNC TEST] Waiting for first counter change (should be fast)');
@@ -411,7 +411,7 @@ describe('Thunk Execution and Behavior', () => {
       await resetCounter();
 
       // Increment to a known value (2)
-      const incrementButton = await browser.$('button=+');
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await incrementButton.click();
@@ -423,7 +423,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Click the Double button which now uses COUNTER:SET:SLOW in its sequence
       console.log('[ASYNC TEST] Clicking Double button which uses SLOW action in its sequence');
-      const doubleButton = await browser.$('button=Double (Main Slow Thunk)');
+      const doubleButton = await getButtonInCurrentWindow('doubleMainSlow');
 
       // The first change should happen quickly (regular COUNTER:SET)
       console.log('[ASYNC TEST] Waiting for first counter change (should be fast)');
@@ -471,16 +471,16 @@ describe('Thunk Execution and Behavior', () => {
 
     it('should process actions sequentially from two renderer slow thunks dispatched from different windows', async () => {
       console.log('Test: Concurrent renderer slow thunks (different windows) - expecting sequential processing');
-      await (await browser.$('button=+')).click(); // Counter to 1
+      await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await waitForSpecificValue(1);
 
-      await (await browser.$('button=Create Window')).click();
+      await (await getButtonInCurrentWindow('create')).click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
-      const rendererSlowThunkButtonWindow1 = await browser.$('button=Double (Renderer Slow Thunk)');
+      const rendererSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow1.click();
 
       const newWindowIndex = windowHandles.length - 1;
@@ -506,12 +506,12 @@ describe('Thunk Execution and Behavior', () => {
 
     it('should process actions sequentially from a renderer slow thunk and a main slow thunk dispatched from the same window', async () => {
       console.log('Test: Concurrent renderer and main slow thunks (same window) - expecting sequential processing');
-      await (await browser.$('button=+')).click(); // Counter to 1
+      await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await waitForSpecificValue(1);
 
-      const rendererSlowThunkButton = await browser.$('button=Double (Renderer Slow Thunk)');
-      const mainSlowThunkButton = await browser.$('button=Double (Main Slow Thunk)');
+      const rendererSlowThunkButton = await getButtonInCurrentWindow('doubleRendererSlow');
+      const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
 
       rendererSlowThunkButton.click();
       mainSlowThunkButton.click();
@@ -526,16 +526,16 @@ describe('Thunk Execution and Behavior', () => {
 
     it('should process actions sequentially from two main slow thunks dispatched from different windows', async () => {
       console.log('Test: Concurrent main slow thunks (different windows) - expecting sequential processing');
-      await (await browser.$('button=+')).click(); // Counter to 1
+      await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await waitForSpecificValue(1);
 
-      await (await browser.$('button=Create Window')).click();
+      await (await getButtonInCurrentWindow('create')).click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
-      const mainSlowThunkButtonWindow1 = await browser.$('button=Double (Main Slow Thunk)');
+      const mainSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow1.click();
 
       const newWindowIndex = windowHandles.length - 1;
