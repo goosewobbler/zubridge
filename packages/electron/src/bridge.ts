@@ -388,7 +388,7 @@ export function createCoreBridge<State extends AnyState>(
       debug('core:error', '[BRIDGE DEBUG] Error handling thunk registration:', error);
       // Send failure ack
       const { thunkId } = data || {};
-      event.sender.send(IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: false, error: error?.message });
+      event.sender.send(IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: false, error: String(error) });
     }
   });
 
