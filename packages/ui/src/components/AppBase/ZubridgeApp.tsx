@@ -140,13 +140,29 @@ export function ZubridgeApp({
         }
       } else if (method === 'main-thunk') {
         debug('ui', `Starting ${method} execution`);
-        const result = window.counter?.executeMainThunk();
-        debug('ui', `${method} returned:`, result);
+        debug('ui', `window.counter available:`, !!window.counter);
+        debug('ui', `window.counter.executeMainThunk available:`, !!window.counter?.executeMainThunk);
+
+        if (!window.counter?.executeMainThunk) {
+          debug('ui:error', `window.counter.executeMainThunk not available for ${method}`);
+          return Promise.reject(new Error('Main thunk execution not available'));
+        }
+
+        const result = window.counter.executeMainThunk();
+        debug('ui', `${method} IPC call made, result:`, result);
         return result;
       } else if (method === 'slow-main-thunk') {
         debug('ui', `Starting ${method} execution`);
-        const result = window.counter?.executeMainThunkSlow();
-        debug('ui', `${method} returned:`, result);
+        debug('ui', `window.counter available:`, !!window.counter);
+        debug('ui', `window.counter.executeMainThunkSlow available:`, !!window.counter?.executeMainThunkSlow);
+
+        if (!window.counter?.executeMainThunkSlow) {
+          debug('ui:error', `window.counter.executeMainThunkSlow not available for ${method}`);
+          return Promise.reject(new Error('Main slow thunk execution not available'));
+        }
+
+        const result = window.counter.executeMainThunkSlow();
+        debug('ui', `${method} IPC call made, result:`, result);
         return result;
       } else if (method === 'slow-object') {
         debug('ui', `Dispatching slow action for ${method}`);

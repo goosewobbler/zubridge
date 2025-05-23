@@ -158,3 +158,13 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
   unsubscribe: (windows?: WrapperOrWebContents[]) => void;
   destroy: () => void;
 }
+
+/**
+ * Possible states of a thunk during its lifecycle
+ */
+export enum ThunkState {
+  PENDING = 'pending', // Registered but not started execution
+  EXECUTING = 'executing', // Currently executing
+  COMPLETED = 'completed', // Successfully completed
+  FAILED = 'failed', // Failed with an error
+}

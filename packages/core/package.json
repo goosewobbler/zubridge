@@ -13,11 +13,12 @@
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "shx rm -rf dist",
+    "clean": "pnpm clean:cache && shx rm -rf dist node_modules",
     "clean:cache": "shx rm -rf .turbo",
     "test": "vitest run"
   },
   "dependencies": {
+    "@wdio/logger": "^9.4.4",
     "weald": "^1.0.4"
   },
   "devDependencies": {

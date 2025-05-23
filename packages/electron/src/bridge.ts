@@ -18,12 +18,17 @@ import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 import { debug } from '@zubridge/core';
 import { actionQueue } from './main/actionQueue.js';
-import { getThunkTracker } from './lib/thunkTracker.js';
+import { getThunkManager } from './lib/ThunkManager.js';
 import { getMainThunkProcessor } from './main/mainThunkProcessor.js';
 import { MainThunkProcessor } from './main/mainThunkProcessor.js';
+import { getThunkLockManager } from './lib/ThunkLockManager.js';
+import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 
-// Get the global ThunkTracker
-const thunkTracker = getThunkTracker();
+// Get the global ThunkManager
+const thunkManager = getThunkManager();
+
+// Instantiate the thunk registration queue
+const thunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
 
 // Extend the Action type to include source window ID for internal use
 interface ActionWithSource extends Action {
@@ -145,6 +150,26 @@ export function createCoreBridge<State extends AnyState>(
       try {
         debug('core', `[BRIDGE DEBUG] Processing action ${action.type} (ID: ${action.id})`);
 
+        // **CRITICAL: Check thunk locking before processing any action**
+        const thunkLockManager = getThunkLockManager();
+        const canProcess = thunkLockManager.canProcessAction(actionWithSource, actionWithSource.__sourceWindowId || 0);
+
+        if (!canProcess) {
+          debug('core', `[BRIDGE DEBUG] Action ${action.type} blocked by thunk lock manager - enqueueing for later`);
+          // Use action queue which will retry when thunk completes
+          actionQueue.enqueueAction(
+            actionWithSource,
+            actionWithSource.__sourceWindowId || 0,
+            actionWithSource.parentId,
+            () => {},
+          );
+          return; // Return immediately, action will be processed later
+        }
+
+        debug('core', '[BRIDGE DEBUG] Action allowed by thunk lock manager, processing immediately');
+        debug('core', 'Processing action through state manager');
+        debug('core', `[BRIDGE DEBUG] Processing action through state manager: ${action.type} (ID: ${action.id})`);
+
         // Process the action and get the result
         const result = stateManager.processAction(action);
 
@@ -211,7 +236,7 @@ export function createCoreBridge<State extends AnyState>(
 
           if (contents && !isDestroyed(contents)) {
             // Get current thunk state to piggyback with acknowledgment
-            const thunkState = thunkTracker.getActiveThunksSummary();
+            const thunkState = thunkManager.getActiveThunksSummary();
 
             debug('ipc', `[BRIDGE DEBUG] Including thunk state (version ${thunkState.version}) with acknowledgment`);
             debug('ipc', `[BRIDGE DEBUG] Active thunks: ${thunkState.thunks.length}`);
@@ -239,7 +264,7 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle dispatch events from renderers
-  ipcMain.on(IpcChannel.DISPATCH, (event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.DISPATCH, async (event: IpcMainEvent, data: any) => {
     try {
       debug('ipc', `Received action data from renderer ${event.sender.id}:`, data);
 
@@ -269,6 +294,12 @@ export function createCoreBridge<State extends AnyState>(
         __sourceWindowId: event.sender.id,
         parentId: parentId,
       };
+
+      // If this is a thunk action, ensure the thunk is registered before enqueueing
+      if (parentId && !thunkManager.hasThunk(parentId)) {
+        debug('ipc', `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.id}`);
+        await thunkRegistrationQueue.registerThunkQueued(parentId, event.sender.id, undefined, 'renderer');
+      }
 
       // Queue the action for processing
       actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId);
@@ -333,7 +364,11 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle thunk registration from renderers
-  ipcMain.on(IpcChannel.REGISTER_THUNK, (event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.REGISTER_THUNK, async (event: IpcMainEvent, data: any) => {
+    debug('core', `[BRIDGE DEBUG] REGISTER_THUNK IPC handler called`);
+    debug('core', `[BRIDGE DEBUG] Event sender ID: ${event.sender.id}`);
+    debug('core', `[BRIDGE DEBUG] Data received:`, data);
+
     try {
       const { thunkId, parentId } = data;
       const sourceWindowId = event.sender.id;
@@ -343,41 +378,17 @@ export function createCoreBridge<State extends AnyState>(
         `[BRIDGE DEBUG] Registering thunk ${thunkId} from window ${sourceWindowId}${parentId ? ` with parent ${parentId}` : ''}`,
       );
 
-      // Register with the thunk tracker
-      const thunkHandle = thunkTracker.registerThunk(parentId);
+      // Use ThunkRegistrationQueue to register the thunk with proper global locking
+      await thunkRegistrationQueue.registerThunkQueued(thunkId, sourceWindowId, parentId, 'renderer');
+      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} registration queued successfully`);
 
-      // Make sure IDs match - when the IDs don't match, we need to use the renderer's ID
-      if (thunkHandle.thunkId !== thunkId) {
-        debug(
-          'core',
-          `[BRIDGE DEBUG] Generated thunk ID ${thunkHandle.thunkId} doesn't match renderer ID ${thunkId}, using renderer ID`,
-        );
-        // We need to add the thunk with the renderer's ID to the thunk tracker
-        thunkTracker.registerThunkWithId(thunkId, parentId);
-        // We should also complete the automatically generated thunk to avoid leaks
-        thunkTracker.markThunkCompleted(thunkHandle.thunkId);
-        // Set the source window ID and mark as executing on the renderer's thunk ID
-        const rendererThunkHandle = {
-          thunkId,
-          markExecuting: () => thunkTracker.markThunkExecuting(thunkId),
-          markCompleted: (result?: unknown) => thunkTracker.markThunkCompleted(thunkId, result),
-          markFailed: (error: Error) => thunkTracker.markThunkFailed(thunkId, error),
-          addChildThunk: (childId: string) => thunkTracker.addChildThunk(thunkId, childId),
-          childCompleted: (childId: string) => thunkTracker.childCompleted(thunkId, childId),
-          addAction: (actionId: string) => thunkTracker.addAction(thunkId, actionId),
-          setSourceWindowId: (windowId: number) => thunkTracker.setSourceWindowId(thunkId, windowId),
-        };
-
-        // Set the source window ID and mark as executing
-        rendererThunkHandle.setSourceWindowId(sourceWindowId);
-        rendererThunkHandle.markExecuting();
-      } else {
-        // Set the source window ID and mark as executing
-        thunkHandle.setSourceWindowId(sourceWindowId);
-        thunkHandle.markExecuting();
-      }
+      // Send ack to renderer
+      event.sender.send(IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: true });
     } catch (error) {
       debug('core:error', '[BRIDGE DEBUG] Error handling thunk registration:', error);
+      // Send failure ack
+      const { thunkId } = data || {};
+      event.sender.send(IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: false, error: String(error) });
     }
   });
 
@@ -393,8 +404,8 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Mark the thunk as completed in the tracker
-      const wasActive = thunkTracker.isThunkActive(thunkId);
-      thunkTracker.markThunkCompleted(thunkId);
+      const wasActive = thunkManager.isThunkActive(thunkId);
+      thunkManager.markThunkCompleted(thunkId);
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked as completed (was active: ${wasActive})`);
 
       // The ThunkTracker will notify ActionQueueManager via state change listener
@@ -565,7 +576,7 @@ export function createCoreBridge<State extends AnyState>(
   // Handle requests for current global thunk state
   ipcMain.handle(IpcChannel.GET_THUNK_STATE, () => {
     try {
-      const thunkState = thunkTracker.getActiveThunksSummary();
+      const thunkState = thunkManager.getActiveThunksSummary();
       debug(
         'core',
         `[BRIDGE DEBUG] Returning thunk state with version ${thunkState.version} and ${thunkState.thunks.length} active thunks`,

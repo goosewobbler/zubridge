@@ -58,26 +58,15 @@ export function createDispatch<S extends AnyState>(
         debug('core', 'Executing thunk function');
         const thunkFunction = actionOrThunk as Thunk<S>;
 
-        return new Promise(async (resolve, reject) => {
-          try {
-            // Create an async getState function that returns the latest state
-            const getState = async () => stateManager.getState() as S;
-
-            // Execute the thunk
-            try {
-              // Execute the thunk without re-initializing the processor
-              const result = await mainThunkProcessor.executeThunk(thunkFunction, getState, parentId);
-              debug('core', 'Thunk execution completed successfully');
-              resolve(result);
-            } catch (thunkError) {
-              debug('core', 'Error during thunk execution:', thunkError);
-              reject(thunkError);
-            }
-          } catch (err) {
-            debug('core', 'Error executing thunk:', err);
-            reject(err);
-          }
-        });
+        try {
+          // Execute the thunk without re-initializing the processor
+          const result = await mainThunkProcessor.executeThunk(thunkFunction);
+          debug('core', 'Thunk execution completed successfully');
+          return result;
+        } catch (thunkError) {
+          debug('core', 'Error during thunk execution:', thunkError);
+          throw thunkError;
+        }
       } else {
         // Handle regular actions
         try {
@@ -108,6 +97,12 @@ export function createDispatch<S extends AnyState>(
           // If we have a parent ID, add it to the action
           if (parentId) {
             (actionObj as any).__thunkParentId = parentId;
+
+            // Mark this as a thunk start action if it's the first action with this parent
+            if (mainThunkProcessor.isFirstActionForThunk(parentId)) {
+              debug('core', `Marking action ${actionObj.id} as starting thunk ${parentId}`);
+              (actionObj as any).__startsThunk = true;
+            }
           }
 
           // Process the action

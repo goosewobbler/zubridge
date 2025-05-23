@@ -251,15 +251,20 @@ if (e2eAppType.startsWith('tauri')) {
     // Quarantine removal for electron .app bundle is handled in onPrepare.
   }
 
+  console.log(`[DEBUG] Electron: DEBUG environment variable: ${process.env.DEBUG}`);
+
+  const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...stabilityFlags] : stabilityFlags;
+
   const electronServiceOptions: any = {
     appBinaryPath: binaryPath, // Can be the app itself or the electron executable
-    appArgs: process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...stabilityFlags] : stabilityFlags,
+    appArgs,
     chromeDriverArgs: ['--verbose'],
     appEnv: {
       ZUBRIDGE_MODE: mode,
       ELECTRON_ENABLE_LOGGING: '1',
       ELECTRON_ENABLE_STACK_DUMPING: '1',
       NODE_ENV: 'test',
+      DEBUG: process.env.DEBUG || '', // Pass through DEBUG environment variable
     },
     browserVersion: electronAppVersion,
     restoreMocks: true,
@@ -318,7 +323,7 @@ function cleanupOldUserDataDirs() {
 
 cleanupOldUserDataDirs();
 
-let specPattern;
+let specPattern: string;
 const specificSpecFile = process.env.SPEC_FILE;
 if (specificSpecFile) {
   specPattern = path.resolve(__dirname, 'test', specificSpecFile);
@@ -337,7 +342,7 @@ const config: any = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: 'warn',
+  logLevel: 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${e2eAppType}-${mode}`,
   specs: [specPattern],
@@ -353,7 +358,7 @@ const config: any = {
   beforeTest: function (test) {
     console.log(`[TEST START] Starting test: "${test.title}" in ${test.file}`);
   },
-  afterTest: function (test, context, { error }) {
+  afterTest: function (test, _context, { error }) {
     if (error) {
       console.log('--------------- TEST FAILURE ---------------');
       console.log(`Test: ${test.title}`);

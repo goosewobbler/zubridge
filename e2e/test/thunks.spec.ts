@@ -470,7 +470,7 @@ describe('Thunk Execution and Behavior', () => {
     });
 
     it('should process actions sequentially from two renderer slow thunks dispatched from different windows', async () => {
-      console.log('Test: Concurrent renderer slow thunks (different windows) - expecting sequential processing');
+      // Set up initial state
       await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await waitForSpecificValue(1);
@@ -480,9 +480,14 @@ describe('Thunk Execution and Behavior', () => {
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
+      // Dispatch first thunk from window 1
       const rendererSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow1.click();
 
+      // Wait for the first thunk to start (counter should change to 2)
+      await waitForSpecificValue(2);
+
+      // Immediately switch to window 2 and dispatch the second thunk
       const newWindowIndex = windowHandles.length - 1;
       await switchToWindow(newWindowIndex);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
@@ -490,22 +495,30 @@ describe('Thunk Execution and Behavior', () => {
       const rendererSlowThunkButtonWindow2 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow2.click();
 
-      await browser.pause(TIMING.THUNK_WAIT_TIME * 2.5);
+      // Sequence: 1 (start)
+      // Thunk 1: 2 (first doubling)
+      // Thunk 1: 4 (second doubling)
+      // Thunk 1: 2 (halving, thunk 1 done)
+      // Thunk 2: 4 (first doubling)
+      // Thunk 2: 8 (second doubling)
+      // Thunk 2: 4 (halving, thunk 2 done)
+
+      await waitForSpecificValue(4); // Thunk 1, second doubling
+      await waitForSpecificValue(2); // Thunk 1, halving
+      await waitForSpecificValue(4); // Thunk 2, first doubling
+      await waitForSpecificValue(8); // Thunk 2, second doubling
+      await waitForSpecificValue(4); // Thunk 2, halving
 
       let finalValueInNewWindow = await getCounterValue();
-      console.log(`Final counter value in New Window: ${finalValueInNewWindow}`);
       expect(finalValueInNewWindow).toBe(4);
 
       await switchToWindow(0);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
       let finalValueInMainWindow = await getCounterValue();
-      console.log(`Final counter value in Main Window: ${finalValueInMainWindow}`);
       expect(finalValueInMainWindow).toBe(4);
-      console.log('Result: Concurrent renderer thunks (different windows) processed sequentially.');
     });
 
     it('should process actions sequentially from a renderer slow thunk and a main slow thunk dispatched from the same window', async () => {
-      console.log('Test: Concurrent renderer and main slow thunks (same window) - expecting sequential processing');
       await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await waitForSpecificValue(1);
@@ -513,19 +526,34 @@ describe('Thunk Execution and Behavior', () => {
       const rendererSlowThunkButton = await getButtonInCurrentWindow('doubleRendererSlow');
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
 
+      // Dispatch the first thunk (renderer)
       rendererSlowThunkButton.click();
+
+      // Wait for the first thunk to start (counter should change to 2)
+      await waitForSpecificValue(2);
+
+      // Immediately dispatch the second thunk (main)
       mainSlowThunkButton.click();
 
-      await browser.pause(TIMING.THUNK_WAIT_TIME * 2.5);
+      // Sequence: 1 (start)
+      // Thunk 1: 2 (first doubling)
+      // Thunk 1: 4 (second doubling)
+      // Thunk 1: 2 (halving, thunk 1 done)
+      // Thunk 2: 4 (first doubling)
+      // Thunk 2: 8 (second doubling)
+      // Thunk 2: 4 (halving, thunk 2 done)
+
+      await waitForSpecificValue(4); // Thunk 1, second doubling
+      await waitForSpecificValue(2); // Thunk 1, halving
+      await waitForSpecificValue(4); // Thunk 2, first doubling
+      await waitForSpecificValue(8); // Thunk 2, second doubling
+      await waitForSpecificValue(4); // Thunk 2, halving
 
       const finalValue = await getCounterValue();
-      console.log(`Final counter value: ${finalValue}`);
       expect(finalValue).toBe(4);
-      console.log('Result: Concurrent renderer/main thunks (same window) processed sequentially.');
     });
 
     it('should process actions sequentially from two main slow thunks dispatched from different windows', async () => {
-      console.log('Test: Concurrent main slow thunks (different windows) - expecting sequential processing');
       await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
       await waitForSpecificValue(1);
@@ -535,9 +563,14 @@ describe('Thunk Execution and Behavior', () => {
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
+      // Dispatch first thunk from window 1
       const mainSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow1.click();
 
+      // Wait for the first thunk to start (counter should change to 2)
+      await waitForSpecificValue(2);
+
+      // Immediately switch to window 2 and dispatch the second thunk
       const newWindowIndex = windowHandles.length - 1;
       await switchToWindow(newWindowIndex);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
@@ -545,18 +578,27 @@ describe('Thunk Execution and Behavior', () => {
       const mainSlowThunkButtonWindow2 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow2.click();
 
-      await browser.pause(TIMING.THUNK_WAIT_TIME * 2.5);
+      // Sequence: 1 (start)
+      // Thunk 1: 2 (first doubling)
+      // Thunk 1: 4 (second doubling)
+      // Thunk 1: 2 (halving, thunk 1 done)
+      // Thunk 2: 4 (first doubling)
+      // Thunk 2: 8 (second doubling)
+      // Thunk 2: 4 (halving, thunk 2 done)
+
+      await waitForSpecificValue(4); // Thunk 1, second doubling
+      await waitForSpecificValue(2); // Thunk 1, halving
+      await waitForSpecificValue(4); // Thunk 2, first doubling
+      await waitForSpecificValue(8); // Thunk 2, second doubling
+      await waitForSpecificValue(4); // Thunk 2, halving
 
       let finalValueInNewWindowCtx = await getCounterValue();
-      console.log(`Final counter value in New Window: ${finalValueInNewWindowCtx}`);
       expect(finalValueInNewWindowCtx).toBe(4);
 
       await switchToWindow(0);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
       let finalValueInMainWindowCtx = await getCounterValue();
-      console.log(`Final counter value in Main Window: ${finalValueInMainWindowCtx}`);
       expect(finalValueInMainWindowCtx).toBe(4);
-      console.log('Result: Concurrent main thunks (different windows) processed sequentially.');
     });
   });
 });
