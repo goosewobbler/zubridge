@@ -470,24 +470,33 @@ app
     // Set up the handler for the main process thunk
     ipcMain.handle(AppIpcChannel.EXECUTE_MAIN_THUNK, async () => {
       debug('example-app:init', 'Received IPC request to execute main process thunk');
+      debug('core', '[MAIN] Main process thunk IPC handler called');
 
       try {
+        debug('core', '[MAIN] Creating thunk context for main process thunk');
         // Create a context for the main process thunk
         const thunkContext: ThunkContext = {
           environment: 'main',
           logPrefix: 'MAIN_PROCESS',
         };
 
+        debug('core', '[MAIN] Getting current state from store');
         // Get the current counter value from store
         const currentState = store.getState();
         const counter = currentState.counter || 0;
+        debug('core', `[MAIN] Current counter value: ${counter}`);
 
+        debug('core', '[MAIN] Creating double counter thunk');
         // Create thunk with the updated BaseState (with optional properties)
         const thunk = createDoubleCounterThunk(counter, thunkContext);
+
+        debug('core', '[MAIN] About to dispatch thunk');
         const result = await dispatch(thunk);
+        debug('core', '[MAIN] Thunk dispatch completed, result:', result);
+
         return { success: true, result };
       } catch (error) {
-        debug('core', '[MAIN] Error executing main process thunk:', error);
+        debug('core:error', '[MAIN] Error executing main process thunk:', error);
         return { success: false, error: String(error) };
       }
     });
