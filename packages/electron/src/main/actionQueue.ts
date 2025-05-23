@@ -1,12 +1,15 @@
 import type { Action as BaseAction } from '@zubridge/types';
 import { debug } from '@zubridge/core';
 import { ThunkManager, ThunkManagerEvent, getThunkManager } from '../lib/ThunkManager.js';
+import { getThunkLockManager } from '../lib/ThunkLockManager.js';
+import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 
 // Extend the base Action type with our additional fields
 interface Action extends BaseAction {
   __sourceWindowId?: number; // ID of the window that dispatched this action
   __thunkParentId?: string; // Parent thunk ID if this action is part of a thunk
   __requiresWindowSync?: boolean; // Flag indicating extra sync delay needed
+  __startsThunk?: boolean; // Indicates if this action should start a new thunk tree
 }
 
 /**
@@ -43,19 +46,27 @@ export class ActionQueueManager {
   // Thunk manager
   private thunkManager: ThunkManager;
 
+  // Thunk registration queue (now extracted)
+  private thunkRegistrationQueue: ThunkRegistrationQueue;
+
   constructor() {
     debug('queue', 'Main action queue manager initialized');
 
     // Get the global thunk manager
     this.thunkManager = getThunkManager();
 
-    // Subscribe to thunk completion events
+    // Create the extracted thunk registration queue
+    this.thunkRegistrationQueue = new ThunkRegistrationQueue(this.thunkManager);
+
+    // Subscribe to thunk completion events to trigger queue processing
     this.thunkManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, (rootThunkId: string) => {
       debug('queue', `Root thunk ${rootThunkId} completed, processing queue`);
-
-      // Ensure all state is properly synchronized across windows before processing the next thunk
-      // We need a brief delay to ensure all state updates have propagated
-      setTimeout(() => this.processQueue(), 200);
+      setTimeout(() => this.processQueue(), 50);
+      setTimeout(() => this.thunkRegistrationQueue.processNextThunkRegistration(), 50);
+    });
+    // Also subscribe to lock release events for robustness
+    getThunkLockManager().on('lock:released', () => {
+      setTimeout(() => this.thunkRegistrationQueue.processNextThunkRegistration(), 10);
     });
   }
 
@@ -85,43 +96,40 @@ export class ActionQueueManager {
   }
 
   /**
-   * Register a new thunk from a renderer process
+   * Centralized thunk registration entry point for both main and renderer thunks
+   * Returns a promise that resolves when the thunk is registered and started
    */
-  public registerThunk(thunkId: string, windowId: number, parentId?: string): void {
-    debug('queue', `Registering thunk ${thunkId} from window ${windowId}${parentId ? ` with parent ${parentId}` : ''}`);
-
-    // Register with the thunk manager
-    const handle = this.thunkManager.registerThunkWithId(thunkId, parentId);
-
-    // Set the source window ID
-    handle.setSourceWindowId(windowId);
-
-    // Mark as executing
-    handle.markExecuting();
-
-    this.processQueue();
+  public registerThunkQueued(
+    thunkId: string,
+    windowId: number,
+    parentId: string | undefined,
+    thunkType: 'main' | 'renderer',
+    mainThunkCallback?: () => Promise<any>,
+    rendererCallback?: () => void,
+  ): Promise<any> {
+    return this.thunkRegistrationQueue.registerThunkQueued(
+      thunkId,
+      windowId,
+      parentId,
+      thunkType,
+      mainThunkCallback,
+      rendererCallback,
+    );
   }
 
   /**
    * Find the index of the next action that can be processed
    */
   private findProcessableActionIndex(): number {
+    const thunkLockManager = getThunkLockManager();
+
     for (let i = 0; i < this.actionQueue.length; i++) {
       const queuedAction = this.actionQueue[i];
       const action = queuedAction.action;
       const sourceWindowId = queuedAction.sourceWindowId;
 
-      // Ask ThunkManager if this action can be processed
-      if (this.thunkManager.canProcessAction(action, sourceWindowId)) {
-        // If it's a thunk action that might start a new thunk, try to acquire a lock
-        if (action.__thunkParentId && isThunkStartAction(action)) {
-          if (this.thunkManager.tryAcquireThunkLock(action, sourceWindowId)) {
-            return i;
-          }
-          // If we can't acquire a lock, we should defer this action
-          continue;
-        }
-
+      // Use ThunkLockManager for consistency
+      if (thunkLockManager.canProcessAction(action, sourceWindowId)) {
         return i;
       }
     }
@@ -190,15 +198,17 @@ export class ActionQueueManager {
   /**
    * Enqueue an action for processing
    */
-  public enqueueAction(action: Action, sourceWindowId: number, parentThunkId?: string): void {
+  public enqueueAction(action: Action, sourceWindowId: number, parentThunkId?: string, onComplete?: () => void): void {
     if (parentThunkId) {
       action.__thunkParentId = parentThunkId;
 
       // Ensure thunk is registered if not already
       if (!this.thunkManager.hasThunk(parentThunkId)) {
-        const handle = this.thunkManager.registerThunkWithId(parentThunkId);
-        handle.setSourceWindowId(sourceWindowId);
-        handle.markExecuting();
+        debug(
+          'queue',
+          `Warning: thunk ${parentThunkId} not registered when enqueueing action from window ${sourceWindowId}`,
+        );
+        // No auto-registration; just warn
       }
     }
 
@@ -215,6 +225,7 @@ export class ActionQueueManager {
       action,
       sourceWindowId,
       receivedTime: Date.now(),
+      onComplete, // Pass through the completion callback
     });
 
     this.processQueue();
@@ -230,26 +241,22 @@ export class ActionQueueManager {
 
     this.processing = true;
 
-    try {
-      // Check if we can process the next action based on thunk rules
-      const nextActionIndex = this.findProcessableActionIndex();
-      if (nextActionIndex === -1) {
-        debug('queue', `No processable actions in queue of ${this.actionQueue.length} actions`);
-        this.processing = false;
-        return;
-      }
+    // Check if we can process the next action based on thunk rules
+    const nextActionIndex = this.findProcessableActionIndex();
+    if (nextActionIndex === -1) {
+      debug('queue', `No processable actions in queue of ${this.actionQueue.length} actions`);
+      this.processing = false;
+      return;
+    }
 
-      // Process the next action
-      this.processNextAction().catch((error) => {
+    // Process the next action
+    this.processNextAction()
+      .catch((error) => {
         debug('queue:error', `Error in processNextAction: ${error as string}`);
+      })
+      .finally(() => {
         this.processing = false;
       });
-    } catch (error) {
-      debug('queue:error', `Error in processQueue: ${error as string}`);
-      this.processing = false;
-    } finally {
-      this.processing = false;
-    }
   }
 
   private processing = false; // Re-entrancy guard for processQueue
@@ -259,11 +266,7 @@ export class ActionQueueManager {
  * Determine if an action represents a thunk start
  */
 function isThunkStartAction(action: Action): boolean {
-  return (
-    action.type.includes('START') ||
-    action.type.includes('THUNK') ||
-    (action.type.includes(':SET:') && !action.type.includes('SLOW'))
-  );
+  return !!action.__startsThunk;
 }
 
 export const actionQueue = new ActionQueueManager();

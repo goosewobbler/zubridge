@@ -1,9 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch, StateManager, ProcessResult } from '@zubridge/types';
 import { getThunkManager } from '../lib/ThunkManager.js';
+import { actionQueue } from './actionQueue.js';
 import { IpcChannel } from '../constants.js';
 import { BrowserWindow } from 'electron';
 import { debug } from '@zubridge/core';
+import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
@@ -27,6 +29,12 @@ export class MainThunkProcessor {
   // Configuration options
   private actionCompletionTimeoutMs: number;
 
+  // Set to track first action for each thunk
+  private sentFirstActionForThunk = new Set<string>();
+
+  // Instantiate the thunk registration queue for main thunks
+  private mainThunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
+
   constructor(actionCompletionTimeoutMs?: number) {
     this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
     debug('core', `[MAIN_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}`);
@@ -39,43 +47,6 @@ export class MainThunkProcessor {
   public initialize(options: { stateManager: StateManager<any> }): void {
     this.stateManager = options.stateManager;
     debug('core', '[MAIN_THUNK] Initialized with state manager');
-  }
-
-  /**
-   * Send acknowledgment for a completed action
-   */
-  private sendActionAcknowledgment(actionId: string, sourceWindowId?: number): void {
-    if (!sourceWindowId) {
-      debug('core', `[MAIN_THUNK] No source window ID for action ${actionId}, cannot send acknowledgment`);
-      return;
-    }
-
-    try {
-      // Get the window by ID
-      const window = BrowserWindow.fromId(sourceWindowId);
-      if (!window || window.isDestroyed()) {
-        debug('core', `[MAIN_THUNK] Window ${sourceWindowId} not found or destroyed, cannot send acknowledgment`);
-        return;
-      }
-
-      // Get thunk state to include with the acknowledgment
-      const thunkManager = getThunkManager();
-      const thunkState = thunkManager.getActiveThunksSummary();
-
-      debug('core', `[MAIN_THUNK] Sending acknowledgment for action ${actionId} to window ${sourceWindowId}`);
-      debug(
-        'core',
-        `[MAIN_THUNK] Including thunk state (version ${thunkState.version}) with ${thunkState.thunks.length} active thunks`,
-      );
-
-      // Send the acknowledgment via IPC
-      window.webContents.send(IpcChannel.DISPATCH_ACK, {
-        actionId,
-        thunkState,
-      });
-    } catch (error) {
-      debug('core:error', `[MAIN_THUNK] Error sending acknowledgment for action ${actionId}:`, error);
-    }
   }
 
   /**
@@ -100,167 +71,64 @@ export class MainThunkProcessor {
   /**
    * Execute a thunk in the main process
    */
-  public async executeThunk<S extends AnyState>(
-    thunk: Thunk<S>,
-    getState: () => S | Promise<S>,
-    parentId?: string,
-  ): Promise<any> {
+  public async executeThunk<S extends AnyState>(thunk: Thunk<S>): Promise<any> {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before executing thunks.');
     }
 
-    // Get the ThunkManager for coordinating with renderer
-    const thunkManager = getThunkManager();
-
-    // Register thunk with tracker
+    // Generate a thunk ID for this execution
     const thunkId = uuidv4();
-    const thunkHandle = thunkManager.registerThunk(parentId);
+    debug('core', `[MAIN_THUNK] Executing thunk with ID: ${thunkId}`);
 
-    // Mark as executing
-    thunkHandle.markExecuting();
+    // Register the thunk using the mainThunkRegistrationQueue (returns a promise that resolves when lock is acquired and registered)
+    const MAIN_PROCESS_WINDOW_ID = 0;
+    const thunkManager = getThunkManager();
+    const currentActiveRootThunk = thunkManager.getActiveRootThunkId();
+    const activeThunksSummary = thunkManager.getActiveThunksSummary();
 
-    try {
-      // Create a dispatch function for the thunk
-      const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
-        // Handle nested thunks
-        if (typeof action === 'function') {
-          // For nested thunks, we pass along the same getState function
-          return this.executeThunk(action, getState, thunkHandle.thunkId);
-        }
+    debug('core', `[MAIN_THUNK] Current active root thunk: ${currentActiveRootThunk || 'none'}`);
+    debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
+    debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
 
-        // Handle string actions
-        const actionObj: Action =
-          typeof action === 'string'
-            ? { type: action, payload, id: uuidv4() }
-            : { ...action, id: action.id || uuidv4() };
-
-        // Add relation to parent thunk
-        if (thunkHandle.thunkId) {
-          (actionObj as any).__thunkParentId = thunkHandle.thunkId;
-        }
-
-        // Mark the action as originating from the main process
-        (actionObj as any).__isFromMainProcess = true;
-
-        debug(
-          'core',
-          `[MAIN_THUNK] Processing action ${actionObj.type} (${actionObj.id}) as part of thunk ${thunkHandle.thunkId}`,
-        );
-
-        // Create a promise that will resolve when the action has been fully processed
-        const actionPromiseId = Math.random().toString(36).substring(2, 10);
-        debug('core', `[PROMISE_DEBUG] [${actionPromiseId}] Creating action promise for: ${actionObj.type}`);
-
-        const actionPromise = new Promise((resolve) => {
-          // Store the promise resolver in our map
-          this.pendingActionPromises.set(actionObj.id!, {
-            resolve,
-            promise: Promise.resolve(),
-          });
-          debug('core', `[MAIN_THUNK] Created pending promise for action ${actionObj.id}`);
-        });
-
-        // Process the action and check if it was processed synchronously
-        const processResult = this.stateManager!.processAction(actionObj) as ProcessResult | void;
-        const isProcessedSynchronously = processResult === undefined || processResult.isSync;
-
-        // Track the action
-        thunkHandle.addAction(actionObj.id!);
-
-        // For actions that are processed synchronously and originate from the main process,
-        // complete them immediately without waiting
-        if (isProcessedSynchronously && (actionObj as any).__isFromMainProcess) {
-          debug('core', `[MAIN_THUNK] Action ${actionObj.id} processed synchronously, completing immediately`);
-          setTimeout(() => {
-            this.completeAction(actionObj.id!);
-          }, 0);
-        }
-        // For async actions with completion promises, properly await them
-        else if (processResult && !processResult.isSync && processResult.completion) {
-          debug('core', `[MAIN_THUNK] Waiting for async action ${actionObj.id} to complete`);
-          debug('core', `[MAIN_ASYNC_DEBUG] START waiting for completion of ${actionObj.type}`);
-
-          try {
-            // Wait for the action's completion promise (which will not return a value)
-            await processResult.completion;
-            debug('core', `[MAIN_ASYNC_DEBUG] RESOLVED completion promise for ${actionObj.type}`);
-
-            // If the action is still pending, complete it now
-            if (this.pendingActionPromises.has(actionObj.id!)) {
-              debug('core', `[MAIN_THUNK] Async action ${actionObj.id} completed successfully`);
-
-              // Use the original action object as the result since the completion promise returns void
-              this.pendingActionPromises.get(actionObj.id!)!.resolve(actionObj);
-              this.pendingActionPromises.delete(actionObj.id!);
-
-              // Send acknowledgment for the action
-              this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
+    await this.mainThunkRegistrationQueue.registerThunkQueued(
+      thunkId,
+      MAIN_PROCESS_WINDOW_ID,
+      undefined,
+      'main',
+      async () => {
+        try {
+          // Create a dispatch function for the thunk that tracks each action
+          const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
+            if (typeof action === 'function') {
+              debug('core', `[MAIN_THUNK] Handling nested thunk from ${thunkId}`);
+              const result = await this.executeThunk(action);
+              return result;
             }
-          } catch (error) {
-            debug('core:error', `[MAIN_THUNK] Error in async action ${actionObj.id}:`, error);
-            debug('core:error', `[MAIN_ASYNC_DEBUG] ERROR in completion promise for ${actionObj.type}`, error);
+            return this.dispatchAction(action, payload, thunkId);
+          };
 
-            // Complete the action even if it failed
-            if (this.pendingActionPromises.has(actionObj.id!)) {
-              this.completeAction(actionObj.id!);
-              this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
-            }
-          }
+          // Get state function
+          const getState = async (): Promise<S> => {
+            debug('core', '[MAIN_THUNK] Getting state for thunk');
+            return this.stateManager!.getState() as S;
+          };
+
+          // Execute the thunk
+          debug('core', '[MAIN_THUNK] Executing thunk function');
+          const result = await thunk(getState, dispatch);
+          debug('core', '[MAIN_THUNK] Thunk executed successfully, result:', result);
+
+          // Mark thunk as completed
+          thunkManager.markThunkCompleted(thunkId, result);
+          return result;
+        } catch (error) {
+          debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
+          thunkManager.markThunkFailed(thunkId, error as Error);
+          throw error;
         }
-        // For actions without a completion promise, set up a safety timeout
-        else {
-          // Add a safety timeout for actions without completion promises
-          setTimeout(() => {
-            // If the action hasn't been completed yet, complete it
-            if (this.pendingActionPromises.has(actionObj.id!)) {
-              debug(
-                'core',
-                `[MAIN_THUNK] Auto-completing action ${actionObj.id} after timeout (${this.actionCompletionTimeoutMs}ms)`,
-              );
-              this.completeAction(actionObj.id!);
-
-              // Send acknowledgment for the action
-              this.sendActionAcknowledgment(actionObj.id!, (actionObj as any).__sourceWindowId);
-            }
-          }, this.actionCompletionTimeoutMs);
-        }
-
-        debug('core', `[MAIN_THUNK] Action ${actionObj.type} (${actionObj.id}) started, awaiting completion`);
-
-        // Wait for the action to complete before returning
-        const result = await actionPromise;
-
-        debug('core', `[MAIN_THUNK] Action ${actionObj.type} (${actionObj.id}) completed`);
-
-        return result; // Return the action object or any result from the action
-      };
-
-      // Create an async getState function that matches our consistent API
-      // In the main process this just wraps the synchronous getState in a Promise
-      const asyncGetState = async (): Promise<S> => {
-        debug('core', '[MAIN_THUNK] Async getState called');
-
-        // Handle both synchronous and asynchronous getState
-        return getState instanceof Promise ? await getState : Promise.resolve(getState());
-      };
-
-      // Execute the thunk with the async getState function
-      // No type assertion needed as this now matches the Thunk<S> type
-      const result = await thunk(asyncGetState, dispatch);
-
-      // Mark the thunk as completed
-      debug('core', `[MAIN_THUNK] Thunk ${thunkHandle.thunkId} completed successfully`);
-      thunkHandle.markCompleted(result);
-
-      return result;
-    } catch (error) {
-      // Mark the thunk as failed
-      debug('core:error', `[MAIN_THUNK] Thunk ${thunkHandle.thunkId} failed:`, error);
-      thunkHandle.markFailed(error as Error);
-
-      // Re-throw to allow for further handling
-      throw error;
-    }
+      },
+    );
+    return undefined;
   }
 
   /**
@@ -281,6 +149,88 @@ export class MainThunkProcessor {
     // Process the action
     debug('core', `[MAIN_THUNK] Processing standalone action: ${actionObj.type}`);
     this.stateManager.processAction(actionObj);
+  }
+
+  /**
+   * Dispatch an action as part of a thunk
+   */
+  private async dispatchAction(action: Action | string, payload?: unknown, parentId?: string): Promise<any> {
+    if (!this.stateManager) {
+      throw new Error('State manager not set. Call initialize() before dispatching actions.');
+    }
+
+    // Track if this is the first action for a particular parentId
+    const isFirstActionForThunk = parentId && !this.sentFirstActionForThunk.has(parentId);
+
+    // Convert string actions to object form
+    const actionObj: Action =
+      typeof action === 'string' ? { type: action, payload, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
+
+    // Ensure action has an ID
+    if (!actionObj.id) {
+      actionObj.id = uuidv4();
+    }
+
+    // Add metadata for thunks
+    if (parentId) {
+      (actionObj as any).__thunkParentId = parentId;
+
+      // Mark the first action in a thunk with __startsThunk
+      if (isFirstActionForThunk) {
+        debug('core', `[MAIN_THUNK] Marking action ${actionObj.id} as starting thunk ${parentId}`);
+        (actionObj as any).__startsThunk = true;
+        this.sentFirstActionForThunk.add(parentId);
+      }
+
+      // Ensure thunk is registered before enqueueing the action
+      if (!getThunkManager().hasThunk(parentId)) {
+        debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.id}`);
+        await this.mainThunkRegistrationQueue.registerThunkQueued(parentId, 0, undefined, 'main');
+      }
+    }
+
+    // Mark as from main process (use a special source window ID for main process)
+    const MAIN_PROCESS_WINDOW_ID = 0;
+
+    // Enqueue the action through the action queue to ensure proper ordering
+    debug('core', `[MAIN_THUNK] Enqueueing action: ${actionObj.type} (${actionObj.id}) through action queue`);
+
+    return new Promise((resolve, reject) => {
+      // Create a promise for this action
+      this.pendingActionPromises.set(actionObj.id!, {
+        resolve,
+        promise: Promise.resolve(actionObj.id),
+      });
+
+      // Set up a timeout for the action
+      const timeout = setTimeout(() => {
+        debug('core:error', `[MAIN_THUNK] Action ${actionObj.id} timed out after ${this.actionCompletionTimeoutMs}ms`);
+        this.pendingActionPromises.delete(actionObj.id!);
+        reject(new Error(`Action ${actionObj.id} timed out`));
+      }, this.actionCompletionTimeoutMs);
+
+      // Create the completion callback that will be called when the action actually finishes
+      const onComplete = () => {
+        clearTimeout(timeout);
+        debug('core', `[MAIN_THUNK] Action ${actionObj.id} completed through action queue`);
+
+        // Get the current state after the action has been processed
+        const currentState = this.stateManager?.getState();
+
+        // Complete the action (this will resolve our promise)
+        this.completeAction(actionObj.id!);
+      };
+
+      // Enqueue through action queue with proper source window ID and completion callback
+      actionQueue.enqueueAction(actionObj, MAIN_PROCESS_WINDOW_ID, parentId, onComplete);
+    });
+  }
+
+  /**
+   * Check if this would be the first action for a thunk
+   */
+  public isFirstActionForThunk(thunkId: string): boolean {
+    return !this.sentFirstActionForThunk.has(thunkId);
   }
 }
 

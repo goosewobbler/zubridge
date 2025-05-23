@@ -13,6 +13,7 @@ export enum IpcChannel {
   DISPATCH_ACK = '__zubridge_dispatch_ack',
   /** Channel for registering thunks */
   REGISTER_THUNK = '__zubridge_register_thunk',
+  REGISTER_THUNK_ACK = '__zubridge_register_thunk_ack',
   /** Channel for completing thunks */
   COMPLETE_THUNK = '__zubridge_complete_thunk',
   /** Channel for getting the window ID in the renderer */

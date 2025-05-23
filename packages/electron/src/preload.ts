@@ -7,11 +7,6 @@ import { debug } from '@zubridge/core';
 import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
-// Extended handlers interface to support parent-child relationship tracking
-interface ExtendedDispatch<S> {
-  (action: string | Action | Thunk<S>, payload?: unknown, parentId?: string): Promise<any>;
-}
-
 // Return type for preload bridge function
 export interface PreloadZustandBridgeReturn<S extends AnyState> {
   handlers: Handlers<S>;
@@ -23,7 +18,6 @@ export interface PreloadZustandBridgeReturn<S extends AnyState> {
  * This uses the Electron IPC bridge to communicate with the main process
  */
 export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<S> => {
-  const stateCache = new Map<symbol, S>();
   const listeners = new Set<(state: S) => void>();
   let initialized = false;
 
@@ -47,7 +41,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       // If we have a timeout, create a new processor with it
       if (actionCompletionTimeoutMs !== undefined) {
         debug('core', `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
-        return new RendererThunkProcessor(true, actionCompletionTimeoutMs);
+        return new RendererThunkProcessor(actionCompletionTimeoutMs);
       }
     } catch (error) {
       debug('core:error', 'Error configuring thunk processor, using default');
@@ -60,115 +54,32 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
   // Get a properly configured thunk processor
   const thunkProcessor = getThunkProcessorWithConfig();
 
-  // Set up the acknowledgment listener
-  const listenForAcknowledgments = () => {
-    debug('ipc', 'Set up IPC acknowledgement listener');
-    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (event: IpcRendererEvent, payload: any) => {
-      const { actionId, thunkState } = payload || {};
-
-      debug('ipc', `Received acknowledgment for action: ${actionId}`);
-      debug('ipc', `Acknowledgment payload: ${JSON.stringify(payload, null, 2)}`);
-
-      if (thunkState) {
-        debug(
-          'ipc',
-          `Received thunk state version ${thunkState.version} with ${thunkState.activeThunks?.length || 0} active thunks`,
-        );
-        if (thunkState.activeThunks?.length > 0) {
-          debug('ipc', `Active thunks: ${JSON.stringify(thunkState.activeThunks, null, 2)}`);
-        }
-      }
-
-      // Notify the thunk processor of action completion
-      debug('ipc', `Notifying thunk processor of action completion: ${actionId}`);
-      thunkProcessor.completeAction(actionId, payload);
-      debug('ipc', `Thunk processor notified of action completion: ${actionId}`);
-    });
-  };
-
-  // Initialize the thunk processor
-  const setupThunkProcessor = async () => {
-    try {
-      // Get the current window ID
-      const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
-      debug('ipc', `Got current window ID: ${windowId}`);
-
-      // Initialize the thunk processor with required functions
-      thunkProcessor.initialize({
-        windowId,
-        // Function to send actions to main process
-        actionSender: async (action: Action, parentId?: string) => {
-          debug(
-            'ipc',
-            `Sending action: ${action.type}, id: ${action.id}, timestamp: ${Date.now()}${
-              parentId ? `, parent: ${parentId}` : ''
-            }`,
-          );
-
-          ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
-          debug('ipc', `Action sent: ${action.type}, id: ${action.id}`);
-        },
-        // Function to register thunks with main process
-        thunkRegistrar: async (thunkId: string, parentId?: string) => {
-          ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId });
-        },
-        // Function to notify thunk completion (not currently used)
-        thunkCompleter: async (thunkId: string) => {
-          debug('ipc', `Notifying main process of thunk completion: ${thunkId}`);
-          ipcRenderer.send(IpcChannel.COMPLETE_THUNK, { thunkId });
-          debug('ipc', `Thunk completion notification sent: ${thunkId}`);
-        },
-      });
-
-      debug('ipc', 'Renderer thunk processor initialized');
-
-      // Make the thunk processor available to the renderer via context bridge
-      if (contextBridge) {
-        debug('ipc', 'Exposing thunk processor to renderer via contextBridge');
-        contextBridge.exposeInMainWorld('__zubridge_thunkProcessor', {
-          executeThunk: (thunk: any, getState: any, parentId?: string) =>
-            thunkProcessor.executeThunk(thunk, getState, parentId),
-          completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
-          dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>
-            thunkProcessor.dispatchAction(action, payload, parentId),
-        });
-      }
-    } catch (error) {
-      debug('core:error', 'Error initializing thunk processor:', error);
-      throw error;
-    }
-  };
-
-  // Initialize once on startup
-  if (!initialized) {
-    initialized = true;
-
-    // Set up acknowledgment listener
-    listenForAcknowledgments();
-
-    // Setup the thunk processor with window ID and functions
-    void setupThunkProcessor();
-
-    // Set up state update listener from main process
-    ipcRenderer.on(IpcChannel.SUBSCRIBE, (_event: IpcRendererEvent, newState: S) => {
-      debug('ipc', 'Received state update', newState);
-      // Update state cache and notify listeners
-      stateCache.set(Symbol.for('latest'), newState);
-      listeners.forEach((listener) => listener(newState));
-    });
-
-    debug('ipc', 'Bridge initialized');
-  }
+  // Map to track pending thunk registration promises
+  const pendingThunkRegistrations = new Map<string, { resolve: () => void; reject: (err: any) => void }>();
 
   // Create the handlers object that will be exposed to clients
-  const handlers = {
+  const handlers: Handlers<S> = {
     subscribe(callback: (state: S) => void) {
       // Add the listener
       listeners.add(callback);
 
+      // Set up the IPC listener for state updates if not already done
+      if (listeners.size === 1) {
+        debug('ipc', 'Setting up IPC state update listener');
+        ipcRenderer.on(IpcChannel.SUBSCRIBE, (_event: IpcRendererEvent, newState: S) => {
+          debug('ipc', 'Received state update');
+          // Notify all listeners of the state update
+          listeners.forEach((listener) => listener(newState));
+        });
+      }
+
       // Return unsubscribe function
       return () => {
         listeners.delete(callback);
+        if (listeners.size === 0) {
+          debug('ipc', 'Removing IPC state update listener');
+          ipcRenderer.removeAllListeners(IpcChannel.SUBSCRIBE);
+        }
       };
     },
 
@@ -177,12 +88,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       try {
         debug('ipc', 'Getting state from main process');
         const state = await ipcRenderer.invoke(IpcChannel.GET_STATE);
-        stateCache.set(Symbol.for('latest'), state as S);
         return state as S;
       } catch (error) {
         debug('core:error', 'Error getting state:', error);
-        // It's often better to rethrow or handle more gracefully
-        // For now, rethrowing to make the failure visible if __app_main_ready__ also fails
         throw error;
       }
     },
@@ -209,10 +117,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         debug('ipc', 'Executing thunk in renderer');
         debug('ipc', `Executing thunk in renderer${parentId ? ` with parent: ${parentId}` : ''}`);
 
-        // Create a function to get state for this thunk
+        // Create a getState function that uses the handlers.getState
         const getState = async () => {
-          // Fetch the current state
-          return await handlers.getState();
+          debug('ipc', 'Getting state for thunk via handlers.getState');
+          return handlers.getState();
         };
 
         // Execute the thunk through the thunk processor
@@ -221,17 +129,101 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
       // It's an action object
       // Ensure action has an ID
-      if (!action.id) {
-        action.id = uuidv4();
-      }
+      const actionObj = { ...action, id: action.id || uuidv4() };
 
       // Log the dispatch
-      debug('ipc', `Dispatching action: ${action.type}`);
+      debug('ipc', `Dispatching action: ${actionObj.type}`);
 
       // Dispatch directly to main process
-      return thunkProcessor.dispatchAction(action, payload, parentId).then(() => action);
+      return thunkProcessor.dispatchAction(actionObj, payload, parentId).then(() => actionObj);
     },
   };
+
+  // Initialize once on startup
+  if (!initialized) {
+    initialized = true;
+
+    // Set up acknowledgment listener
+    debug('ipc', 'Set up IPC acknowledgement listener');
+    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (event: IpcRendererEvent, payload: any) => {
+      const { actionId, thunkState } = payload || {};
+
+      debug('ipc', `Received acknowledgment for action: ${actionId}`);
+
+      if (thunkState) {
+        debug('ipc', `Received thunk state with ${thunkState.activeThunks?.length || 0} active thunks`);
+      }
+
+      // Notify the thunk processor of action completion
+      debug('ipc', `Notifying thunk processor of action completion: ${actionId}`);
+      thunkProcessor.completeAction(actionId, payload);
+    });
+
+    // Set up thunk registration ack listener
+    ipcRenderer.on(IpcChannel.REGISTER_THUNK_ACK, (_event: IpcRendererEvent, payload: any) => {
+      const { thunkId, success, error } = payload || {};
+      const entry = pendingThunkRegistrations.get(thunkId);
+      if (entry) {
+        if (success) {
+          entry.resolve();
+        } else {
+          entry.reject(error || new Error('Thunk registration failed'));
+        }
+        pendingThunkRegistrations.delete(thunkId);
+      }
+    });
+
+    // Setup the thunk processor with window ID and functions
+    void (async () => {
+      try {
+        // Get the current window ID
+        const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+        debug('ipc', `Got current window ID: ${windowId}`);
+
+        // Initialize the thunk processor with required functions
+        thunkProcessor.initialize({
+          windowId,
+          // Function to send actions to main process
+          actionSender: async (action: Action, parentId?: string) => {
+            debug('ipc', `Sending action: ${action.type}, id: ${action.id}${parentId ? `, parent: ${parentId}` : ''}`);
+            ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
+          },
+          // Function to register thunks with main process
+          thunkRegistrar: async (thunkId: string, parentId?: string) => {
+            return new Promise<void>((resolve, reject) => {
+              pendingThunkRegistrations.set(thunkId, { resolve, reject });
+              ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId });
+            });
+          },
+          // Function to notify thunk completion
+          thunkCompleter: async (thunkId: string) => {
+            debug('ipc', `Notifying main process of thunk completion: ${thunkId}`);
+            ipcRenderer.send(IpcChannel.COMPLETE_THUNK, { thunkId });
+          },
+        });
+
+        debug('ipc', 'Renderer thunk processor initialized');
+
+        // Make the thunk processor available to the renderer via context bridge
+        if (contextBridge) {
+          debug('ipc', 'Exposing thunk processor to renderer via contextBridge');
+          contextBridge.exposeInMainWorld('__zubridge_thunkProcessor', {
+            executeThunk: (thunk: any, getState: () => any, parentId?: string) => {
+              // Call the private implementation directly to avoid infinite recursion
+              return thunkProcessor.executeThunkImplementation(thunk, getState, parentId);
+            },
+            completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
+            dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>
+              thunkProcessor.dispatchAction(action, payload, parentId),
+          });
+        }
+      } catch (error) {
+        debug('core:error', 'Error initializing thunk processor:', error);
+      }
+    })();
+
+    debug('ipc', 'Bridge initialized');
+  }
 
   return {
     handlers,

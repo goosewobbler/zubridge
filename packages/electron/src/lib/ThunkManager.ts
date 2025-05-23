@@ -1,18 +1,10 @@
 import { EventEmitter } from 'events';
 import type { Action as BaseAction } from '@zubridge/types';
+import { ThunkState } from '@zubridge/types';
 import { debug } from '@zubridge/core';
 import { v4 as uuidv4 } from 'uuid';
 import { Thunk } from './Thunk.js';
-
-/**
- * Possible states of a thunk during its lifecycle
- */
-export enum ThunkState {
-  PENDING = 'pending', // Registered but not started execution
-  EXECUTING = 'executing', // Currently executing
-  COMPLETED = 'completed', // Successfully completed
-  FAILED = 'failed', // Failed with an error
-}
+import { getThunkLockManager } from './ThunkLockManager.js';
 
 /**
  * Extend the base Action type with thunk-related fields
@@ -20,6 +12,7 @@ export enum ThunkState {
 interface Action extends BaseAction {
   __sourceWindowId?: number; // ID of the window that dispatched this action
   __thunkParentId?: string; // Parent thunk ID if this action is part of a thunk
+  __startsThunk?: boolean; // Indicates if this action should start a new thunk tree
 }
 
 /**
@@ -308,39 +301,55 @@ export class ThunkManager extends EventEmitter {
   checkAndReleaseRootThunkLock(thunkId: string): void {
     const rootId = this.getRootThunkId(thunkId);
 
-    if (this.activeRootThunkId === rootId && this.isThunkTreeComplete(rootId)) {
+    // Get the current active lock from ThunkLockManager for consistency
+    const thunkLockManager = getThunkLockManager();
+    const activeLock = thunkLockManager.getActiveThunkLock();
+
+    // Only proceed if there's an active lock and it matches our root thunk
+    if (activeLock && activeLock.thunkId === rootId && this.isThunkTreeComplete(rootId)) {
       debug('thunk', `Root thunk tree ${rootId} is complete, releasing lock`);
-      const previousActiveRootThunkId = this.activeRootThunkId;
-      this.activeRootThunkId = undefined;
-      this.incrementStateVersion();
-      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, previousActiveRootThunkId);
+
+      // Release through ThunkLockManager
+      const released = thunkLockManager.releaseLock(rootId);
+
+      if (released) {
+        const previousActiveRootThunkId = rootId;
+        this.activeRootThunkId = undefined; // Keep local state in sync
+        this.incrementStateVersion();
+        this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, previousActiveRootThunkId);
+      } else {
+        debug('thunk', `Failed to release lock for thunk ${rootId} - was not held by this thunk`);
+      }
+    } else {
+      debug('thunk', `Not releasing lock for thunk ${rootId}:`, {
+        hasActiveLock: !!activeLock,
+        activeLockThunkId: activeLock?.thunkId,
+        isRootComplete: this.isThunkTreeComplete(rootId),
+        requestedRootId: rootId,
+      });
     }
   }
 
   /**
    * Determine if an action can be processed now
+   * Delegates to ThunkLockManager for consistency
    */
   canProcessAction(action: Action, sourceWindowId: number): boolean {
-    // If no thunk is active, any action can proceed
-    if (!this.activeRootThunkId) return true;
-
-    // If action is not part of a thunk, defer it while a thunk is active
-    if (!action.__thunkParentId) return false;
-
-    // If action is part of the active thunk tree, it can proceed
-    const actionRootId = this.getRootThunkId(action.__thunkParentId);
-    return actionRootId === this.activeRootThunkId;
+    const thunkLockManager = getThunkLockManager();
+    return thunkLockManager.canProcessAction(action, sourceWindowId);
   }
 
   /**
    * Try to acquire a lock for processing a thunk
+   * Delegates to ThunkLockManager for consistency
    */
   tryAcquireThunkLock(action: Action, sourceWindowId: number): boolean {
-    if (this.activeRootThunkId) return false;
+    if (!action.__thunkParentId) return false;
 
-    if (action.__thunkParentId) {
-      const rootId = this.getRootThunkId(action.__thunkParentId);
-      debug('thunk', `Acquiring lock for root thunk ${rootId}`);
+    const thunkLockManager = getThunkLockManager();
+    const rootId = this.getRootThunkId(action.__thunkParentId);
+
+    if (thunkLockManager.tryAcquireLock(rootId, sourceWindowId)) {
       this.activeRootThunkId = rootId;
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, rootId);
@@ -348,6 +357,50 @@ export class ThunkManager extends EventEmitter {
     }
 
     return false;
+  }
+
+  /**
+   * Try to acquire a lock for a specific root thunk ID
+   * Delegates to ThunkLockManager for consistency
+   */
+  tryAcquireThunkLockForId(thunkId: string): boolean {
+    const thunk = this.thunks.get(thunkId);
+    if (!thunk) {
+      debug('thunk', `Cannot acquire lock for thunk ${thunkId} - thunk not found`);
+      return false;
+    }
+
+    const thunkLockManager = getThunkLockManager();
+
+    if (thunkLockManager.tryAcquireLock(thunkId, thunk.sourceWindowId)) {
+      this.activeRootThunkId = thunkId;
+      this.incrementStateVersion();
+      this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, thunkId);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get the currently active root thunk ID
+   */
+  getActiveRootThunkId(): string | undefined {
+    const thunkLockManager = getThunkLockManager();
+    const activeLock = thunkLockManager.getActiveThunkLock();
+    return activeLock?.thunkId;
+  }
+
+  /**
+   * Check if a specific thunk can be registered (not blocked by another thunk)
+   * Delegates to ThunkLockManager for consistency
+   */
+  canRegisterThunk(thunkId: string, parentId?: string): boolean {
+    const thunk = this.thunks.get(thunkId) || this.thunks.get(parentId || '');
+    const windowId = thunk?.sourceWindowId || 0;
+
+    const thunkLockManager = getThunkLockManager();
+    return thunkLockManager.canRegisterThunk(thunkId, windowId, parentId);
   }
 
   /**

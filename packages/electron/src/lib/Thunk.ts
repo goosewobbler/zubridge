@@ -1,4 +1,4 @@
-import { ThunkState } from './ThunkManager.js';
+import { ThunkState } from '@zubridge/types';
 
 /**
  * Represents a thunk in the system
