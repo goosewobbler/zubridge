@@ -57,7 +57,7 @@ describe('RendererThunkProcessor', () => {
       // that depends on those properties being set correctly
       const action: Action = { type: 'TEST' };
       newProcessor.dispatchAction(action);
-      expect(mockActionSender).toHaveBeenCalledWith(action, undefined);
+      expect(mockActionSender).toHaveBeenCalledWith(expect.objectContaining(action), undefined);
     });
   });
 

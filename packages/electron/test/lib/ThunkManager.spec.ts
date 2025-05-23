@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ThunkManager, ThunkManagerEvent, ThunkState } from '../../src/lib/ThunkManager.js';
+import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
+import { ThunkState } from '@zubridge/types';
 
 describe('ThunkManager', () => {
   let thunkManager: ThunkManager;
