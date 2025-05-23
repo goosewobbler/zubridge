@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { initializeBridge, cleanupZubridge } from '@zubridge/tauri';
 // Import UI package styles before local styles
-import '@zubridge/ui/dist/styles.css';
+import '@zubridge/ui/styles.css';
 import './styles/index.css';
 import { MainApp } from './App.main';
 import { RuntimeApp } from './App.runtime';

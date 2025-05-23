@@ -6,6 +6,16 @@ export interface BaseProps {
   id?: string;
 }
 
+// Counter method
+export type CounterMethod =
+  | 'thunk'
+  | 'object'
+  | 'action'
+  | 'main-thunk'
+  | 'slow-thunk'
+  | 'slow-main-thunk'
+  | 'slow-object';
+
 // Button variants
 export type ButtonVariant = 'primary' | 'secondary' | 'reset' | 'create' | 'close';
 
@@ -22,7 +32,7 @@ export interface CounterProps extends BaseProps {
   value: number;
   onIncrement: () => void;
   onDecrement: () => void;
-  onDouble: (method: 'thunk' | 'object') => void;
+  onDouble: (method: CounterMethod) => void;
   onReset: () => void;
   isLoading?: boolean;
 }

@@ -1,29 +1,23 @@
 import { createAction, createReducer } from '@reduxjs/toolkit';
 
-// Define theme state interface
-export interface ThemeState {
-  isDark: boolean; // true = dark theme, false = light theme (both are explicitly set as classes)
-}
-
-// Initial state
-const initialState: ThemeState = {
-  isDark: true, // Will start with dark theme
-};
-
 // Action creators
 export const toggleTheme = createAction('THEME:TOGGLE');
 export const setTheme = createAction<boolean>('THEME:SET');
+
+// Initial state
+const initialState = 'dark'; // Will start with dark theme
 
 // Create the theme reducer
 export const themeReducer = createReducer(initialState, (builder) => {
   builder
     .addCase(toggleTheme, (state) => {
       console.log('[Redux Reducer] Toggling theme');
-      state.isDark = !state.isDark;
+      return state === 'dark' ? 'light' : 'dark';
     })
-    .addCase(setTheme, (state, action) => {
-      console.log(`[Redux Reducer] Setting theme to ${action.payload ? 'dark' : 'light'}`);
-      state.isDark = action.payload;
+    .addCase(setTheme, (_state, action) => {
+      const theme = action.payload ? 'dark' : 'light';
+      console.log(`[Redux Reducer] Setting theme to ${theme}`);
+      return theme;
     });
 });
 

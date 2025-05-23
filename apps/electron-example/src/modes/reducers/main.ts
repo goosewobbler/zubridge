@@ -1,37 +1,39 @@
 import { createZustandBridge } from '@zubridge/electron/main';
-import type { WrapperOrWebContents } from '@zubridge/types';
 import type { StoreApi } from 'zustand';
 import type { RootReducer } from '@zubridge/types';
 import type { ZustandBridge } from '@zubridge/electron/main';
+import type { ZubridgeMiddleware } from '@zubridge/electron/main';
+import { debug } from '@zubridge/core';
 
 // Import root reducer
 import { rootReducer } from './features/index.js';
-import type { BaseState } from '../../types/index.js';
+import type { BaseState } from '../../types.js';
 
 /**
  * Creates a bridge using the reducers approach
- * In this approach, we provide a reducer function
+ * In this approach, we provide a Redux-style reducer function
  */
 export const createReducersBridge = <S extends BaseState, Store extends StoreApi<S>>(
   store: Store,
-  windows: WrapperOrWebContents[],
+  middleware?: ZubridgeMiddleware,
 ): ZustandBridge => {
-  console.log('[Reducers Mode] Creating bridge with reducer');
+  debug('core', '[Reducers Mode] Creating bridge with root reducer');
 
   // Add debugging wrapper around reducer
   const debugReducer: RootReducer<S> = (state, action) => {
-    console.log('[Reducers] Action received:', action);
-    console.log('[Reducers] Current state:', state);
+    debug('store', '[Reducers] Action received:', action);
+    debug('store', '[Reducers] Current state:', state);
 
     // Call the actual reducer
     const newState = rootReducer(state, action);
 
-    console.log('[Reducers] New state:', newState);
+    debug('store', '[Reducers] New state:', newState);
     return newState as S;
   };
 
-  // Create bridge with reducer
-  return createZustandBridge<S>(store, windows, {
+  // Create bridge with root reducer and middleware if provided
+  return createZustandBridge<S>(store, {
     reducer: debugReducer,
+    middleware,
   });
 };

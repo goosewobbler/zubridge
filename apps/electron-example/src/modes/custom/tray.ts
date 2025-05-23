@@ -1,7 +1,7 @@
 import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
 import { BaseSystemTray } from '../../main/tray/base.js';
-import type { BaseState } from '../../types/index.js';
+import type { BaseState } from '../../types.js';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand';
 import type { Dispatch } from '@zubridge/types';

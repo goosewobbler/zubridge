@@ -3,7 +3,9 @@ import process from 'node:process';
 import { BrowserWindow, BrowserView, WebContentsView, shell } from 'electron';
 import { isDev } from '@zubridge/electron';
 import { getModeName } from '../utils/mode.js';
-import { getPreloadPath } from '../utils/path.js';
+import { getPreloadPath, getDirname } from '../utils/path.js';
+
+const __dirname = getDirname();
 
 // Debug logger with timestamp
 function debugWindow(message: string) {
@@ -28,7 +30,7 @@ const runtimeWindows: BrowserWindow[] = [];
 
 // Configuration
 const modeName = getModeName();
-const preloadPath = getPreloadPath(path.join(__dirname));
+const preloadPath = getPreloadPath();
 
 // Initialize isDev status
 let isDevEnv = false;
@@ -90,6 +92,9 @@ function setupDevToolsShortcuts(window: BrowserWindow, windowName: string) {
   });
 }
 
+// Function to get the HTML path for renderer
+const getRendererPath = () => path.join(__dirname, '..', 'renderer', 'index.html');
+
 // Function to initialize the main window
 export function initMainWindow(isAppQuitting: boolean): BrowserWindow {
   debugWindow('Initializing main window');
@@ -120,7 +125,7 @@ export function initMainWindow(isAppQuitting: boolean): BrowserWindow {
     debugWindow('Loading main window from dev server');
     mainWindow.loadURL('http://localhost:5173/');
   } else {
-    const htmlPath = path.join(__dirname, '..', 'renderer', 'index.html');
+    const htmlPath = getRendererPath();
     debugWindow(`Loading main window from file: ${htmlPath}`);
     mainWindow.loadFile(htmlPath);
   }
@@ -193,7 +198,7 @@ export function initDirectWebContentsWindow(): BrowserWindow {
     debugWindow('Loading direct WebContents window from dev server');
     directWebContentsWindow.loadURL('http://localhost:5173/');
   } else {
-    const htmlPath = path.join(__dirname, '..', 'renderer', 'index.html');
+    const htmlPath = getRendererPath();
     debugWindow(`Loading direct WebContents window from file: ${htmlPath}`);
     directWebContentsWindow.loadFile(htmlPath);
   }
@@ -296,7 +301,7 @@ export function initBrowserViewWindow(): { window: BrowserWindow | null; browser
     if (isDevEnv) {
       browserViewWindow.loadURL('http://localhost:5173/');
     } else {
-      browserViewWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), {
+      browserViewWindow.loadFile(getRendererPath(), {
         hash: 'browserView',
       });
     }
@@ -324,7 +329,7 @@ export function initBrowserViewWindow(): { window: BrowserWindow | null; browser
   } else {
     debugWindow('Loading BrowserView from file with hash "secondary"');
     if (browserView) {
-      browserView.webContents.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), { hash: 'browserView' });
+      browserView.webContents.loadFile(getRendererPath(), { hash: 'browserView' });
     }
   }
 
@@ -483,7 +488,7 @@ export function initWebContentsViewWindow(): { window: BrowserWindow | null; web
     if (isDevEnv) {
       webContentsViewWindow.loadURL('http://localhost:5173/');
     } else {
-      webContentsViewWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), {
+      webContentsViewWindow.loadFile(getRendererPath(), {
         hash: 'secondary',
       });
     }
@@ -536,7 +541,7 @@ export function initWebContentsViewWindow(): { window: BrowserWindow | null; web
     try {
       if (webContentsView) {
         debugWindow('Loading WebContentsView from file with hash "secondary"');
-        webContentsView.webContents.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), {
+        webContentsView.webContents.loadFile(getRendererPath(), {
           hash: 'secondary',
         });
       }
@@ -631,7 +636,7 @@ export function createRuntimeWindow(): BrowserWindow {
     debugWindow('Loading runtime window from dev server');
     runtimeWindow.loadURL('http://localhost:5173/');
   } else {
-    const htmlPath = path.join(__dirname, '..', 'renderer', 'index.html');
+    const htmlPath = getRendererPath();
     debugWindow(`Loading runtime window from file: ${htmlPath}`);
     runtimeWindow.loadFile(htmlPath);
   }

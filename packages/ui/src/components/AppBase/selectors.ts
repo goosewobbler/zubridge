@@ -6,12 +6,9 @@ export interface CounterObject {
 }
 
 /**
- * Type for the theme state which varies slightly between platforms
+ * Type for the theme state - now using string-based model exclusively
  */
-export interface ThemeState {
-  isDark?: boolean;
-  is_dark?: boolean;
-}
+export type ThemeState = 'dark' | 'light';
 
 /**
  * Interface for the common state shape across platforms
@@ -50,15 +47,16 @@ export const getCounterSelector: Selector<number> = (state: AppState) => {
 };
 
 /**
- * Get the dark mode state from the theme, handling different property names
+ * Get the dark mode state from the theme using string-based model
  */
 export const getThemeSelector: Selector<boolean> = (state: AppState) => {
+  // Default to light theme if no theme is set
   if (!state.theme) {
     return false;
   }
 
-  // Handle both property naming conventions
-  return state.theme.isDark ?? state.theme.is_dark ?? false;
+  // Simple string check - 'dark' = true, anything else = false
+  return state.theme === 'dark';
 };
 
 /**

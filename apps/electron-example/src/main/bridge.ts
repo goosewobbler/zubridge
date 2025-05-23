@@ -1,46 +1,46 @@
 import type { StoreApi } from 'zustand';
-import type { ZustandBridge } from '@zubridge/electron/main';
+import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import type { Store as ReduxStore } from 'redux';
+import { debug } from '@zubridge/core';
 
 import { getZubridgeMode } from '../utils/mode.js';
-import type { BaseState } from '../types/index.js';
-import type { WrapperOrWebContents } from '@zubridge/types';
+import type { BaseState } from '../types.js';
 
 /**
  * Creates the appropriate bridge implementation based on the selected mode
  */
 export const createBridge = async <S extends BaseState, Store extends StoreApi<S>>(
   store: Store | ReduxStore,
-  windows: WrapperOrWebContents[],
+  middleware?: ZubridgeMiddleware,
 ): Promise<ZustandBridge> => {
   const mode = getZubridgeMode();
-  console.log(`[Main] Using Zubridge mode: ${mode}`);
+  debug('core', `[Main] Using Zubridge mode: ${mode}`);
 
   switch (mode) {
     case 'basic':
       const { createBasicBridge } = await import('../modes/basic/main.js');
-      return createBasicBridge(store as Store, windows);
+      return createBasicBridge(store as Store, middleware);
 
     case 'handlers':
       const { createHandlersBridge } = await import('../modes/handlers/main.js');
-      return createHandlersBridge(store as Store, windows);
+      return createHandlersBridge(store as Store, middleware);
 
     case 'reducers':
       const { createReducersBridge } = await import('../modes/reducers/main.js');
-      return createReducersBridge(store as Store, windows);
+      return createReducersBridge(store as Store, middleware);
 
     case 'redux':
       const { createReduxBridge } = await import('../modes/redux/main.js');
-      return createReduxBridge(store as ReduxStore, windows);
+      return createReduxBridge(store as ReduxStore, middleware);
 
     case 'custom':
       const { createCustomBridge } = await import('../modes/custom/main.js');
-      return createCustomBridge(windows);
+      return createCustomBridge(middleware);
 
     default:
       // This should never happen due to validation in getZubridgeMode
-      console.warn(`[Main] Unknown mode: ${mode}, falling back to reducers mode`);
+      debug('core', `[Main] Unknown mode: ${mode}, falling back to reducers mode`);
       const { createReducersBridge: fallback } = await import('../modes/reducers/main.js');
-      return fallback(store as Store, windows);
+      return fallback(store as Store, middleware);
   }
 };

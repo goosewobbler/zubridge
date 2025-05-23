@@ -1,6 +1,12 @@
+import nodeResolve from '@rollup/plugin-node-resolve';
+
 const sharedConfig = {
-  plugins: [],
-  external: ['electron', 'zustand', 'zustand/vanilla'],
+  plugins: [
+    nodeResolve({
+      preferBuiltins: true,
+    }),
+  ],
+  external: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'],
 };
 
 export default [

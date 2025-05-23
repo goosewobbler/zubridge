@@ -4,7 +4,7 @@ import { createDispatch } from '@zubridge/electron/main';
 
 import { BaseSystemTray } from '../../main/tray/base.js';
 import { rootReducer } from './features/index.js';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
 
 /**
  * Reducers mode tray implementation

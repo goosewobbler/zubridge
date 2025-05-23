@@ -5,10 +5,11 @@ import { isDev } from '@zubridge/electron';
 
 import type { StoreApi } from 'zustand';
 import type { Dispatch } from '@zubridge/types';
-import type { State } from '../../types/index.js';
+import type { State } from '../../types.js';
+import { getResourcePath } from '../../utils/path.js';
 
-// Expected icon paths for development and production
-const devIconPath = path.join(__dirname, '..', '..', 'resources', 'electron-logo.png');
+// Get icon paths using our utility functions
+const devIconPath = getResourcePath('electron-logo.png');
 const prodIconPath = path.join(process.resourcesPath, 'electron-logo.png');
 
 let finalTrayIconPath: string | null = null;
@@ -69,7 +70,7 @@ export class BaseSystemTray {
 
     // Match Tauri example format for display items
     const counterText = `Counter: ${state.counter ?? 0}`;
-    const themeText = `Theme: ${state.theme?.isDark ? 'Dark' : 'Light'}`;
+    const themeText = `Theme: ${state.theme === 'dark' ? 'Dark' : 'Light'}`;
 
     const contextMenu = Menu.buildFromTemplate([
       // Display items (non-clickable)
@@ -129,6 +130,9 @@ export class BaseSystemTray {
 
     this.electronTray.setContextMenu(contextMenu);
     this.electronTray.setToolTip('Zubridge Electron Example');
+
+    // Remove any existing click handlers
+    this.electronTray.removeAllListeners('click');
 
     // Add click handler to show window on left click
     this.electronTray.on('click', showWindow);

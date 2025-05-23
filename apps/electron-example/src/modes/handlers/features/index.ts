@@ -1,4 +1,4 @@
-import type { BaseState } from '../../../types/index.js';
+import type { BaseState } from '../../../types.js';
 import type { Handler } from '@zubridge/types';
 
 /**
@@ -15,6 +15,7 @@ export interface CounterHandlers {
   'COUNTER:INCREMENT': () => void;
   'COUNTER:DECREMENT': () => void;
   'COUNTER:SET': (value: number) => void;
+  'COUNTER:SET:SLOW': (value: number) => void;
   'COUNTER:RESET': () => void;
 }
 

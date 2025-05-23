@@ -1,8 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { create } from 'zustand';
 import { getZubridgeMode } from '../utils/mode.js';
-import type { State } from '../types/index.js';
+import type { State } from '../types.js';
 import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
+import { debug } from '@zubridge/core';
 
 // Singleton store instance
 let store: UnifiedStore<State>;
@@ -12,13 +13,7 @@ let store: UnifiedStore<State>;
  */
 export async function createModeStore(): Promise<UnifiedStore<State>> {
   const mode = getZubridgeMode();
-  console.log('Creating store for mode:', mode);
-
-  // Initialize with a default true value for isDark (dark mode by default)
-  const initialState = {
-    counter: 0,
-    theme: { isDark: true },
-  };
+  debug('store', 'Creating store for mode:', mode);
 
   switch (mode) {
     case 'basic':
@@ -41,11 +36,11 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
         reducer: rootReducer,
       });
       // Use our adapter instead of unsafe casting
-      return createReduxAdapter(reduxStore);
+      return createReduxAdapter(reduxStore) as UnifiedStore<State>;
 
     case 'custom':
       // For custom mode, get our EventEmitter-based store
-      console.log('[Store] Custom mode detected - loading custom store');
+      debug('store', '[Store] Custom mode detected - loading custom store');
       const { getCustomStore } = await import('../modes/custom/store.js');
 
       // Get the custom store which implements StateManager
@@ -55,8 +50,15 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
       return createCustomAdapter(customStore);
 
     default:
-      console.warn('Unknown mode, falling back to basic store');
-      return createZustandAdapter(create<State>()(() => initialState));
+      debug('store', 'Unknown mode, falling back to basic store');
+      return createZustandAdapter(
+        create<State>()(() => {
+          return {
+            counter: 0,
+            theme: 'dark' as const, // Use const assertion to make TypeScript recognize this as a string literal
+          };
+        }),
+      );
   }
 }
 

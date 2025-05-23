@@ -4,6 +4,8 @@ import clsx from 'clsx';
 interface HeaderProps {
   windowId: number | string;
   windowTitle: string;
+  windowType?: string;
+  appName?: string;
   mode?: string;
   bridgeStatus?: 'ready' | 'error' | 'initializing';
   className?: string;
@@ -15,6 +17,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   windowId,
   windowTitle,
+  appName,
   mode,
   bridgeStatus = 'ready',
   className = '',
@@ -28,10 +31,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className={headerClasses}>
       <div className="header-left">
-        <h1 className="window-title">
-          {windowTitle} (ID: {windowId})
-        </h1>
+        {appName && <div className="text-sm font-bold app-name">{appName}</div>}
+        <h1 className="window-title">{windowTitle}</h1>
         {mode && <div className="mt-1 text-xs opacity-75 window-mode">Mode: {mode}</div>}
+        {windowId && <div className="mt-1 text-xs opacity-75 window-type">ID: {windowId}</div>}
       </div>
 
       <div className="header-right">

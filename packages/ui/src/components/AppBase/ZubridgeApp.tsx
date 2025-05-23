@@ -1,13 +1,14 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, ReactNode } from 'react';
+import { debug } from '@zubridge/core';
 import { WindowDisplay } from '../WindowDisplay';
 import { Counter } from '../Counter';
 import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
-import { Logger } from '../Logger/Logger';
-import { useLogger } from '../Logger/useLogger';
-import type { WindowInfo, PlatformHandlers, WindowType } from './WindowInfo';
-import { getWindowTitle } from './WindowInfo';
-import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors';
+import { Header } from '../Header';
+import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
+import { getWindowTitle } from './WindowInfo.js';
+import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
+import { CounterMethod } from '../../types.js';
 
 export interface ZubridgeAppProps {
   /**
@@ -26,21 +27,36 @@ export interface ZubridgeAppProps {
   dispatch: any;
 
   /**
-   * Platform-specific handlers
+   * Platform-specific action handlers
    */
-  platformHandlers: PlatformHandlers;
+  actionHandlers: ActionHandlers;
 
   /**
-   * Whether to show the logger component
-   * @default true for main windows, false for others
+   * Bridge status
    */
-  showLogger?: boolean;
+  bridgeStatus?: 'ready' | 'error' | 'initializing';
 
   /**
-   * Whether to show action payloads in the logger
-   * @default false
+   * Title for the application window
+   * @default 'Zubridge App'
    */
-  showLoggerPayloads?: boolean;
+  windowTitle?: string;
+
+  /**
+   * Application name shown in the header
+   * @default 'Zubridge App'
+   */
+  appName?: string;
+
+  /**
+   * Additional CSS classes to apply to the component
+   */
+  className?: string;
+
+  /**
+   * Child elements to render
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -53,17 +69,38 @@ export function ZubridgeApp({
   windowInfo,
   store,
   dispatch,
-  platformHandlers,
-  showLogger = windowInfo.type === 'main',
-  showLoggerPayloads = false,
+  actionHandlers,
+  bridgeStatus: externalBridgeStatus,
+  windowTitle = 'Zubridge App',
+  appName = 'Zubridge App',
+  className = '',
+  children,
 }: ZubridgeAppProps) {
   // Extract data from store using selectors
   const counter = getCounterSelector(store);
   const isDarkMode = getThemeSelector(store);
-  const bridgeStatus = getBridgeStatusSelector(store);
 
-  // Get logger hook
-  const { logs, logAction, clearLogs } = useLogger();
+  // Determine the bridge status - if externalBridgeStatus is provided, use it
+  // Otherwise, try to get it from the store
+  // Default to 'ready' if we can't determine status but we have a store
+  let bridgeStatus: 'ready' | 'error' | 'initializing' = 'initializing';
+  if (externalBridgeStatus) {
+    bridgeStatus = externalBridgeStatus;
+  } else if (store) {
+    const storeStatus = getBridgeStatusSelector(store);
+    // Only assign if it's a valid status string, otherwise use default
+    if (storeStatus === 'ready' || storeStatus === 'error' || storeStatus === 'initializing') {
+      bridgeStatus = storeStatus;
+    } else {
+      // If we have a store but no valid bridge status, assume 'ready'
+      bridgeStatus = 'ready';
+    }
+  }
+
+  // Add console log to track the bridge status
+  debug('ui', 'Bridge status:', bridgeStatus);
+  debug('ui', 'Counter value:', counter);
+  debug('ui', 'Theme mode:', isDarkMode ? 'dark' : 'light');
 
   // Apply theme based on state
   useEffect(() => {
@@ -76,108 +113,150 @@ export function ZubridgeApp({
 
   // Action handlers with logging
   const handleIncrement = useCallback(() => {
-    logAction('COUNTER:INCREMENT', 'Incrementing counter');
     dispatch('COUNTER:INCREMENT');
-  }, [dispatch, logAction]);
+  }, [dispatch]);
 
   const handleDecrement = useCallback(() => {
-    logAction('COUNTER:DECREMENT', 'Decrementing counter');
     dispatch('COUNTER:DECREMENT');
-  }, [dispatch, logAction]);
+  }, [dispatch]);
 
   const handleResetCounter = useCallback(() => {
-    logAction('COUNTER:RESET', 'Resetting counter');
     dispatch('COUNTER:RESET');
-  }, [dispatch, logAction]);
+  }, [dispatch]);
 
   const handleDoubleCounter = useCallback(
-    (method: 'thunk' | 'object' | 'action') => {
+    (method: CounterMethod) => {
       if (method === 'thunk') {
-        logAction('COUNTER:DOUBLE_THUNK', 'Doubling counter via thunk', { currentValue: counter });
-        dispatch((getState: () => any, dispatch: any) => {
-          const currentState = getState();
-          const currentValue = getCounterSelector(currentState);
-          dispatch('COUNTER:SET', currentValue * 2);
+        // Use the actionHandlers thunk if available
+        if (actionHandlers.doubleCounter) {
+          debug('ui', `Using shared thunk for method: ${method}`);
+          return dispatch(actionHandlers.doubleCounter(counter));
+        }
+      } else if (method === 'slow-thunk') {
+        // Use the slow thunk if available
+        if (actionHandlers.doubleCounterSlow) {
+          debug('ui', `Using shared slow thunk for method: ${method}`);
+          return dispatch(actionHandlers.doubleCounterSlow(counter));
+        }
+      } else if (method === 'main-thunk') {
+        debug('ui', `Starting ${method} execution`);
+        debug('ui', `window.counter available:`, !!window.counter);
+        debug('ui', `window.counter.executeMainThunk available:`, !!window.counter?.executeMainThunk);
+
+        if (!window.counter?.executeMainThunk) {
+          debug('ui:error', `window.counter.executeMainThunk not available for ${method}`);
+          return Promise.reject(new Error('Main thunk execution not available'));
+        }
+
+        const result = window.counter.executeMainThunk();
+        debug('ui', `${method} IPC call made, result:`, result);
+        return result;
+      } else if (method === 'slow-main-thunk') {
+        debug('ui', `Starting ${method} execution`);
+        debug('ui', `window.counter available:`, !!window.counter);
+        debug('ui', `window.counter.executeMainThunkSlow available:`, !!window.counter?.executeMainThunkSlow);
+
+        if (!window.counter?.executeMainThunkSlow) {
+          debug('ui:error', `window.counter.executeMainThunkSlow not available for ${method}`);
+          return Promise.reject(new Error('Main slow thunk execution not available'));
+        }
+
+        const result = window.counter.executeMainThunkSlow();
+        debug('ui', `${method} IPC call made, result:`, result);
+        return result;
+      } else if (method === 'slow-object') {
+        debug('ui', `Dispatching slow action for ${method}`);
+        const result = dispatch({
+          type: 'COUNTER:SET:SLOW',
+          payload: counter * 2,
         });
+        debug('ui', `Slow action dispatch returned:`, result);
+        return result;
       } else {
-        logAction('COUNTER:DOUBLE_OBJECT', 'Doubling counter via object', { currentValue: counter });
-        dispatch({
+        debug('ui', `Dispatching regular action for ${method}`);
+        const result = dispatch({
           type: 'COUNTER:SET',
           payload: counter * 2,
         });
+        debug('ui', `Regular action dispatch returned:`, result);
+        return result;
       }
     },
-    [counter, dispatch, logAction],
+    [counter, dispatch, actionHandlers],
   );
 
   const handleToggleTheme = useCallback(() => {
-    logAction('THEME:TOGGLE', `Toggling theme to ${isDarkMode ? 'light' : 'dark'}`);
     dispatch('THEME:TOGGLE');
-  }, [dispatch, isDarkMode, logAction]);
+  }, [dispatch]);
 
   // Window management
   const handleCreateWindow = useCallback(async () => {
-    logAction('WINDOW:CREATE', 'Creating new window');
-    const result = await platformHandlers.createWindow();
+    const result = await actionHandlers.createWindow();
 
     if (result.success) {
-      logAction('WINDOW:CREATE_SUCCESS', 'Window created successfully', { windowId: result.id });
+      // logAction('WINDOW:CREATE_SUCCESS', 'Window created successfully', { windowId: result.id });
     } else {
-      logAction('WINDOW:CREATE_ERROR', 'Failed to create window', {}, 'error');
+      // logAction('WINDOW:CREATE_ERROR', 'Failed to create window', {}, 'error');
     }
-  }, [platformHandlers, logAction]);
+  }, [actionHandlers]);
 
   const handleCloseWindow = useCallback(async () => {
-    logAction('WINDOW:CLOSE', 'Closing window', { windowId: windowInfo.id });
-    await platformHandlers.closeWindow();
-  }, [platformHandlers, windowInfo.id, logAction]);
+    await actionHandlers.closeWindow();
+  }, [actionHandlers]);
 
   const handleQuitApp = useCallback(async () => {
-    if (platformHandlers.quitApp) {
-      logAction('APP:QUIT', 'Quitting application');
-      await platformHandlers.quitApp();
+    if (actionHandlers.quitApp) {
+      await actionHandlers.quitApp();
     }
-  }, [platformHandlers, logAction]);
+  }, [actionHandlers]);
 
   // Get window properties
   const isMainWindow = windowInfo.type === 'main';
   const isRuntimeWindow = windowInfo.type === 'runtime';
 
   return (
-    <div className="zubridge-app-container">
-      <WindowDisplay
+    <div className={`zubridge-app ${className}`}>
+      <Header
+        appName={appName}
+        windowTitle={windowTitle}
         windowId={windowInfo.id}
-        windowTitle={getWindowTitle(windowInfo.type as WindowType, windowInfo)}
-        mode={windowInfo.platform}
+        windowType={windowInfo.type}
         bridgeStatus={bridgeStatus as 'ready' | 'error' | 'initializing'}
-        isRuntimeWindow={isRuntimeWindow}
-      >
-        <Counter
-          value={counter}
-          onIncrement={handleIncrement}
-          onDecrement={handleDecrement}
-          onDouble={(method: 'thunk' | 'object' | 'action') => handleDoubleCounter(method)}
-          onReset={handleResetCounter}
-          isLoading={bridgeStatus === 'initializing'}
-        />
+      />
 
-        <div className="theme-section">
-          <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
+      <div className="p-4 main-content">
+        <WindowDisplay
+          windowId={windowInfo.id}
+          windowTitle={getWindowTitle(windowInfo.type as WindowType, windowInfo)}
+          mode={windowInfo.platform}
+          bridgeStatus={bridgeStatus as 'ready' | 'error' | 'initializing'}
+          isRuntimeWindow={isRuntimeWindow}
+        >
+          {children || (
+            <>
+              <Counter
+                value={counter}
+                onIncrement={handleIncrement}
+                onDecrement={handleDecrement}
+                onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
+                onReset={handleResetCounter}
+                isLoading={bridgeStatus === 'initializing'}
+              />
 
-          <WindowActions
-            onCreateWindow={handleCreateWindow}
-            onCloseWindow={handleCloseWindow}
-            onQuitApp={handleQuitApp}
-            isMainWindow={isMainWindow}
-          />
-        </div>
+              <div className="theme-section">
+                <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
 
-        {showLogger && (
-          <div className="mt-6 logger-section">
-            <Logger entries={logs} showPayloads={showLoggerPayloads} onClear={clearLogs} />
-          </div>
-        )}
-      </WindowDisplay>
+                <WindowActions
+                  onCreateWindow={handleCreateWindow}
+                  onCloseWindow={handleCloseWindow}
+                  onQuitApp={handleQuitApp}
+                  isMainWindow={isMainWindow}
+                />
+              </div>
+            </>
+          )}
+        </WindowDisplay>
+      </div>
     </div>
   );
 }
