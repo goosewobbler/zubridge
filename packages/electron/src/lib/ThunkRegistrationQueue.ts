@@ -34,7 +34,7 @@ export class ThunkRegistrationQueue {
     });
   }
 
-  public registerThunkQueued(
+  public registerThunk(
     thunkId: string,
     windowId: number,
     parentId: string | undefined,

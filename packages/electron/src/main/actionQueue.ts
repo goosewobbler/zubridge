@@ -107,7 +107,7 @@ export class ActionQueueManager {
     mainThunkCallback?: () => Promise<any>,
     rendererCallback?: () => void,
   ): Promise<any> {
-    return this.thunkRegistrationQueue.registerThunkQueued(
+    return this.thunkRegistrationQueue.registerThunk(
       thunkId,
       windowId,
       parentId,

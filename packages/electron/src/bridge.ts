@@ -298,7 +298,7 @@ export function createCoreBridge<State extends AnyState>(
       // If this is a thunk action, ensure the thunk is registered before enqueueing
       if (parentId && !thunkManager.hasThunk(parentId)) {
         debug('ipc', `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.id}`);
-        await thunkRegistrationQueue.registerThunkQueued(parentId, event.sender.id, undefined, 'renderer');
+        await thunkRegistrationQueue.registerThunk(parentId, event.sender.id, undefined, 'renderer');
       }
 
       // Queue the action for processing
@@ -379,7 +379,7 @@ export function createCoreBridge<State extends AnyState>(
       );
 
       // Use ThunkRegistrationQueue to register the thunk with proper global locking
-      await thunkRegistrationQueue.registerThunkQueued(thunkId, sourceWindowId, parentId, 'renderer');
+      await thunkRegistrationQueue.registerThunk(thunkId, sourceWindowId, parentId, 'renderer');
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} registration queued successfully`);
 
       // Send ack to renderer

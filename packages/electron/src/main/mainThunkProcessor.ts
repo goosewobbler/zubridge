@@ -90,7 +90,7 @@ export class MainThunkProcessor {
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
     debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
 
-    await this.mainThunkRegistrationQueue.registerThunkQueued(
+    await this.mainThunkRegistrationQueue.registerThunk(
       thunkId,
       MAIN_PROCESS_WINDOW_ID,
       undefined,
@@ -185,7 +185,7 @@ export class MainThunkProcessor {
       // Ensure thunk is registered before enqueueing the action
       if (!getThunkManager().hasThunk(parentId)) {
         debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.id}`);
-        await this.mainThunkRegistrationQueue.registerThunkQueued(parentId, 0, undefined, 'main');
+        await this.mainThunkRegistrationQueue.registerThunk(parentId, 0, undefined, 'main');
       }
     }
 
