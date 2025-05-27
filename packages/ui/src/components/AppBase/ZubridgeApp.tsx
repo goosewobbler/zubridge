@@ -5,6 +5,8 @@ import { Counter } from '../Counter';
 import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
+import { SubscriptionControls } from '../SubscriptionControls';
+import { GenerateLargeState } from '../GenerateLargeState';
 import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
@@ -57,6 +59,12 @@ export interface ZubridgeAppProps {
    * Child elements to render
    */
   children?: ReactNode;
+
+  /**
+   * Current subscriptions for this window
+   * @default '*'
+   */
+  currentSubscriptions?: string[] | '*';
 }
 
 /**
@@ -75,6 +83,7 @@ export function ZubridgeApp({
   appName = 'Zubridge App',
   className = '',
   children,
+  currentSubscriptions = '*',
 }: ZubridgeAppProps) {
   // Extract data from store using selectors
   const counter = getCounterSelector(store);
@@ -120,8 +129,12 @@ export function ZubridgeApp({
     dispatch('COUNTER:DECREMENT');
   }, [dispatch]);
 
-  const handleResetCounter = useCallback(() => {
-    dispatch('COUNTER:RESET');
+  const handleResetState = useCallback(() => {
+    dispatch('STATE:RESET');
+  }, [dispatch]);
+
+  const handleGenerateLargeState = useCallback(async () => {
+    await dispatch('STATE:GENERATE-FILLER');
   }, [dispatch]);
 
   const handleDoubleCounter = useCallback(
@@ -210,6 +223,22 @@ export function ZubridgeApp({
     }
   }, [actionHandlers]);
 
+  const handleSubscribe = useCallback(
+    (keys: string[]) => {
+      const result = window.electronAPI?.subscribe(keys);
+      console.log('handleSubscribe', result);
+    },
+    [window.electronAPI],
+  );
+
+  const handleUnsubscribe = useCallback(
+    (keys: string[]) => {
+      const result = window.electronAPI?.unsubscribe(keys);
+      console.log('handleUnsubscribe', result);
+    },
+    [window.electronAPI],
+  );
+
   // Get window properties
   const isMainWindow = windowInfo.type === 'main';
   const isRuntimeWindow = windowInfo.type === 'runtime';
@@ -239,12 +268,25 @@ export function ZubridgeApp({
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
                 onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
-                onReset={handleResetCounter}
+                onReset={handleResetState}
                 isLoading={bridgeStatus === 'initializing'}
               />
 
               <div className="theme-section">
                 <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
+
+                <SubscriptionControls
+                  onSubscribe={handleSubscribe}
+                  onUnsubscribe={handleUnsubscribe}
+                  currentSubscriptions={currentSubscriptions}
+                />
+
+                {handleGenerateLargeState && (
+                  <GenerateLargeState
+                    onGenerate={handleGenerateLargeState}
+                    isGenerating={bridgeStatus === 'initializing'}
+                  />
+                )}
 
                 <WindowActions
                   onCreateWindow={handleCreateWindow}

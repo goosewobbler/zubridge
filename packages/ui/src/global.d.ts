@@ -7,6 +7,8 @@ interface Window {
     quitApp: () => Promise<void>;
     getWindowInfo: () => Promise<{ id: number; type: string }>;
     getMode: () => Promise<{ modeName: string; name?: string }>;
+    subscribe: (keys: string[]) => Promise<void>;
+    unsubscribe: (keys: string[]) => Promise<void>;
   };
   counter?: {
     executeMainThunk: () => Promise<{ success: boolean; result?: number }>;

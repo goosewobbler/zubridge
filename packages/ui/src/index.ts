@@ -5,6 +5,8 @@ export * from './components/Header';
 export * from './components/ThemeToggle';
 export * from './components/WindowActions';
 export * from './components/WindowDisplay';
+export * from './components/SubscriptionControls';
+export * from './components/GenerateLargeState';
 
 // Export shared hooks
 export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';
