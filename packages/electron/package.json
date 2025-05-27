@@ -107,6 +107,7 @@
     "@types/debug": "^4.1.12",
     "@zubridge/core": "workspace:*",
     "@zubridge/types": "workspace:*",
+    "dequal": "^2.0.3",
     "uuid": "^11.1.0",
     "weald": "^1.0.4",
     "zustand": "^5.0.3"

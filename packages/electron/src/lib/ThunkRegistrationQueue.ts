@@ -1,13 +1,11 @@
 import { debug } from '@zubridge/core';
 import { ThunkLockState, getThunkLockManager, ThunkLockEvent } from './ThunkLockManager.js';
 import type { ThunkManager } from './ThunkManager.js';
+import type { Thunk } from './Thunk.js';
 
 // Type for queued thunk registration
-export interface QueuedThunkRegistration {
-  thunkId: string;
-  windowId: number;
-  parentId?: string;
-  thunkType: 'main' | 'renderer';
+export interface QueuedThunk {
+  thunk: Thunk;
   mainThunkCallback?: () => Promise<any>;
   rendererCallback?: () => void;
   resolve: (result: any) => void;
@@ -20,7 +18,7 @@ export enum IpcChannel {
 }
 
 export class ThunkRegistrationQueue {
-  private thunkRegistrationQueue: QueuedThunkRegistration[] = [];
+  private thunkRegistrationQueue: QueuedThunk[] = [];
   private processingThunkRegistration = false;
   private thunkManager: ThunkManager;
 
@@ -35,20 +33,17 @@ export class ThunkRegistrationQueue {
   }
 
   public registerThunk(
-    thunkId: string,
-    windowId: number,
-    parentId: string | undefined,
-    thunkType: 'main' | 'renderer',
+    thunk: Thunk,
     mainThunkCallback?: () => Promise<any>,
     rendererCallback?: () => void,
   ): Promise<any> {
-    debug('queue', `[THUNK-QUEUE] Queuing thunk registration: id=${thunkId}, windowId=${windowId}, type=${thunkType}`);
+    debug(
+      'queue',
+      `[THUNK-QUEUE] Queuing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}`,
+    );
     return new Promise((resolve, reject) => {
-      const reg: QueuedThunkRegistration = {
-        thunkId,
-        windowId,
-        parentId,
-        thunkType,
+      const reg: QueuedThunk = {
+        thunk,
         mainThunkCallback,
         rendererCallback,
         resolve,
@@ -76,26 +71,30 @@ export class ThunkRegistrationQueue {
     }
     this.processingThunkRegistration = true;
     const reg = this.thunkRegistrationQueue.shift()!;
+    const { thunk, mainThunkCallback, rendererCallback } = reg;
     debug(
       'queue',
-      `[THUNK-QUEUE] Processing thunk registration: id=${reg.thunkId}, windowId=${reg.windowId}, type=${reg.thunkType}`,
+      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}`,
     );
     try {
-      debug('queue', `[THUNK-QUEUE] Attempting to acquire lock for thunk ${reg.thunkId} from window ${reg.windowId}`);
-      const lockAcquired = thunkLockManager.tryAcquireLock(reg.thunkId, reg.windowId);
+      debug(
+        'queue',
+        `[THUNK-QUEUE] Attempting to acquire lock for thunk ${thunk.id} from window ${thunk.sourceWindowId}`,
+      );
+      const lockAcquired = thunkLockManager.acquire(thunk.id, thunk.keys, thunk.force);
       if (!lockAcquired) {
-        debug('queue', `[THUNK-QUEUE] Lock acquisition failed for thunk ${reg.thunkId}, re-queueing`);
+        debug('queue', `[THUNK-QUEUE] Lock acquisition failed for thunk ${thunk.id}, re-queueing`);
         this.thunkRegistrationQueue.unshift(reg);
         this.processingThunkRegistration = false;
         return;
       }
-      debug('queue', `[THUNK-QUEUE] Lock acquired for thunk ${reg.thunkId}`);
-      const handle = this.thunkManager.registerThunkWithId(reg.thunkId, reg.parentId);
-      handle.setSourceWindowId(reg.windowId);
-      if (reg.thunkType === 'main' && reg.mainThunkCallback) {
-        reg.mainThunkCallback().then(reg.resolve).catch(reg.reject);
-      } else if (reg.thunkType === 'renderer' && reg.rendererCallback) {
-        reg.rendererCallback();
+      debug('queue', `[THUNK-QUEUE] Lock acquired for thunk ${thunk.id}`);
+      const handle = this.thunkManager.registerThunk(thunk);
+      handle.setSourceWindowId(thunk.sourceWindowId);
+      if (thunk.type === 'main' && mainThunkCallback) {
+        mainThunkCallback().then(reg.resolve).catch(reg.reject);
+      } else if (thunk.type === 'renderer' && rendererCallback) {
+        rendererCallback();
         reg.resolve(undefined);
       } else {
         reg.resolve(undefined);

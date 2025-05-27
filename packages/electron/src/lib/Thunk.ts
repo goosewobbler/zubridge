@@ -1,4 +1,14 @@
+import { v4 as uuidv4 } from 'uuid';
 import { ThunkState } from '@zubridge/types';
+
+export interface ThunkOptions {
+  id?: string;
+  sourceWindowId: number;
+  type: 'main' | 'renderer';
+  parentId?: string;
+  keys?: string[];
+  force?: boolean;
+}
 
 /**
  * Represents a thunk in the system
@@ -13,6 +23,9 @@ export class Thunk {
   /** Parent thunk ID if this is a nested thunk */
   readonly parentId?: string;
 
+  /** Thunk type: 'main' or 'renderer' */
+  public type: 'main' | 'renderer';
+
   /** Current state of the thunk */
   private _state: ThunkState;
 
@@ -22,13 +35,22 @@ export class Thunk {
   /** Set of child thunk IDs */
   private children: Set<string>;
 
-  constructor(id: string, sourceWindowId: number, parentId?: string) {
-    this.id = id;
-    this._sourceWindowId = sourceWindowId;
-    this.parentId = parentId;
+  /** Keys this thunk will affect (for key-based locking) */
+  public keys?: string[];
+
+  /** Force flag for lock bypass */
+  public force?: boolean;
+
+  constructor(options: ThunkOptions) {
+    this.id = options.id || uuidv4();
+    this._sourceWindowId = options.sourceWindowId;
+    this.parentId = options.parentId;
+    this.type = options.type;
     this._state = ThunkState.PENDING;
     this.startTime = Date.now();
     this.children = new Set();
+    this.keys = options.keys;
+    this.force = options.force;
   }
 
   /**

@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Thunk, Dispatch } from '@zubridge/types';
 import { debug } from '@zubridge/core';
+import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
@@ -122,35 +123,35 @@ export class RendererThunkProcessor {
     getOriginalState: () => S | Promise<S>,
     parentId?: string,
   ): Promise<any> {
-    // Check if we should use the shared thunk processor from preload
-    if (typeof window !== 'undefined' && window.__zubridge_thunkProcessor) {
-      debug('ipc', '[RENDERER_THUNK] Using shared thunk processor from preload');
-      // Use the shared processor exposed from preload
-      return window.__zubridge_thunkProcessor.executeThunk(thunk, getOriginalState, parentId);
+    if (typeof window === 'undefined' || !window.__zubridge_thunkProcessor) {
+      throw new Error('Zubridge preload script is required for thunk execution.');
     }
-
-    // Call the private implementation
-    return this.executeThunkImplementation(thunk, getOriginalState, parentId);
+    // Use the shared processor exposed from preload
+    return window.__zubridge_thunkProcessor.executeThunk(thunk, getOriginalState, parentId);
   }
 
   /**
    * Internal thunk execution implementation (without preload check)
    */
   public async executeThunkImplementation<S extends AnyState>(
-    thunk: Thunk<S>,
+    thunkFn: Thunk<S>,
     getOriginalState: () => S | Promise<S>,
     parentId?: string,
   ): Promise<any> {
-    // Generate a unique ID for this thunk
-    const thunkId = uuidv4();
-    debug('ipc', `[RENDERER_THUNK] Executing thunk ${thunkId}`);
+    // Create a Thunk instance
+    const thunk = new ThunkClass({
+      sourceWindowId: this.currentWindowId ?? 0,
+      type: 'renderer',
+      parentId,
+    });
+    debug('ipc', `[RENDERER_THUNK] Executing thunk ${thunk.id}`);
 
     // Register the thunk with main process
     if (this.thunkRegistrar && this.currentWindowId) {
       try {
-        debug('ipc', `[RENDERER_THUNK] Registering thunk ${thunkId} with main process`);
-        await this.thunkRegistrar(thunkId, parentId);
-        debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} registered successfully`);
+        debug('ipc', `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process`);
+        await this.thunkRegistrar(thunk.id, parentId);
+        debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
       } catch (error) {
         debug('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
       }
@@ -166,9 +167,9 @@ export class RendererThunkProcessor {
 
         // Handle nested thunks
         if (typeof action === 'function') {
-          debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunkId}`);
+          debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunk.id}`);
           // For nested thunks, we use the current thunk ID as the parent
-          return this.executeThunkImplementation(action, getOriginalState, thunkId);
+          return this.executeThunkImplementation(action, getOriginalState, thunk.id);
         }
 
         // Handle string actions by converting to action objects
@@ -179,12 +180,12 @@ export class RendererThunkProcessor {
 
         const actionId = actionObj.id as string;
 
-        debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} dispatching action ${actionObj.type} (${actionId})`);
+        debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} dispatching action ${actionObj.type} (${actionId})`);
 
         // Mark this action as starting a thunk if it's the first action in the thunk
         if (isFirstAction) {
-          debug('ipc', `[RENDERER_THUNK] Marking action ${actionId} as starting thunk ${thunkId}`);
-          (actionObj as any).__startsThunk = true;
+          debug('ipc', `[RENDERER_THUNK] Marking action ${actionId} as starting thunk ${thunk.id}`);
+          actionObj.__startsThunk = true;
           isFirstAction = false;
         }
 
@@ -228,7 +229,7 @@ export class RendererThunkProcessor {
         if (this.actionSender) {
           try {
             debug('ipc', `[RENDERER_THUNK] Sending action ${actionId} to main process`);
-            await this.actionSender(actionObj, thunkId);
+            await this.actionSender(actionObj, thunk.id);
             debug('ipc', `[RENDERER_THUNK] Action ${actionId} sent to main process`);
           } catch (error) {
             // If sending fails, clear any pending timeout
@@ -254,25 +255,25 @@ export class RendererThunkProcessor {
 
       // Use the getOriginalState directly - this comes from the renderer store mirror
       const getState = async (): Promise<S> => {
-        debug('ipc', `[RENDERER_THUNK] getState called for thunk ${thunkId}`);
+        debug('ipc', `[RENDERER_THUNK] getState called for thunk ${thunk.id}`);
         return getOriginalState();
       };
 
       // Execute the thunk with the local dispatch function and state
-      debug('ipc', `[RENDERER_THUNK] Executing thunk function for ${thunkId}`);
-      const result = await thunk(getState, dispatch);
-      debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} execution completed, result:`, result);
+      debug('ipc', `[RENDERER_THUNK] Executing thunk function for ${thunk.id}`);
+      const result = await thunkFn(getState, dispatch);
+      debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} execution completed, result:`, result);
       return result;
     } catch (error) {
-      debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunkId}:`, error);
+      debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunk.id}:`, error);
       throw error; // Rethrow to be caught by caller
     } finally {
       // Notify main process that thunk has completed
       if (this.thunkCompleter && this.currentWindowId) {
         try {
-          debug('ipc', `[RENDERER_THUNK] Notifying main process of thunk ${thunkId} completion`);
-          await this.thunkCompleter(thunkId);
-          debug('ipc', `[RENDERER_THUNK] Thunk ${thunkId} completion notified`);
+          debug('ipc', `[RENDERER_THUNK] Notifying main process of thunk ${thunk.id} completion`);
+          await this.thunkCompleter(thunk.id);
+          debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} completion notified`);
         } catch (e) {
           debug('ipc:error', `[RENDERER_THUNK] Error notifying thunk completion: ${e}`);
         }

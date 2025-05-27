@@ -13,16 +13,17 @@ import {
   safelySendToWindow,
   createWebContentsTracker,
   WebContentsTracker,
+  setupDestroyListener,
 } from './utils/windows.js';
 import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 import { debug } from '@zubridge/core';
 import { actionQueue } from './main/actionQueue.js';
 import { getThunkManager } from './lib/ThunkManager.js';
-import { getMainThunkProcessor } from './main/mainThunkProcessor.js';
-import { MainThunkProcessor } from './main/mainThunkProcessor.js';
 import { getThunkLockManager } from './lib/ThunkLockManager.js';
 import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
+import { SubscriptionManager } from './lib/SubscriptionManager.js';
+import { Thunk as ThunkClass } from './lib/Thunk.js';
 
 // Get the global ThunkManager
 const thunkManager = getThunkManager();
@@ -69,6 +70,12 @@ export function createCoreBridge<State extends AnyState>(
   // Tracker for WebContents using WeakMap for automatic garbage collection
   const windowTracker: WebContentsTracker = createWebContentsTracker();
 
+  // Map of windowId to SubscriptionManager
+  const subscriptionManagers = new Map<number, SubscriptionManager<State>>();
+
+  // Track which window IDs have a destroy listener set up
+  const destroyListenerSet = new Set<number>();
+
   // Process options with middleware if provided
   let processedOptions = options;
   if (options?.middleware) {
@@ -79,22 +86,6 @@ export function createCoreBridge<State extends AnyState>(
       ...middlewareOptions,
     };
   }
-
-  // Get the main thunk processor with the timeout (create a new instance if needed)
-  // This ensures we don't need to update an existing processor's config
-  const mainThunkProcessor = (() => {
-    // Get the singleton instance
-    const existingProcessor = getMainThunkProcessor();
-
-    // Only pass the timeout if it's defined
-    if (actionCompletionTimeoutMs !== undefined) {
-      // Create a new instance with the timeout
-      return new MainThunkProcessor(actionCompletionTimeoutMs);
-    }
-
-    // Use the existing processor
-    return existingProcessor;
-  })();
 
   // Add a getter method to the window tracker for retrieving WebContents by ID
   const getWindowById = (id: number): WebContents | undefined => {
@@ -152,7 +143,7 @@ export function createCoreBridge<State extends AnyState>(
 
         // **CRITICAL: Check thunk locking before processing any action**
         const thunkLockManager = getThunkLockManager();
-        const canProcess = thunkLockManager.canProcessAction(actionWithSource, actionWithSource.__sourceWindowId || 0);
+        const canProcess = thunkLockManager.canProcessAction(actionWithSource);
 
         if (!canProcess) {
           debug('core', `[BRIDGE DEBUG] Action ${action.type} blocked by thunk lock manager - enqueueing for later`);
@@ -242,7 +233,7 @@ export function createCoreBridge<State extends AnyState>(
             debug('ipc', `[BRIDGE DEBUG] Active thunks: ${thunkState.thunks.length}`);
 
             // Send acknowledgment with thunk state
-            contents.send(IpcChannel.DISPATCH_ACK, {
+            safelySendToWindow(contents, IpcChannel.DISPATCH_ACK, {
               actionId: action.id,
               thunkState,
             });
@@ -298,7 +289,12 @@ export function createCoreBridge<State extends AnyState>(
       // If this is a thunk action, ensure the thunk is registered before enqueueing
       if (parentId && !thunkManager.hasThunk(parentId)) {
         debug('ipc', `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.id}`);
-        await thunkRegistrationQueue.registerThunk(parentId, event.sender.id, undefined, 'renderer');
+        const thunkObj = new ThunkClass({
+          id: parentId,
+          sourceWindowId: event.sender.id,
+          type: 'renderer',
+        });
+        await thunkRegistrationQueue.registerThunk(thunkObj);
       }
 
       // Queue the action for processing
@@ -314,8 +310,7 @@ export function createCoreBridge<State extends AnyState>(
           debug('ipc', `Sending acknowledgment for action ${action.id} despite error`);
           debug('ipc', `[BRIDGE DEBUG] Sending acknowledgment for action ${action.id} despite error`);
           if (!isDestroyed(event.sender)) {
-            // Match the structure of the successful acknowledgment case
-            event.sender.send(IpcChannel.DISPATCH_ACK, {
+            safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
               actionId: action.id,
               thunkState: { version: 0, thunks: [] },
             });
@@ -379,21 +374,32 @@ export function createCoreBridge<State extends AnyState>(
       );
 
       // Use ThunkRegistrationQueue to register the thunk with proper global locking
-      await thunkRegistrationQueue.registerThunk(thunkId, sourceWindowId, parentId, 'renderer');
+      const thunkObj = new ThunkClass({
+        id: thunkId,
+        sourceWindowId: sourceWindowId,
+        type: 'renderer',
+        parentId: parentId,
+      });
+      await thunkRegistrationQueue.registerThunk(thunkObj);
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} registration queued successfully`);
 
       // Send ack to renderer
-      event.sender.send(IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: true });
+      event.sender && safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: true });
     } catch (error) {
       debug('core:error', '[BRIDGE DEBUG] Error handling thunk registration:', error);
       // Send failure ack
       const { thunkId } = data || {};
-      event.sender.send(IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: false, error: String(error) });
+      event.sender &&
+        safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, {
+          thunkId,
+          success: false,
+          error: String(error),
+        });
     }
   });
 
   // Handle thunk completion from renderers
-  ipcMain.on(IpcChannel.COMPLETE_THUNK, (event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.COMPLETE_THUNK, (_event: IpcMainEvent, data: any) => {
     try {
       const { thunkId } = data;
       debug('ipc', `[BRIDGE DEBUG] Received thunk completion notification for ${thunkId}`);
@@ -415,151 +421,96 @@ export function createCoreBridge<State extends AnyState>(
     }
   });
 
-  // Subscribe to state manager changes and broadcast to subscribed windows
-  const stateManagerUnsubscribe = stateManager.subscribe(async (state: AnyState) => {
-    try {
-      const activeIds = windowTracker.getActiveIds();
-      debug('core', `State changed, broadcasting to ${activeIds.length} active windows`);
-
-      if (activeIds.length === 0) {
-        debug('core', 'No active windows to broadcast to');
-        return;
+  // Subscribe to state manager changes and selectively notify windows
+  let prevState: State | undefined = undefined;
+  const stateManagerUnsubscribe = stateManager.subscribe((state: State) => {
+    const activeWebContents = windowTracker.getActiveWebContents();
+    for (const webContents of activeWebContents) {
+      const windowId = webContents.id;
+      const subManager = subscriptionManagers.get(windowId);
+      if (!subManager) continue; // No subscriptions for this window
+      // Only notify if relevant keys changed
+      if (prevState !== undefined) {
+        subManager.notify(prevState, state);
+      } else {
+        // On first run, send full state to all subscribers
+        subManager.notify(state, state);
       }
-
-      // Sanitize state before sending
-      debug('serialization', 'Sanitizing state before broadcast');
-      const safeState = sanitizeState(state);
-
-      // Apply middleware before state update - broadcast to all
-      if (processedOptions?.beforeStateChange) {
-        debug('core', 'Applying beforeStateChange middleware (global)');
-        await processedOptions.beforeStateChange(safeState);
-      }
-
-      // Get active WebContents from our tracker
-      const activeWebContents = windowTracker.getActiveWebContents();
-
-      // Send updates to all active WebContents that were explicitly subscribed
-      for (const webContents of activeWebContents) {
-        // Apply middleware before state update for specific window
-        if (processedOptions?.beforeStateChange) {
-          debug('core', `Applying beforeStateChange middleware for window ${webContents.id}`);
-          await processedOptions.beforeStateChange(safeState, webContents.id);
-        }
-
-        debug('ipc', `Sending state update to window ${webContents.id}`);
-        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, safeState);
-
-        // Apply middleware after state update for specific window
-        if (processedOptions?.afterStateChange) {
-          debug('core', `Applying afterStateChange middleware for window ${webContents.id}`);
-          await processedOptions.afterStateChange(safeState, webContents.id);
-        }
-      }
-
-      // Apply middleware after all state updates - broadcast
-      if (processedOptions?.afterStateChange) {
-        debug('core', 'Applying afterStateChange middleware (global)');
-        await processedOptions.afterStateChange(safeState);
-      }
-    } catch (error) {
-      debug('core:error', 'Error in state subscription handler:', error);
     }
+    prevState = state;
   });
 
-  // Add new windows to tracking and subscriptions
-  const subscribe = (newWrappers: WrapperOrWebContents[]): { unsubscribe: () => void } => {
-    const addedWebContents: WebContents[] = [];
-
-    // Handle invalid input cases
-    if (!newWrappers || !Array.isArray(newWrappers)) {
-      debug('core', 'Invalid wrappers provided to subscribe');
-      return { unsubscribe: () => {} };
-    }
-
-    debug('core', `Subscribing ${newWrappers.length} wrappers`);
-
-    // Get WebContents from wrappers and track them
-    for (const wrapper of newWrappers) {
+  // --- Selective Subscription API (windows first, keys optional) ---
+  function selectiveSubscribe(
+    windows: WrapperOrWebContents[] | WrapperOrWebContents,
+    keys?: string[],
+  ): { unsubscribe: () => void } {
+    const wrappers = Array.isArray(windows) ? windows : [windows];
+    const unsubs: Array<() => void> = [];
+    for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
-      if (!webContents || isDestroyed(webContents)) {
-        debug('windows', 'Skipping invalid or destroyed WebContents');
-        continue;
+      if (!webContents || isDestroyed(webContents)) continue;
+      let subManager = subscriptionManagers.get(webContents.id);
+      if (!subManager) {
+        subManager = new SubscriptionManager<State>();
+        subscriptionManagers.set(webContents.id, subManager);
       }
-
-      // Track the WebContents
-      if (windowTracker.track(webContents)) {
-        debug('windows', `Subscribed WebContents ${webContents.id}`);
-        addedWebContents.push(webContents);
-
-        // Expose configuration to the window
-        if (actionCompletionTimeoutMs !== undefined) {
-          webContents
-            .executeJavaScript(
-              `
-            window.__ZUBRIDGE_CONFIG = window.__ZUBRIDGE_CONFIG || {};
-            window.__ZUBRIDGE_CONFIG.actionCompletionTimeoutMs = ${actionCompletionTimeoutMs};
-            debug('core', "[BRIDGE] Configuration exposed to window:", window.__ZUBRIDGE_CONFIG);
-          `,
-            )
-            .catch((error) => {
-              debug('core:error', '[BRIDGE] Error exposing configuration to window:', error);
-            });
-        }
-
-        // Send initial state
-        const currentState = sanitizeState(stateManager.getState());
-        debug('ipc', `Sending initial state to WebContents ${webContents.id}`);
-
-        // Apply middleware before initial state update
-        if (processedOptions?.beforeStateChange) {
-          debug('core', `Applying beforeStateChange middleware for initial state to window ${webContents.id}`);
-          processedOptions.beforeStateChange(currentState, webContents.id);
-        }
-
-        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, currentState);
-
-        // Apply middleware after initial state update
-        if (processedOptions?.afterStateChange) {
-          debug('core', `Applying afterStateChange middleware for initial state to window ${webContents.id}`);
-          processedOptions.afterStateChange(currentState, webContents.id);
-        }
-      } else {
-        debug('windows', `WebContents ${webContents.id} already tracked, skipping`);
+      // Set up a destroy listener to clean up subscriptions when the window is closed
+      if (!destroyListenerSet.has(webContents.id)) {
+        setupDestroyListener(webContents, () => {
+          subscriptionManagers.delete(webContents.id);
+          destroyListenerSet.delete(webContents.id);
+        });
+        destroyListenerSet.add(webContents.id);
       }
+      // Register a subscription for the keys (no callback needed)
+      const unsubscribe = subManager.subscribe(keys, () => {});
+      unsubs.push(unsubscribe);
     }
-
-    // Return an unsubscribe function
     return {
       unsubscribe: () => {
-        debug('core', `Unsubscribing ${addedWebContents.length} WebContents`);
-        for (const webContents of addedWebContents) {
-          windowTracker.untrack(webContents);
-        }
+        unsubs.forEach((fn) => fn());
       },
     };
-  };
+  }
 
-  // Remove windows from subscriptions
-  const unsubscribe = (unwrappers?: WrapperOrWebContents[]) => {
-    if (!unwrappers) {
-      // If no wrappers are provided, unsubscribe all
-      debug('core', 'Unsubscribing all WebContents');
-      windowTracker.cleanup();
+  function selectiveUnsubscribe(windows: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
+    const wrappers = Array.isArray(windows) ? windows : [windows];
+    for (const wrapper of wrappers) {
+      const webContents = getWebContents(wrapper);
+      if (!webContents) continue;
+      const subManager = subscriptionManagers.get(webContents.id);
+      if (subManager) {
+        subManager.unsubscribe(keys, () => {});
+        if (subManager.getCurrentSubscriptionKeys().length === 0) {
+          subscriptionManagers.delete(webContents.id);
+        }
+      }
+    }
+  }
+
+  // Unified subscribe API (windows first, keys optional)
+  function subscribe(
+    windows: WrapperOrWebContents[] | WrapperOrWebContents,
+    keys?: string[],
+  ): { unsubscribe: () => void } {
+    // If windows is not provided, subscribe all windows to full state
+    if (!windows) {
+      const allWindows = windowTracker.getActiveWebContents();
+      return selectiveSubscribe(allWindows);
+    }
+    return selectiveSubscribe(windows, keys);
+  }
+
+  // Unified unsubscribe API (windows first, keys optional)
+  function unsubscribe(windows?: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
+    // If windows is not provided, unsubscribe all windows
+    if (!windows) {
+      subscriptionManagers.clear();
       return;
     }
-
-    debug('core', `Unsubscribing ${unwrappers.length} specific wrappers`);
-    for (const wrapper of unwrappers) {
-      const webContents = getWebContents(wrapper);
-      if (!webContents) {
-        debug('windows', 'Skipping invalid WebContents in unsubscribe');
-        continue;
-      }
-      debug('windows', `Unsubscribing WebContents ${webContents.id}`);
-      windowTracker.untrack(webContents);
-    }
-  };
+    return selectiveUnsubscribe(windows, keys);
+  }
 
   // Get IDs of subscribed windows
   const getSubscribedWindows = (): number[] => {
@@ -609,11 +560,19 @@ export function createCoreBridge<State extends AnyState>(
     debug('core', 'Cleaning up tracked WebContents');
     windowTracker.cleanup();
 
+    debug('core', 'Clearing subscription managers');
+    subscriptionManagers.clear();
+
     debug('core', 'CoreBridge destroyed');
   };
 
   // Return the bridge interface
-  return { subscribe, unsubscribe, getSubscribedWindows, destroy };
+  return {
+    subscribe,
+    unsubscribe,
+    getSubscribedWindows,
+    destroy,
+  };
 }
 
 /**

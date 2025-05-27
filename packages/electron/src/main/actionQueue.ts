@@ -1,16 +1,9 @@
-import type { Action as BaseAction } from '@zubridge/types';
 import { debug } from '@zubridge/core';
+import type { Action } from '@zubridge/types';
 import { ThunkManager, ThunkManagerEvent, getThunkManager } from '../lib/ThunkManager.js';
 import { getThunkLockManager } from '../lib/ThunkLockManager.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
-
-// Extend the base Action type with our additional fields
-interface Action extends BaseAction {
-  __sourceWindowId?: number; // ID of the window that dispatched this action
-  __thunkParentId?: string; // Parent thunk ID if this action is part of a thunk
-  __requiresWindowSync?: boolean; // Flag indicating extra sync delay needed
-  __startsThunk?: boolean; // Indicates if this action should start a new thunk tree
-}
+import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
 /**
  * Information about a pending action in the main process queue
@@ -100,21 +93,11 @@ export class ActionQueueManager {
    * Returns a promise that resolves when the thunk is registered and started
    */
   public registerThunkQueued(
-    thunkId: string,
-    windowId: number,
-    parentId: string | undefined,
-    thunkType: 'main' | 'renderer',
+    thunk: InstanceType<typeof ThunkClass>,
     mainThunkCallback?: () => Promise<any>,
     rendererCallback?: () => void,
   ): Promise<any> {
-    return this.thunkRegistrationQueue.registerThunk(
-      thunkId,
-      windowId,
-      parentId,
-      thunkType,
-      mainThunkCallback,
-      rendererCallback,
-    );
+    return this.thunkRegistrationQueue.registerThunk(thunk, mainThunkCallback, rendererCallback);
   }
 
   /**
@@ -126,10 +109,22 @@ export class ActionQueueManager {
     for (let i = 0; i < this.actionQueue.length; i++) {
       const queuedAction = this.actionQueue[i];
       const action = queuedAction.action;
-      const sourceWindowId = queuedAction.sourceWindowId;
 
-      // Use ThunkLockManager for consistency
-      if (thunkLockManager.canProcessAction(action, sourceWindowId)) {
+      // --- Selective/forced action support ---
+      // If action has __force, allow it to process regardless of lock
+      if (action.__force) {
+        return i;
+      }
+      // If action has __keys, use key-based short-circuiting
+      if (action.__keys) {
+        if (!thunkLockManager.isLocked(action.__keys)) {
+          return i;
+        } else {
+          continue;
+        }
+      }
+      // Default: Use ThunkLockManager for consistency
+      if (thunkLockManager.canProcessAction(action)) {
         return i;
       }
     }
@@ -168,7 +163,7 @@ export class ActionQueueManager {
     try {
       // Update thunk state before processing if this is a thunk action
       if (action.__thunkParentId) {
-        this.thunkManager.processThunkAction(action, sourceWindowId);
+        this.thunkManager.processThunkAction(action);
       }
 
       // Process the action
@@ -183,7 +178,7 @@ export class ActionQueueManager {
 
       // Update thunk state after processing if this is a thunk action
       if (action.__thunkParentId) {
-        this.thunkManager.processThunkAction(action, sourceWindowId);
+        this.thunkManager.processThunkAction(action);
       }
 
       queuedAction.onComplete?.();
@@ -260,13 +255,6 @@ export class ActionQueueManager {
   }
 
   private processing = false; // Re-entrancy guard for processQueue
-}
-
-/**
- * Determine if an action represents a thunk start
- */
-function isThunkStartAction(action: Action): boolean {
-  return !!action.__startsThunk;
 }
 
 export const actionQueue = new ActionQueueManager();

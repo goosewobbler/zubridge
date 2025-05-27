@@ -1,8 +1,7 @@
-import type { AnyState, Handlers } from '@zubridge/types';
+import type { AnyState, DispatchFunc, DispatchOptions, Handlers } from '@zubridge/types';
 import { useStore, type StoreApi } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
-import type { Action, Thunk, ExtractState, ReadonlyStoreApi, DispatchFunc } from '@zubridge/types';
-import { debug } from '@zubridge/core';
+import type { Action, Thunk, ExtractState, ReadonlyStoreApi } from '@zubridge/types';
 import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Export types
@@ -72,82 +71,40 @@ export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>)
   return useBoundStore as UseBoundStore<StoreApi<S>>;
 };
 
-/**
- * Creates a dispatch function for sending actions to the main process
- *
- * @template S The state type
- * @template TActions A record of action types to payload types mapping (optional)
- * @param customHandlers Optional custom handlers to use instead of window.zubridge
- * @returns A typed dispatch function
- *
- * @example
- * // Basic usage
- * const dispatch = useDispatch();
- *
- * @example
- * // With typed actions
- * type CounterActions = {
- *   'COUNTER:INCREMENT': void;
- *   'COUNTER:DECREMENT': void;
- *   'COUNTER:SET': number;
- * };
- * const dispatch = useDispatch<State, CounterActions>();
- * dispatch({ type: 'COUNTER:SET', payload: 5 }); // Type-safe payload
- * dispatch({ type: 'UNKNOWN' }); // Type error
- */
-export const useDispatch = <S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
+function useDispatch<S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
   customHandlers?: Handlers<S>,
-): DispatchFunc<S, TActions> => {
+): DispatchFunc<S, TActions> {
   const handlers = customHandlers || createHandlers<S>();
 
   // Ensure we have a store for these handlers
   const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
 
-  // Create a function to dispatch actions and thunks
-  const dispatch = (action: string | Action | Thunk<S>, payload?: unknown, parentId?: string): Promise<any> => {
-    const actionType = typeof action === 'string' ? action : (action as any).type;
-    debug('core', `[useDispatch] Called with action: ${actionType || 'thunk'}`);
-
-    // Check if window.zubridge is properly initialized
-    if (!window.zubridge) {
-      debug('core:error', '[useDispatch] Fatal error: window.zubridge is undefined!');
-      return Promise.reject(new Error('window.zubridge is undefined'));
-    }
-
-    // Check if window.zubridge.dispatch exists
-    if (!window.zubridge.dispatch) {
-      debug('core:error', '[useDispatch] Fatal error: window.zubridge.dispatch is undefined!');
-      return Promise.reject(new Error('window.zubridge.dispatch is undefined'));
-    }
-
+  const dispatch = (
+    action: string | Action | Thunk<S>,
+    payloadOrOptions?: unknown | DispatchOptions,
+    maybeOptions?: DispatchOptions,
+  ): Promise<any> => {
     if (typeof action === 'function') {
-      // Handle thunks - execute them with the store's getState and our dispatch function
-      debug('core', '[useDispatch] Calling thunk:', action);
       const thunkProcessor = getThunkProcessor();
-      return thunkProcessor.executeThunk(action as Thunk<S>, store.getState, parentId);
+      return thunkProcessor.executeThunk<S>(action as Thunk<S>, store.getState);
+    } else if (typeof action === 'string') {
+      // Action: payloadOrOptions is payload, maybeOptions is options
+      if (maybeOptions) {
+        // If options are provided, pass as second argument (payload is ignored)
+        return handlers.dispatch(action, maybeOptions);
+      } else {
+        return handlers.dispatch(action, payloadOrOptions);
+      }
+    } else {
+      // Action object: payloadOrOptions is options
+      return handlers.dispatch(action, payloadOrOptions as DispatchOptions | undefined);
     }
-
-    // Handle string action type with payload
-    if (typeof action === 'string') {
-      // Only pass the payload parameter if it's not undefined, and handle promise return value
-      return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
-    }
-
-    // For action objects, normalize to standard Action format
-    if (typeof action.type !== 'string') {
-      throw new Error(`Invalid action type: ${action.type}. Expected a string.`);
-    }
-    const normalizedAction: Action = {
-      type: action.type,
-      payload: action.payload,
-    };
-
-    // Return the promise from dispatch
-    return handlers.dispatch(normalizedAction);
   };
 
   return dispatch;
-};
+}
+
+export { useDispatch };
 
 // Export environment utilities
 export * from './utils/environment';

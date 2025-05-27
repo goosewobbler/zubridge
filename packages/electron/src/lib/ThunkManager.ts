@@ -1,19 +1,9 @@
-import { EventEmitter } from 'events';
-import type { Action as BaseAction } from '@zubridge/types';
-import { ThunkState } from '@zubridge/types';
-import { debug } from '@zubridge/core';
+import { EventEmitter } from 'node:events';
 import { v4 as uuidv4 } from 'uuid';
+import { debug } from '@zubridge/core';
+import { type Action, ThunkState } from '@zubridge/types';
 import { Thunk } from './Thunk.js';
 import { getThunkLockManager } from './ThunkLockManager.js';
-
-/**
- * Extend the base Action type with thunk-related fields
- */
-interface Action extends BaseAction {
-  __sourceWindowId?: number; // ID of the window that dispatched this action
-  __thunkParentId?: string; // Parent thunk ID if this action is part of a thunk
-  __startsThunk?: boolean; // Indicates if this action should start a new thunk tree
-}
 
 /**
  * Thunk action type enum
@@ -45,8 +35,6 @@ export interface ThunkHandle {
   markCompleted: (result?: unknown) => void;
   markFailed: (error: Error) => void;
   addChildThunk: (childId: string) => void;
-  childCompleted: (childId: string) => void;
-  addAction: (actionId: string) => void;
   setSourceWindowId: (windowId: number) => void;
 }
 
@@ -57,9 +45,6 @@ export class ThunkManager extends EventEmitter {
   // All registered thunks, indexed by ID
   private thunks: Map<string, Thunk> = new Map();
 
-  // ID of the root thunk currently being processed
-  private activeRootThunkId: string | undefined = undefined;
-
   // State version counter
   private stateVersion: number = 1;
 
@@ -69,21 +54,15 @@ export class ThunkManager extends EventEmitter {
   }
 
   /**
-   * Register a new thunk with an auto-generated ID
+   * Register a new thunk instance
    */
-  registerThunk(parentId?: string): ThunkHandle {
-    const thunkId = uuidv4();
-    debug('thunk', `Registering thunk ${thunkId}${parentId ? ` with parent ${parentId}` : ''}`);
-
-    // Create the thunk instance but don't associate with a window yet
-    // The window ID will be set later via setSourceWindowId
-    const thunk = new Thunk(thunkId, 0, parentId);
-    this.thunks.set(thunkId, thunk);
+  registerThunk(thunk: Thunk): ThunkHandle {
+    this.thunks.set(thunk.id, thunk);
 
     // If this thunk has a parent, add it as a child of the parent
-    if (parentId && this.thunks.has(parentId)) {
-      const parentThunk = this.thunks.get(parentId)!;
-      parentThunk.addChild(thunkId);
+    if (thunk.parentId && this.thunks.has(thunk.parentId)) {
+      const parentThunk = this.thunks.get(thunk.parentId)!;
+      parentThunk.addChild(thunk.id);
     }
 
     // Emit event
@@ -91,47 +70,12 @@ export class ThunkManager extends EventEmitter {
 
     // Return a handle for this thunk
     return {
-      thunkId,
-      markExecuting: () => this.markThunkExecuting(thunkId),
-      markCompleted: (result?: unknown) => this.markThunkCompleted(thunkId, result),
-      markFailed: (error: Error) => this.markThunkFailed(thunkId, error),
-      addChildThunk: (childId: string) => this.addChildThunk(thunkId, childId),
-      childCompleted: (childId: string) => this.childCompleted(thunkId, childId),
-      addAction: (actionId: string) => this.addAction(thunkId, actionId),
-      setSourceWindowId: (windowId: number) => this.setSourceWindowId(thunkId, windowId),
-    };
-  }
-
-  /**
-   * Register a new thunk with a specific ID
-   */
-  registerThunkWithId(thunkId: string, parentId?: string): ThunkHandle {
-    debug('thunk', `Registering thunk with specific ID ${thunkId}${parentId ? ` with parent ${parentId}` : ''}`);
-
-    // Create the thunk instance but don't associate with a window yet
-    // The window ID will be set later via setSourceWindowId
-    const thunk = new Thunk(thunkId, 0, parentId);
-    this.thunks.set(thunkId, thunk);
-
-    // If this thunk has a parent, add it as a child of the parent
-    if (parentId && this.thunks.has(parentId)) {
-      const parentThunk = this.thunks.get(parentId)!;
-      parentThunk.addChild(thunkId);
-    }
-
-    // Emit event
-    this.emit(ThunkManagerEvent.THUNK_REGISTERED, thunk);
-
-    // Return a handle for this thunk
-    return {
-      thunkId,
-      markExecuting: () => this.markThunkExecuting(thunkId),
-      markCompleted: (result?: unknown) => this.markThunkCompleted(thunkId, result),
-      markFailed: (error: Error) => this.markThunkFailed(thunkId, error),
-      addChildThunk: (childId: string) => this.addChildThunk(thunkId, childId),
-      childCompleted: (childId: string) => this.childCompleted(thunkId, childId),
-      addAction: (actionId: string) => this.addAction(thunkId, actionId),
-      setSourceWindowId: (windowId: number) => this.setSourceWindowId(thunkId, windowId),
+      thunkId: thunk.id,
+      markExecuting: () => this.markThunkExecuting(thunk.id),
+      markCompleted: () => this.markThunkCompleted(thunk.id),
+      markFailed: () => this.markThunkFailed(thunk.id),
+      addChildThunk: (childId: string) => this.addChildThunk(thunk.id, childId),
+      setSourceWindowId: (windowId: number) => this.setSourceWindowId(thunk.id, windowId),
     };
   }
 
@@ -150,7 +94,7 @@ export class ThunkManager extends EventEmitter {
   /**
    * Mark a thunk as completed
    */
-  markThunkCompleted(thunkId: string, result?: unknown): void {
+  markThunkCompleted(thunkId: string): void {
     const thunk = this.thunks.get(thunkId);
     if (!thunk) return;
 
@@ -165,7 +109,7 @@ export class ThunkManager extends EventEmitter {
   /**
    * Mark a thunk as failed
    */
-  markThunkFailed(thunkId: string, error: Error): void {
+  markThunkFailed(thunkId: string): void {
     const thunk = this.thunks.get(thunkId);
     if (!thunk) return;
 
@@ -185,22 +129,6 @@ export class ThunkManager extends EventEmitter {
     if (!parentThunk) return;
 
     parentThunk.addChild(childId);
-  }
-
-  /**
-   * Notify that a child thunk has completed
-   */
-  childCompleted(parentId: string, childId: string): void {
-    // This is a no-op in our new implementation since we check the actual state
-    // of child thunks in isThunkTreeComplete
-  }
-
-  /**
-   * Add an action to a thunk
-   */
-  addAction(thunkId: string, actionId: string): void {
-    // This is a no-op in our new implementation
-    // We don't track individual actions on thunks anymore
   }
 
   /**
@@ -242,19 +170,19 @@ export class ThunkManager extends EventEmitter {
   /**
    * Process a thunk-related action
    */
-  processThunkAction(action: Action, sourceWindowId: number): void {
+  processThunkAction(action: Action): void {
     const thunkId = action.__thunkParentId;
     if (!thunkId || !this.thunks.has(thunkId)) return;
 
     const thunk = this.thunks.get(thunkId)!;
 
-    // Determine action type based on action.type
-    if (isThunkStartAction(action)) {
+    // Use explicit metadata to determine thunk start/end
+    if (action.__startsThunk) {
       debug('thunk', `Activating thunk ${thunkId} from action ${action.type}`);
       thunk.activate();
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.THUNK_STARTED, thunk);
-    } else if (isThunkEndAction(action)) {
+    } else if (action.__endsThunk) {
       debug('thunk', `Completing thunk ${thunkId} from action ${action.type}`);
       thunk.complete();
       this.incrementStateVersion();
@@ -303,27 +231,18 @@ export class ThunkManager extends EventEmitter {
 
     // Get the current active lock from ThunkLockManager for consistency
     const thunkLockManager = getThunkLockManager();
-    const activeLock = thunkLockManager.getActiveThunkLock();
 
     // Only proceed if there's an active lock and it matches our root thunk
-    if (activeLock && activeLock.thunkId === rootId && this.isThunkTreeComplete(rootId)) {
+    if (this.isThunkTreeComplete(rootId)) {
       debug('thunk', `Root thunk tree ${rootId} is complete, releasing lock`);
 
       // Release through ThunkLockManager
-      const released = thunkLockManager.releaseLock(rootId);
+      thunkLockManager.release(rootId);
 
-      if (released) {
-        const previousActiveRootThunkId = rootId;
-        this.activeRootThunkId = undefined; // Keep local state in sync
-        this.incrementStateVersion();
-        this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, previousActiveRootThunkId);
-      } else {
-        debug('thunk', `Failed to release lock for thunk ${rootId} - was not held by this thunk`);
-      }
+      this.incrementStateVersion();
+      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, rootId);
     } else {
       debug('thunk', `Not releasing lock for thunk ${rootId}:`, {
-        hasActiveLock: !!activeLock,
-        activeLockThunkId: activeLock?.thunkId,
         isRootComplete: this.isThunkTreeComplete(rootId),
         requestedRootId: rootId,
       });
@@ -334,23 +253,22 @@ export class ThunkManager extends EventEmitter {
    * Determine if an action can be processed now
    * Delegates to ThunkLockManager for consistency
    */
-  canProcessAction(action: Action, sourceWindowId: number): boolean {
+  canProcessAction(action: Action): boolean {
     const thunkLockManager = getThunkLockManager();
-    return thunkLockManager.canProcessAction(action, sourceWindowId);
+    return thunkLockManager.canProcessAction(action);
   }
 
   /**
    * Try to acquire a lock for processing a thunk
    * Delegates to ThunkLockManager for consistency
    */
-  tryAcquireThunkLock(action: Action, sourceWindowId: number): boolean {
+  tryAcquireThunkLock(action: Action): boolean {
     if (!action.__thunkParentId) return false;
 
     const thunkLockManager = getThunkLockManager();
     const rootId = this.getRootThunkId(action.__thunkParentId);
-
-    if (thunkLockManager.tryAcquireLock(rootId, sourceWindowId)) {
-      this.activeRootThunkId = rootId;
+    const thunk = this.thunks.get(rootId);
+    if (thunk && thunkLockManager.acquire(rootId, thunk.keys, thunk.force)) {
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, rootId);
       return true;
@@ -372,8 +290,7 @@ export class ThunkManager extends EventEmitter {
 
     const thunkLockManager = getThunkLockManager();
 
-    if (thunkLockManager.tryAcquireLock(thunkId, thunk.sourceWindowId)) {
-      this.activeRootThunkId = thunkId;
+    if (thunkLockManager.acquire(thunkId, thunk.keys, thunk.force)) {
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, thunkId);
       return true;
@@ -427,24 +344,6 @@ export class ThunkManager extends EventEmitter {
   private incrementStateVersion(): number {
     return ++this.stateVersion;
   }
-}
-
-/**
- * Determine if an action represents a thunk start
- */
-function isThunkStartAction(action: Action): boolean {
-  return (
-    action.type.includes('START') ||
-    action.type.includes('THUNK') ||
-    (action.type.includes(':SET:') && !action.type.includes('SLOW'))
-  );
-}
-
-/**
- * Determine if an action represents a thunk end
- */
-function isThunkEndAction(action: Action): boolean {
-  return action.type.includes('END') || action.type.includes('COMPLETE') || action.type.includes(':SLOW:DONE');
 }
 
 // Singleton instance of ThunkManager

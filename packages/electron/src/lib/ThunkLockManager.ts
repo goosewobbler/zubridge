@@ -1,15 +1,6 @@
 import { EventEmitter } from 'events';
 import { debug } from '@zubridge/core';
-import type { Action as BaseAction } from '@zubridge/types';
-
-/**
- * Extended Action interface with thunk-related fields
- */
-interface Action extends BaseAction {
-  __sourceWindowId?: number;
-  __thunkParentId?: string;
-  __startsThunk?: boolean;
-}
+import type { Action } from '@zubridge/types';
 
 /**
  * Thunk lock states
@@ -39,15 +30,19 @@ interface ActiveThunkLock {
 }
 
 /**
- * Centralized thunk lock state machine
- * This ensures all action processing respects the same locking rules
+ * ThunkLockManager now supports key-based locking.
+ * - Multiple thunks can run concurrently if their key sets do not overlap.
+ * - A thunk with no keys is a global lock (blocks all others).
+ * - A thunk with 'force' bypasses all locks.
  */
 export class ThunkLockManager extends EventEmitter {
   private state: ThunkLockState = ThunkLockState.IDLE;
   private activeThunkLock: ActiveThunkLock | null = null;
+  private activeThunks: Map<string, { keys?: string[]; force?: boolean }>; // thunkId -> { keys, force }
 
   constructor() {
     super();
+    this.activeThunks = new Map();
     debug('thunk-lock', 'ThunkLockManager initialized');
   }
 
@@ -66,74 +61,82 @@ export class ThunkLockManager extends EventEmitter {
   }
 
   /**
-   * Attempt to acquire a thunk lock for a specific thunk
-   * @param thunkId - The ID of the thunk requesting the lock
-   * @param windowId - The window ID where the thunk is running
-   * @returns true if lock was acquired, false if blocked
+   * Attempt to acquire a lock for a thunk.
+   * @param thunkId Unique ID for the thunk
+   * @param keys Keys this thunk will affect (undefined = global lock)
+   * @param force If true, bypass all locks
+   * @returns true if lock acquired, false if blocked
    */
-  tryAcquireLock(thunkId: string, windowId: number): boolean {
-    debug('thunk-lock', `Attempting to acquire lock for thunk ${thunkId} from window ${windowId}`);
-
-    // State machine transition: IDLE -> LOCKED
-    if (this.state === ThunkLockState.IDLE) {
-      this.state = ThunkLockState.LOCKED;
-      this.activeThunkLock = {
-        thunkId,
-        windowId,
-        acquiredAt: Date.now(),
-      };
-
-      debug('thunk-lock', `Lock acquired for thunk ${thunkId} from window ${windowId}`);
-      this.emit(ThunkLockEvent.LOCK_ACQUIRED, this.activeThunkLock);
+  acquire(thunkId: string, keys?: string[], force?: boolean): boolean {
+    if (force) {
+      this.activeThunks.set(thunkId, { keys, force });
       return true;
     }
-
-    // State machine invariant: LOCKED -> LOCKED (rejected)
-    if (this.state === ThunkLockState.LOCKED) {
-      debug(
-        'thunk-lock',
-        `Lock denied for thunk ${thunkId} - already locked by thunk ${this.activeThunkLock?.thunkId} from window ${this.activeThunkLock?.windowId}`,
-      );
-      return false;
+    // If any active thunk is a global lock, block
+    for (const { keys: activeKeys, force: activeForce } of this.activeThunks.values()) {
+      if (activeForce) continue; // ignore forced thunks
+      if (!activeKeys) return false; // global lock present
     }
+    // If this is a global lock, block if any non-forced thunks are active
+    if (!keys) {
+      for (const { force: activeForce } of this.activeThunks.values()) {
+        if (!activeForce) return false;
+      }
+      this.activeThunks.set(thunkId, { keys, force });
+      return true;
+    }
+    // Otherwise, check for key overlap
+    for (const { keys: activeKeys, force: activeForce } of this.activeThunks.values()) {
+      if (activeForce) continue;
+      if (!activeKeys) return false; // global lock present
+      if (activeKeys.some((k) => keys.includes(k)) || keys.some((k) => activeKeys.includes(k))) {
+        return false; // overlap
+      }
+    }
+    this.activeThunks.set(thunkId, { keys, force });
+    return true;
+  }
 
+  /**
+   * Release a lock for a thunk.
+   */
+  release(thunkId: string): void {
+    this.activeThunks.delete(thunkId);
+  }
+
+  /**
+   * Check if a lock is held for the given keys (or global).
+   * @param keys Keys to check (undefined = global)
+   */
+  isLocked(keys?: string[]): boolean {
+    // If any forced thunks, ignore them
+    for (const { keys: activeKeys, force: activeForce } of this.activeThunks.values()) {
+      if (activeForce) continue;
+      if (!activeKeys) return true; // global lock present
+      if (!keys) return true; // global lock requested, but other locks present
+      if (activeKeys.some((k) => keys.includes(k)) || keys.some((k) => activeKeys.includes(k))) {
+        return true; // overlap
+      }
+    }
     return false;
   }
 
   /**
-   * Release the thunk lock for a specific thunk
-   * @param thunkId - The ID of the thunk releasing the lock
-   * @returns true if lock was released, false if not held by this thunk
+   * Get a summary of active thunks (for debugging/monitoring).
    */
-  releaseLock(thunkId: string): boolean {
-    debug('thunk-lock', `Attempting to release lock for thunk ${thunkId}`);
-
-    // State machine invariant: Can only release if we hold the lock
-    if (this.state === ThunkLockState.LOCKED && this.activeThunkLock?.thunkId === thunkId) {
-      const releasedLock = this.activeThunkLock;
-
-      // State machine transition: LOCKED -> IDLE
-      this.state = ThunkLockState.IDLE;
-      this.activeThunkLock = null;
-
-      debug('thunk-lock', `Lock released for thunk ${thunkId} (held for ${Date.now() - releasedLock.acquiredAt}ms)`);
-      this.emit(ThunkLockEvent.LOCK_RELEASED, releasedLock);
-      return true;
-    }
-
-    debug('thunk-lock', `Cannot release lock for thunk ${thunkId} - not currently held by this thunk`);
-    return false;
+  getActiveThunksSummary() {
+    return Array.from(this.activeThunks.entries()).map(([id, { keys, force }]) => ({ id, keys, force }));
   }
 
   /**
    * Check if an action can be processed based on the current thunk lock state
    * This implements global thunk blocking - when any thunk is active, only actions from that thunk are allowed
    */
-  canProcessAction(action: Action, sourceWindowId: number): boolean {
+  canProcessAction(action: Action): boolean {
     // State machine rule: IDLE state allows all actions
     if (this.state === ThunkLockState.IDLE) {
-      debug('thunk-lock', `Action ${action.type} from window ${sourceWindowId} allowed - no active thunk`);
-      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, sourceWindowId, reason: 'no-active-thunk' });
+      debug('thunk-lock', `Action ${action.type} allowed - no active thunk`);
+      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'no-active-thunk' });
       return true;
     }
 
@@ -141,26 +144,23 @@ export class ThunkLockManager extends EventEmitter {
     if (this.state === ThunkLockState.LOCKED && this.activeThunkLock) {
       // Only actions that are part of the currently active thunk are allowed
       if (action.__thunkParentId === this.activeThunkLock.thunkId) {
-        debug(
-          'thunk-lock',
-          `Action ${action.type} from window ${sourceWindowId} allowed - part of active thunk ${this.activeThunkLock.thunkId}`,
-        );
-        this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, sourceWindowId, reason: 'same-thunk' });
+        debug('thunk-lock', `Action ${action.type} allowed - part of active thunk ${this.activeThunkLock.thunkId}`);
+        this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'same-thunk' });
         return true;
       }
 
       // All other actions are blocked globally during thunk execution
       debug(
         'thunk-lock',
-        `Action ${action.type} from window ${sourceWindowId} blocked - thunk ${this.activeThunkLock.thunkId} is active (global blocking)`,
+        `Action ${action.type} blocked - thunk ${this.activeThunkLock.thunkId} is active (global blocking)`,
       );
-      this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, sourceWindowId, reason: 'global-thunk-blocking' });
+      this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-thunk-blocking' });
       return false;
     }
 
     // Default: allow the action
-    debug('thunk-lock', `Action ${action.type} from window ${sourceWindowId} allowed - default case`);
-    this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, sourceWindowId, reason: 'default' });
+    debug('thunk-lock', `Action ${action.type} allowed - default case`);
+    this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'default' });
     return true;
   }
 

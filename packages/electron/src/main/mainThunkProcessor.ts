@@ -1,11 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Thunk, Dispatch, StateManager, ProcessResult } from '@zubridge/types';
-import { getThunkManager } from '../lib/ThunkManager.js';
-import { actionQueue } from './actionQueue.js';
-import { IpcChannel } from '../constants.js';
-import { BrowserWindow } from 'electron';
 import { debug } from '@zubridge/core';
+import type { Action, AnyState, Thunk, Dispatch, StateManager, DispatchOptions } from '@zubridge/types';
+import { getThunkManager } from '../lib/ThunkManager.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
+import { actionQueue } from './actionQueue.js';
+import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
@@ -71,14 +70,14 @@ export class MainThunkProcessor {
   /**
    * Execute a thunk in the main process
    */
-  public async executeThunk<S extends AnyState>(thunk: Thunk<S>): Promise<any> {
+  public async executeThunk<S extends AnyState>(
+    thunk: Thunk<S>,
+    options?: DispatchOptions,
+    parentId?: string,
+  ): Promise<any> {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before executing thunks.');
     }
-
-    // Generate a thunk ID for this execution
-    const thunkId = uuidv4();
-    debug('core', `[MAIN_THUNK] Executing thunk with ID: ${thunkId}`);
 
     // Register the thunk using the mainThunkRegistrationQueue (returns a promise that resolves when lock is acquired and registered)
     const MAIN_PROCESS_WINDOW_ID = 0;
@@ -86,25 +85,34 @@ export class MainThunkProcessor {
     const currentActiveRootThunk = thunkManager.getActiveRootThunkId();
     const activeThunksSummary = thunkManager.getActiveThunksSummary();
 
+    const thunkObj = new ThunkClass({
+      sourceWindowId: MAIN_PROCESS_WINDOW_ID,
+      type: 'main',
+      parentId,
+      keys: options?.keys,
+      force: options?.force,
+    });
+
+    debug('core', `[MAIN_THUNK] Executing thunk with ID: ${thunkObj.id}${parentId ? ` (parent: ${parentId})` : ''}`);
     debug('core', `[MAIN_THUNK] Current active root thunk: ${currentActiveRootThunk || 'none'}`);
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
     debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
-
     await this.mainThunkRegistrationQueue.registerThunk(
-      thunkId,
-      MAIN_PROCESS_WINDOW_ID,
-      undefined,
-      'main',
+      thunkObj,
       async () => {
         try {
           // Create a dispatch function for the thunk that tracks each action
-          const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
+          // This dispatch is "scoped" to the parent's keys/force
+          const dispatch: Dispatch<S> = async (action: any, payload?: unknown, _childOptions?: DispatchOptions) => {
+            // Only allow the same keys/force as the parent (no escalation)
+            const effectiveOptions = { ...options };
             if (typeof action === 'function') {
-              debug('core', `[MAIN_THUNK] Handling nested thunk from ${thunkId}`);
-              const result = await this.executeThunk(action);
+              debug('core', `[MAIN_THUNK] Handling nested thunk from ${thunkObj.id}`);
+              // Pass down the same options to nested thunks, and pass current thunkId as parentId
+              const result = await this.executeThunk(action as Thunk<S>, effectiveOptions, thunkObj.id);
               return result;
             }
-            return this.dispatchAction(action, payload, thunkId);
+            return this.dispatchAction(action, payload, thunkObj.id, effectiveOptions);
           };
 
           // Get state function
@@ -119,32 +127,37 @@ export class MainThunkProcessor {
           debug('core', '[MAIN_THUNK] Thunk executed successfully, result:', result);
 
           // Mark thunk as completed
-          thunkManager.markThunkCompleted(thunkId, result);
+          thunkManager.markThunkCompleted(thunkObj.id);
           return result;
         } catch (error) {
           debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
-          thunkManager.markThunkFailed(thunkId, error as Error);
+          thunkManager.markThunkFailed(thunkObj.id);
           throw error;
         }
       },
+      undefined, // rendererCallback
     );
     return undefined;
   }
 
   /**
-   * Process an action with our state manager
+   * Process an action with our state manager, supporting options (keys/force)
    */
-  public processAction(action: Action | string, payload?: unknown): void {
+  public processAction(action: Action | string, options?: DispatchOptions): void {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before processing actions.');
     }
 
     // Convert string actions to object form
     const actionObj: Action =
-      typeof action === 'string' ? { type: action, payload, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
+      typeof action === 'string' ? { type: action, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
 
     // Mark the action as originating from the main process
-    (actionObj as any).__isFromMainProcess = true;
+    actionObj.__isFromMainProcess = true;
+
+    // Attach keys/force to the action for downstream processing
+    if (options?.keys) actionObj.__keys = options.keys;
+    if (options?.force) actionObj.__force = options.force;
 
     // Process the action
     debug('core', `[MAIN_THUNK] Processing standalone action: ${actionObj.type}`);
@@ -152,9 +165,14 @@ export class MainThunkProcessor {
   }
 
   /**
-   * Dispatch an action as part of a thunk
+   * Dispatch an action as part of a thunk or as a standalone action, supporting options (keys/force)
    */
-  private async dispatchAction(action: Action | string, payload?: unknown, parentId?: string): Promise<any> {
+  private async dispatchAction(
+    action: Action | string,
+    payload?: unknown,
+    parentId?: string,
+    options?: DispatchOptions,
+  ): Promise<any> {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before dispatching actions.');
     }
@@ -173,21 +191,32 @@ export class MainThunkProcessor {
 
     // Add metadata for thunks
     if (parentId) {
-      (actionObj as any).__thunkParentId = parentId;
+      actionObj.__thunkParentId = parentId;
 
       // Mark the first action in a thunk with __startsThunk
       if (isFirstActionForThunk) {
         debug('core', `[MAIN_THUNK] Marking action ${actionObj.id} as starting thunk ${parentId}`);
-        (actionObj as any).__startsThunk = true;
+        actionObj.__startsThunk = true;
         this.sentFirstActionForThunk.add(parentId);
       }
 
       // Ensure thunk is registered before enqueueing the action
       if (!getThunkManager().hasThunk(parentId)) {
         debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.id}`);
-        await this.mainThunkRegistrationQueue.registerThunk(parentId, 0, undefined, 'main');
+        const thunkObj = new ThunkClass({
+          id: parentId,
+          sourceWindowId: 0,
+          type: 'main',
+          keys: options?.keys,
+          force: options?.force,
+        });
+        await this.mainThunkRegistrationQueue.registerThunk(thunkObj);
       }
     }
+
+    // Attach keys/force to the action for downstream processing
+    if (options?.keys) actionObj.__keys = options.keys;
+    if (options?.force) actionObj.__force = options.force;
 
     // Mark as from main process (use a special source window ID for main process)
     const MAIN_PROCESS_WINDOW_ID = 0;
@@ -213,9 +242,6 @@ export class MainThunkProcessor {
       const onComplete = () => {
         clearTimeout(timeout);
         debug('core', `[MAIN_THUNK] Action ${actionObj.id} completed through action queue`);
-
-        // Get the current state after the action has been processed
-        const currentState = this.stateManager?.getState();
 
         // Complete the action (this will resolve our promise)
         this.completeAction(actionObj.id!);

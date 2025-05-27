@@ -1,4 +1,4 @@
-import type { Action, AnyState, Dispatch, StateManager, Thunk } from '@zubridge/types';
+import type { Action, AnyState, Dispatch, DispatchOptions, StateManager, Thunk } from '@zubridge/types';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import { ZustandOptions } from '../adapters/zustand.js';
@@ -44,11 +44,12 @@ export function createDispatch<S extends AnyState>(
     stateManager,
   });
 
-  // Internal dispatch implementation that accepts parentId
+  // Internal dispatch implementation that accepts parentId and options
   const internalDispatch = async (
     actionOrThunk: Thunk<S> | Action | string,
     payload?: unknown,
     parentId?: string,
+    options?: DispatchOptions,
   ): Promise<any> => {
     try {
       debug('core', 'Dispatching from main process');
@@ -59,8 +60,8 @@ export function createDispatch<S extends AnyState>(
         const thunkFunction = actionOrThunk as Thunk<S>;
 
         try {
-          // Execute the thunk without re-initializing the processor
-          const result = await mainThunkProcessor.executeThunk(thunkFunction);
+          // Pass options to mainThunkProcessor
+          const result = await mainThunkProcessor.executeThunk(thunkFunction, options);
           debug('core', 'Thunk execution completed successfully');
           return result;
         } catch (thunkError) {
@@ -92,11 +93,11 @@ export function createDispatch<S extends AnyState>(
           }
 
           // Mark the action as originating from the main process
-          (actionObj as any).__isFromMainProcess = true;
+          actionObj.__isFromMainProcess = true;
 
           // If we have a parent ID, add it to the action
           if (parentId) {
-            (actionObj as any).__thunkParentId = parentId;
+            actionObj.__thunkParentId = parentId;
 
             // Mark this as a thunk start action if it's the first action with this parent
             if (mainThunkProcessor.isFirstActionForThunk(parentId)) {
@@ -105,8 +106,8 @@ export function createDispatch<S extends AnyState>(
             }
           }
 
-          // Process the action
-          mainThunkProcessor.processAction(actionObj);
+          // Pass options to mainThunkProcessor
+          mainThunkProcessor.processAction(actionObj, options);
 
           // Return the action object
           return actionObj;
@@ -122,8 +123,12 @@ export function createDispatch<S extends AnyState>(
   };
 
   // Create the public dispatch function with the standard interface
-  const dispatch: Dispatch<S> = (actionOrThunk: Thunk<S> | Action | string, payload?: unknown): Promise<any> => {
-    return internalDispatch(actionOrThunk, payload);
+  const dispatch: Dispatch<S> = (
+    actionOrThunk: Thunk<S> | Action | string,
+    payload?: unknown,
+    options?: DispatchOptions,
+  ): Promise<any> => {
+    return internalDispatch(actionOrThunk, payload, undefined, options);
   };
 
   return dispatch;

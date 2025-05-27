@@ -95,47 +95,42 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       }
     },
 
-    dispatch(action: string | Action | Thunk<S>, payload?: unknown, parentId?: string) {
+    dispatch(
+      action: string | Action | Thunk<S>,
+      payloadOrOptions?: unknown | { keys?: string[]; force?: boolean },
+      options?: { keys?: string[]; force?: boolean },
+    ) {
       // Handle string actions
       if (typeof action === 'string') {
-        debug('ipc', `Dispatching string action: ${action}${parentId ? ` with parent: ${parentId}` : ''}`);
-
+        const payload = options === undefined && typeof payloadOrOptions !== 'object' ? payloadOrOptions : undefined;
+        debug('ipc', `Dispatching string action: ${action}`);
         const actionObj: Action = {
           type: action,
           payload: payload,
           id: uuidv4(),
         };
-
         debug('ipc', `Created action object with ID: ${actionObj.id}`);
-
         // Dispatch directly to main process through the thunk processor
-        return thunkProcessor.dispatchAction(actionObj, payload, parentId).then(() => actionObj);
+        return thunkProcessor.dispatchAction(actionObj, payload).then(() => actionObj);
       }
-
       // Handle thunks (functions)
       if (typeof action === 'function') {
         debug('ipc', 'Executing thunk in renderer');
-        debug('ipc', `Executing thunk in renderer${parentId ? ` with parent: ${parentId}` : ''}`);
-
         // Create a getState function that uses the handlers.getState
         const getState = async () => {
           debug('ipc', 'Getting state for thunk via handlers.getState');
           return handlers.getState();
         };
-
         // Execute the thunk through the thunk processor
-        return thunkProcessor.executeThunk(action, getState, parentId);
+        return thunkProcessor.executeThunk(action as Thunk<S>, getState);
       }
 
       // It's an action object
       // Ensure action has an ID
       const actionObj = { ...action, id: action.id || uuidv4() };
-
-      // Log the dispatch
       debug('ipc', `Dispatching action: ${actionObj.type}`);
-
       // Dispatch directly to main process
-      return thunkProcessor.dispatchAction(actionObj, payload, parentId).then(() => actionObj);
+      return thunkProcessor.dispatchAction(actionObj).then(() => actionObj);
     },
   };
 
@@ -145,7 +140,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
     // Set up acknowledgment listener
     debug('ipc', 'Set up IPC acknowledgement listener');
-    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (event: IpcRendererEvent, payload: any) => {
+    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (_event: IpcRendererEvent, payload: any) => {
       const { actionId, thunkState } = payload || {};
 
       debug('ipc', `Received acknowledgment for action: ${actionId}`);

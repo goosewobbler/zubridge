@@ -9,6 +9,12 @@ export type Action<T extends string = string> = {
   id?: string; // Unique identifier for tracking action acknowledgements
   __thunkParentId?: string; // Parent thunk ID if action is part of a thunk
   __sourceWindowId?: number; // Source window ID where the action originated
+  __keys?: string[];
+  __force?: boolean;
+  __isFromMainProcess?: boolean;
+  __startsThunk?: boolean;
+  __endsThunk?: boolean;
+  __requiresWindowSync?: boolean;
 };
 
 export type AnyState = Record<string, unknown>;
@@ -86,10 +92,12 @@ export type MainZustandBridge = <S extends AnyState, Store extends StoreApi<S>>(
   options?: MainZustandBridgeOpts<S>,
 ) => ZustandBridge;
 
+export type DispatchOptions = { keys?: string[]; force?: boolean };
+
 export type Dispatch<S> = {
-  (action: string, payload?: unknown): Promise<any>;
-  (action: Action): Promise<any>;
-  (action: Thunk<S>): Promise<any>;
+  (action: string, payload?: unknown, options?: DispatchOptions): Promise<any>;
+  (action: Action, options?: DispatchOptions): Promise<any>;
+  (action: Thunk<S>, options?: DispatchOptions): Promise<any>;
 };
 
 interface BaseHandler<S> {
@@ -117,16 +125,19 @@ export type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialStat
  */
 export type DispatchFunc<S, TActions extends Record<string, any> = Record<string, any>> = {
   // Handle thunks
-  (action: Thunk<S>): Promise<any>;
+  (action: Thunk<S>, options?: DispatchOptions): Promise<any>;
 
   // Handle string action types with optional payload
-  (action: string, payload?: unknown): Promise<any>;
+  (action: string, payload?: unknown, options?: DispatchOptions): Promise<any>;
 
   // Handle strongly typed action objects
-  <TType extends keyof TActions>(action: { type: TType; payload?: TActions[TType] }): Promise<any>;
+  <TType extends keyof TActions>(
+    action: { type: TType; payload?: TActions[TType] },
+    options?: DispatchOptions,
+  ): Promise<any>;
 
   // Handle generic action objects
-  (action: Action): Promise<any>;
+  (action: Action, options?: DispatchOptions): Promise<any>;
 };
 
 /**
