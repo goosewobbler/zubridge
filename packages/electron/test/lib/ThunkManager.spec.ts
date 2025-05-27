@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
 import { ThunkState } from '@zubridge/types';
+import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
+import { Thunk as ThunkClass } from '../../src/lib/Thunk.js';
 
 describe('ThunkManager', () => {
   let thunkManager: ThunkManager;
@@ -12,75 +13,86 @@ describe('ThunkManager', () => {
 
   describe('thunk registration', () => {
     it('should register a new thunk', () => {
-      const thunkHandle = thunkManager.registerThunk();
+      const thunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       expect(thunkHandle.thunkId).toBeDefined();
       expect(thunkManager.hasThunk(thunkHandle.thunkId)).toBe(true);
     });
 
     it('should register a thunk with a specific ID', () => {
       const customId = 'custom-thunk-id';
-      const thunkHandle = thunkManager.registerThunkWithId(customId);
+      const thunk = new ThunkClass({ id: customId, sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       expect(thunkHandle.thunkId).toBe(customId);
       expect(thunkManager.hasThunk(customId)).toBe(true);
     });
 
     it('should register a child thunk', () => {
-      const parentHandle = thunkManager.registerThunk();
-      const childHandle = thunkManager.registerThunk(parentHandle.thunkId);
+      const parentThunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const parentHandle = thunkManager.registerThunk(parentThunk);
+      const childThunk = new ThunkClass({ sourceWindowId: 0, type: 'main', parentId: parentHandle.thunkId });
+      const childHandle = thunkManager.registerThunk(childThunk);
 
       // Get the parent thunk and check if it has the child
-      const parentThunk = thunkManager.getThunk(parentHandle.thunkId);
-      expect(parentThunk).toBeDefined();
-      expect(parentThunk!.getChildren()).toContain(childHandle.thunkId);
+      const parentThunkObj = thunkManager.getThunk(parentHandle.thunkId);
+      expect(parentThunkObj).toBeDefined();
+      expect(parentThunkObj!.getChildren()).toContain(childHandle.thunkId);
     });
   });
 
   describe('thunk state management', () => {
     it('should mark a thunk as executing', () => {
-      const thunkHandle = thunkManager.registerThunk();
+      const thunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       thunkHandle.markExecuting();
 
-      const thunk = thunkManager.getThunk(thunkHandle.thunkId);
-      expect(thunk!.state).toBe(ThunkState.EXECUTING);
+      const thunkObj = thunkManager.getThunk(thunkHandle.thunkId);
+      expect(thunkObj!.state).toBe(ThunkState.EXECUTING);
     });
 
     it('should mark a thunk as completed', () => {
-      const thunkHandle = thunkManager.registerThunk();
+      const thunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       thunkHandle.markExecuting();
       thunkHandle.markCompleted();
 
-      const thunk = thunkManager.getThunk(thunkHandle.thunkId);
-      expect(thunk!.state).toBe(ThunkState.COMPLETED);
+      const thunkObj = thunkManager.getThunk(thunkHandle.thunkId);
+      expect(thunkObj!.state).toBe(ThunkState.COMPLETED);
     });
 
     it('should mark a thunk as failed', () => {
-      const thunkHandle = thunkManager.registerThunk();
+      const thunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       thunkHandle.markExecuting();
       thunkHandle.markFailed(new Error('Test error'));
 
-      const thunk = thunkManager.getThunk(thunkHandle.thunkId);
-      expect(thunk!.state).toBe(ThunkState.FAILED);
+      const thunkObj = thunkManager.getThunk(thunkHandle.thunkId);
+      expect(thunkObj!.state).toBe(ThunkState.FAILED);
     });
   });
 
   describe('window ID management', () => {
     it('should set the source window ID for a thunk', () => {
-      const thunkHandle = thunkManager.registerThunk();
+      const thunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       const windowId = 12345;
 
       thunkHandle.setSourceWindowId(windowId);
 
-      const thunk = thunkManager.getThunk(thunkHandle.thunkId);
-      expect(thunk!.sourceWindowId).toBe(windowId);
+      const thunkObj = thunkManager.getThunk(thunkHandle.thunkId);
+      expect(thunkObj!.sourceWindowId).toBe(windowId);
     });
   });
 
   describe('active thunk summaries', () => {
     it('should return active thunks summary', () => {
       // Register multiple thunks in different states
-      const thunk1 = thunkManager.registerThunk();
-      const thunk2 = thunkManager.registerThunk();
-      const thunk3 = thunkManager.registerThunk();
+      const t1 = new ThunkClass({ sourceWindowId: 1, type: 'main' });
+      const t2 = new ThunkClass({ sourceWindowId: 2, type: 'main' });
+      const t3 = new ThunkClass({ sourceWindowId: 3, type: 'main' });
+      const thunk1 = thunkManager.registerThunk(t1);
+      const thunk2 = thunkManager.registerThunk(t2);
+      const thunk3 = thunkManager.registerThunk(t3);
 
       // Set window IDs
       thunk1.setSourceWindowId(1);
@@ -110,11 +122,14 @@ describe('ThunkManager', () => {
   describe('thunk tree management', () => {
     it('should check if a thunk tree is complete', () => {
       // Create parent thunk
-      const parentHandle = thunkManager.registerThunk();
+      const parentThunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const parentHandle = thunkManager.registerThunk(parentThunk);
 
       // Create two child thunks
-      const child1Handle = thunkManager.registerThunk(parentHandle.thunkId);
-      const child2Handle = thunkManager.registerThunk(parentHandle.thunkId);
+      const child1Thunk = new ThunkClass({ sourceWindowId: 0, type: 'main', parentId: parentHandle.thunkId });
+      const child2Thunk = new ThunkClass({ sourceWindowId: 0, type: 'main', parentId: parentHandle.thunkId });
+      const child1Handle = thunkManager.registerThunk(child1Thunk);
+      const child2Handle = thunkManager.registerThunk(child2Thunk);
 
       // Mark parent as completed
       parentHandle.markExecuting();
@@ -142,24 +157,26 @@ describe('ThunkManager', () => {
   describe('root thunk locking', () => {
     it('should process thunk actions sequentially', () => {
       // Create two thunks
-      const thunk1 = thunkManager.registerThunk();
-      const thunk2 = thunkManager.registerThunk();
+      const t1 = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const t2 = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunk1 = thunkManager.registerThunk(t1);
+      const thunk2 = thunkManager.registerThunk(t2);
 
       // Create mock actions
       const action1 = { type: 'ACTION1', id: '1', __thunkParentId: thunk1.thunkId };
       const action2 = { type: 'ACTION2', id: '2', __thunkParentId: thunk2.thunkId };
 
       // Try to acquire lock for first thunk action
-      const acquired1 = thunkManager.tryAcquireThunkLock(action1, 1);
+      const acquired1 = thunkManager.tryAcquireThunkLock(action1);
       expect(acquired1).toBe(true);
 
       // Should not be able to acquire lock for second thunk while first is active
-      const acquired2 = thunkManager.tryAcquireThunkLock(action2, 2);
+      const acquired2 = thunkManager.tryAcquireThunkLock(action2);
       expect(acquired2).toBe(false);
 
       // Check canProcessAction
-      expect(thunkManager.canProcessAction(action1, 1)).toBe(true);
-      expect(thunkManager.canProcessAction(action2, 2)).toBe(false);
+      expect(thunkManager.canProcessAction(action1)).toBe(true);
+      expect(thunkManager.canProcessAction(action2)).toBe(false);
 
       // Mark first thunk as completed
       thunk1.markExecuting();
@@ -169,7 +186,7 @@ describe('ThunkManager', () => {
       thunkManager.checkAndReleaseRootThunkLock(thunk1.thunkId);
 
       // Now should be able to acquire lock for second thunk
-      const acquiredAfterRelease = thunkManager.tryAcquireThunkLock(action2, 2);
+      const acquiredAfterRelease = thunkManager.tryAcquireThunkLock(action2);
       expect(acquiredAfterRelease).toBe(true);
     });
   });
@@ -184,7 +201,8 @@ describe('ThunkManager', () => {
       thunkManager.on(ThunkManagerEvent.THUNK_STARTED, startedHandler);
       thunkManager.on(ThunkManagerEvent.THUNK_COMPLETED, completedHandler);
 
-      const thunkHandle = thunkManager.registerThunk();
+      const thunk = new ThunkClass({ sourceWindowId: 0, type: 'main' });
+      const thunkHandle = thunkManager.registerThunk(thunk);
       expect(registeredHandler).toHaveBeenCalled();
 
       thunkHandle.markExecuting();

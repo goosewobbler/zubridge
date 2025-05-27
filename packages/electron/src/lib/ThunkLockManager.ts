@@ -130,37 +130,59 @@ export class ThunkLockManager extends EventEmitter {
 
   /**
    * Check if an action can be processed based on the current thunk lock state
-   * This implements global thunk blocking - when any thunk is active, only actions from that thunk are allowed
+   * Implements key-based and global locking.
    */
   canProcessAction(action: Action): boolean {
-    // State machine rule: IDLE state allows all actions
-    if (this.state === ThunkLockState.IDLE) {
-      debug('thunk-lock', `Action ${action.type} allowed - no active thunk`);
-      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'no-active-thunk' });
+    // If no thunks are active, allow all actions
+    if (this.activeThunks.size === 0) {
+      debug('thunk-lock', `Action ${action.type} allowed - no active thunks`);
+      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'no-active-thunks' });
       return true;
     }
 
-    // State machine rule: LOCKED state - global thunk blocking
-    if (this.state === ThunkLockState.LOCKED && this.activeThunkLock) {
-      // Only actions that are part of the currently active thunk are allowed
-      if (action.__thunkParentId === this.activeThunkLock.thunkId) {
-        debug('thunk-lock', `Action ${action.type} allowed - part of active thunk ${this.activeThunkLock.thunkId}`);
-        this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'same-thunk' });
-        return true;
+    // If this action is not associated with a thunk, block if any global lock is present
+    if (!action.__thunkParentId) {
+      for (const { keys, force } of this.activeThunks.values()) {
+        if (force) continue;
+        if (!keys) {
+          debug('thunk-lock', `Action ${action.type} blocked - global lock present`);
+          this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-lock-present' });
+          return false;
+        }
       }
-
-      // All other actions are blocked globally during thunk execution
-      debug(
-        'thunk-lock',
-        `Action ${action.type} blocked - thunk ${this.activeThunkLock.thunkId} is active (global blocking)`,
-      );
-      this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-thunk-blocking' });
-      return false;
+      // No global lock, allow
+      debug('thunk-lock', `Action ${action.type} allowed - not part of a thunk, no global lock`);
+      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'not-part-of-thunk-no-global-lock' });
+      return true;
     }
 
-    // Default: allow the action
-    debug('thunk-lock', `Action ${action.type} allowed - default case`);
-    this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'default' });
+    // Find the active thunk for this action
+    const thisThunk = this.activeThunks.get(action.__thunkParentId);
+    if (!thisThunk) {
+      // If the thunk is not active, block if any global lock or overlapping keys
+      for (const [id, { keys, force }] of this.activeThunks.entries()) {
+        if (force) continue;
+        if (!keys) {
+          debug('thunk-lock', `Action ${action.type} blocked - global lock present`);
+          this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-lock-present' });
+          return false;
+        }
+        // If action has __keys, check for overlap
+        if (action.__keys && keys.some((k) => action.__keys!.includes(k))) {
+          debug('thunk-lock', `Action ${action.type} blocked - key overlap with active thunk ${id}`);
+          this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'key-overlap' });
+          return false;
+        }
+      }
+      // No global lock or overlap, allow
+      debug('thunk-lock', `Action ${action.type} allowed - thunk not active, no global lock/overlap`);
+      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'thunk-not-active-no-global-lock-or-overlap' });
+      return true;
+    }
+
+    // If the thunk is active, allow actions from it
+    debug('thunk-lock', `Action ${action.type} allowed - part of active thunk ${action.__thunkParentId}`);
+    this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'same-thunk' });
     return true;
   }
 

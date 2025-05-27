@@ -447,9 +447,12 @@ export function createCoreBridge<State extends AnyState>(
   ): { unsubscribe: () => void } {
     const wrappers = Array.isArray(windows) ? windows : [windows];
     const unsubs: Array<() => void> = [];
+    const subscribedWebContents: WebContents[] = [];
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents || isDestroyed(webContents)) continue;
+      const tracked = windowTracker.track(webContents);
+      subscribedWebContents.push(webContents);
       let subManager = subscriptionManagers.get(webContents.id);
       if (!subManager) {
         subManager = new SubscriptionManager<State>();
@@ -466,10 +469,16 @@ export function createCoreBridge<State extends AnyState>(
       // Register a subscription for the keys (no callback needed)
       const unsubscribe = subManager.subscribe(keys, () => {});
       unsubs.push(unsubscribe);
+      if (tracked) {
+        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, stateManager.getState());
+      }
     }
     return {
       unsubscribe: () => {
         unsubs.forEach((fn) => fn());
+        subscribedWebContents.forEach((webContents) => {
+          windowTracker.untrack(webContents);
+        });
       },
     };
   }
@@ -486,6 +495,7 @@ export function createCoreBridge<State extends AnyState>(
           subscriptionManagers.delete(webContents.id);
         }
       }
+      windowTracker.untrack(webContents);
     }
   }
 
@@ -507,9 +517,22 @@ export function createCoreBridge<State extends AnyState>(
     // If windows is not provided, unsubscribe all windows
     if (!windows) {
       subscriptionManagers.clear();
+      windowTracker.cleanup();
       return;
     }
-    return selectiveUnsubscribe(windows, keys);
+    const wrappers = Array.isArray(windows) ? windows : [windows];
+    for (const wrapper of wrappers) {
+      const webContents = getWebContents(wrapper);
+      if (!webContents) continue;
+      const subManager = subscriptionManagers.get(webContents.id);
+      if (subManager) {
+        subManager.unsubscribe(keys, () => {});
+        if (subManager.getCurrentSubscriptionKeys().length === 0) {
+          subscriptionManagers.delete(webContents.id);
+        }
+      }
+      windowTracker.untrack(webContents);
+    }
   }
 
   // Get IDs of subscribed windows

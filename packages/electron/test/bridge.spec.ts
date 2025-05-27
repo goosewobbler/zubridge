@@ -48,6 +48,7 @@ vi.mock('../src/utils/windows.js', () => ({
     return false;
   }),
   safelySendToWindow: vi.fn(),
+  setupDestroyListener: vi.fn(),
 }));
 
 // Mock the debug utility
