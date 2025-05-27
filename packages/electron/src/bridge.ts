@@ -424,17 +424,29 @@ export function createCoreBridge<State extends AnyState>(
   // Subscribe to state manager changes and selectively notify windows
   let prevState: State | undefined = undefined;
   const stateManagerUnsubscribe = stateManager.subscribe((state: State) => {
+    debug('core', 'State manager notified of state change');
     const activeWebContents = windowTracker.getActiveWebContents();
+    debug('core', `Notifying ${activeWebContents.length} active windows of state change`);
+
+    // Sanitize state before notifying subscribers
+    const sanitizedState = sanitizeState(state) as State;
+    const sanitizedPrevState = prevState ? (sanitizeState(prevState) as State) : undefined;
+
     for (const webContents of activeWebContents) {
       const windowId = webContents.id;
       const subManager = subscriptionManagers.get(windowId);
-      if (!subManager) continue; // No subscriptions for this window
+      if (!subManager) {
+        debug('core', `No subscription manager for window ${windowId}, skipping`);
+        continue;
+      }
       // Only notify if relevant keys changed
-      if (prevState !== undefined) {
-        subManager.notify(prevState, state);
+      if (sanitizedPrevState !== undefined) {
+        debug('core', `Notifying window ${windowId} of state change`);
+        subManager.notify(sanitizedPrevState, sanitizedState);
       } else {
         // On first run, send full state to all subscribers
-        subManager.notify(state, state);
+        debug('core', `Sending initial state to window ${windowId}`);
+        subManager.notify(sanitizedState, sanitizedState);
       }
     }
     prevState = state;
@@ -466,11 +478,16 @@ export function createCoreBridge<State extends AnyState>(
         });
         destroyListenerSet.add(webContents.id);
       }
-      // Register a subscription for the keys (no callback needed)
-      const unsubscribe = subManager.subscribe(keys, () => {});
+      // Register a subscription for the keys with an actual callback that sends state updates
+      const unsubscribe = subManager.subscribe(keys, (state) => {
+        debug('core', `Sending state update to window ${webContents.id}`);
+        const sanitizedState = sanitizeState(state);
+        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, sanitizedState);
+      });
       unsubs.push(unsubscribe);
       if (tracked) {
-        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, stateManager.getState());
+        const initialState = sanitizeState(stateManager.getState());
+        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, initialState);
       }
     }
     return {
