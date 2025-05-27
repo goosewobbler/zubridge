@@ -36,6 +36,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('[Preload] Invoking create-runtime-window');
     return ipcRenderer.invoke(AppIpcChannel.CREATE_RUNTIME_WINDOW);
   },
+  subscribe: (keys: string[]) => {
+    console.log('[Preload] Invoking subscribe');
+    return ipcRenderer.invoke(AppIpcChannel.SUBSCRIBE, keys);
+  },
+  unsubscribe: (keys: string[]) => {
+    console.log('[Preload] Invoking unsubscribe');
+    return ipcRenderer.invoke(AppIpcChannel.UNSUBSCRIBE, keys);
+  },
 });
 
 // Expose counter API

@@ -1,21 +1,31 @@
-import type { BaseState } from '../../../types.js';
+import { type StoreApi } from 'zustand';
+import { type BaseState } from '@zubridge/apps-shared';
+import { attachCounterHandlers } from './counter/index.js';
+import { attachThemeHandlers } from './theme/index.js';
+import { attachStateHandlers } from './state/index.js';
 
 /**
  * Types for the basic mode state
  * In the basic mode pattern, handlers are attached directly to the state object
  */
 export interface State extends BaseState {
-  // State properties
-  'counter': number;
-  'window': {
-    isOpen: boolean;
-  };
-
   // Action handlers
   'COUNTER:INCREMENT': () => void;
   'COUNTER:DECREMENT': () => void;
   'COUNTER:SET': (value: number) => void;
-  'COUNTER:RESET': () => void;
-  'WINDOW:CREATE': () => void;
-  'WINDOW:CLOSE': (payload?: { windowId?: number }) => void;
+  'COUNTER:SET:SLOW': (value: number) => void;
+  'THEME:TOGGLE': () => void;
+  'THEME:SET': (isDark: boolean) => void;
+  'STATE:RESET': () => void;
+  'STATE:GENERATE-FILLER': () => void;
 }
+
+/**
+ * Attaches all feature handlers to the store
+ */
+export const attachFeatureHandlers = <S extends BaseState>(store: StoreApi<S>) => {
+  // Attach all feature handlers
+  attachCounterHandlers(store);
+  attachThemeHandlers(store);
+  attachStateHandlers(store);
+};

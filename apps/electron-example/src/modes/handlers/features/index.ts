@@ -1,5 +1,8 @@
-import type { BaseState } from '../../../types.js';
+import { type BaseState } from '@zubridge/apps-shared';
 import type { Handler } from '@zubridge/types';
+import { incrementCounter, decrementCounter, setCounter, setCounterSlow } from './counter/index.js';
+import { toggleTheme, setTheme } from './theme/index.js';
+import { resetState, generateLargeState } from './state/index.js';
 
 /**
  * Types for the handlers mode state
@@ -16,7 +19,6 @@ export interface CounterHandlers {
   'COUNTER:DECREMENT': () => void;
   'COUNTER:SET': (value: number) => void;
   'COUNTER:SET:SLOW': (value: number) => void;
-  'COUNTER:RESET': () => void;
 }
 
 /**
@@ -27,5 +29,27 @@ export interface ThemeHandlers {
   'THEME:SET': (isDark: boolean) => void;
 }
 
+/**
+ * State action handlers for the handlers mode
+ */
+export interface StateHandlers {
+  'STATE:RESET': () => void;
+  'STATE:GENERATE-FILLER': () => Promise<void>;
+}
+
 // Define ActionHandlers as a Record<string, Handler> to be compatible with createDispatch
-export type ActionHandlers = Record<string, Handler> & CounterHandlers & ThemeHandlers;
+export type ActionHandlers = Record<string, Handler> & CounterHandlers & ThemeHandlers & StateHandlers;
+
+/**
+ * All handlers for the handlers mode
+ */
+export const handlers = {
+  'COUNTER:INCREMENT': incrementCounter,
+  'COUNTER:DECREMENT': decrementCounter,
+  'COUNTER:SET': setCounter,
+  'COUNTER:SET:SLOW': setCounterSlow,
+  'THEME:TOGGLE': toggleTheme,
+  'THEME:SET': setTheme,
+  'STATE:RESET': resetState,
+  'STATE:GENERATE-FILLER': generateLargeState,
+};

@@ -2,10 +2,10 @@ import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
 
 import { isDev } from '@zubridge/electron';
-import { createDispatch } from '@zubridge/electron/main';
+import { createDispatch, ReduxBridge } from '@zubridge/electron/main';
 import { debug } from '@zubridge/core';
 import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
-import type { WrapperOrWebContents } from '@zubridge/types';
+import type { WebContentsWrapper, WrapperOrWebContents, ZustandBridge } from '@zubridge/types';
 import 'wdio-electron-service/main';
 
 import { store, initStore } from './store.js';
@@ -99,8 +99,8 @@ app
     await initStore();
     debug('store', 'Store initialized');
 
-    let bridge: any; // Declare bridge outside try/catch
-    let subscribe: any; // Declare subscribe outside try/catch
+    let bridge: ZustandBridge | ReduxBridge; // Declare bridge outside try/catch
+    let subscribe: ZustandBridge['subscribe'] | ReduxBridge['subscribe']; // Declare subscribe outside try/catch
 
     try {
       debug('core', 'Attempting to createRequire...');
@@ -524,6 +524,24 @@ app
         debug('core', '[MAIN] Error executing main process slow thunk:', error);
         return { success: false, error: String(error) };
       }
+    });
+
+    ipcMain.handle(AppIpcChannel.SUBSCRIBE, (event, keys: string[]) => {
+      debug('example-app:init', `subscribe request from ${event.sender.id}, keys: ${keys}`);
+      const windowOrView = BrowserWindow.fromWebContents(event.sender);
+      if (keys[0] === '*') {
+        bridge.subscribe([windowOrView as WebContentsWrapper]);
+      } else {
+        bridge.subscribe([windowOrView as WebContentsWrapper], keys);
+      }
+      return { success: true };
+    });
+
+    ipcMain.handle(AppIpcChannel.UNSUBSCRIBE, (event, keys: string[]) => {
+      debug('example-app:init', `unsubscribe request from ${event.sender.id}, keys: ${keys}`);
+      const windowOrView = BrowserWindow.fromWebContents(event.sender);
+      bridge.unsubscribe([windowOrView as WebContentsWrapper], keys);
+      return { success: true };
     });
 
     debug('example-app:init', 'App initialization complete, waiting for events');

@@ -55,14 +55,5 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
       }));
       console.log(`[Basic] Counter set to ${value} after delay`);
     },
-
-    // Implement a reset counter handler
-    'COUNTER:RESET': () => {
-      console.log('[Basic] Resetting counter to 0');
-      setState((state) => ({
-        ...state,
-        counter: 0,
-      }));
-    },
   }));
 };

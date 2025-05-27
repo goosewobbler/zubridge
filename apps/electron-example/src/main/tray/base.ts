@@ -100,9 +100,9 @@ export class BaseSystemTray {
         },
       },
       {
-        label: 'Reset Counter',
+        label: 'Reset State',
         click: () => {
-          dispatch('COUNTER:RESET');
+          dispatch('STATE:RESET');
           showWindow();
         },
       },
