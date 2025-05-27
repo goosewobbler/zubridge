@@ -2,4 +2,7 @@
 export * from './types.js';
 
 // Export thunks
-export * from './thunks/counter.js';
+export * from './thunks/index.js';
+
+// Export state
+export * from './state/index.js';
