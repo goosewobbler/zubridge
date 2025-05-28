@@ -190,7 +190,7 @@ export const getButtonInCurrentWindow = async (
       selector = 'button=Unsubscribe All';
       break;
     case 'toggleTheme':
-      selector = 'button=Toggle Theme';
+      selector = 'button=Switch Theme';
       break;
     case 'generateLargeState':
       selector = 'button=Generate Large State';
