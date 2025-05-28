@@ -57,8 +57,12 @@ export class ActionQueueManager {
       setTimeout(() => this.processQueue(), 50);
       setTimeout(() => this.thunkRegistrationQueue.processNextThunkRegistration(), 50);
     });
+
     // Also subscribe to lock release events for robustness
-    getThunkLockManager().on('lock:released', () => {
+    const thunkLockManager = getThunkLockManager();
+    thunkLockManager.on('lock:released', (thunkId) => {
+      debug('queue', `Lock released for thunk ${thunkId}, processing queue`);
+      setTimeout(() => this.processQueue(), 10);
       setTimeout(() => this.thunkRegistrationQueue.processNextThunkRegistration(), 10);
     });
   }

@@ -101,7 +101,14 @@ export class ThunkLockManager extends EventEmitter {
    * Release a lock for a thunk.
    */
   release(thunkId: string): void {
+    const hadThunk = this.activeThunks.has(thunkId);
     this.activeThunks.delete(thunkId);
+
+    // Emit the lock released event if we actually deleted a thunk
+    if (hadThunk) {
+      debug('thunk-lock', `Released lock for thunk ${thunkId}, emitting LOCK_RELEASED event`);
+      this.emit(ThunkLockEvent.LOCK_RELEASED, thunkId);
+    }
   }
 
   /**
