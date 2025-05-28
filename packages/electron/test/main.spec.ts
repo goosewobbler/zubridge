@@ -7,6 +7,7 @@ vi.mock('../src/bridge', () => {
     unsubscribe: vi.fn(),
     destroy: vi.fn(),
     getSubscribedWindows: vi.fn().mockReturnValue([1, 2, 3]),
+    getWindowSubscriptions: vi.fn().mockReturnValue(['*']),
   };
 
   return {
@@ -16,7 +17,7 @@ vi.mock('../src/bridge', () => {
 });
 
 vi.mock('../src/main/dispatch.js', () => ({
-  createDispatch: vi.fn().mockReturnValue(() => {}),
+  createDispatch: vi.fn().mockReturnValue(vi.fn()),
 }));
 
 vi.mock('../src/lib/stateManagerRegistry', () => ({
@@ -88,6 +89,7 @@ function createMockCoreBridge() {
     unsubscribe: vi.fn(),
     getSubscribedWindows: vi.fn(() => [1, 2, 3]),
     destroy: vi.fn(),
+    getWindowSubscriptions: vi.fn().mockReturnValue(['*']),
   };
 }
 
@@ -142,7 +144,12 @@ describe('main.ts exports', () => {
     it('should create bridge with custom options', () => {
       // Arrange
       const store = createMockStore();
-      const options = { middleware: {} };
+      const options = {
+        middleware: {
+          processAction: vi.fn(),
+          setState: vi.fn(),
+        },
+      };
       const mockCoreBridge = createMockCoreBridge();
       vi.mocked(bridge.createBridgeFromStore).mockReturnValue(mockCoreBridge);
 

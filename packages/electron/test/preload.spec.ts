@@ -3,7 +3,6 @@ import * as electron from 'electron';
 import { preloadBridge, preloadZustandBridge } from '../src/preload.js';
 import type { AnyState } from '@zubridge/types';
 import { IpcChannel } from '../src/constants.js';
-import { ipcRenderer } from 'electron';
 
 // Mock electron for testing
 vi.mock('electron', () => {
@@ -13,7 +12,6 @@ vi.mock('electron', () => {
     invoke: vi.fn(),
   };
 
-  // Add contextBridge that was missing
   const contextBridge = {
     exposeInMainWorld: vi.fn(),
   };
@@ -28,20 +26,18 @@ describe('preloadBridge', () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
-    vi.mocked(electron.ipcRenderer).send.mockReset();
-    vi.mocked(electron.ipcRenderer).on.mockReset();
-    vi.mocked(electron.ipcRenderer).invoke.mockReset();
+    vi.mocked(electron.ipcRenderer.send).mockReset();
+    vi.mocked(electron.ipcRenderer.on).mockReset();
+    vi.mocked(electron.ipcRenderer.invoke).mockReset();
 
     // Set up window ID for tests
-    global.window.__zubridge_windowId = '123';
+    window.__zubridge_windowId = '123';
 
     // Properly mock the thunk processor to intercept dispatches before they go to IPC
-    global.window.__zubridge_thunkProcessor = {
+    window.__zubridge_thunkProcessor = {
       executeThunk: vi.fn().mockResolvedValue('thunk-result'),
-      dispatchAction: vi.fn((action) => {
-        // Mock the dispatch and make sure it never reaches IPC call
-        return { success: true, action };
-      }),
+      dispatchAction: vi.fn().mockImplementation((action) => Promise.resolve()),
+      completeAction: vi.fn(),
     };
   });
 
@@ -56,16 +52,16 @@ describe('preloadBridge', () => {
 
   it('sets up subscription with ipcRenderer', () => {
     const callback = vi.fn();
-    const ipcRenderer = vi.mocked(electron.ipcRenderer);
+    const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
     let ipcCallback: (event: any, data: any) => void = () => {};
 
     // Update the mock to capture the callback
-    ipcRenderer.on.mockImplementation((channel, cb) => {
+    mockedIpcRenderer.on.mockImplementation((channel, cb) => {
       if (channel === IpcChannel.SUBSCRIBE) {
         ipcCallback = cb;
       }
-      return ipcRenderer;
+      return mockedIpcRenderer;
     });
 
     const bridge = preloadBridge();
@@ -81,11 +77,11 @@ describe('preloadBridge', () => {
   it('gets state from ipcRenderer', async () => {
     const bridge = preloadBridge<AnyState>();
 
-    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce({ count: 42 });
+    vi.mocked(electron.ipcRenderer.invoke).mockResolvedValueOnce({ count: 42 });
 
     const state = await bridge.handlers.getState();
 
-    expect(ipcRenderer.invoke).toHaveBeenCalledWith(IpcChannel.GET_STATE);
+    expect(electron.ipcRenderer.invoke).toHaveBeenCalledWith(IpcChannel.GET_STATE);
     expect(state).toEqual({ count: 42 });
   });
 
@@ -105,18 +101,18 @@ describe('preloadBridge', () => {
     expect(thunk).not.toHaveBeenCalled();
 
     // Instead, it should be passed to the thunk processor
-    expect(window.__zubridge_thunkProcessor.executeThunk).toHaveBeenCalled();
+    expect(window.__zubridge_thunkProcessor?.executeThunk).toHaveBeenCalled();
   });
 
   it('dispatches string actions correctly', () => {
-    const ipcRenderer = vi.mocked(electron.ipcRenderer);
-    const dispatchAction = vi.fn();
+    const dispatchAction = vi.fn().mockImplementation((action) => Promise.resolve());
 
     // Override the global mock for this test only
-    const originalThunkProcessor = global.window.__zubridge_thunkProcessor;
-    global.window.__zubridge_thunkProcessor = {
-      ...originalThunkProcessor,
-      dispatchAction: dispatchAction,
+    const originalThunkProcessor = window.__zubridge_thunkProcessor;
+    window.__zubridge_thunkProcessor = {
+      ...originalThunkProcessor!,
+      dispatchAction,
+      completeAction: vi.fn(),
     };
 
     const bridge = preloadBridge();
@@ -134,14 +130,14 @@ describe('preloadBridge', () => {
   });
 
   it('dispatches action objects correctly', () => {
-    const ipcRenderer = vi.mocked(electron.ipcRenderer);
-    const dispatchAction = vi.fn();
+    const dispatchAction = vi.fn().mockImplementation((action) => Promise.resolve());
 
     // Override the global mock for this test only
-    const originalThunkProcessor = global.window.__zubridge_thunkProcessor;
-    global.window.__zubridge_thunkProcessor = {
-      ...originalThunkProcessor,
-      dispatchAction: dispatchAction,
+    const originalThunkProcessor = window.__zubridge_thunkProcessor;
+    window.__zubridge_thunkProcessor = {
+      ...originalThunkProcessor!,
+      dispatchAction,
+      completeAction: vi.fn(),
     };
 
     const bridge = preloadBridge();

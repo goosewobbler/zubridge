@@ -8,11 +8,6 @@ type TestState = {
   testCounter: number;
 };
 
-// Helper function for testing errors
-const fail = (message: string) => {
-  expect(true).toBe(false, message);
-};
-
 // Mock zustand
 vi.mock('zustand', () => ({
   useStore: vi.fn().mockReturnValue({ test: 'state' }),
@@ -61,9 +56,7 @@ describe('createHandlers', () => {
     // @ts-ignore - Intentionally setting window to undefined for testing
     global.window = undefined;
 
-    expect(() => {
-      createHandlers();
-    }).toThrow('Zubridge handlers not found in window');
+    expect(() => createHandlers()).toThrow('Zubridge handlers not found in window');
   });
 
   it('should throw an error when window.zubridge is undefined', () => {
@@ -72,9 +65,7 @@ describe('createHandlers', () => {
     (windowWithoutZubridge as any).zubridge = undefined;
     global.window = windowWithoutZubridge;
 
-    expect(() => {
-      createHandlers();
-    }).toThrow('Zubridge handlers not found in window');
+    expect(() => createHandlers()).toThrow('Zubridge handlers not found in window');
   });
 
   it('should return window.zubridge when it exists', () => {
@@ -129,9 +120,9 @@ describe('useDispatch', () => {
     // Create mock handlers that control promise resolution
     mockHandlers = {
       dispatch: vi.fn(),
-      getState: vi.fn().mockReturnValue(Promise.resolve({ test: 'state' })),
+      getState: vi.fn().mockReturnValue(Promise.resolve({ testCounter: 0 })),
       subscribe: vi.fn(),
-    } as unknown as Handlers<AnyState>;
+    } as unknown as Handlers<TestState>;
 
     // Create dispatch function for tests
     dispatch = useDispatch<TestState>(mockHandlers);
@@ -145,7 +136,7 @@ describe('useDispatch', () => {
   it.skip('should handle string action types and return a promise', async () => {
     // Skipping this test in the interim build
     // Setup a special implementation to test resolution
-    mockHandlers.dispatch.mockImplementationOnce((action, payload) => {
+    mockHandlers.dispatch = vi.fn().mockImplementation((action, payload) => {
       return new Promise((resolve) => {
         // Store the resolver for later manual resolution
         actionCompletionResolver = resolve;
@@ -177,12 +168,12 @@ describe('useDispatch', () => {
 
     // Setup controlled promise resolution
     let promiseResolved = false;
-    mockHandlers.dispatch.mockImplementationOnce(() => {
+    mockHandlers.dispatch = vi.fn().mockImplementation(() => {
       return new Promise((resolve) => {
         // Store the resolver for later manual resolution
         actionCompletionResolver = () => {
           promiseResolved = true;
-          resolve();
+          resolve(undefined);
         };
       });
     });
@@ -223,16 +214,10 @@ describe('useDispatch', () => {
   it.skip('should properly handle errors in dispatch promises', async () => {
     // Skipping this test in the interim build
     // Mock a dispatch that fails
-    mockHandlers.dispatch.mockImplementationOnce(() => Promise.reject(new Error('Action failed')));
+    mockHandlers.dispatch = vi.fn().mockImplementation(() => Promise.reject(new Error('Action failed')));
 
-    // Attempt to dispatch
-    try {
-      await dispatch('FAILING_ACTION');
-      fail('Should have thrown an error');
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe('Action failed');
-    }
+    // Expect the dispatch to throw when awaited
+    await expect(dispatch('FAILING_ACTION')).rejects.toThrow('Action failed');
   });
 
   it.skip('should properly handle errors in thunks', async () => {
@@ -242,13 +227,7 @@ describe('useDispatch', () => {
       throw new Error('Thunk execution failed');
     });
 
-    // Dispatch the thunk and expect it to throw
-    try {
-      await dispatch(errorThunk as unknown as Thunk<TestState>);
-      fail('Should have thrown an error');
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe('Thunk execution failed');
-    }
+    // Expect the thunk dispatch to throw
+    await expect(dispatch(errorThunk as unknown as Thunk<TestState>)).rejects.toThrow('Thunk execution failed');
   });
 });
