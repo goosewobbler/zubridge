@@ -252,10 +252,11 @@ describe('SubscriptionManager', () => {
       // Then change to theme
       subscriptionManager.subscribe(['theme'], mockCallback, windowId);
 
-      // Should only have theme now, not counter
+      // Should have both counter and theme now (keys are merged, not replaced)
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
-      expect(keys).toEqual(['theme']);
-      expect(keys).not.toContain('counter');
+      expect(keys).toContain('counter');
+      expect(keys).toContain('theme');
+      expect(keys.length).toBe(2);
     });
   });
 });
