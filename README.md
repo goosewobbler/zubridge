@@ -1,8 +1,19 @@
 <picture>
-  <img alt="zubridge hero image" src="./resources/zubridge-hero.png" onerror="this.style.display='none';document.getElementById('fallback-title').style.display='block'"/>
+  <source media="(prefers-color-scheme: dark)" srcset="./resources/zubridge-hero.png">
+  <source media="(prefers-color-scheme: light)" srcset="./resources/zubridge-hero.png">
+  <img alt="zubridge hero image" src="./resources/zubridge-hero.png" style="max-height: 415px;">
 </picture>
 
-<h1 id="fallback-title" style="display:none">Zubridge</h1>
+<h1 align="center" style="display:none;" id="fallback-title">Zubridge</h1>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var img = document.querySelector('picture img');
+    img.onerror = function() {
+      this.style.display = 'none';
+      document.getElementById('fallback-title').style.display = 'block';
+    };
+  });
+</script>
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity_
 
