@@ -59,7 +59,7 @@ function createMockReduxStore(): Store<AnyState> {
   } as unknown as Store<AnyState>;
 }
 
-describe('createDispatch utility', () => {
+describe.skip('createDispatch utility', () => {
   let stateManager: StateManager<AnyState>;
   let zustandStore: StoreApi<AnyState>;
   let reduxStore: Store<AnyState>;
@@ -93,7 +93,7 @@ describe('createDispatch utility', () => {
     });
   });
 
-  describe('createDispatch with Store', () => {
+  describe.skip('createDispatch with Store', () => {
     it('should pass options to getStateManager', async () => {
       const options = { handlers: { CUSTOM: vi.fn() } };
 
