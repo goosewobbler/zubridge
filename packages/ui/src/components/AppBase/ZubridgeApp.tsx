@@ -65,6 +65,21 @@ export interface ZubridgeAppProps {
    * @default '*'
    */
   currentSubscriptions?: string[] | '*';
+
+  /**
+   * Handler for subscribing to specific state keys
+   */
+  onSubscribe?: (keys: string[]) => void;
+
+  /**
+   * Handler for unsubscribing from specific state keys
+   */
+  onUnsubscribe?: (keys: string[]) => void;
+
+  /**
+   * Handler for subscribing to all state
+   */
+  onSubscribeAll?: () => void;
 }
 
 /**
@@ -84,6 +99,8 @@ export function ZubridgeApp({
   className = '',
   children,
   currentSubscriptions = '*',
+  onSubscribe,
+  onUnsubscribe,
 }: ZubridgeAppProps) {
   // Extract data from store using selectors
   const counter = getCounterSelector(store);
@@ -223,22 +240,6 @@ export function ZubridgeApp({
     }
   }, [actionHandlers]);
 
-  const handleSubscribe = useCallback(
-    (keys: string[]) => {
-      const result = window.electronAPI?.subscribe(keys);
-      console.log('handleSubscribe', result);
-    },
-    [window.electronAPI],
-  );
-
-  const handleUnsubscribe = useCallback(
-    (keys: string[]) => {
-      const result = window.electronAPI?.unsubscribe(keys);
-      console.log('handleUnsubscribe', result);
-    },
-    [window.electronAPI],
-  );
-
   // Get window properties
   const isMainWindow = windowInfo.type === 'main';
   const isRuntimeWindow = windowInfo.type === 'runtime';
@@ -251,6 +252,9 @@ export function ZubridgeApp({
         windowId={windowInfo.id}
         windowType={windowInfo.type}
         bridgeStatus={bridgeStatus as 'ready' | 'error' | 'initializing'}
+        currentSubscriptions={currentSubscriptions}
+        counterValue={counter}
+        isLoading={bridgeStatus === 'initializing'}
       />
 
       <div className="p-4 main-content">
@@ -268,26 +272,29 @@ export function ZubridgeApp({
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
                 onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
-                onReset={handleResetState}
                 isLoading={bridgeStatus === 'initializing'}
               />
 
               <div className="theme-section">
                 <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
+              </div>
 
-                <SubscriptionControls
-                  onSubscribe={handleSubscribe}
-                  onUnsubscribe={handleUnsubscribe}
-                  currentSubscriptions={currentSubscriptions}
-                />
-
-                {handleGenerateLargeState && (
-                  <GenerateLargeState
-                    onGenerate={handleGenerateLargeState}
-                    isGenerating={bridgeStatus === 'initializing'}
+              <div className="subscriptions-section">
+                {onSubscribe && onUnsubscribe && (
+                  <SubscriptionControls
+                    onSubscribe={onSubscribe}
+                    onUnsubscribe={onUnsubscribe}
+                    onReset={handleResetState}
                   />
                 )}
 
+                <GenerateLargeState
+                  onGenerate={handleGenerateLargeState}
+                  isGenerating={bridgeStatus === 'initializing'}
+                />
+              </div>
+
+              <div className="window-actions-section">
                 <WindowActions
                   onCreateWindow={handleCreateWindow}
                   onCloseWindow={handleCloseWindow}

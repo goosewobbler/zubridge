@@ -1,5 +1,6 @@
 import { createUseStore, useDispatch } from '@zubridge/electron';
-import React, { type PropsWithChildren, type ReactNode } from 'react';
+import React, { useCallback, type PropsWithChildren, type ReactNode } from 'react';
+import { debug } from '@zubridge/core';
 import { ZubridgeApp } from '../ZubridgeApp';
 import { useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { ActionHandlers, WindowInfo } from '../WindowInfo';
@@ -38,6 +39,22 @@ export interface ElectronAppProps extends PropsWithChildren {
    * Custom action handlers
    */
   actionHandlers?: ActionHandlers;
+
+  /**
+   * Current subscriptions for this window
+   * @default '*'
+   */
+  currentSubscriptions?: string[] | '*';
+
+  /**
+   * Handler for subscribing to specific state keys
+   */
+  onSubscribe?: (keys: string[]) => void;
+
+  /**
+   * Handler for unsubscribing from specific state keys
+   */
+  onUnsubscribe?: (keys: string[]) => void;
 }
 
 /**
@@ -54,6 +71,9 @@ export function withElectron() {
     appName = 'Electron App',
     className = '',
     actionHandlers,
+    currentSubscriptions = '*',
+    onSubscribe,
+    onUnsubscribe,
   }: ElectronAppProps) {
     // Get store and dispatch from Electron hooks
     const store = useStore();
@@ -61,6 +81,31 @@ export function withElectron() {
     const bridgeStatus = useBridgeStatus(store);
 
     // Platform handlers for Electron
+    const handleSubscribe = useCallback(
+      async (keys: string[]) => {
+        debug('ui', `[withElectron] Subscribing to keys: ${keys.join(', ')}`);
+        try {
+          await window.electronAPI?.subscribe(keys);
+          debug('ui', '[withElectron] Subscribe call successful');
+        } catch (error) {
+          debug('ui:error', '[withElectron] Error in subscribe:', error);
+        }
+      },
+      [window.electronAPI],
+    );
+
+    const handleUnsubscribe = useCallback(
+      async (keys: string[]) => {
+        debug('ui', `[withElectron] Unsubscribing from keys: ${keys.join(', ')}`);
+        try {
+          await window.electronAPI?.unsubscribe(keys);
+          debug('ui', '[withElectron] Unsubscribe call successful');
+        } catch (error) {
+          debug('ui:error', '[withElectron] Error in unsubscribe:', error);
+        }
+      },
+      [window.electronAPI],
+    );
 
     return (
       <ZubridgeApp
@@ -72,6 +117,9 @@ export function withElectron() {
         windowTitle={windowTitle}
         appName={appName}
         className={className}
+        onSubscribe={onSubscribe || handleSubscribe}
+        onUnsubscribe={onUnsubscribe || handleUnsubscribe}
+        currentSubscriptions={currentSubscriptions}
       >
         {children}
       </ZubridgeApp>

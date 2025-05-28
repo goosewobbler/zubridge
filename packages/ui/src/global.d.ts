@@ -5,7 +5,7 @@ interface Window {
     createRuntimeWindow: () => Promise<{ success: boolean; windowId: number }>;
     closeCurrentWindow: () => Promise<void>;
     quitApp: () => Promise<void>;
-    getWindowInfo: () => Promise<{ id: number; type: string }>;
+    getWindowInfo: () => Promise<{ id: number; type: string; subscriptions: string[] }>;
     getMode: () => Promise<{ modeName: string; name?: string }>;
     subscribe: (keys: string[]) => Promise<void>;
     unsubscribe: (keys: string[]) => Promise<void>;

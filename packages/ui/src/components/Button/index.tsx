@@ -55,7 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const buttonClasses = clsx(
     // Base styles
-    'cursor-pointer font-medium rounded-lg transition-all duration-200 min-w-[theme(--button-width)] whitespace-nowrap',
+    'cursor-pointer font-medium rounded-lg transition-all duration-200 min-w-[theme(--button-width)] whitespace-nowrap w-full',
     // Text color (white for most variants)
     variant !== 'link' && variant !== 'outline' ? 'text-white' : '',
     // Variant specific styles
