@@ -5,11 +5,13 @@ export interface ElectronAPI {
   createRuntimeWindow: () => Promise<{ success: boolean; windowId?: number }>;
   closeCurrentWindow: () => Promise<void>;
   quitApp: () => Promise<void>;
-  getWindowInfo: () => Promise<{ id: number; type: string }>;
+  getWindowInfo: () => Promise<{ id: number; type: string; subscriptions: string[] }>;
   getMode: () => Promise<{ modeName?: string; name?: string }>;
   minimizeWindow?: () => void;
   maximizeWindow?: () => void;
   openDevTools?: () => void;
+  subscribe: (keys: string[]) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
+  unsubscribe: (keys: string[]) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
 }
 
 /**

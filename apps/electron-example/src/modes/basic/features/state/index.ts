@@ -12,13 +12,11 @@ export const attachStateHandlers = <S extends BaseState>(store: StoreApi<S>) => 
   setState((state) => ({
     ...state,
 
-    // Implement the reset state handler
     'STATE:RESET': () => {
       console.log('[Basic] Resetting state to defaults');
       setState(() => initialState as Partial<S>);
     },
 
-    // Implement the generate filler state handler
     'STATE:GENERATE-FILLER': async () => {
       console.log('[Basic] Generating large filler state');
 

@@ -171,7 +171,10 @@ app
     }
 
     debug('example-app:init', `Subscribing ${windowsAndViews.length} windows/views to the bridge`);
-    subscribe(windowsAndViews);
+    if (windowsAndViews.length > 0) {
+      subscribe(windowsAndViews as [WebContentsWrapper, ...WebContentsWrapper[]], ['*']);
+      debug('example-app:init', 'All windows subscribed to full state with "*" parameter');
+    }
 
     // Create the system tray
     debug('example-app:init', 'Creating system tray');
@@ -432,11 +435,19 @@ app
         windowType = 'browserView';
       } else if (window === webContentsViewWindow) {
         windowType = 'webContentsView';
+      } else if (browserViewWindow && browserView && event.sender.id === browserView.webContents.id) {
+        // Special case for BrowserView - it has its own WebContents that's different from the window
+        windowType = 'browserView';
       }
-      // No need to check runtimeWindows array explicitly, default handles it
 
-      debug('example-app:init', `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}`);
-      return { type: windowType, id: windowId };
+      // Get the subscriptions for this window - default to '*' if function not available
+      const subscriptions = bridge.getWindowSubscriptions ? bridge.getWindowSubscriptions(event.sender.id) : '*';
+
+      debug(
+        'example-app:init',
+        `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}, subscriptions=${subscriptions}`,
+      );
+      return { type: windowType, id: windowId, subscriptions };
     });
 
     // IPC Handler for creating runtime windows
@@ -526,22 +537,84 @@ app
       }
     });
 
-    ipcMain.handle(AppIpcChannel.SUBSCRIBE, (event, keys: string[]) => {
-      debug('example-app:init', `subscribe request from ${event.sender.id}, keys: ${keys}`);
+    ipcMain.handle(AppIpcChannel.UNSUBSCRIBE, (event, keys: string[]) => {
+      debug(
+        'example-app:init',
+        `[IPC] Unsubscribe request from window ${event.sender.id}, keys: ${keys ? keys.join(', ') : 'all'}`,
+      );
       const windowOrView = BrowserWindow.fromWebContents(event.sender);
-      if (keys[0] === '*') {
-        bridge.subscribe([windowOrView as WebContentsWrapper]);
-      } else {
-        bridge.subscribe([windowOrView as WebContentsWrapper], keys);
+      if (!windowOrView) {
+        debug('example-app:init', `[IPC] No window found for sender ${event.sender.id}`);
+        return { success: false, error: 'No window found' };
       }
-      return { success: true };
+
+      try {
+        // Get current subscriptions before unsubscribing
+        const beforeSubs = bridge.getWindowSubscriptions(windowOrView.id);
+        debug(
+          'example-app:init',
+          `[IPC] Current subscriptions before unsubscribe: ${beforeSubs?.join(', ') || 'none'}`,
+        );
+
+        // If no keys provided or empty array, unsubscribe from everything
+        if (!keys || keys.length === 0 || keys.includes('*')) {
+          debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from all state`);
+          bridge.unsubscribe([windowOrView as WebContentsWrapper]);
+        } else {
+          debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from keys: ${keys.join(', ')}`);
+          bridge.unsubscribe([windowOrView as WebContentsWrapper], keys);
+        }
+
+        // Get current subscriptions after unsubscribing
+        const currentSubscriptions = bridge.getWindowSubscriptions(windowOrView.id);
+        debug(
+          'example-app:init',
+          `[IPC] Current subscriptions after unsubscribe: ${currentSubscriptions?.join(', ') || 'none'}`,
+        );
+
+        // Return the current subscriptions - if empty array, return it as is
+        return { success: true, subscriptions: currentSubscriptions || [] };
+      } catch (error) {
+        debug('example-app:init', `[IPC] Error unsubscribing window ${event.sender.id}:`, error);
+        return { success: false, error: String(error) };
+      }
     });
 
-    ipcMain.handle(AppIpcChannel.UNSUBSCRIBE, (event, keys: string[]) => {
-      debug('example-app:init', `unsubscribe request from ${event.sender.id}, keys: ${keys}`);
+    ipcMain.handle(AppIpcChannel.SUBSCRIBE, (event, keys: string[]) => {
+      debug('example-app:init', `[IPC] Subscribe request from window ${event.sender.id}, keys: ${keys.join(', ')}`);
       const windowOrView = BrowserWindow.fromWebContents(event.sender);
-      bridge.unsubscribe([windowOrView as WebContentsWrapper], keys);
-      return { success: true };
+      if (!windowOrView) {
+        debug('example-app:init', `[IPC] No window found for sender ${event.sender.id}`);
+        return { success: false, error: 'No window found' };
+      }
+
+      try {
+        // Get current subscriptions before subscribing
+        const beforeSubs = bridge.getWindowSubscriptions(windowOrView.id);
+        debug('example-app:init', `[IPC] Current subscriptions before subscribe: ${beforeSubs?.join(', ') || 'none'}`);
+
+        if (!keys || keys.length === 0 || keys.includes('*')) {
+          debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to all state`);
+          bridge.subscribe([windowOrView as WebContentsWrapper]);
+        } else {
+          debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to keys: ${keys.join(', ')}`);
+          bridge.subscribe([windowOrView as WebContentsWrapper], keys);
+        }
+
+        // Get current subscriptions after subscribing
+        debug('example-app:init', `[IPC] Getting current subscriptions for window ${event.sender.id}`);
+        const currentSubscriptions = bridge.getWindowSubscriptions(windowOrView.id);
+        debug(
+          'example-app:init',
+          `[IPC] Current subscriptions after subscribe: ${currentSubscriptions?.join(', ') || 'none'}`,
+        );
+
+        // Return the current subscriptions - if empty array, return it as is
+        return { success: true, subscriptions: currentSubscriptions || [] };
+      } catch (error) {
+        debug('example-app:init', `[IPC] Error subscribing window ${event.sender.id}:`, error);
+        return { success: false, error: String(error) };
+      }
     });
 
     debug('example-app:init', 'App initialization complete, waiting for events');

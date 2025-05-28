@@ -29,5 +29,6 @@ export const createCustomBridge = (middleware?: ZubridgeMiddleware): ZustandBrid
     getSubscribedWindows: coreBridge.getSubscribedWindows,
     destroy: coreBridge.destroy,
     dispatch: dispatchFn,
+    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
   };
 };

@@ -1,35 +1,28 @@
-import { type StoreApi } from 'zustand';
+import type { StoreApi } from 'zustand';
+import type { BaseState } from '../../../../types.js';
 import { initialState } from '@zubridge/apps-shared';
-import { State } from '../../../basic/features/index.js';
 
 /**
- * Creates a handler function for resetting state to defaults
+ * Reset state to initial values
  */
 export const resetState =
-  <S extends State>(store: StoreApi<S>) =>
-  () => {
+  <S extends BaseState>(store: StoreApi<S>) =>
+  async () => {
     console.log('[Handler] Resetting state to defaults');
-    store.setState(() => initialState as Partial<S>);
+    store.setState(initialState as S);
   };
 
 /**
- * Creates a handler function for generating large state
+ * Generate large state for testing
  */
 export const generateLargeState =
-  <S extends State>(store: StoreApi<S>) =>
+  <S extends BaseState>(store: StoreApi<S>) =>
   async () => {
-    console.log('[Handler] Generating large filler state');
-
-    // Generate 1000 random key-value pairs
-    const filler: Record<string, number> = {};
-    for (let i = 0; i < 1000; i++) {
-      filler[`key${i}`] = Math.random();
-    }
-
-    store.setState((state) => ({
-      ...state,
-      filler,
-    }));
-
-    console.log('[Handler] Large filler state generated');
+    const currentState = store.getState();
+    store.setState({
+      ...currentState,
+      largeState: Array(1000)
+        .fill(0)
+        .map((_, i) => ({ id: i, value: `Item ${i}` })),
+    } as S);
   };

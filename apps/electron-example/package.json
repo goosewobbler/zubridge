@@ -36,7 +36,8 @@
     "build:reducers": "cross-env ZUBRIDGE_MODE=reducers electron-vite build && cross-env ZUBRIDGE_MODE=reducers electron-builder --config electron-builder.config.ts",
     "build:redux": "cross-env ZUBRIDGE_MODE=redux electron-vite build && cross-env ZUBRIDGE_MODE=redux electron-builder --config electron-builder.config.ts",
     "build:custom": "cross-env ZUBRIDGE_MODE=custom electron-vite build && cross-env ZUBRIDGE_MODE=custom electron-builder --config electron-builder.config.ts",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "local:dev": "cd ../.. && pnpm clean:cache && pnpm build:packages && cd - && cross-env DEBUG=zubridge:*,example-app:* pnpm dev"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.7.0",

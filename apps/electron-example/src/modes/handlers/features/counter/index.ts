@@ -1,14 +1,13 @@
 import type { StoreApi } from 'zustand';
-import type { State } from '../index.js';
+import type { BaseState } from '../../../../types.js';
 
 /**
  * Creates a handler function for incrementing the counter
- * In the handlers pattern, each action has a separate handler function
  */
 export const incrementCounter =
-  <S extends State>(store: StoreApi<S>) =>
+  <S extends BaseState>(store: StoreApi<S>) =>
   () => {
-    console.log('[Handler] Incrementing counter');
+    console.log('[Basic] Incrementing counter');
     store.setState((state) => ({
       ...state,
       counter: (state.counter || 0) + 1,
@@ -19,9 +18,9 @@ export const incrementCounter =
  * Creates a handler function for decrementing the counter
  */
 export const decrementCounter =
-  <S extends State>(store: StoreApi<S>) =>
+  <S extends BaseState>(store: StoreApi<S>) =>
   () => {
-    console.log('[Handler] Decrementing counter');
+    console.log('[Basic] Decrementing counter');
     store.setState((state) => ({
       ...state,
       counter: (state.counter || 0) - 1,
@@ -29,12 +28,12 @@ export const decrementCounter =
   };
 
 /**
- * Creates a handler function for setting the counter to a specific value
+ * Creates a handler function for setting the counter
  */
 export const setCounter =
-  <S extends State>(store: StoreApi<S>) =>
+  <S extends BaseState>(store: StoreApi<S>) =>
   (value: number) => {
-    console.log(`[Handler] Setting counter to ${value}`);
+    console.log('[Basic] Setting counter to:', value);
     store.setState((state) => ({
       ...state,
       counter: value,
@@ -42,22 +41,15 @@ export const setCounter =
   };
 
 /**
- * Creates a handler function for setting the counter to a specific value with a delay
- * This is used to test async action handling in thunks
+ * Creates a handler function for setting the counter with a delay
  */
 export const setCounterSlow =
-  <S extends State>(store: StoreApi<S>) =>
+  <S extends BaseState>(store: StoreApi<S>) =>
   async (value: number) => {
-    console.log(`[Handler] Setting counter to ${value} with 2500ms delay`);
-    console.log(`[Handler] Time before delay: ${new Date().toISOString()}`);
-
-    // Wait for 2500ms to simulate a slow operation
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-
-    console.log(`[Handler] Time after delay: ${new Date().toISOString()}`);
+    console.log('[Basic] Setting counter (slow) to:', value);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     store.setState((state) => ({
       ...state,
       counter: value,
     }));
-    console.log(`[Handler] Counter set to ${value} after delay`);
   };
