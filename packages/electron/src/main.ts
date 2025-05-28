@@ -27,9 +27,22 @@ export { createMiddlewareOptions };
  * Interface for a bridge that connects a Zustand store to the main process
  */
 export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
-  subscribe: (windows: WrapperOrWebContents[]) => { unsubscribe: () => void };
-  unsubscribe: (windows?: WrapperOrWebContents[]) => void;
+  subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
+  unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
   getSubscribedWindows: () => number[];
+  getWindowSubscriptions: (windowId: number) => string[];
+  dispatch: Dispatch<S>;
+  destroy: () => void;
+}
+
+/**
+ * Interface for a bridge that connects a Redux store to the main process
+ */
+export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
+  subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
+  unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
+  getSubscribedWindows: () => number[];
+  getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
@@ -52,6 +65,7 @@ export function createZustandBridge<S extends AnyState>(
     subscribe: coreBridge.subscribe,
     unsubscribe: coreBridge.unsubscribe,
     getSubscribedWindows: coreBridge.getSubscribedWindows,
+    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
       coreBridge.destroy();
       // Clean up the state manager from the registry
@@ -59,17 +73,6 @@ export function createZustandBridge<S extends AnyState>(
     },
     dispatch: dispatchFn,
   };
-}
-
-/**
- * Interface for a bridge that connects a Redux store to the main process
- */
-export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
-  subscribe: (windows: WrapperOrWebContents[]) => { unsubscribe: () => void };
-  unsubscribe: (windows?: WrapperOrWebContents[]) => void;
-  getSubscribedWindows: () => number[];
-  dispatch: Dispatch<S>;
-  destroy: () => void;
 }
 
 /**
@@ -90,6 +93,7 @@ export function createReduxBridge<S extends AnyState>(
     subscribe: coreBridge.subscribe,
     unsubscribe: coreBridge.unsubscribe,
     getSubscribedWindows: coreBridge.getSubscribedWindows,
+    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
       coreBridge.destroy();
       // Clean up the state manager from the registry

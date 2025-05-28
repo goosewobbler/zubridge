@@ -31,12 +31,6 @@ const thunkManager = getThunkManager();
 // Instantiate the thunk registration queue
 const thunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
 
-// Extend the Action type to include source window ID for internal use
-interface ActionWithSource extends Action {
-  __sourceWindowId?: number;
-  parentId?: string;
-}
-
 export interface CoreBridgeOptions {
   // Middleware hooks
   middleware?: ZubridgeMiddleware;
@@ -45,13 +39,6 @@ export interface CoreBridgeOptions {
   beforeStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   afterStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   onBridgeDestroy?: () => Promise<void> | void;
-
-  /**
-   * Maximum time (in milliseconds) to wait for an action to complete before auto-resolving
-   * Used for actions that might contain async operations without proper acknowledgment
-   * Default: 10000 (10 seconds)
-   */
-  actionCompletionTimeoutMs?: number;
 }
 
 /**
@@ -63,9 +50,6 @@ export function createCoreBridge<State extends AnyState>(
   options?: CoreBridgeOptions,
 ): BackendBridge<number> {
   debug('core', 'Creating CoreBridge with options:', options);
-
-  // Get the action completion timeout from options or use default
-  const actionCompletionTimeoutMs = options?.actionCompletionTimeoutMs;
 
   // Tracker for WebContents using WeakMap for automatic garbage collection
   const windowTracker: WebContentsTracker = createWebContentsTracker();
@@ -98,22 +82,17 @@ export function createCoreBridge<State extends AnyState>(
   // Set up the action processor for the bridge action queue
   actionQueue.setActionProcessor(async (action: Action) => {
     try {
-      const actionWithSource = action as ActionWithSource;
-
       // Check if this is a thunk-related action
       const isThunkChild = 'parentId' in action && action.parentId !== undefined;
       if (isThunkChild) {
-        debug(
-          'core',
-          `[BRIDGE DEBUG] Processing child action of thunk ${(action as ActionWithSource).parentId}: ${action.type}`,
-        );
+        debug('core', `[BRIDGE DEBUG] Processing child action of thunk ${(action as any).parentId}: ${action.type}`);
       }
 
       // Apply middleware before processing action
       if (processedOptions?.beforeProcessAction) {
         debug('core', 'Applying beforeProcessAction middleware');
         try {
-          action = await processedOptions.beforeProcessAction(action, actionWithSource.__sourceWindowId);
+          action = await processedOptions.beforeProcessAction(action, action.__sourceWindowId);
         } catch (middlewareError) {
           debug('core:error', '[BRIDGE DEBUG] Error in beforeProcessAction middleware:', middlewareError);
         }
@@ -143,17 +122,12 @@ export function createCoreBridge<State extends AnyState>(
 
         // **CRITICAL: Check thunk locking before processing any action**
         const thunkLockManager = getThunkLockManager();
-        const canProcess = thunkLockManager.canProcessAction(actionWithSource);
+        const canProcess = thunkLockManager.canProcessAction(action);
 
         if (!canProcess) {
           debug('core', `[BRIDGE DEBUG] Action ${action.type} blocked by thunk lock manager - enqueueing for later`);
           // Use action queue which will retry when thunk completes
-          actionQueue.enqueueAction(
-            actionWithSource,
-            actionWithSource.__sourceWindowId || 0,
-            actionWithSource.parentId,
-            () => {},
-          );
+          actionQueue.enqueueAction(action, action.__sourceWindowId || 0, (action as any).parentId, () => {});
           return; // Return immediately, action will be processed later
         }
 
@@ -211,18 +185,18 @@ export function createCoreBridge<State extends AnyState>(
       if (processedOptions?.afterProcessAction) {
         debug('core', 'Applying afterProcessAction middleware');
         try {
-          await processedOptions.afterProcessAction(action, processingTime, actionWithSource.__sourceWindowId);
+          await processedOptions.afterProcessAction(action, processingTime, action.__sourceWindowId);
         } catch (middlewareError) {
           debug('core:error', '[BRIDGE DEBUG] Error in afterProcessAction middleware:', middlewareError);
         }
       }
 
       // Send acknowledgment back to the sender if the action has an ID and source window
-      if (action.id && actionWithSource.__sourceWindowId) {
+      if (action.id && action.__sourceWindowId) {
         debug('ipc', `Sending acknowledgment for action ${action.id}`);
         debug('ipc', `[BRIDGE DEBUG] Sending acknowledgment for action ${action.id}`);
         try {
-          const windowId = actionWithSource.__sourceWindowId;
+          const windowId = action.__sourceWindowId;
           const contents = getWindowById(windowId);
 
           if (contents && !isDestroyed(contents)) {
@@ -280,7 +254,7 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Add the source window ID to the action for acknowledgment purposes
-      const actionWithSource: ActionWithSource = {
+      const actionWithSource: Action = {
         ...action,
         __sourceWindowId: event.sender.id,
         parentId: parentId,
@@ -479,11 +453,15 @@ export function createCoreBridge<State extends AnyState>(
         destroyListenerSet.add(webContents.id);
       }
       // Register a subscription for the keys with an actual callback that sends state updates
-      const unsubscribe = subManager.subscribe(keys, (state) => {
-        debug('core', `Sending state update to window ${webContents.id}`);
-        const sanitizedState = sanitizeState(state);
-        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, sanitizedState);
-      });
+      const unsubscribe = subManager.subscribe(
+        keys,
+        (state) => {
+          debug('core', `Sending state update to window ${webContents.id}`);
+          const sanitizedState = sanitizeState(state);
+          safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, sanitizedState);
+        },
+        webContents.id,
+      );
       unsubs.push(unsubscribe);
       if (tracked) {
         const initialState = sanitizeState(stateManager.getState());
@@ -500,27 +478,13 @@ export function createCoreBridge<State extends AnyState>(
     };
   }
 
-  function selectiveUnsubscribe(windows: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
-    const wrappers = Array.isArray(windows) ? windows : [windows];
-    for (const wrapper of wrappers) {
-      const webContents = getWebContents(wrapper);
-      if (!webContents) continue;
-      const subManager = subscriptionManagers.get(webContents.id);
-      if (subManager) {
-        subManager.unsubscribe(keys, () => {});
-        if (subManager.getCurrentSubscriptionKeys().length === 0) {
-          subscriptionManagers.delete(webContents.id);
-        }
-      }
-      windowTracker.untrack(webContents);
-    }
-  }
-
   // Unified subscribe API (windows first, keys optional)
   function subscribe(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
     keys?: string[],
   ): { unsubscribe: () => void } {
+    debug('core', `[subscribe] Called with windows and keys: ${keys ? JSON.stringify(keys) : 'undefined'}`);
+
     // If windows is not provided, subscribe all windows to full state
     if (!windows) {
       const allWindows = windowTracker.getActiveWebContents();
@@ -537,14 +501,15 @@ export function createCoreBridge<State extends AnyState>(
       windowTracker.cleanup();
       return;
     }
+
     const wrappers = Array.isArray(windows) ? windows : [windows];
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents) continue;
       const subManager = subscriptionManagers.get(webContents.id);
       if (subManager) {
-        subManager.unsubscribe(keys, () => {});
-        if (subManager.getCurrentSubscriptionKeys().length === 0) {
+        subManager.unsubscribe(keys, () => {}, webContents.id);
+        if (subManager.getCurrentSubscriptionKeys(webContents.id).length === 0) {
           subscriptionManagers.delete(webContents.id);
         }
       }
@@ -557,6 +522,11 @@ export function createCoreBridge<State extends AnyState>(
     const activeIds = windowTracker.getActiveIds();
     debug('windows', `Currently subscribed windows: ${activeIds.join(', ') || 'none'}`);
     return activeIds;
+  };
+
+  const getWindowSubscriptions = (windowId: number): string[] => {
+    const subManager = subscriptionManagers.get(windowId);
+    return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
   };
 
   // Handle registering and accessing WebContents IDs
@@ -612,6 +582,7 @@ export function createCoreBridge<State extends AnyState>(
     unsubscribe,
     getSubscribedWindows,
     destroy,
+    getWindowSubscriptions,
   };
 }
 

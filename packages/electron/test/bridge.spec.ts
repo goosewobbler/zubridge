@@ -429,6 +429,55 @@ describe('bridge.ts', () => {
       expect(mockTracker.track).not.toHaveBeenCalled();
     });
 
+    // Tests for subscription with specific keys
+    it('should pass the correct keys parameter when subscribing', () => {
+      const stateManager = createMockStateManager();
+      const mockTracker = createMockTracker();
+      vi.mocked(createWebContentsTracker).mockReturnValue(mockTracker);
+
+      // Create bridge
+      const bridge = createCoreBridge(stateManager);
+
+      // Set up mocks
+      const wrapper = createMockWrapper();
+      const webContents = createMockWebContents();
+      vi.mocked(getWebContents).mockReturnValue(webContents);
+
+      // Reset tracking
+      vi.clearAllMocks();
+
+      // Subscribe with specific keys
+      bridge.subscribe([wrapper], ['counter', 'theme']);
+
+      // Verify basic expectations
+      expect(getWebContents).toHaveBeenCalledWith(wrapper);
+      expect(mockTracker.track).toHaveBeenCalledWith(webContents);
+    });
+
+    // Test for subscription with '*' key
+    it('should subscribe with "*" key', () => {
+      const stateManager = createMockStateManager();
+      const mockTracker = createMockTracker();
+      vi.mocked(createWebContentsTracker).mockReturnValue(mockTracker);
+
+      // Create bridge
+      const bridge = createCoreBridge(stateManager);
+      const wrapper = createMockWrapper();
+      const webContents = createMockWebContents();
+
+      vi.mocked(getWebContents).mockReturnValue(webContents);
+
+      // Reset tracking
+      vi.clearAllMocks();
+
+      // Subscribe with '*' key
+      bridge.subscribe([wrapper], ['*']);
+
+      // Verify the correct handling
+      expect(getWebContents).toHaveBeenCalledWith(wrapper);
+      expect(mockTracker.track).toHaveBeenCalledWith(webContents);
+    });
+
     // Tests for unsubscribe function returned by subscribe (lines 109-112)
     it('should unsubscribe only the WebContents added by subscribe', () => {
       const stateManager = createMockStateManager();
