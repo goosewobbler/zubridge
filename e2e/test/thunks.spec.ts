@@ -30,6 +30,14 @@ describe('Thunk Execution and Behavior', () => {
       // Use a single function to set up the test environment
       await setupTestEnvironment(CORE_WINDOW_COUNT);
       console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
+      // reset counter to 0
+      await resetCounter();
+      // increment to a known value
+      const incrementButton = await getButtonInCurrentWindow('increment');
+      await incrementButton.click();
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+      await incrementButton.click();
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
       // If setup fails, try to recover or throw to stop tests
@@ -39,14 +47,6 @@ describe('Thunk Execution and Behavior', () => {
 
   describe('basic thunk execution', () => {
     it('should double the counter using a thunk', async () => {
-      // First, increment to a known value
-      await resetCounter();
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -78,14 +78,6 @@ describe('Thunk Execution and Behavior', () => {
     });
 
     it('should double the counter using a main process thunk', async () => {
-      // First, increment to a known value
-      await resetCounter();
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -120,16 +112,6 @@ describe('Thunk Execution and Behavior', () => {
 
   describe('thunk execution order and completion', () => {
     it('should fully await renderer thunk completion before performing subsequent actions in the same window', async () => {
-      // Reset counter to start fresh
-      await resetCounter();
-
-      // Increment to a known value (2)
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       console.log(`Initial counter value: ${initialValue}`);
@@ -146,6 +128,7 @@ describe('Thunk Execution and Behavior', () => {
       await waitForSpecificValue(4);
 
       // Interrupt the thunk with an increment
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
@@ -164,16 +147,6 @@ describe('Thunk Execution and Behavior', () => {
     });
 
     it('should fully await main process thunk completion before performing subsequent actions in the same window', async () => {
-      // Reset counter to start fresh
-      await resetCounter();
-
-      // Increment to a known value (2)
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -189,6 +162,7 @@ describe('Thunk Execution and Behavior', () => {
       await waitForSpecificValue(4);
 
       // Interrupt the thunk with an increment
+      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
@@ -209,18 +183,6 @@ describe('Thunk Execution and Behavior', () => {
 
   describe('cross-window thunk execution', () => {
     it('should await main process thunk completion even when actions are dispatched from different windows', async () => {
-      console.log('Starting cross-window main process thunk test');
-
-      // Reset counter to start fresh
-      await resetCounter();
-
-      // Increment to a known value (2)
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -279,18 +241,6 @@ describe('Thunk Execution and Behavior', () => {
     });
 
     it('should await renderer thunk completion even when actions are dispatched from different windows', async () => {
-      console.log('Starting cross-window renderer thunk test');
-
-      // Reset counter to start fresh
-      await resetCounter();
-
-      // Increment to a known value (2)
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -351,16 +301,6 @@ describe('Thunk Execution and Behavior', () => {
 
   describe('async action handling in thunks', () => {
     it('should properly wait for async actions to complete in renderer process thunks', async () => {
-      // Reset counter to start fresh
-      await resetCounter();
-
-      // Increment to a known value (2)
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -407,16 +347,6 @@ describe('Thunk Execution and Behavior', () => {
     });
 
     it('should properly wait for async actions to complete in main process thunks', async () => {
-      // Reset counter to start fresh
-      await resetCounter();
-
-      // Increment to a known value (2)
-      const incrementButton = await getButtonInCurrentWindow('increment');
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await incrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -464,16 +394,10 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('concurrent thunk execution', () => {
-    beforeEach(async () => {
-      await setupTestEnvironment(CORE_WINDOW_COUNT);
-      await resetCounter();
-    });
-
     it('should process actions sequentially from two renderer slow thunks dispatched from different windows', async () => {
-      // Set up initial state
-      await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await waitForSpecificValue(1);
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
 
       await (await getButtonInCurrentWindow('create')).click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
@@ -484,8 +408,8 @@ describe('Thunk Execution and Behavior', () => {
       const rendererSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow1.click();
 
-      // Wait for the first thunk to start (counter should change to 2)
-      await waitForSpecificValue(2);
+      // Wait for the first thunk to start (counter should change to 4)
+      await waitForSpecificValue(4);
 
       // Immediately switch to window 2 and dispatch the second thunk
       const newWindowIndex = windowHandles.length - 1;
@@ -496,32 +420,32 @@ describe('Thunk Execution and Behavior', () => {
       rendererSlowThunkButtonWindow2.click();
 
       // Sequence: 1 (start)
-      // Thunk 1: 2 (first doubling)
-      // Thunk 1: 4 (second doubling)
-      // Thunk 1: 2 (halving, thunk 1 done)
-      // Thunk 2: 4 (first doubling)
-      // Thunk 2: 8 (second doubling)
-      // Thunk 2: 4 (halving, thunk 2 done)
+      // Thunk 1: 4 (first doubling)
+      // Thunk 1: 8 (second doubling)
+      // Thunk 1: 4 (halving, thunk 1 done)
+      // Thunk 2: 8 (first doubling)
+      // Thunk 2: 16 (second doubling)
+      // Thunk 2: 8 (halving, thunk 2 done)
 
-      await waitForSpecificValue(4); // Thunk 1, second doubling
-      await waitForSpecificValue(2); // Thunk 1, halving
-      await waitForSpecificValue(4); // Thunk 2, first doubling
-      await waitForSpecificValue(8); // Thunk 2, second doubling
-      await waitForSpecificValue(4); // Thunk 2, halving
+      await waitForSpecificValue(8); // Thunk 1, second doubling
+      await waitForSpecificValue(4); // Thunk 1, halving
+      await waitForSpecificValue(8); // Thunk 2, first doubling
+      await waitForSpecificValue(16); // Thunk 2, second doubling
+      await waitForSpecificValue(8); // Thunk 2, halving
 
       let finalValueInNewWindow = await getCounterValue();
-      expect(finalValueInNewWindow).toBe(4);
+      expect(finalValueInNewWindow).toBe(8);
 
       await switchToWindow(0);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
       let finalValueInMainWindow = await getCounterValue();
-      expect(finalValueInMainWindow).toBe(4);
+      expect(finalValueInMainWindow).toBe(8);
     });
 
     it('should process actions sequentially from a renderer slow thunk and a main slow thunk dispatched from the same window', async () => {
-      await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await waitForSpecificValue(1);
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
 
       const rendererSlowThunkButton = await getButtonInCurrentWindow('doubleRendererSlow');
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
@@ -529,35 +453,36 @@ describe('Thunk Execution and Behavior', () => {
       // Dispatch the first thunk (renderer)
       rendererSlowThunkButton.click();
 
-      // Wait for the first thunk to start (counter should change to 2)
-      await waitForSpecificValue(2);
+      // Wait for the first thunk to start (counter should change to 4)
+      await waitForSpecificValue(4);
 
       // Immediately dispatch the second thunk (main)
       mainSlowThunkButton.click();
 
       // Sequence: 1 (start)
-      // Thunk 1: 2 (first doubling)
-      // Thunk 1: 4 (second doubling)
-      // Thunk 1: 2 (halving, thunk 1 done)
-      // Thunk 2: 4 (first doubling)
-      // Thunk 2: 8 (second doubling)
-      // Thunk 2: 4 (halving, thunk 2 done)
+      // Thunk 1: 4 (first doubling)
+      // Thunk 1: 8 (second doubling)
+      // Thunk 1: 4 (halving, thunk 1 done)
+      // Thunk 2: 8 (first doubling)
+      // Thunk 2: 16 (second doubling)
+      // Thunk 2: 8 (halving, thunk 2 done)
 
-      await waitForSpecificValue(4); // Thunk 1, second doubling
-      await waitForSpecificValue(2); // Thunk 1, halving
-      await waitForSpecificValue(4); // Thunk 2, first doubling
-      await waitForSpecificValue(8); // Thunk 2, second doubling
-      await waitForSpecificValue(4); // Thunk 2, halving
+      await waitForSpecificValue(8); // Thunk 1, second doubling
+      await waitForSpecificValue(4); // Thunk 1, halving
+      await waitForSpecificValue(8); // Thunk 2, first doubling
+      await waitForSpecificValue(16); // Thunk 2, second doubling
+      await waitForSpecificValue(8); // Thunk 2, halving
 
       const finalValue = await getCounterValue();
-      expect(finalValue).toBe(4);
+      expect(finalValue).toBe(8);
     });
 
     it('should process actions sequentially from two main slow thunks dispatched from different windows', async () => {
-      await (await getButtonInCurrentWindow('increment')).click(); // Counter to 1
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      await waitForSpecificValue(1);
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
 
+      // Create a new window for cross-window testing
       await (await getButtonInCurrentWindow('create')).click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
@@ -567,8 +492,8 @@ describe('Thunk Execution and Behavior', () => {
       const mainSlowThunkButtonWindow1 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow1.click();
 
-      // Wait for the first thunk to start (counter should change to 2)
-      await waitForSpecificValue(2);
+      // Wait for the first thunk to start (counter should change to 4)
+      await waitForSpecificValue(4);
 
       // Immediately switch to window 2 and dispatch the second thunk
       const newWindowIndex = windowHandles.length - 1;
@@ -579,26 +504,119 @@ describe('Thunk Execution and Behavior', () => {
       mainSlowThunkButtonWindow2.click();
 
       // Sequence: 1 (start)
-      // Thunk 1: 2 (first doubling)
-      // Thunk 1: 4 (second doubling)
-      // Thunk 1: 2 (halving, thunk 1 done)
-      // Thunk 2: 4 (first doubling)
-      // Thunk 2: 8 (second doubling)
-      // Thunk 2: 4 (halving, thunk 2 done)
+      // Thunk 1: 4 (first doubling)
+      // Thunk 1: 8 (second doubling)
+      // Thunk 1: 4 (halving, thunk 1 done)
+      // Thunk 2: 8 (first doubling)
+      // Thunk 2: 16 (second doubling)
+      // Thunk 2: 8 (halving, thunk 2 done)
 
-      await waitForSpecificValue(4); // Thunk 1, second doubling
-      await waitForSpecificValue(2); // Thunk 1, halving
-      await waitForSpecificValue(4); // Thunk 2, first doubling
-      await waitForSpecificValue(8); // Thunk 2, second doubling
-      await waitForSpecificValue(4); // Thunk 2, halving
+      await waitForSpecificValue(8); // Thunk 1, second doubling
+      await waitForSpecificValue(4); // Thunk 1, halving
+      await waitForSpecificValue(8); // Thunk 2, first doubling
+      await waitForSpecificValue(16); // Thunk 2, second doubling
+      await waitForSpecificValue(8); // Thunk 2, halving
 
       let finalValueInNewWindowCtx = await getCounterValue();
-      expect(finalValueInNewWindowCtx).toBe(4);
+      expect(finalValueInNewWindowCtx).toBe(8);
 
       await switchToWindow(0);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
       let finalValueInMainWindowCtx = await getCounterValue();
-      expect(finalValueInMainWindowCtx).toBe(4);
+      expect(finalValueInMainWindowCtx).toBe(8);
+    });
+
+    it('should not defer thunks with non-overlapping keys', async () => {
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Create a new window for cross-window testing
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
+
+      // Subscribe main window to counter only
+      await browser.electron.execute((electron) => {
+        const mainWindow = electron.BrowserWindow.getAllWindows()[0];
+        mainWindow.webContents.send('zubridge:subscribe', ['counter']);
+      });
+
+      // Subscribe new window to theme only
+      const newWindowIndex = windowHandles.length - 1;
+      await browser.electron.execute((electron, idx) => {
+        const newWindow = electron.BrowserWindow.getAllWindows()[idx];
+        newWindow.webContents.send('zubridge:subscribe', ['theme']);
+      }, newWindowIndex);
+
+      // Start a slow thunk in main window that affects counter
+      const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
+      mainSlowThunkButton.click();
+
+      // Switch to new window and toggle theme - should not be deferred
+      await switchToWindow(newWindowIndex);
+      const themeToggleButton = await browser.$('button=Toggle Theme');
+      const beforeToggleTime = Date.now();
+      await themeToggleButton.click();
+      const afterToggleTime = Date.now();
+
+      // Theme toggle should complete quickly (under 1 second)
+      expect(afterToggleTime - beforeToggleTime).toBeLessThan(1000);
+
+      // Switch back to main window and verify thunk completed
+      await switchToWindow(0);
+      await waitForSpecificValue(4); // Final value after thunk completes
+    });
+
+    it('should not defer actions with non-overlapping keys during thunk execution', async () => {
+      // Verify counter is at 2
+      const initialValue = await getCounterValue();
+      expect(initialValue).toBe(2);
+
+      // Create a new window for cross-window testing
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
+
+      // Subscribe main window to counter only
+      await browser.electron.execute((electron) => {
+        const mainWindow = electron.BrowserWindow.getAllWindows()[0];
+        mainWindow.webContents.send('zubridge:subscribe', ['counter']);
+      });
+
+      // Subscribe new window to theme only
+      const newWindowIndex = windowHandles.length - 1;
+      await browser.electron.execute((electron, idx) => {
+        const newWindow = electron.BrowserWindow.getAllWindows()[idx];
+        newWindow.webContents.send('zubridge:subscribe', ['theme']);
+      }, newWindowIndex);
+
+      // Start a slow thunk in main window that affects counter
+      const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
+      mainSlowThunkButton.click();
+
+      // Switch to new window and perform multiple theme toggles - should not be deferred
+      await switchToWindow(newWindowIndex);
+      const themeToggleButton = await browser.$('button=Toggle Theme');
+
+      const toggleTimes = [];
+      for (let i = 0; i < 3; i++) {
+        const beforeToggle = Date.now();
+        await themeToggleButton.click();
+        await browser.pause(100); // Small pause between toggles
+        toggleTimes.push(Date.now() - beforeToggle);
+      }
+
+      // Each toggle should complete quickly (under 1 second)
+      toggleTimes.forEach((time) => {
+        expect(time).toBeLessThan(1000);
+      });
+
+      // Switch back to main window and verify thunk completed
+      await switchToWindow(0);
+      await waitForSpecificValue(4); // Final value after thunk completes
     });
   });
 });
