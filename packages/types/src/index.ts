@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand';
 import type { WebContents } from 'electron';
 
-export type Thunk<S> = (getState: () => Promise<S>, dispatch: Dispatch<S>) => void;
+export type Thunk<S> = (getState: () => Promise<Partial<S>>, dispatch: Dispatch<Partial<S>>) => void;
 
 export type Action<T extends string = string> = {
   type: T;
@@ -81,6 +81,7 @@ export interface WebContentsWrapper {
 // The object returned by mainZustandBridge
 export interface ZustandBridge extends BaseBridge<number> {
   subscribe: (wrappers: [WebContentsWrapper, ...WebContentsWrapper[]], keys?: string[]) => { unsubscribe: () => void };
+  getWindowSubscriptions: (windowId: number) => string[];
 }
 
 export type WrapperOrWebContents = WebContentsWrapper | WebContents;
@@ -171,6 +172,8 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
   };
   unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
   destroy: () => void;
+  getWindowSubscriptions: (windowId: number) => string[];
+  getSubscribedWindows: () => WindowId[];
 }
 
 /**
