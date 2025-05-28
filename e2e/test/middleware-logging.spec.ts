@@ -3,7 +3,50 @@ import { it, describe, before, beforeEach, after } from 'mocha';
 import WebSocket from 'ws';
 import assert from 'node:assert';
 import { browser } from 'wdio-electron-service';
-import { getButtonInCurrentWindow } from '../utils/window.js';
+import {
+  getButtonInCurrentWindow,
+  setupTestEnvironment,
+  refreshWindowHandles,
+  windowHandles,
+  switchToWindow,
+} from '../utils/window.js';
+import { TIMING } from '../constants.js';
+
+// Names of core windows for easier reference in tests
+const CORE_WINDOW_COUNT = 2;
+
+/**
+ * Helper function to subscribe to specific keys using the UI
+ */
+async function subscribeToKeys(keys: string): Promise<void> {
+  console.log(`Subscribing to keys: ${keys}`);
+
+  // Fill the input field
+  const inputField = await browser.$('input[placeholder*="Enter state keys"]');
+  await inputField.setValue(keys);
+
+  // Click the Subscribe button using the helper
+  const subscribeButton = await getButtonInCurrentWindow('subscribe');
+  await subscribeButton.click();
+
+  // Allow time for subscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Helper function to subscribe to all state using the UI
+ */
+async function subscribeToAll(): Promise<void> {
+  console.log('Subscribing to all state');
+
+  // Click the Subscribe All button using the helper
+  const subscribeAllButton = await getButtonInCurrentWindow('subscribeAll');
+  await subscribeAllButton.click();
+
+  // Allow time for subscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
 /**
  * E2E test for the IPC traffic logging middleware
  * Tests the WebSocket server functionality by connecting to it and
@@ -214,5 +257,68 @@ describe('IPC Traffic Logging Middleware', () => {
     } else {
       assert(false, 'Should receive action logs');
     }
+  });
+
+  describe('performance with large state', () => {
+    it('should process updates faster for windows subscribed to small parts of state', async () => {
+      // Skip if WebSocket isn't connected
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.log('Skipping test: WebSocket not connected');
+        return;
+      }
+
+      // Create a new window for comparison
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
+      const newWindowIndex = windowHandles.length - 1;
+
+      // Subscribe main window to all state using the UI
+      await switchToWindow(0);
+      await subscribeToAll();
+
+      // Subscribe new window to just counter using the UI
+      await switchToWindow(newWindowIndex);
+      await subscribeToKeys('counter');
+
+      // Clear logs before test
+      logMessages.length = 0;
+
+      // Switch back to main window
+      await switchToWindow(0);
+
+      // Generate large state in main window
+      const generateButton = await getButtonInCurrentWindow('generateLargeState');
+      await generateButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Wait for logs to be received
+      await browser.pause(1000);
+
+      // Find state updates for each window
+      const stateUpdates = logMessages.filter((msg) => msg.entry_type === 'StateUpdated');
+      const mainWindowUpdates = stateUpdates.filter((msg) => {
+        const windowId = msg.window_id || msg.metadata?.window_id;
+        return windowId === 1; // Main window typically has ID 1
+      });
+      const newWindowUpdates = stateUpdates.filter((msg) => {
+        const windowId = msg.window_id || msg.metadata?.window_id;
+        return windowId === newWindowIndex + 1; // Window IDs are 1-based
+      });
+
+      // Get processing times
+      const mainWindowTime = mainWindowUpdates[0]?.processing_metrics?.total_ms;
+      const newWindowTime = newWindowUpdates[0]?.processing_metrics?.total_ms;
+
+      console.log(`Main window (full state) processing time: ${mainWindowTime}ms`);
+      console.log(`New window (counter only) processing time: ${newWindowTime}ms`);
+
+      // New window should process updates significantly faster
+      expect(mainWindowTime).toBeGreaterThan(newWindowTime * 2);
+
+      // Clean up
+      await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
   });
 });

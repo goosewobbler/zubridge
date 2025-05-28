@@ -19,6 +19,71 @@ console.log(`Using timing configuration for platform: ${process.platform}`);
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
 const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
 
+// Add these helper functions before the describe blocks
+/**
+ * Subscribe to specific keys using the UI
+ */
+async function subscribeToKeys(keys: string): Promise<void> {
+  console.log(`Subscribing to keys: ${keys}`);
+
+  // Fill the input field
+  const inputField = await browser.$('input[placeholder*="Enter state keys"]');
+  await inputField.setValue(keys);
+
+  // Click the Subscribe button using the helper
+  const subscribeButton = await getButtonInCurrentWindow('subscribe');
+  await subscribeButton.click();
+
+  // Allow time for subscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Unsubscribe from specific keys using the UI
+ */
+async function unsubscribeFromKeys(keys: string): Promise<void> {
+  console.log(`Unsubscribing from keys: ${keys}`);
+
+  // Fill the input field
+  const inputField = await browser.$('input[placeholder*="Enter state keys"]');
+  await inputField.setValue(keys);
+
+  // Click the Unsubscribe button using the helper
+  const unsubscribeButton = await getButtonInCurrentWindow('unsubscribe');
+  await unsubscribeButton.click();
+
+  // Allow time for unsubscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Subscribe to all state using the UI
+ */
+async function subscribeToAll(): Promise<void> {
+  console.log('Subscribing to all state');
+
+  // Click the Subscribe All button using the helper
+  const subscribeAllButton = await getButtonInCurrentWindow('subscribeAll');
+  await subscribeAllButton.click();
+
+  // Allow time for subscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Unsubscribe from all state using the UI
+ */
+async function unsubscribeFromAll(): Promise<void> {
+  console.log('Unsubscribing from all state');
+
+  // Click the Unsubscribe All button using the helper
+  const unsubscribeAllButton = await getButtonInCurrentWindow('unsubscribeAll');
+  await unsubscribeAllButton.click();
+
+  // Allow time for unsubscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
 describe('Thunk Execution and Behavior', () => {
   before(async () => {
     await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
@@ -419,7 +484,7 @@ describe('Thunk Execution and Behavior', () => {
       const rendererSlowThunkButtonWindow2 = await getButtonInCurrentWindow('doubleRendererSlow');
       rendererSlowThunkButtonWindow2.click();
 
-      // Sequence: 1 (start)
+      // Sequence: 2 (start)
       // Thunk 1: 4 (first doubling)
       // Thunk 1: 8 (second doubling)
       // Thunk 1: 4 (halving, thunk 1 done)
@@ -459,7 +524,7 @@ describe('Thunk Execution and Behavior', () => {
       // Immediately dispatch the second thunk (main)
       mainSlowThunkButton.click();
 
-      // Sequence: 1 (start)
+      // Sequence: 2 (start)
       // Thunk 1: 4 (first doubling)
       // Thunk 1: 8 (second doubling)
       // Thunk 1: 4 (halving, thunk 1 done)
@@ -503,7 +568,7 @@ describe('Thunk Execution and Behavior', () => {
       const mainSlowThunkButtonWindow2 = await getButtonInCurrentWindow('doubleMainSlow');
       mainSlowThunkButtonWindow2.click();
 
-      // Sequence: 1 (start)
+      // Sequence: 2 (start)
       // Thunk 1: 4 (first doubling)
       // Thunk 1: 8 (second doubling)
       // Thunk 1: 4 (halving, thunk 1 done)
@@ -537,18 +602,17 @@ describe('Thunk Execution and Behavior', () => {
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
-      // Subscribe main window to counter only
-      await browser.electron.execute((electron) => {
-        const mainWindow = electron.BrowserWindow.getAllWindows()[0];
-        mainWindow.webContents.send('zubridge:subscribe', ['counter']);
-      });
+      // Subscribe main window to counter only using UI
+      await switchToWindow(0);
+      await subscribeToKeys('counter');
 
-      // Subscribe new window to theme only
+      // Subscribe new window to theme only using UI
       const newWindowIndex = windowHandles.length - 1;
-      await browser.electron.execute((electron, idx) => {
-        const newWindow = electron.BrowserWindow.getAllWindows()[idx];
-        newWindow.webContents.send('zubridge:subscribe', ['theme']);
-      }, newWindowIndex);
+      await switchToWindow(newWindowIndex);
+      await subscribeToKeys('theme');
+
+      // Switch back to main window
+      await switchToWindow(0);
 
       // Start a slow thunk in main window that affects counter
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
@@ -556,7 +620,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Switch to new window and toggle theme - should not be deferred
       await switchToWindow(newWindowIndex);
-      const themeToggleButton = await browser.$('button=Toggle Theme');
+      const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
       const beforeToggleTime = Date.now();
       await themeToggleButton.click();
       const afterToggleTime = Date.now();
@@ -580,18 +644,17 @@ describe('Thunk Execution and Behavior', () => {
       await refreshWindowHandles();
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
-      // Subscribe main window to counter only
-      await browser.electron.execute((electron) => {
-        const mainWindow = electron.BrowserWindow.getAllWindows()[0];
-        mainWindow.webContents.send('zubridge:subscribe', ['counter']);
-      });
+      // Subscribe main window to counter only using UI
+      await switchToWindow(0);
+      await subscribeToKeys('counter');
 
-      // Subscribe new window to theme only
+      // Subscribe new window to theme only using UI
       const newWindowIndex = windowHandles.length - 1;
-      await browser.electron.execute((electron, idx) => {
-        const newWindow = electron.BrowserWindow.getAllWindows()[idx];
-        newWindow.webContents.send('zubridge:subscribe', ['theme']);
-      }, newWindowIndex);
+      await switchToWindow(newWindowIndex);
+      await subscribeToKeys('theme');
+
+      // Switch back to main window
+      await switchToWindow(0);
 
       // Start a slow thunk in main window that affects counter
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
@@ -599,7 +662,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Switch to new window and perform multiple theme toggles - should not be deferred
       await switchToWindow(newWindowIndex);
-      const themeToggleButton = await browser.$('button=Toggle Theme');
+      const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
 
       const toggleTimes = [];
       for (let i = 0; i < 3; i++) {

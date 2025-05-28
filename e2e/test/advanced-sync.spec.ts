@@ -18,6 +18,71 @@ console.log(`Using timing configuration for platform: ${process.platform}`);
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
 const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
 
+// Add these helper functions before the tests
+/**
+ * Subscribe to specific keys using the UI
+ */
+async function subscribeToKeys(keys: string): Promise<void> {
+  console.log(`Subscribing to keys: ${keys}`);
+
+  // Fill the input field
+  const inputField = await browser.$('input[placeholder*="Enter state keys"]');
+  await inputField.setValue(keys);
+
+  // Click the Subscribe button using the helper
+  const subscribeButton = await getButtonInCurrentWindow('subscribe');
+  await subscribeButton.click();
+
+  // Allow time for subscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Unsubscribe from specific keys using the UI
+ */
+async function unsubscribeFromKeys(keys: string): Promise<void> {
+  console.log(`Unsubscribing from keys: ${keys}`);
+
+  // Fill the input field
+  const inputField = await browser.$('input[placeholder*="Enter state keys"]');
+  await inputField.setValue(keys);
+
+  // Click the Unsubscribe button using the helper
+  const unsubscribeButton = await getButtonInCurrentWindow('unsubscribe');
+  await unsubscribeButton.click();
+
+  // Allow time for unsubscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Subscribe to all state using the UI
+ */
+async function subscribeToAll(): Promise<void> {
+  console.log('Subscribing to all state');
+
+  // Click the Subscribe All button using the helper
+  const subscribeAllButton = await getButtonInCurrentWindow('subscribeAll');
+  await subscribeAllButton.click();
+
+  // Allow time for subscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
+/**
+ * Unsubscribe from all state using the UI
+ */
+async function unsubscribeFromAll(): Promise<void> {
+  console.log('Unsubscribing from all state');
+
+  // Click the Unsubscribe All button using the helper
+  const unsubscribeAllButton = await getButtonInCurrentWindow('unsubscribeAll');
+  await unsubscribeAllButton.click();
+
+  // Allow time for unsubscription to take effect
+  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+}
+
 describe('Advanced State Synchronization', () => {
   before(async () => {
     await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
@@ -545,6 +610,233 @@ describe('Advanced State Synchronization', () => {
 
       // Clean up all the runtime windows we created
       console.log('Cleaning up runtime windows');
+      await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
+  });
+
+  describe('selective subscription behavior', () => {
+    beforeEach(async () => {
+      await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
+
+    it('should stop updates for unsubscribed keys while maintaining others', async () => {
+      // Reset counter and theme
+      await resetCounter();
+
+      // Subscribe to counter and theme using UI
+      await subscribeToKeys('counter, theme');
+
+      // Get initial counter and theme values
+      const initialCounter = await getCounterValue();
+      const initialTheme = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+
+      // Unsubscribe from counter
+      await unsubscribeFromKeys('counter');
+
+      // Increment counter in another window
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      const newWindowIndex = windowHandles.length - 1;
+      await switchToWindow(newWindowIndex);
+      await (await getButtonInCurrentWindow('increment')).click();
+
+      // Switch back to main window
+      await switchToWindow(0);
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Counter should not have updated
+      const counterAfterIncrement = await getCounterValue();
+      expect(counterAfterIncrement).toBe(initialCounter);
+
+      // Toggle theme - should still update
+      const themeToggleButton = await browser.$('button=Toggle Theme');
+      await themeToggleButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      const themeAfterToggle = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+      expect(themeAfterToggle).not.toBe(initialTheme);
+
+      // Clean up
+      await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
+
+    it('should handle deep key subscriptions correctly', async () => {
+      // Subscribe to deep key
+      await subscribeToKeys('filler.key1');
+
+      // Generate large state which includes filler.key1
+      const generateButton = await browser.$('button=Generate Large State');
+      await generateButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Get initial value of filler.key1
+      const initialValue = await browser.execute(() => {
+        return (window as any).electronAPI.getState().filler?.key1;
+      });
+
+      // Create new window and generate new large state
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      const newWindowIndex = windowHandles.length - 1;
+      await switchToWindow(newWindowIndex);
+
+      const generateButton2 = await browser.$('button=Generate Large State');
+      await generateButton2.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Switch back to main window
+      await switchToWindow(0);
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Get new value of filler.key1
+      const newValue = await browser.execute(() => {
+        return (window as any).electronAPI.getState().filler?.key1;
+      });
+
+      // Value should have updated since we're subscribed to it
+      expect(newValue).not.toBe(initialValue);
+
+      // Clean up
+      await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
+
+    it('should handle overlapping subscriptions across windows correctly', async () => {
+      // Reset state
+      await resetCounter();
+
+      // Subscribe main window to counter and theme using UI
+      await subscribeToKeys('counter, theme');
+
+      // Create second window and subscribe to theme and filler
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      const secondWindowIndex = windowHandles.length - 1;
+
+      await switchToWindow(secondWindowIndex);
+      await subscribeToKeys('theme, filler');
+
+      // Get initial values in both windows
+      await switchToWindow(0);
+      const initialCounter = await getCounterValue();
+      const initialTheme = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+
+      await switchToWindow(secondWindowIndex);
+      const secondWindowInitialTheme = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+      expect(secondWindowInitialTheme).toBe(initialTheme);
+
+      // Increment counter in main window
+      await switchToWindow(0);
+      await (await getButtonInCurrentWindow('increment')).click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Counter should update in main window only
+      const mainWindowCounter = await getCounterValue();
+      expect(mainWindowCounter).toBe(initialCounter + 1);
+
+      await switchToWindow(secondWindowIndex);
+      const secondWindowCounter = await getCounterValue();
+      expect(secondWindowCounter).toBe(initialCounter); // Should not have updated
+
+      // Toggle theme in second window
+      const themeToggleButton = await browser.$('button=Toggle Theme');
+      await themeToggleButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Theme should update in both windows
+      const secondWindowNewTheme = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+      expect(secondWindowNewTheme).not.toBe(initialTheme);
+
+      await switchToWindow(0);
+      const mainWindowNewTheme = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+      expect(mainWindowNewTheme).toBe(secondWindowNewTheme);
+
+      // Generate large state in second window
+      await switchToWindow(secondWindowIndex);
+      const generateButton = await browser.$('button=Generate Large State');
+      await generateButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Filler should be present in second window but not in main window
+      const secondWindowHasFiller = await browser.execute(() => {
+        return !!(window as any).electronAPI.getState().filler;
+      });
+      expect(secondWindowHasFiller).toBe(true);
+
+      await switchToWindow(0);
+      const mainWindowHasFiller = await browser.execute(() => {
+        return !!(window as any).electronAPI.getState().filler;
+      });
+      expect(mainWindowHasFiller).toBe(false);
+
+      // Clean up
+      await setupTestEnvironment(CORE_WINDOW_COUNT);
+    });
+
+    it('should handle subscribe all and unsubscribe all correctly', async () => {
+      // Reset state
+      await resetCounter();
+
+      // Unsubscribe from all
+      await unsubscribeFromAll();
+
+      // Increment counter in a new window (shouldn't affect main window)
+      await (await getButtonInCurrentWindow('create')).click();
+      await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
+      await refreshWindowHandles();
+      const newWindowIndex = windowHandles.length - 1;
+      await switchToWindow(newWindowIndex);
+
+      // Make sure new window is subscribed to all
+      await subscribeToAll();
+
+      const initialCounter = await getCounterValue();
+      await (await getButtonInCurrentWindow('increment')).click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Verify counter incremented in new window
+      const newWindowCounter = await getCounterValue();
+      expect(newWindowCounter).toBe(initialCounter + 1);
+
+      // Switch back to main window
+      await switchToWindow(0);
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Counter should not have updated in main window
+      const mainWindowCounter = await getCounterValue();
+      expect(mainWindowCounter).toBe(initialCounter);
+
+      // Now subscribe to all in main window
+      await subscribeToAll();
+
+      // Increment counter again in new window
+      await switchToWindow(newWindowIndex);
+      await (await getButtonInCurrentWindow('increment')).click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Switch back to main window
+      await switchToWindow(0);
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+      // Counter should now update in main window
+      const updatedMainWindowCounter = await getCounterValue();
+      expect(updatedMainWindowCounter).toBe(initialCounter + 2);
+
+      // Clean up
       await setupTestEnvironment(CORE_WINDOW_COUNT);
     });
   });

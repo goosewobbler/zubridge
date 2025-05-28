@@ -141,7 +141,15 @@ export const getButtonInCurrentWindow = async (
     | 'doubleRendererSlow'
     | 'doubleMainSlow'
     | 'doubleRenderer'
-    | 'doubleMain',
+    | 'doubleMain'
+    | 'subscribe'
+    | 'unsubscribe'
+    | 'subscribeAll'
+    | 'unsubscribeAll'
+    | 'toggleTheme'
+    | 'generateLargeState'
+    | 'doubleObject'
+    | 'slowObject',
 ) => {
   let selector = '';
   switch (buttonType) {
@@ -168,6 +176,30 @@ export const getButtonInCurrentWindow = async (
       break;
     case 'doubleMain':
       selector = 'button=Double (Main Thunk)';
+      break;
+    case 'subscribe':
+      selector = 'button=Subscribe';
+      break;
+    case 'unsubscribe':
+      selector = 'button=Unsubscribe';
+      break;
+    case 'subscribeAll':
+      selector = 'button=Subscribe All';
+      break;
+    case 'unsubscribeAll':
+      selector = 'button=Unsubscribe All';
+      break;
+    case 'toggleTheme':
+      selector = 'button=Toggle Theme';
+      break;
+    case 'generateLargeState':
+      selector = 'button=Generate Large State';
+      break;
+    case 'doubleObject':
+      selector = 'button=Double (Object)';
+      break;
+    case 'slowObject':
+      selector = 'button=Double (Slow Object)';
       break;
     default:
       // Ensure all cases are handled, or throw an error for an unhandled button type.
