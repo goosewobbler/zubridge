@@ -20,10 +20,10 @@ const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
 
 // Add these helper functions before the tests
 /**
- * Subscribe to specific keys using the UI
+ * Subscribe to specific state keys using the UI
  */
-async function subscribeToKeys(keys: string): Promise<void> {
-  console.log(`Subscribing to keys: ${keys}`);
+async function subscribeToState(keys: string): Promise<void> {
+  console.log(`Subscribing to state keys: ${keys}`);
 
   // Fill the input field
   const inputField = await browser.$('input[placeholder*="Enter state keys"]');
@@ -40,8 +40,8 @@ async function subscribeToKeys(keys: string): Promise<void> {
 /**
  * Unsubscribe from specific keys using the UI
  */
-async function unsubscribeFromKeys(keys: string): Promise<void> {
-  console.log(`Unsubscribing from keys: ${keys}`);
+async function unsubscribeFromState(keys: string): Promise<void> {
+  console.log(`Unsubscribing from state keys: ${keys}`);
 
   // Fill the input field
   const inputField = await browser.$('input[placeholder*="Enter state keys"]');
@@ -58,7 +58,7 @@ async function unsubscribeFromKeys(keys: string): Promise<void> {
 /**
  * Subscribe to all state using the UI
  */
-async function subscribeToAll(): Promise<void> {
+async function subscribeToAllState(): Promise<void> {
   console.log('Subscribing to all state');
 
   // Click the Subscribe All button using the helper
@@ -72,7 +72,7 @@ async function subscribeToAll(): Promise<void> {
 /**
  * Unsubscribe from all state using the UI
  */
-async function unsubscribeFromAll(): Promise<void> {
+async function unsubscribeFromAllState(): Promise<void> {
   console.log('Unsubscribing from all state');
 
   // Click the Unsubscribe All button using the helper
@@ -615,16 +615,12 @@ describe('Advanced State Synchronization', () => {
   });
 
   describe('selective subscription behavior', () => {
-    beforeEach(async () => {
-      await setupTestEnvironment(CORE_WINDOW_COUNT);
-    });
-
     it('should stop updates for unsubscribed keys while maintaining others', async () => {
       // Reset counter and theme
       await resetCounter();
 
       // Subscribe to counter and theme using UI
-      await subscribeToKeys('counter, theme');
+      await subscribeToState('counter, theme');
 
       // Get initial counter and theme values
       const initialCounter = await getCounterValue();
@@ -633,7 +629,7 @@ describe('Advanced State Synchronization', () => {
       });
 
       // Unsubscribe from counter
-      await unsubscribeFromKeys('counter');
+      await unsubscribeFromState('counter');
 
       // Increment counter in another window
       await (await getButtonInCurrentWindow('create')).click();
@@ -652,7 +648,7 @@ describe('Advanced State Synchronization', () => {
       expect(counterAfterIncrement).toBe(initialCounter);
 
       // Toggle theme - should still update
-      const themeToggleButton = await browser.$('button=Toggle Theme');
+      const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
       await themeToggleButton.click();
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
@@ -660,17 +656,14 @@ describe('Advanced State Synchronization', () => {
         return document.body.classList.contains('dark-theme');
       });
       expect(themeAfterToggle).not.toBe(initialTheme);
-
-      // Clean up
-      await setupTestEnvironment(CORE_WINDOW_COUNT);
     });
 
     it('should handle deep key subscriptions correctly', async () => {
       // Subscribe to deep key
-      await subscribeToKeys('filler.key1');
+      await subscribeToState('filler.key1');
 
       // Generate large state which includes filler.key1
-      const generateButton = await browser.$('button=Generate Large State');
+      const generateButton = await getButtonInCurrentWindow('generateLargeState');
       await generateButton.click();
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
@@ -686,7 +679,7 @@ describe('Advanced State Synchronization', () => {
       const newWindowIndex = windowHandles.length - 1;
       await switchToWindow(newWindowIndex);
 
-      const generateButton2 = await browser.$('button=Generate Large State');
+      const generateButton2 = await getButtonInCurrentWindow('generateLargeState');
       await generateButton2.click();
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
@@ -701,9 +694,6 @@ describe('Advanced State Synchronization', () => {
 
       // Value should have updated since we're subscribed to it
       expect(newValue).not.toBe(initialValue);
-
-      // Clean up
-      await setupTestEnvironment(CORE_WINDOW_COUNT);
     });
 
     it('should handle overlapping subscriptions across windows correctly', async () => {
@@ -711,7 +701,7 @@ describe('Advanced State Synchronization', () => {
       await resetCounter();
 
       // Subscribe main window to counter and theme using UI
-      await subscribeToKeys('counter, theme');
+      await subscribeToState('counter, theme');
 
       // Create second window and subscribe to theme and filler
       await (await getButtonInCurrentWindow('create')).click();
@@ -720,7 +710,7 @@ describe('Advanced State Synchronization', () => {
       const secondWindowIndex = windowHandles.length - 1;
 
       await switchToWindow(secondWindowIndex);
-      await subscribeToKeys('theme, filler');
+      await subscribeToState('theme, filler');
 
       // Get initial values in both windows
       await switchToWindow(0);
@@ -749,7 +739,7 @@ describe('Advanced State Synchronization', () => {
       expect(secondWindowCounter).toBe(initialCounter); // Should not have updated
 
       // Toggle theme in second window
-      const themeToggleButton = await browser.$('button=Toggle Theme');
+      const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
       await themeToggleButton.click();
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
@@ -767,7 +757,7 @@ describe('Advanced State Synchronization', () => {
 
       // Generate large state in second window
       await switchToWindow(secondWindowIndex);
-      const generateButton = await browser.$('button=Generate Large State');
+      const generateButton = await getButtonInCurrentWindow('generateLargeState');
       await generateButton.click();
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
@@ -782,9 +772,6 @@ describe('Advanced State Synchronization', () => {
         return !!(window as any).electronAPI.getState().filler;
       });
       expect(mainWindowHasFiller).toBe(false);
-
-      // Clean up
-      await setupTestEnvironment(CORE_WINDOW_COUNT);
     });
 
     it('should handle subscribe all and unsubscribe all correctly', async () => {
@@ -792,7 +779,7 @@ describe('Advanced State Synchronization', () => {
       await resetCounter();
 
       // Unsubscribe from all
-      await unsubscribeFromAll();
+      await unsubscribeFromAllState();
 
       // Increment counter in a new window (shouldn't affect main window)
       await (await getButtonInCurrentWindow('create')).click();
@@ -802,7 +789,7 @@ describe('Advanced State Synchronization', () => {
       await switchToWindow(newWindowIndex);
 
       // Make sure new window is subscribed to all
-      await subscribeToAll();
+      await subscribeToAllState();
 
       const initialCounter = await getCounterValue();
       await (await getButtonInCurrentWindow('increment')).click();
@@ -821,7 +808,7 @@ describe('Advanced State Synchronization', () => {
       expect(mainWindowCounter).toBe(initialCounter);
 
       // Now subscribe to all in main window
-      await subscribeToAll();
+      await subscribeToAllState();
 
       // Increment counter again in new window
       await switchToWindow(newWindowIndex);
@@ -835,9 +822,6 @@ describe('Advanced State Synchronization', () => {
       // Counter should now update in main window
       const updatedMainWindowCounter = await getCounterValue();
       expect(updatedMainWindowCounter).toBe(initialCounter + 2);
-
-      // Clean up
-      await setupTestEnvironment(CORE_WINDOW_COUNT);
     });
   });
 });
