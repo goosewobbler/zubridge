@@ -342,7 +342,7 @@ const config: any = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: 'debug',
+  logLevel: 'warning',
   runner: 'local',
   outputDir: `wdio-logs-${e2eAppType}-${mode}`,
   specs: [specPattern],
