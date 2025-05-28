@@ -47,7 +47,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
   initialCounter: number,
   context: ThunkContext,
   options: DoubleCounterOptions = {},
-): Thunk<S> => {
+): Thunk<Partial<S>> => {
   const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false } = options;
 
   const logPrefix = getLogPrefix(context);
@@ -173,7 +173,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
 export const createDoubleCounterSlowThunk = <S extends BaseState = BaseState>(
   initialCounter: number,
   context: ThunkContext,
-): Thunk<S> => {
+): Thunk<Partial<S>> => {
   return createDoubleCounterThunk(initialCounter, context, {
     useSlow: true,
     includeTimestamps: true,
