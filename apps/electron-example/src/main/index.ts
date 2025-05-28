@@ -124,6 +124,8 @@ app
           enabled: true,
           websocketPort: 9000,
           consoleOutput: true,
+          measurePerformance: true,
+          verbose: true,
         },
       });
       debug('core', 'Middleware instance initialized successfully.');
