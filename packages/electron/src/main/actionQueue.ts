@@ -1,7 +1,7 @@
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
 import { ThunkManager, ThunkManagerEvent, getThunkManager } from '../lib/ThunkManager.js';
-import { getThunkLockManager } from '../lib/ThunkLockManager.js';
+import { getThunkLockManager, ThunkLockEvent } from '../lib/ThunkLockManager.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
@@ -60,9 +60,7 @@ export class ActionQueueManager {
 
     // Also subscribe to lock release events for robustness
     const thunkLockManager = getThunkLockManager();
-    thunkLockManager.on('lock:released', (thunkId) => {
-      debug('queue', `Lock released for thunk ${thunkId}, processing queue`);
-      setTimeout(() => this.processQueue(), 10);
+    thunkLockManager.on(ThunkLockEvent.LOCK_RELEASED, () => {
       setTimeout(() => this.thunkRegistrationQueue.processNextThunkRegistration(), 10);
     });
   }
