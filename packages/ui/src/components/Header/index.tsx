@@ -29,7 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   isLoading = false,
 }) => {
   const headerClasses = clsx(
-    'z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80 fixed top-0 left-0 right-0',
+    'z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80',
+    process.env.TEST !== 'true' && 'fixed top-0 left-0 right-0',
     `status-${bridgeStatus}`,
     className,
   );
@@ -46,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className={headerClasses}>
-      <div className="header-left flex-1">
+      <div className="flex-1 header-left">
         {appName && <div className="text-sm font-bold app-name">{appName}</div>}
         <h1 className="window-title">{windowTitle}</h1>
         {mode && <div className="mt-1 text-xs opacity-75 window-mode">Mode: {mode}</div>}
@@ -59,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      <div className="header-right flex-1 flex flex-col items-end">
+      <div className="flex flex-col items-end flex-1 header-right">
         <div className="flex items-center bridge-status">
           <span className="inline-block w-2 h-2 rounded-full status-indicator" />
           <span className="ml-2 status-text">
