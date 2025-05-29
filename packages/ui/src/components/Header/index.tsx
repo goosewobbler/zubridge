@@ -1,6 +1,18 @@
 import React from 'react';
 import clsx from 'clsx';
 
+// Define a type for the process API that matches your preload script
+interface ProcessAPI {
+  platform: string;
+  env: (name: string) => string | undefined;
+}
+
+declare global {
+  interface Window {
+    process?: ProcessAPI;
+  }
+}
+
 interface HeaderProps {
   windowId: number | string;
   windowTitle: string;
@@ -28,10 +40,13 @@ export const Header: React.FC<HeaderProps> = ({
   counterValue,
   isLoading = false,
 }) => {
+  // Get the test environment variable
+  const isTestEnv = window.process?.env('TEST') === 'true';
+
   const headerClasses = clsx(
     'z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80',
     // Fixed header is nice but it breaks e2e tests
-    window.process.env.TEST !== 'true' ? 'fixed top-0 left-0 right-0' : '',
+    isTestEnv ? '' : 'fixed top-0 left-0 right-0',
     `status-${bridgeStatus}`,
     className,
   );

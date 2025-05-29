@@ -27,6 +27,7 @@ export interface CounterAPI {
  */
 export interface ProcessAPI {
   platform: string;
+  env: (name: string) => string;
 }
 
 // Import the BaseState from apps-shared
@@ -55,6 +56,7 @@ declare global {
   interface Window {
     electronAPI?: ElectronAPI;
     counter?: CounterAPI;
+    process?: ProcessAPI;
   }
 }
 
