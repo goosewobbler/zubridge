@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 });
 
+contextBridge.exposeInMainWorld('process', {
+  platform: process.platform,
+});
+
 // Expose counter API
 contextBridge.exposeInMainWorld('counter', {
   executeMainThunk: () => {

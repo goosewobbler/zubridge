@@ -22,6 +22,13 @@ export interface CounterAPI {
   executeMainThunkSlow: () => Promise<{ success: boolean; result?: number }>;
 }
 
+/**
+ * ProcessAPI interface defines the process API exposed to the renderer process
+ */
+export interface ProcessAPI {
+  platform: string;
+}
+
 // Import the BaseState from apps-shared
 import { BaseState as SharedBaseState } from '@zubridge/apps-shared';
 
