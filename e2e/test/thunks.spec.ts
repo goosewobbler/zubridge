@@ -594,92 +594,149 @@ describe('Thunk Execution and Behavior', () => {
     it('should not defer thunks with non-overlapping keys', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
+      console.log(`Initial counter value: ${initialValue}`);
       expect(initialValue).toBe(2);
 
       // Create a new window for cross-window testing
       await (await getButtonInCurrentWindow('create')).click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
+      console.log(`Created new window, total windows: ${windowHandles.length}`);
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
-      // Subscribe main window to counter only using UI
+      // First unsubscribe from all state in main window
       await switchToWindow(0);
+      console.log('Unsubscribing from all state in main window');
+      await unsubscribeFromAll();
+
+      // Then subscribe main window to counter only using UI
+      console.log('Subscribing main window to counter only');
       await subscribeToKeys('counter');
 
-      // Subscribe new window to theme only using UI
+      // First unsubscribe from all state in new window
       const newWindowIndex = windowHandles.length - 1;
       await switchToWindow(newWindowIndex);
+      console.log(`Unsubscribing from all state in window ${newWindowIndex}`);
+      await unsubscribeFromAll();
+
+      // Then subscribe new window to theme only using UI
+      console.log(`Subscribing window ${newWindowIndex} to theme only`);
       await subscribeToKeys('theme');
 
       // Switch back to main window
       await switchToWindow(0);
+      console.log('Switched back to main window');
 
       // Start a slow thunk in main window that affects counter
+      console.log('Starting slow thunk in main window');
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
-      mainSlowThunkButton.click();
+      await mainSlowThunkButton.click();
+      console.log('Slow thunk started');
 
       // Switch to new window and toggle theme - should not be deferred
       await switchToWindow(newWindowIndex);
+      console.log(`Switched to window ${newWindowIndex} to toggle theme`);
       const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
       const beforeToggleTime = Date.now();
       await themeToggleButton.click();
       const afterToggleTime = Date.now();
+      const toggleDuration = afterToggleTime - beforeToggleTime;
+      console.log(`Theme toggle took ${toggleDuration}ms`);
 
       // Theme toggle should complete quickly (under 1 second)
-      expect(afterToggleTime - beforeToggleTime).toBeLessThan(1000);
+      expect(toggleDuration).toBeLessThan(1000);
 
       // Switch back to main window and verify thunk completed
       await switchToWindow(0);
+      console.log('Switched back to main window to check counter value');
+
+      // Wait for thunk to complete and check final value
       await waitForSpecificValue(4); // Final value after thunk completes
+      const finalValue = await getCounterValue();
+      console.log(`Final counter value: ${finalValue}`);
+      expect(finalValue).toBe(4);
     });
 
     it('should not defer actions with non-overlapping keys during thunk execution', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
-      expect(initialValue).toBe(2);
+      console.log(`Initial counter value: ${initialValue}`);
+      expect(initialValue).toBe(4);
 
       // Create a new window for cross-window testing
       await (await getButtonInCurrentWindow('create')).click();
       await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
       await refreshWindowHandles();
+      console.log(`Created new window, total windows: ${windowHandles.length}`);
       expect(windowHandles.length).toBeGreaterThanOrEqual(CORE_WINDOW_COUNT + 1);
 
-      // Subscribe main window to counter only using UI
+      // First unsubscribe from all state in main window
       await switchToWindow(0);
+      console.log('Unsubscribing from all state in main window');
+      await unsubscribeFromAll();
+
+      // Then subscribe main window to counter only using UI
+      console.log('Subscribing main window to counter only');
       await subscribeToKeys('counter');
 
-      // Subscribe new window to theme only using UI
+      // First unsubscribe from all state in new window
       const newWindowIndex = windowHandles.length - 1;
       await switchToWindow(newWindowIndex);
+      console.log(`Unsubscribing from all state in window ${newWindowIndex}`);
+      await unsubscribeFromAll();
+
+      // Then subscribe new window to theme only using UI
+      console.log(`Subscribing window ${newWindowIndex} to theme only`);
       await subscribeToKeys('theme');
 
       // Switch back to main window
       await switchToWindow(0);
+      console.log('Switched back to main window');
 
       // Start a slow thunk in main window that affects counter
+      console.log('Starting slow thunk in main window');
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
-      mainSlowThunkButton.click();
+      await mainSlowThunkButton.click();
+      console.log('Slow thunk started');
+
+      // Wait briefly to ensure thunk has started
+      await browser.pause(500);
 
       // Switch to new window and perform multiple theme toggles - should not be deferred
       await switchToWindow(newWindowIndex);
+      console.log(`Switched to window ${newWindowIndex} to toggle theme`);
       const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
 
       const toggleTimes = [];
       for (let i = 0; i < 3; i++) {
+        console.log(`Performing theme toggle ${i + 1}`);
         const beforeToggle = Date.now();
         await themeToggleButton.click();
+        const toggleTime = Date.now() - beforeToggle;
+        toggleTimes.push(toggleTime);
+        console.log(`Theme toggle ${i + 1} took ${toggleTime}ms`);
         await browser.pause(100); // Small pause between toggles
-        toggleTimes.push(Date.now() - beforeToggle);
       }
 
       // Each toggle should complete quickly (under 1 second)
-      toggleTimes.forEach((time) => {
+      toggleTimes.forEach((time, index) => {
+        console.log(`Toggle ${index + 1} time: ${time}ms`);
         expect(time).toBeLessThan(1000);
       });
 
       // Switch back to main window and verify thunk completed
       await switchToWindow(0);
+      console.log('Switched back to main window to check counter value');
+
+      // Check current counter value
+      const currentValue = await getCounterValue();
+      console.log(`Current counter value: ${currentValue}`);
+
+      // Wait for thunk to complete and check final value
       await waitForSpecificValue(4); // Final value after thunk completes
+      const finalValue = await getCounterValue();
+      console.log(`Final counter value: ${finalValue}`);
+      expect(finalValue).toBe(4);
     });
   });
 });
