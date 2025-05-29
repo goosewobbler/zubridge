@@ -655,6 +655,8 @@ describe('Advanced State Synchronization', () => {
       const themeAfterToggle = await browser.execute(() => {
         return document.body.classList.contains('dark-theme');
       });
+      console.log(`Theme after toggle: ${themeAfterToggle}`);
+      console.log(`Initial theme: ${initialTheme}`);
       expect(themeAfterToggle).not.toBe(initialTheme);
     });
 
