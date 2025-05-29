@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 contextBridge.exposeInMainWorld('process', {
   platform: process.platform,
+  env: process.env,
 });
 
 // Expose counter API
