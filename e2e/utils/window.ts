@@ -334,3 +334,73 @@ async function closeExcessWindows(coreCount: number): Promise<void> {
     console.error(`Error closing windows: ${error}`);
   }
 }
+
+/**
+ * Gets a mapping between window indices (used in the tests) and actual Electron window IDs
+ * This helps debug why window indices and window IDs in headers might not match
+ */
+export const getWindowIndexToIdMapping = async (): Promise<{ [index: number]: number }> => {
+  await refreshWindowHandles();
+
+  const mapping: { [index: number]: number } = {};
+
+  // For each window handle, get the actual window ID
+  for (let i = 0; i < windowHandles.length; i++) {
+    try {
+      await browser.switchToWindow(windowHandles[i]);
+      // Get the window ID from the window info displayed in the header
+      const windowId = await browser.execute(() => {
+        // Find the window ID element in the header
+        const idElement = document.querySelector('.window-type');
+        if (idElement) {
+          // Extract the ID from text like "ID: 123"
+          const idText = idElement.textContent || '';
+          const match = idText.match(/ID:\s*(\d+)/);
+          return match ? parseInt(match[1], 10) : null;
+        }
+        return null;
+      });
+
+      if (windowId !== null) {
+        mapping[i] = windowId;
+      }
+    } catch (error) {
+      console.error(`Error getting window ID for index ${i}:`, error);
+    }
+  }
+
+  console.log('Window index to ID mapping:', mapping);
+  return mapping;
+};
+
+/**
+ * Logs window information to help debug tests
+ * Includes the relationship between window indices and IDs
+ */
+export const logWindowInfo = async (): Promise<void> => {
+  console.log('--- Window Information ---');
+  const mapping = await getWindowIndexToIdMapping();
+
+  // Print each window's information
+  for (let i = 0; i < windowHandles.length; i++) {
+    try {
+      await browser.switchToWindow(windowHandles[i]);
+      const title = await browser.getTitle();
+      const id = mapping[i] || 'unknown';
+      console.log(`Window[${i}]: ID=${id}, Title="${title}"`);
+
+      // Get subscription info if available
+      const subscriptions = await browser.execute(() => {
+        const subscriptionElement = document.querySelector('.header-right span.text-xs');
+        return subscriptionElement ? subscriptionElement.textContent : null;
+      });
+
+      if (subscriptions) {
+        console.log(`  Subscriptions: ${subscriptions}`);
+      }
+    } catch (error) {
+      console.log(`Window[${i}]: Error getting info - ${error}`);
+    }
+  }
+  console.log('-------------------------');
+};
