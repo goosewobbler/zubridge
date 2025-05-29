@@ -619,6 +619,19 @@ describe('Advanced State Synchronization', () => {
       // Reset counter and theme
       await resetCounter();
 
+      // Set a known theme state (light) by toggling if needed
+      const currentTheme = await browser.execute(() => {
+        return document.body.classList.contains('dark-theme');
+      });
+
+      if (currentTheme) {
+        // If dark theme is active, toggle to light first
+        console.log('Setting initial theme to light');
+        const toggleButton = await getButtonInCurrentWindow('toggleTheme');
+        await toggleButton.click();
+        await browser.pause(TIMING.STATE_SYNC_PAUSE * 2); // Extra pause to ensure theme changes
+      }
+
       // Subscribe to counter and theme using UI
       await subscribeToState('counter, theme');
 
@@ -627,6 +640,10 @@ describe('Advanced State Synchronization', () => {
       const initialTheme = await browser.execute(() => {
         return document.body.classList.contains('dark-theme');
       });
+      console.log(`Initial theme before test: ${initialTheme}`);
+
+      // Verify we're in light theme mode to start
+      expect(initialTheme).toBe(false);
 
       // Unsubscribe from counter
       await unsubscribeFromState('counter');
@@ -650,7 +667,7 @@ describe('Advanced State Synchronization', () => {
       // Toggle theme - should still update
       const themeToggleButton = await getButtonInCurrentWindow('toggleTheme');
       await themeToggleButton.click();
-      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+      await browser.pause(TIMING.STATE_SYNC_PAUSE * 2); // Extra pause to ensure theme changes
 
       const themeAfterToggle = await browser.execute(() => {
         return document.body.classList.contains('dark-theme');
