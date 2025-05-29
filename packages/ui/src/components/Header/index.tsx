@@ -30,7 +30,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const headerClasses = clsx(
     'z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80',
-    window.process.platform !== 'linux' ? 'fixed top-0 left-0 right-0' : '',
+    // Fixed header is nice but it breaks e2e tests
+    window.process.env.TEST !== 'true' ? 'fixed top-0 left-0 right-0' : '',
     `status-${bridgeStatus}`,
     className,
   );
