@@ -427,6 +427,17 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // --- Selective Subscription API (windows first, keys optional) ---
+  /**
+   * Subscribe windows to state updates for specific keys.
+   *
+   * @param windows - The window(s) to subscribe
+   * @param keys - Optional array of state keys to subscribe to:
+   *   - undefined: Subscribe to all state (default)
+   *   - []: Subscribe to no state
+   *   - ['*']: Subscribe to all state
+   *   - ['key1', 'key2']: Subscribe to specific keys
+   * @returns An object with an unsubscribe function
+   */
   function selectiveSubscribe(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
     keys?: string[],
@@ -479,6 +490,17 @@ export function createCoreBridge<State extends AnyState>(
   }
 
   // Unified subscribe API (windows first, keys optional)
+  /**
+   * Subscribe windows to state updates.
+   *
+   * @param windows - The window(s) to subscribe
+   * @param keys - Optional array of state keys to subscribe to:
+   *   - undefined: Subscribe to all state (default)
+   *   - []: Subscribe to no state
+   *   - ['*']: Subscribe to all state
+   *   - ['key1', 'key2']: Subscribe to specific keys
+   * @returns An object with an unsubscribe function
+   */
   function subscribe(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
     keys?: string[],
@@ -490,6 +512,9 @@ export function createCoreBridge<State extends AnyState>(
       const allWindows = windowTracker.getActiveWebContents();
       return selectiveSubscribe(allWindows);
     }
+
+    // Pass keys as undefined (not []) when not specified to subscribe to all state
+    // This ensures subscribe(windows) subscribes to all state
     return selectiveSubscribe(windows, keys);
   }
 
