@@ -56,7 +56,7 @@ declare global {
   interface Window {
     electronAPI?: ElectronAPI;
     counter?: CounterAPI;
-    process?: ProcessAPI;
+    processAPI?: ProcessAPI;
   }
 }
 

@@ -46,7 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 });
 
-contextBridge.exposeInMainWorld('process', {
+// Expose the process API with a different name to avoid conflicts
+contextBridge.exposeInMainWorld('processAPI', {
   platform: process.platform,
   env: (name: string) => process.env[name],
 });

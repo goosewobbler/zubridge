@@ -9,7 +9,7 @@ interface ProcessAPI {
 
 declare global {
   interface Window {
-    process?: ProcessAPI;
+    processAPI?: ProcessAPI;
   }
 }
 
@@ -40,8 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
   counterValue,
   isLoading = false,
 }) => {
-  // Get the test environment variable
-  const isTestEnv = window.process?.env('TEST') === 'true';
+  // Get the test environment variable using the renamed API
+  const isTestEnv = window.processAPI?.env('TEST') === 'true';
 
   const headerClasses = clsx(
     'z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80',
