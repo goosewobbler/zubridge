@@ -31,6 +31,18 @@ pub enum Error {
     /// Errors related to Tokio runtime
     #[error("Tokio error: {0}")]
     Tokio(#[from] tokio::task::JoinError),
+    
+    /// Errors related to timestamp operations
+    #[error("Timestamp error: {0}")]
+    TimestampError(String),
+    
+    /// Errors related to missing required data
+    #[error("Missing data: {0}")]
+    MissingData(String),
+    
+    /// Errors related to transaction handling
+    #[error("Transaction error: {0}")]
+    TransactionError(String),
 
     /// Errors related to middleware operations
     #[error("Middleware error: {0}")]

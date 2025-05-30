@@ -3,22 +3,19 @@
 //! This module provides a WebSocket server that broadcasts log entries to connected clients
 //! using either JSON or MessagePack format for serialization.
 
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
 use serde::Serialize;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, RwLock};
-use tokio_tungstenite::{
-    accept_async,
-    tungstenite::Message,
-};
+use tokio_tungstenite::{accept_async, tungstenite::Message};
 
-use crate::{Error, Result};
-use crate::logging::{LogEntry, SerializationFormat};
+use crate::{Error, Result, SerializationFormat, TelemetryEntry};
+use crate::serialization;
 
 /// Maximum size of the broadcast channel
 const BROADCAST_CHANNEL_SIZE: usize = 1024;
@@ -35,7 +32,7 @@ pub struct WebSocketServer {
     clients: Arc<RwLock<HashMap<SocketAddr, broadcast::Receiver<Vec<u8>>>>>,
 
     /// Log history reference
-    log_history: Arc<RwLock<Vec<LogEntry>>>,
+    log_history: Arc<RwLock<Vec<TelemetryEntry>>>,
 
     /// Serialization format to use
     serialization_format: SerializationFormat,
@@ -43,7 +40,7 @@ pub struct WebSocketServer {
 
 impl WebSocketServer {
     /// Create a new WebSocket server
-    pub fn new(port: u16, log_history: Arc<RwLock<Vec<LogEntry>>>, serialization_format: SerializationFormat) -> Self {
+    pub fn new(port: u16, log_history: Arc<RwLock<Vec<TelemetryEntry>>>, serialization_format: SerializationFormat) -> Self {
         let (sender, _) = broadcast::channel(BROADCAST_CHANNEL_SIZE);
 
         Self {
@@ -57,8 +54,10 @@ impl WebSocketServer {
 
     /// Start the WebSocket server
     pub async fn start(&self) -> Result<()> {
+        // Bind only to localhost (127.0.0.1) for security
         let addr = format!("127.0.0.1:{}", self.port);
-        let listener = TcpListener::bind(&addr).await.map_err(|e| Error::WebSocket(e.to_string()))?;
+        let listener = TcpListener::bind(&addr).await
+            .map_err(|e| Error::WebSocket(format!("WebSocket server bind failed: {}", e)))?;
 
         info!("WebSocket server listening on {} with {:?} serialization",
               addr, self.serialization_format);
@@ -96,7 +95,7 @@ impl WebSocketServer {
         addr: SocketAddr,
         clients: Arc<RwLock<HashMap<SocketAddr, broadcast::Receiver<Vec<u8>>>>>,
         sender: broadcast::Sender<Vec<u8>>,
-        log_history: Arc<RwLock<Vec<LogEntry>>>,
+        log_history: Arc<RwLock<Vec<TelemetryEntry>>>,
         serialization_format: SerializationFormat,
     ) -> Result<()> {
         // Accept the WebSocket connection
@@ -117,7 +116,7 @@ impl WebSocketServer {
 
         // Send initial history
         let history = log_history.read().await.clone();
-        let (_msg_type, serialized) = Self::serialize_data(&history, &serialization_format)?;
+        let (_format_name, serialized) = serialization::serialize(&history, &convert_format(&serialization_format))?;
 
         // Create the correct message type based on serialization format
         let msg = if serialization_format == SerializationFormat::Json {
@@ -213,7 +212,15 @@ impl WebSocketServer {
 
     /// Broadcast a message to all connected clients
     pub async fn broadcast<T: Serialize>(&self, msg: &T) -> Result<()> {
-        let (_, serialized) = self.serialize(msg)?;
+        // Log for diagnostic purposes - only in debug mode
+        #[cfg(debug_assertions)]
+        {
+            let raw_json = serde_json::to_string(msg)?;
+            log::debug!("WebSocket broadcasting message: {}", raw_json);
+        }
+        
+        // Use the serialization module to serialize the message
+        let (_, serialized) = serialization::serialize(msg, &convert_format(&self.serialization_format))?;
 
         // Send the message to all clients
         if let Err(e) = self.sender.send(serialized) {
@@ -222,23 +229,60 @@ impl WebSocketServer {
 
         Ok(())
     }
+}
 
-    /// Serialize data according to the configured format
-    fn serialize<T: Serialize>(&self, data: &T) -> Result<(String, Vec<u8>)> {
-        Self::serialize_data(data, &self.serialization_format)
+/// Convert from SerializationFormat to serialization::Format
+fn convert_format(format: &crate::SerializationFormat) -> serialization::Format {
+    match format {
+        crate::SerializationFormat::Json => serialization::Format::Json,
+        crate::SerializationFormat::MessagePack => serialization::Format::MessagePack,
     }
+}
 
-    /// Serialize data with the specified format
-    fn serialize_data<T: Serialize>(data: &T, format: &SerializationFormat) -> Result<(String, Vec<u8>)> {
-        match format {
-            SerializationFormat::Json => {
-                let json_str = serde_json::to_string(data).map_err(Error::Json)?;
-                Ok(("json".to_string(), json_str.into_bytes()))
-            },
-            SerializationFormat::MessagePack => {
-                let binary = rmp_serde::to_vec(data).map_err(Error::MessagePack)?;
-                Ok(("messagepack".to_string(), binary))
-            }
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::PerformanceMetrics;
+    use crate::TelemetryEntryType;
+    use chrono::Utc;
+    use serde_json::json;
+    use tokio::runtime::Runtime;
+
+    #[test]
+    fn test_message_serialization() {
+        // Create test metrics
+        let metrics = PerformanceMetrics {
+            total_ms: 15.5,
+            deserialization_ms: Some(2.0),
+            action_processing_ms: Some(10.0),
+            state_update_ms: Some(3.0),
+            serialization_ms: Some(0.5),
+        };
+
+        // Create test entry
+        let entry = TelemetryEntry {
+            timestamp: Utc::now(),
+            entry_type: TelemetryEntryType::StateUpdated,
+            action: Some(crate::Action {
+                action_type: "TEST".to_string(),
+                payload: Some(json!({"value": 42})),
+                id: None,
+                source_window_id: None,
+            }),
+            state: Some(json!({"counter": 42})),
+            state_summary: None,
+            state_delta: None,
+            context_id: "test-1".to_string(),
+            processing_metrics: Some(metrics),
+        };
+
+        // Test serialization using the serialization module
+        let format = serialization::Format::Json;
+        let (_, json_bytes) = serialization::serialize(&entry, &format).unwrap();
+        let json_str = String::from_utf8(json_bytes).unwrap();
+
+        // Verify the serialization is correct
+        assert!(json_str.contains("\"total_ms\":15.5"));
+        assert!(!json_str.contains("\"total_ms\":\"15.5\""));
     }
 }
