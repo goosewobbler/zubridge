@@ -1,6 +1,6 @@
 import { type StoreApi } from 'zustand';
 import type { AnyState } from '@zubridge/types';
-import { initialState } from '@zubridge/apps-shared';
+import { initialState, generateTestState } from '@zubridge/apps-shared';
 
 let store: StoreApi<AnyState>;
 
@@ -13,19 +13,17 @@ export const reset = () => {
   store.setState(() => initialState as unknown as AnyState);
 };
 
-export const generateLargeState = async () => {
-  console.log('[Custom] Generating large filler state');
+export const generateLargeState = async (options?: { variant?: 'small' | 'medium' | 'large' | 'xl' }) => {
+  const variant = options?.variant || 'medium';
+  console.log(`[Custom] Generating ${variant} test state`);
 
-  // Generate 1000 random key-value pairs
-  const filler: Record<string, number> = {};
-  for (let i = 0; i < 1000; i++) {
-    filler[`key${i}`] = Math.random();
-  }
+  // Use the shared generateTestState function
+  const filler = generateTestState(variant);
 
   store.setState((state) => ({
     ...state,
     filler,
   }));
 
-  console.log('[Custom] Large filler state generated');
+  console.log(`[Custom] ${variant} test state generated (${filler.meta.estimatedSize})`);
 };

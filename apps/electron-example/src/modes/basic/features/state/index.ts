@@ -1,5 +1,5 @@
 import { type StoreApi } from 'zustand';
-import { initialState, type BaseState } from '@zubridge/apps-shared';
+import { initialState, type BaseState, generateTestState } from '@zubridge/apps-shared';
 
 /**
  * Attaches the state handlers to the state object
@@ -17,21 +17,19 @@ export const attachStateHandlers = <S extends BaseState>(store: StoreApi<S>) => 
       setState(() => initialState as Partial<S>);
     },
 
-    'STATE:GENERATE-FILLER': async () => {
-      console.log('[Basic] Generating large filler state');
+    'STATE:GENERATE-FILLER': async (options?: { variant?: 'small' | 'medium' | 'large' | 'xl' }) => {
+      const variant = options?.variant || 'medium';
+      console.log(`[Basic] Generating ${variant} test state`);
 
-      // Generate 1000 random key-value pairs
-      const filler: Record<string, number> = {};
-      for (let i = 0; i < 1000; i++) {
-        filler[`key${i}`] = Math.random();
-      }
+      // Use the shared generateTestState function
+      const filler = generateTestState(variant);
 
       setState((state) => ({
         ...state,
         filler,
       }));
 
-      console.log('[Basic] Large filler state generated');
+      console.log(`[Basic] ${variant} test state generated (${filler.meta.estimatedSize})`);
     },
   }));
 };

@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand';
 import type { BaseState } from '../../../../types.js';
-import { initialState } from '@zubridge/apps-shared';
+import { initialState, generateTestState } from '@zubridge/apps-shared';
 
 /**
  * Reset state to initial values
@@ -17,12 +17,19 @@ export const resetState =
  */
 export const generateLargeState =
   <S extends BaseState>(store: StoreApi<S>) =>
-  async () => {
+  async (options?: { variant?: 'small' | 'medium' | 'large' | 'xl' }) => {
+    const variant = options?.variant || 'medium';
+    console.log(`[Handler] Generating ${variant} test state`);
+
     const currentState = store.getState();
+
+    // Use the shared generateTestState function
+    const filler = generateTestState(variant);
+
     store.setState({
       ...currentState,
-      largeState: Array(1000)
-        .fill(0)
-        .map((_, i) => ({ id: i, value: `Item ${i}` })),
+      filler,
     } as S);
+
+    console.log(`[Handler] ${variant} test state generated (${filler.meta.estimatedSize})`);
   };

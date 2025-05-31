@@ -1,8 +1,10 @@
 import type { Reducer } from '@zubridge/electron';
 import type { Action } from '@zubridge/types';
-import { initialState } from '@zubridge/apps-shared';
+import { initialState, generateTestState } from '@zubridge/apps-shared';
 
-export type StateAction = { type: 'STATE:RESET' } | { type: 'STATE:GENERATE-FILLER' };
+export type StateAction =
+  | { type: 'STATE:RESET' }
+  | { type: 'STATE:GENERATE-FILLER'; payload?: { variant?: 'small' | 'medium' | 'large' | 'xl' } };
 
 /**
  * Reducer for state-wide actions
@@ -13,19 +15,22 @@ export const reducer: Reducer<typeof initialState> = (state, action: Action) => 
     case 'STATE:RESET':
       console.log('[Reducer] Resetting state to defaults');
       return initialState;
-    case 'STATE:GENERATE-FILLER':
-      console.log('[Reducer] Generating large filler state');
+    case 'STATE:GENERATE-FILLER': {
+      // Type narrowing for action.payload
+      const payload = action.payload as { variant?: 'small' | 'medium' | 'large' | 'xl' } | undefined;
+      const variant = payload?.variant || 'medium';
+      console.log(`[Reducer] Generating ${variant} test state`);
 
-      // Generate 1000 random key-value pairs
-      const filler: Record<string, number> = {};
-      for (let i = 0; i < 1000; i++) {
-        filler[`key${i}`] = Math.random();
-      }
+      // Use the shared generateTestState function
+      const filler = generateTestState(variant);
+
+      console.log(`[Reducer] ${variant} test state generated (${filler.meta.estimatedSize})`);
 
       return {
         ...state,
         filler,
       };
+    }
     default:
       return state;
   }

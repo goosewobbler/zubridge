@@ -1,5 +1,11 @@
-import { createSlice } from '@reduxjs/toolkit';
-import { initialState } from '@zubridge/apps-shared';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { initialState, generateTestState } from '@zubridge/apps-shared';
+
+// Define state variant types
+type StateVariant = 'small' | 'medium' | 'large' | 'xl';
+interface GenerateStateOptions {
+  variant?: StateVariant;
+}
 
 /**
  * State slice using Redux Toolkit
@@ -12,19 +18,26 @@ export const stateSlice = createSlice({
       console.log('[Redux Slice] Resetting state to defaults');
       return initialState;
     },
-    generateLargeState: (state) => {
-      console.log('[Redux Slice] Generating large filler state');
+    generateLargeState: {
+      reducer: (state, action: PayloadAction<any>) => {
+        return {
+          ...state,
+          filler: action.payload,
+        };
+      },
+      prepare: (options?: GenerateStateOptions) => {
+        const variant = options?.variant || 'medium';
+        console.log(`[Redux Slice] Generating ${variant} test state`);
 
-      // Generate 1000 random key-value pairs
-      const filler: Record<string, number> = {};
-      for (let i = 0; i < 1000; i++) {
-        filler[`key${i}`] = Math.random();
-      }
+        // Use the shared generateTestState function
+        const filler = generateTestState(variant);
 
-      return {
-        ...state,
-        filler,
-      };
+        console.log(`[Redux Slice] ${variant} test state prepared (${filler.meta.estimatedSize})`);
+
+        return {
+          payload: filler,
+        };
+      },
     },
   },
 });
