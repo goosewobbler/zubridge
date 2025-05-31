@@ -57,6 +57,19 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
   // Map to track pending thunk registration promises
   const pendingThunkRegistrations = new Map<string, { resolve: () => void; reject: (err: any) => void }>();
 
+  // Helper function to track action dispatch
+  const trackActionDispatch = (action: Action) => {
+    // Send a message to the main process to track this action dispatch
+    try {
+      if (action.id) {
+        debug('middleware', `Tracking dispatch of action ${action.id} (${action.type})`);
+        ipcRenderer.send(IpcChannel.TRACK_ACTION_DISPATCH, { action });
+      }
+    } catch (error) {
+      debug('middleware:error', 'Error tracking action dispatch:', error);
+    }
+  };
+
   // Create the handlers object that will be exposed to clients
   const handlers: Handlers<S> = {
     subscribe(callback: (state: S) => void) {
@@ -110,6 +123,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           id: uuidv4(),
         };
         debug('ipc', `Created action object with ID: ${actionObj.id}`);
+
+        // Track action dispatch for performance metrics
+        trackActionDispatch(actionObj);
+
         // Dispatch directly to main process through the thunk processor
         return thunkProcessor.dispatchAction(actionObj, payload).then(() => actionObj);
       }
@@ -129,6 +146,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       // Ensure action has an ID
       const actionObj = { ...action, id: action.id || uuidv4() };
       debug('ipc', `Dispatching action: ${actionObj.type}`);
+
+      // Track action dispatch for performance metrics
+      trackActionDispatch(actionObj);
+
       // Dispatch directly to main process
       return thunkProcessor.dispatchAction(actionObj).then(() => actionObj);
     },

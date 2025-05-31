@@ -41,6 +41,23 @@ export interface CoreBridgeOptions {
   onBridgeDestroy?: () => Promise<void> | void;
 }
 
+// Middleware callback functions
+interface MiddlewareCallbacks {
+  trackActionDispatch?: (action: Action) => Promise<void>;
+  trackActionReceived?: (action: Action) => Promise<void>;
+  trackStateUpdate?: (action: Action, state: AnyState) => Promise<void>;
+  trackActionAcknowledged?: (actionId: string) => Promise<void>;
+}
+
+// Global middleware callbacks
+let middlewareCallbacks: MiddlewareCallbacks = {};
+
+// Export function to set middleware callbacks
+export function setMiddlewareCallbacks(callbacks: MiddlewareCallbacks) {
+  middlewareCallbacks = callbacks;
+  debug('core', 'Middleware callbacks set:', Object.keys(callbacks).join(', '));
+}
+
 /**
  * Creates a core bridge between the main process and renderer processes
  * This implements the Zubridge Electron backend contract without requiring a specific state management library
@@ -69,6 +86,21 @@ export function createCoreBridge<State extends AnyState>(
       ...options,
       ...middlewareOptions,
     };
+
+    // Register middleware callbacks if the middleware provides them
+    if (options?.middleware?.trackActionDispatch) {
+      middlewareCallbacks.trackActionDispatch = (action) => options.middleware!.trackActionDispatch!(action);
+    }
+    if (options?.middleware?.trackActionReceived) {
+      middlewareCallbacks.trackActionReceived = (action) => options.middleware!.trackActionReceived!(action);
+    }
+    if (options?.middleware?.trackStateUpdate) {
+      middlewareCallbacks.trackStateUpdate = (action, state) => options.middleware!.trackStateUpdate!(action, state);
+    }
+    if (options?.middleware?.trackActionAcknowledged) {
+      middlewareCallbacks.trackActionAcknowledged = (actionId) =>
+        options.middleware!.trackActionAcknowledged!(actionId);
+    }
   }
 
   // Add a getter method to the window tracker for retrieving WebContents by ID
@@ -86,6 +118,11 @@ export function createCoreBridge<State extends AnyState>(
       const isThunkChild = 'parentId' in action && action.parentId !== undefined;
       if (isThunkChild) {
         debug('core', `[BRIDGE DEBUG] Processing child action of thunk ${(action as any).parentId}: ${action.type}`);
+      }
+
+      // Track action received by middleware
+      if (middlewareCallbacks.trackActionReceived) {
+        await middlewareCallbacks.trackActionReceived(action);
       }
 
       // Apply middleware before processing action
@@ -191,6 +228,12 @@ export function createCoreBridge<State extends AnyState>(
         }
       }
 
+      // Track state update with middleware
+      if (middlewareCallbacks.trackStateUpdate) {
+        const currentState = stateManager.getState();
+        await middlewareCallbacks.trackStateUpdate(action, currentState);
+      }
+
       // Send acknowledgment back to the sender if the action has an ID and source window
       if (action.id && action.__sourceWindowId) {
         debug('ipc', `Sending acknowledgment for action ${action.id}`);
@@ -211,6 +254,11 @@ export function createCoreBridge<State extends AnyState>(
               actionId: action.id,
               thunkState,
             });
+
+            // Track action acknowledged with middleware
+            if (middlewareCallbacks.trackActionAcknowledged) {
+              await middlewareCallbacks.trackActionAcknowledged(action.id);
+            }
 
             debug('ipc', `[BRIDGE DEBUG] Acknowledgment sent for action ${action.id} to window ${windowId}`);
           } else {
@@ -294,6 +342,32 @@ export function createCoreBridge<State extends AnyState>(
       } catch (ackError) {
         debug('ipc:error', '[BRIDGE DEBUG] Error sending error acknowledgment:', ackError);
       }
+    }
+  });
+
+  // Handle track_action_dispatch events from renderers
+  ipcMain.on(IpcChannel.TRACK_ACTION_DISPATCH, async (event: IpcMainEvent, data: any) => {
+    try {
+      const { action } = data || {};
+      if (!action || !action.type) {
+        debug('middleware:error', 'Invalid action tracking data received');
+        return;
+      }
+
+      debug('middleware', `Received action dispatch tracking for ${action.type} (ID: ${action.id})`);
+
+      // Add source window ID to the action
+      const actionWithSource = {
+        ...action,
+        __sourceWindowId: event.sender.id,
+      };
+
+      // Call middleware tracking function if available
+      if (middlewareCallbacks.trackActionDispatch) {
+        await middlewareCallbacks.trackActionDispatch(actionWithSource);
+      }
+    } catch (error) {
+      debug('middleware:error', 'Error handling action dispatch tracking:', error);
     }
   });
 

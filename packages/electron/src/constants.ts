@@ -3,21 +3,53 @@
  * These are internal to the Zubridge electron implementation.
  */
 export enum IpcChannel {
-  /** Channel for subscribing to state updates */
-  SUBSCRIBE = '__zubridge_state_update',
-  /** Channel for getting the current state */
-  GET_STATE = '__zubridge_get_initial_state',
-  /** Channel for dispatching actions */
-  DISPATCH = '__zubridge_dispatch_action',
-  /** Channel for acknowledging action dispatches */
-  DISPATCH_ACK = '__zubridge_dispatch_ack',
-  /** Channel for registering thunks */
-  REGISTER_THUNK = '__zubridge_register_thunk',
-  REGISTER_THUNK_ACK = '__zubridge_register_thunk_ack',
-  /** Channel for completing thunks */
-  COMPLETE_THUNK = '__zubridge_complete_thunk',
-  /** Channel for getting the window ID in the renderer */
-  GET_WINDOW_ID = '__zubridge_get_window_id',
-  /** Channel for getting the current thunk state */
-  GET_THUNK_STATE = '__zubridge_get_thunk_state',
+  /**
+   * Used by renderer to send actions to main process
+   */
+  DISPATCH = 'zubridge:dispatch',
+
+  /**
+   * Used by main process to acknowledge action receipt
+   */
+  DISPATCH_ACK = 'zubridge:dispatch-ack',
+
+  /**
+   * Used by renderer to get state from main process
+   */
+  GET_STATE = 'zubridge:get-state',
+
+  /**
+   * Used by main process to send state updates to renderer
+   */
+  SUBSCRIBE = 'zubridge:subscribe',
+
+  /**
+   * Used by renderer to register a thunk with main process
+   */
+  REGISTER_THUNK = 'zubridge:register-thunk',
+
+  /**
+   * Used by main process to acknowledge thunk registration
+   */
+  REGISTER_THUNK_ACK = 'zubridge:register-thunk-ack',
+
+  /**
+   * Used by renderer to notify main process of thunk completion
+   */
+  COMPLETE_THUNK = 'zubridge:complete-thunk',
+
+  /**
+   * Used by renderer to get window ID from main process
+   */
+  GET_WINDOW_ID = 'zubridge:get-window-id',
+
+  /**
+   * Used by renderer to get current thunk state from main process
+   */
+  GET_THUNK_STATE = 'zubridge:get-thunk-state',
+
+  /**
+   * Used by renderer to track action dispatch for performance metrics
+   */
+  TRACK_ACTION_DISPATCH = 'zubridge:track-action-dispatch',
 }

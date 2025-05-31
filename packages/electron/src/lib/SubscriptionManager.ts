@@ -13,24 +13,31 @@ export type Subscription<S> = {
 /**
  * Normalizes keys for deduplication: sorts and joins with ',', or '*' for full-state.
  * Returns:
- * - '*' for full state subscription
- * - [] for no subscriptions
+ * - '*' for full state subscription (when keys is undefined or contains '*')
+ * - [] for empty array (explicitly subscribing to nothing)
  * - Array of specific keys otherwise
  */
 function normalizeKeys(keys?: string[]): string[] | '*' {
   debug('subscription', `[normalizeKeys] Input keys: ${keys ? keys.join(', ') : 'undefined'}`);
+
+  // If keys is undefined, treat as all state subscription
   if (!keys) {
-    debug('subscription', '[normalizeKeys] No keys provided, returning "*"');
+    debug('subscription', '[normalizeKeys] No keys provided, returning "*" (all state)');
     return '*';
   }
+
+  // If keys is an empty array, keep it empty (explicitly subscribing to nothing)
   if (keys.length === 0) {
-    debug('subscription', '[normalizeKeys] Empty keys array, returning []');
+    debug('subscription', '[normalizeKeys] Empty keys array, returning [] (no state)');
     return [];
   }
+
+  // If keys includes '*', treat as all state subscription
   if (keys.includes('*')) {
-    debug('subscription', '[normalizeKeys] "*" found in keys, returning "*"');
+    debug('subscription', '[normalizeKeys] "*" found in keys, returning "*" (all state)');
     return '*';
   }
+
   // Use Set to deduplicate keys before sorting
   const normalized = [...new Set(keys.map((k) => k.trim()).filter((k) => k.length > 0))].sort();
 
@@ -202,7 +209,7 @@ export class SubscriptionManager<S> {
       return;
     }
 
-    // Remove specific keys from subscription
+    // Handle normal case - remove specific keys from subscription
     const remainingKeys = subscription.keys.filter((key) => !keys.includes(key));
     debug('subscription', `[unsubscribe] Remaining keys for window ${windowId}:`, remainingKeys);
 

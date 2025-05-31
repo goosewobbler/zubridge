@@ -16,6 +16,12 @@ export interface ZubridgeMiddleware {
   processAction: (action: NapiAction) => Promise<void> | void;
   setState: (stateJson: string) => Promise<void> | void;
   destroy?: () => Promise<void> | void;
+
+  // Performance tracking methods
+  trackActionDispatch?: (action: TypesAction) => Promise<void>;
+  trackActionReceived?: (action: TypesAction) => Promise<void>;
+  trackStateUpdate?: (action: TypesAction, state: AnyState) => Promise<void>;
+  trackActionAcknowledged?: (actionId: string) => Promise<void>;
 }
 
 /**
