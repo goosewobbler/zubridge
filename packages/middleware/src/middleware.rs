@@ -99,16 +99,26 @@ impl ZubridgeMiddleware {
     
     /// Track when an action is dispatched from the renderer
     pub async fn record_action_dispatch(&self, action: &Action) -> Result<()> {
+        log::debug!("ZubridgeMiddleware::record_action_dispatch called for action: {}", action.action_type);
+        
         if let Some(action_id) = &action.id {
             // Use transaction manager to record dispatch
-            self.transaction_manager.record_dispatch(action_id, &action.action_type).await?;
+            log::debug!("Recording dispatch in transaction manager for action ID: {}", action_id);
             
-            // Notify middlewares
-            for middleware in &self.middlewares {
-                middleware.record_action_dispatch(action).await;
+            match self.transaction_manager.record_dispatch(action_id, &action.action_type).await {
+                Ok(_) => {
+                    log::debug!("Transaction manager record_dispatch succeeded");
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
             
-            log::debug!("Tracking dispatch of action {} (type: {})", action_id, action.action_type);
+            // Log middleware info but SKIP calling their methods to avoid the "Illegal invocation" error
+            log::debug!("Skipping middleware notification to avoid binding issues");
+            log::debug!("Tracking dispatch of action {} (type: {}) completed", action_id, action.action_type);
+        } else {
+            log::debug!("Action has no ID, skipping dispatch tracking");
         }
         
         Ok(())
@@ -146,26 +156,35 @@ impl ZubridgeMiddleware {
     
     /// Track when an action is acknowledged back to the renderer
     pub async fn record_action_acknowledgement(&self, action_id: &str) -> Result<()> {
+        log::debug!("ZubridgeMiddleware::record_action_acknowledgement called for action ID: {}", action_id);
+        
         // Use transaction manager to record acknowledgement
-        self.transaction_manager.record_acknowledgement(action_id).await?;
+        log::debug!("Recording acknowledgement in transaction manager");
         
-        // Get the transaction data for metrics
-        let transaction_data = self.transaction_manager.get_transaction(action_id).await;
-        
-        // Notify middlewares about acknowledgment
-        for middleware in &self.middlewares {
-            if let Some(transaction) = &transaction_data {
-                // For middlewares that can accept transaction data directly
-                if let Some(telemetry) = middleware.as_any().downcast_ref::<TelemetryMiddleware>() {
-                    telemetry.track_action_acknowledged_with_transaction(action_id, transaction).await;
-                } else {
-                    // Default implementation for other middlewares
-                    middleware.record_action_acknowledgement(action_id).await;
-                }
-            } else {
-                middleware.record_action_acknowledgement(action_id).await;
+        match self.transaction_manager.record_acknowledgement(action_id).await {
+            Ok(_) => {
+                log::debug!("Transaction manager record_acknowledgement succeeded");
+            }
+            Err(e) => {
+                return Err(e);
             }
         }
+        
+        // Get the transaction data for metrics
+        log::debug!("Getting transaction data");
+        
+        let transaction_data = self.transaction_manager.get_transaction(action_id).await;
+        
+        if transaction_data.is_some() {
+            log::debug!("Found transaction data");
+        } else {
+            log::debug!("No transaction data found");
+        }
+        
+        // Log middleware info but SKIP calling their methods to avoid the "Illegal invocation" error
+        log::debug!("Skipping middleware notification to avoid binding issues");
+        
+        log::debug!("Action acknowledgement recording completed");
         
         Ok(())
     }

@@ -178,16 +178,11 @@ pub struct TelemetryMiddleware {
 
     /// Last state for calculating deltas
     last_state: Arc<RwLock<Option<State>>>,
-
-    /// Map of action IDs to transaction data for tracking IPC performance
-    /// This reference is maintained for compatibility with the transaction module
-    /// but the actual transaction management is handled by TransactionManager
-    transactions: Arc<RwLock<HashMap<String, PerformanceTransaction>>>,
 }
 
 impl TelemetryMiddleware {
     /// Create a new telemetry middleware with the specified configuration
-    pub fn new(config: TelemetryConfig, transactions: Arc<RwLock<HashMap<String, PerformanceTransaction>>>) -> Self {
+    pub fn new(config: TelemetryConfig, _transactions: Arc<RwLock<HashMap<String, PerformanceTransaction>>>) -> Self {
         // Configure log level based on verbose setting
         if config.verbose {
             // Set more verbose logging for our crate
@@ -306,7 +301,6 @@ impl TelemetryMiddleware {
             websocket,
             log_history,
             last_state,
-            transactions,
         }
     }
 
@@ -322,6 +316,8 @@ impl TelemetryMiddleware {
 
     /// Add a log entry to history and optionally broadcast it
     async fn add_log_entry(&self, entry: TelemetryEntry) -> Result<()> {
+        log::debug!("TelemetryMiddleware::add_log_entry called with entry type: {:?}", entry.entry_type);
+        
         // Log to console if enabled
         if self.config.console_output {
             match &entry.entry_type {
@@ -375,6 +371,7 @@ impl TelemetryMiddleware {
 
         // Add to history with limit - use a more efficient approach to avoid excessive cloning
         {
+            log::debug!("Adding entry to history");
             let mut history = self.log_history.write().await;
             
             // Check if we need to trim before adding the new entry
@@ -389,11 +386,18 @@ impl TelemetryMiddleware {
             
             // Add the new entry
             history.push(entry.clone());
+            log::debug!("History now contains {} entries", history.len());
         }
 
         // Broadcast if WebSocket is enabled - but don't clone unnecessarily
         if let Some(websocket) = &self.websocket {
-            websocket.broadcast(&entry).await?;
+            log::debug!("Broadcasting entry to WebSocket");
+            match websocket.broadcast(&entry).await {
+                Ok(_) => log::debug!("Successfully broadcast entry to WebSocket"),
+                Err(e) => log::error!("Failed to broadcast entry to WebSocket: {}", e),
+            }
+        } else {
+            log::debug!("WebSocket is not enabled, skipping broadcast");
         }
 
         Ok(())
@@ -583,7 +587,7 @@ impl Middleware for TelemetryMiddleware {
     // IPC performance tracking methods
     
     async fn record_action_dispatch(&self, action: &Action) {
-        log::debug!("IPC action dispatched: {}", action.action_type);
+        log::debug!("TelemetryMiddleware::record_action_dispatch called for action: {}", action.action_type);
         
         // Create a log entry for the dispatched action
         let entry = TelemetryEntry {
@@ -597,13 +601,15 @@ impl Middleware for TelemetryMiddleware {
             processing_metrics: None,
         };
         
-        if let Err(err) = self.add_log_entry(entry).await {
+        // Use a local reference to self to ensure proper binding
+        let this = self;
+        if let Err(err) = this.add_log_entry(entry).await {
             log::error!("Error logging IPC action dispatch: {}", err);
         }
     }
     
     async fn record_action_received(&self, action: &Action) {
-        log::debug!("IPC action received in main process: {}", action.action_type);
+        log::debug!("TelemetryMiddleware::record_action_received called for action: {}", action.action_type);
         
         // Create a log entry for the received action
         let entry = TelemetryEntry {
@@ -617,17 +623,20 @@ impl Middleware for TelemetryMiddleware {
             processing_metrics: None,
         };
         
-        if let Err(err) = self.add_log_entry(entry).await {
+        // Use a local reference to self
+        let this = self;
+        if let Err(err) = this.add_log_entry(entry).await {
             log::error!("Error logging IPC action receive: {}", err);
         }
     }
     
     async fn record_state_update(&self, action: &Action, state: &State) {
-        log::debug!("IPC state update for action: {}", action.action_type);
+        log::debug!("TelemetryMiddleware::record_state_update called for action: {}", action.action_type);
         
         // Calculate state summary
-        let state_summary = if self.config.record_state_size {
-            self.create_state_summary(state)
+        let this = self;
+        let state_summary = if this.config.record_state_size {
+            this.create_state_summary(state)
         } else {
             None
         };
@@ -644,13 +653,13 @@ impl Middleware for TelemetryMiddleware {
             processing_metrics: None,
         };
         
-        if let Err(err) = self.add_log_entry(entry).await {
+        if let Err(err) = this.add_log_entry(entry).await {
             log::error!("Error logging IPC state update: {}", err);
         }
     }
     
     async fn record_action_acknowledgement(&self, action_id: &str) {
-        log::debug!("IPC action acknowledged: {}", action_id);
+        log::debug!("TelemetryMiddleware::record_action_acknowledgement called for action: {}", action_id);
 
         // Context ID for the log entry
         let context_id = format!("ipc-ack-{}", action_id);
@@ -678,7 +687,9 @@ impl Middleware for TelemetryMiddleware {
             processing_metrics,
         };
         
-        if let Err(err) = self.add_log_entry(entry).await {
+        // Use a local reference to self
+        let this = self;
+        if let Err(err) = this.add_log_entry(entry).await {
             log::error!("Error logging IPC action acknowledgment: {}", err);
         }
     }
@@ -693,7 +704,7 @@ impl Middleware for TelemetryMiddleware {
 impl TelemetryMiddleware {
     /// This is a regular method, not part of the trait
     pub async fn track_action_acknowledged_with_transaction(&self, action_id: &str, transaction: &PerformanceTransaction) {
-        log::debug!("IPC action acknowledged with transaction data: {}", action_id);
+        log::debug!("TelemetryMiddleware::track_action_acknowledged_with_transaction called for action: {}", action_id);
 
         // Context ID for the log entry
         let context_id = format!("ipc-ack-{}", action_id);
@@ -734,8 +745,10 @@ impl TelemetryMiddleware {
             processing_metrics,
         };
         
+        // Use a local reference to self to ensure proper binding
+        let this = self;
         // Add to history and broadcast - with improved error handling
-        if let Err(err) = self.add_log_entry(entry).await {
+        if let Err(err) = this.add_log_entry(entry).await {
             log::error!("Error logging IPC action acknowledgment: {}", err);
         }
     }

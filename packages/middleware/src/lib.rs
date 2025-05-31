@@ -19,6 +19,11 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid;
+use chrono;
+use log::LevelFilter;
+use fern;
+
+use thiserror::Error;
 
 pub use error::{Error, Result};
 pub use metrics::{Metrics as PerformanceMetrics, DetailLevel as PerformanceDetail, Config as PerformanceConfig};
@@ -264,12 +269,25 @@ pub mod tauri {
 
 /// Start the Zubridge middleware with the specified configuration
 pub fn init_middleware(config: ZubridgeMiddlewareConfig) -> ZubridgeMiddleware {
-    // Set up logging first so we can debug initialization
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "debug");
-    }
-    env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
-    
+    // Set up logging to a file using fern
+    let log_path = "/tmp/zubridge_middleware_debug.log";
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}][{}] {}",
+                chrono::Utc::now().to_rfc3339(),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(LevelFilter::Debug)
+        .chain(fern::log_file(log_path).expect("Failed to open log file for fern"))
+        .apply()
+        .expect("Failed to initialize fern logger");
+
+    log::info!("Zubridge middleware logging initialized to {} (fern)", log_path);
+
     // Assume Tokio runtime is available
     log::debug!("Initializing middleware with Tokio runtime");
     

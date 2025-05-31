@@ -58,9 +58,6 @@ impl Default for Config {
 pub struct TransactionManager {
     /// Map of action IDs to transaction data
     transactions: Arc<RwLock<HashMap<String, PerformanceTransaction>>>,
-    
-    /// Configuration for the transaction manager
-    config: Config,
 }
 
 impl TransactionManager {
@@ -74,11 +71,10 @@ impl TransactionManager {
         let transactions = Arc::new(RwLock::new(HashMap::with_capacity(100)));
         
         // Start the cleanup task
-        Self::start_cleanup_task(transactions.clone(), config.clone());
+        Self::start_cleanup_task(transactions.clone(), config);
         
         Self {
             transactions,
-            config,
         }
     }
     

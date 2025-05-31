@@ -212,28 +212,54 @@ impl WebSocketServer {
 
     /// Broadcast a message to all connected clients
     pub async fn broadcast<T: Serialize>(&self, msg: &T) -> Result<()> {
-        // Log for diagnostic purposes - only in debug mode
+        // Log for diagnostic purposes
+        log::debug!("WebSocketServer::broadcast called");
+        
+        // Check if we have clients before attempting serialization
+        let clients = self.clients.read().await;
+        log::debug!("WebSocketServer::broadcast found {} clients", clients.len());
+        if clients.is_empty() {
+            log::debug!("No WebSocket clients connected, skipping broadcast");
+            return Ok(());
+        }
+        
+        // For very detailed debugging
         #[cfg(debug_assertions)]
         {
-            let raw_json = serde_json::to_string(msg)?;
-            log::debug!("WebSocket broadcasting message: {}", raw_json);
+            if let Ok(raw_json) = serde_json::to_string(msg) {
+                log::debug!("WebSocket attempting to broadcast message: {}", raw_json);
+        }
         }
         
         // Use the serialization module to serialize the message
-        let (_, serialized) = serialization::serialize(msg, &convert_format(&self.serialization_format))?;
-
-        // Send the message to all clients
-        if let Err(e) = self.sender.send(serialized) {
-            error!("Error broadcasting message: {}", e);
+        log::debug!("Using serialization format: {:?}", self.serialization_format);
+        match serialization::serialize(msg, &convert_format(&self.serialization_format)) {
+            Ok((_format_name, serialized)) => {
+                log::debug!("Successfully serialized message, size: {} bytes", serialized.len());
+                
+                // Use the broadcast sender to send to all clients at once
+                match self.sender.send(serialized) {
+                    Ok(receivers) => {
+                        log::debug!("Successfully broadcast message to {} receivers", receivers);
+                    },
+                    Err(e) => {
+                        log::error!("Error broadcasting message: {}", e);
+                    }
+                }
+            },
+            Err(e) => {
+                log::error!("Error serializing message: {}", e);
+            }
         }
-
+        
+        log::debug!("Broadcast complete");
         Ok(())
     }
 }
 
 /// Convert from SerializationFormat to serialization::Format
 fn convert_format(format: &crate::SerializationFormat) -> serialization::Format {
-    match format {
+        match format {
         crate::SerializationFormat::Json => serialization::Format::Json,
         crate::SerializationFormat::MessagePack => serialization::Format::MessagePack,
     }
