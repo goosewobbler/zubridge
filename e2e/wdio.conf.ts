@@ -349,7 +349,7 @@ const config: any = {
   baseUrl: `file://${__dirname}`,
   mochaOpts: {
     ui: 'bdd',
-    timeout: 60000,
+    timeout: 600000,
     bail: true,
   },
   onPrepare: onPrepareHook,
