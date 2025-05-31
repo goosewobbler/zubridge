@@ -70,10 +70,6 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
     dispatch('COUNTER:SET', currentValue * 2);
   };
 
-  const resetCounter = () => {
-    dispatch('COUNTER:RESET');
-  };
-
   const toggleTheme = () => {
     dispatch('THEME:TOGGLE');
   };
@@ -121,7 +117,6 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
         onIncrement={incrementCounter}
         onDecrement={decrementCounter}
         onDouble={(method) => (method === 'thunk' ? doubleCounterThunk() : doubleCounterAction())}
-        onReset={resetCounter}
         isLoading={bridgeStatus === 'initializing'}
       />
 

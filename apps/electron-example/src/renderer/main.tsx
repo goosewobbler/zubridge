@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 // Import UI package styles
 import '@zubridge/ui/styles.css';
@@ -23,22 +23,6 @@ function AppWrapper() {
   const [windowId, setWindowId] = useState<number | null>(null);
   const [modeName, setModeName] = useState('unknown');
   const [currentSubscriptions, setCurrentSubscriptions] = useState<string[] | '*'>('*');
-
-  // Function to refresh window info
-  const refreshWindowInfo = useCallback(async () => {
-    try {
-      if (window.electronAPI) {
-        const info = await window.electronAPI.getWindowInfo();
-        if (info) {
-          setWindowType(info.type as WindowType);
-          setWindowId(info.id);
-          setCurrentSubscriptions(info.subscriptions);
-        }
-      }
-    } catch (error) {
-      console.error('Error refreshing window info:', error);
-    }
-  }, []);
 
   // Fetch window info on mount
   useEffect(() => {

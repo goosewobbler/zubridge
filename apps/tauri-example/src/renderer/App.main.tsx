@@ -53,10 +53,6 @@ export function MainApp({ windowLabel }: MainAppProps) {
     dispatch({ type: 'THEME:TOGGLE' });
   };
 
-  const handleResetCounter = () => {
-    dispatch({ type: 'COUNTER:RESET' });
-  };
-
   const handleCreateWindow = () => {
     const uniqueLabel = `runtime_${Date.now()}`;
     const webview = new WebviewWindow(uniqueLabel, {
@@ -105,7 +101,6 @@ export function MainApp({ windowLabel }: MainAppProps) {
         onIncrement={handleIncrement}
         onDecrement={handleDecrement}
         onDouble={(method) => (method === 'thunk' ? handleDoubleCounter() : handleDoubleCounter())}
-        onReset={handleResetCounter}
         isLoading={bridgeStatus === 'initializing'}
       />
 

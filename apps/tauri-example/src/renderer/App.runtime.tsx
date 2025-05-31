@@ -86,11 +86,6 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
     dispatch({ type: 'THEME:TOGGLE' });
   };
 
-  const resetCounter = () => {
-    console.log('[App.runtime] Resetting counter');
-    dispatch({ type: 'COUNTER:RESET' });
-  };
-
   // Use Tauri API for window creation
   const createWindow = () => {
     const uniqueLabel = `runtime_${Date.now()}`;
@@ -134,7 +129,6 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
         onIncrement={incrementCounter}
         onDecrement={decrementCounter}
         onDouble={(method) => (method === 'thunk' ? doubleCounterThunk() : doubleCounterAction())}
-        onReset={resetCounter}
         isLoading={bridgeStatus === 'initializing'}
       />
 

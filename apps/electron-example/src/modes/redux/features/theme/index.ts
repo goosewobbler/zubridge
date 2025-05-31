@@ -3,8 +3,6 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 // Initial state
 const initialState = 'dark'; // Will start with dark theme
 
-type Theme = 'light' | 'dark';
-
 /**
  * Theme slice using Redux Toolkit
  */

@@ -18,11 +18,11 @@ export const counterSlice = createSlice({
       console.log('[Redux Slice] Decrementing counter');
       return state - 1;
     },
-    setValue: (state, action: PayloadAction<number>) => {
+    setValue: (_state, action: PayloadAction<number>) => {
       console.log(`[Redux Slice] Setting counter to ${action.payload}`);
       return action.payload;
     },
-    setValueSlow: (state, action: PayloadAction<number>) => {
+    setValueSlow: (_state, action: PayloadAction<number>) => {
       // Note: Redux reducers must be pure functions, so we can't implement delays here
       // The delay would be handled by middleware (like redux-thunk) or UI side effects
       console.log(`[Redux Slice] Setting counter (slow) to ${action.payload}`);
