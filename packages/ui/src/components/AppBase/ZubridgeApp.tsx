@@ -6,11 +6,12 @@ import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
 import { SubscriptionControls } from '../SubscriptionControls';
-import { GenerateLargeState } from '../GenerateLargeState';
+import { StateGeneration } from '../StateGeneration';
 import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
 import { CounterMethod } from '../../types.js';
+import { GenerateLargeState } from '../GenerateLargeState';
 
 export interface ZubridgeAppProps {
   /**
@@ -150,9 +151,21 @@ export function ZubridgeApp({
     dispatch('STATE:RESET');
   }, [dispatch]);
 
-  const handleGenerateLargeState = useCallback(async () => {
-    await dispatch('STATE:GENERATE-FILLER');
-  }, [dispatch]);
+  const handleGenerateLargeState = useCallback(
+    (variantOrOptions: any) => {
+      // Check if we received a string variant or an options object
+      if (typeof variantOrOptions === 'string' || variantOrOptions === undefined) {
+        const variant = variantOrOptions || 'medium';
+        debug('ui', `Generating ${variant} test state`);
+        return dispatch('STATE:GENERATE-FILLER', { variant });
+      } else {
+        // We received detailed options
+        debug('ui', `Generating custom test state with options:`, variantOrOptions);
+        return dispatch('STATE:GENERATE-FILLER', variantOrOptions);
+      }
+    },
+    [dispatch],
+  );
 
   const handleDoubleCounter = useCallback(
     (method: CounterMethod) => {
@@ -288,10 +301,7 @@ export function ZubridgeApp({
                   />
                 )}
 
-                <GenerateLargeState
-                  onGenerate={handleGenerateLargeState}
-                  isGenerating={bridgeStatus === 'initializing'}
-                />
+                <GenerateLargeState onGenerate={handleGenerateLargeState} />
               </div>
 
               <div className="window-actions-section">
