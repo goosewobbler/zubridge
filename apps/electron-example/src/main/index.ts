@@ -1,5 +1,6 @@
 import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
+import path from 'node:path';
 
 import { isDev } from '@zubridge/electron';
 import { createDispatch, ReduxBridge } from '@zubridge/electron/main';
@@ -102,51 +103,80 @@ app
     let bridge: ZustandBridge | ReduxBridge; // Declare bridge outside try/catch
     let subscribe: ZustandBridge['subscribe'] | ReduxBridge['subscribe']; // Declare subscribe outside try/catch
 
-    try {
-      debug('core', 'Attempting to createRequire...');
-      const { createRequire } = await import('node:module');
-      const customRequire = createRequire(import.meta.url);
-      debug('core', 'customRequire created. Attempting to require "@zubridge/middleware"...');
+    debug('core', 'Attempting to createRequire...');
+    const { createRequire } = await import('node:module');
+    const customRequire = createRequire(import.meta.url);
+    debug('core', 'customRequire created. Attempting to require "@zubridge/middleware"...');
 
-      const middlewareModule = customRequire('@zubridge/middleware');
-      debug('core', '"@zubridge/middleware" required successfully. Module keys:', Object.keys(middlewareModule));
+    const middlewareModule = customRequire('@zubridge/middleware');
+    debug('core', '"@zubridge/middleware" required successfully. Module keys:', Object.keys(middlewareModule));
 
-      const { initZubridgeMiddleware } = middlewareModule;
+    // Get the initialization function
+    const { initZubridgeMiddleware } = middlewareModule;
 
-      if (typeof initZubridgeMiddleware !== 'function') {
-        debug('core', 'CRITICAL ERROR - initZubridgeMiddleware is NOT a function after require!');
-        throw new Error('initZubridgeMiddleware is not a function'); // Ensure it throws to be caught
+    if (typeof initZubridgeMiddleware !== 'function') {
+      debug('core', 'CRITICAL ERROR - initZubridgeMiddleware is NOT a function after require!');
+      throw new Error('initZubridgeMiddleware is not a function'); // Ensure it throws to be caught
+    }
+    debug('core', 'initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
+
+    // Initialize file logging for debugging
+    const middlewareSetupFileLogging = middlewareModule.setup_file_logging;
+    if (typeof middlewareSetupFileLogging === 'function') {
+      debug('core', 'Setting up middleware file logging');
+      try {
+        const logPath = path.join(app.getPath('logs'), 'middleware_debug.log');
+        debug('core', `Using log path: ${logPath}`);
+        middlewareSetupFileLogging(logPath);
+        debug('core', 'Middleware file logging initialized successfully');
+      } catch (error) {
+        debug('core:error', 'Failed to initialize middleware file logging:', error);
+        // Continue execution even if logging setup fails
       }
-      debug('core', 'initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
+    } else {
+      debug('core:warning', 'setup_file_logging is not available in middleware module');
+    }
 
-      const middleware = initZubridgeMiddleware({
-        logging: {
+    // Create middleware configuration with detailed telemetry (camelCase required for NAPI-RS)
+    const middlewareConfig = {
+      telemetry: {
+        enabled: true,
+        websocketPort: 9000,
+        consoleOutput: true,
+        measurePerformance: true,
+        recordStateSize: true,
+        recordStateDelta: true,
+        verbose: true,
+        performance: {
           enabled: true,
-          websocketPort: 9000,
-          consoleOutput: true,
-          measurePerformance: true,
-          verbose: true,
+          detail: 'high',
+          includeInLogs: true,
+          recordTimings: true,
+          verboseOutput: true,
         },
-      });
-      debug('core', 'Middleware instance initialized successfully.');
+      },
+    };
 
-      // Assign to the outer scope bridge
-      bridge = await createBridge(store, middleware);
-      debug('core', 'Bridge created successfully.');
+    // Log the configuration for debugging
+    debug('core:middleware', 'Initializing middleware with config:', JSON.stringify(middlewareConfig, null, 2));
+    debug('core:middleware', 'Performance measurement enabled:', middlewareConfig.telemetry.measurePerformance);
+    debug('core:middleware', 'Performance config:', JSON.stringify(middlewareConfig.telemetry.performance, null, 2));
 
-      // Assign to the outer scope subscribe
-      if (bridge && typeof bridge.subscribe === 'function') {
-        subscribe = bridge.subscribe;
-        debug('core', 'Subscribe function retrieved from bridge.');
-      } else {
-        debug('core', 'CRITICAL ERROR - Bridge or bridge.subscribe is not available!');
-        throw new Error('Bridge or bridge.subscribe not available');
-      }
-    } catch (error) {
-      debug('core', 'CRITICAL ERROR during middleware import/initialization or bridge creation:', error);
-      // For CI, re-throw to ensure the process exits with an error if this setup fails
-      // This makes the CI job fail clearly.
-      throw error;
+    // Initialize the middleware using the provided init function
+    const middleware = initZubridgeMiddleware(middlewareConfig);
+    debug('core', 'Middleware instance initialized successfully.');
+
+    // Assign to the outer scope bridge
+    bridge = await createBridge(store, middleware);
+    debug('core', 'Bridge created successfully.');
+
+    // Assign to the outer scope subscribe
+    if (bridge && typeof bridge.subscribe === 'function') {
+      subscribe = bridge.subscribe;
+      debug('core', 'Subscribe function retrieved from bridge.');
+    } else {
+      debug('core', 'CRITICAL ERROR - Bridge or bridge.subscribe is not available!');
+      throw new Error('Bridge or bridge.subscribe not available');
     }
 
     // Create a more general array that accepts different window/view types
@@ -192,7 +222,7 @@ app
       const hasMainWindow = mainWindow && !mainWindow.isDestroyed();
       const hasDirectWebContentsWindow = directWebContentsWindow && !directWebContentsWindow.isDestroyed();
       const hasBrowserViewWindow = browserViewWindow && !browserViewWindow.isDestroyed();
-      const hasWebContentsViewWindow = webContentsViewWindow && !webContentsViewWindow.isDestroyed();
+      const hasWebContentsViewWindow = webContentsViewWindow && !webContentsViewWindow.isVisible();
 
       debug(
         'example-app:init',
