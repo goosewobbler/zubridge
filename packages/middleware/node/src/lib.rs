@@ -156,11 +156,14 @@ pub struct ZubridgeMiddleware {
 impl ZubridgeMiddleware {
   #[napi]
   pub async fn process_action(&self, action: Action) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
     // Convert payload string to JSON if present
-    let payload = if let Some(json_str) = action.payload {
-      match serde_json::from_str(&json_str) {
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
         Ok(value) => Some(value),
-        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload: {}", e))),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
       }
     } else {
       None
@@ -177,7 +180,7 @@ impl ZubridgeMiddleware {
     // Process the action
     self.inner.process_action(rust_action)
       .await
-      .map_err(|e| Error::from_reason(format!("Failed to process action: {}", e)))
+      .map_err(|e| Error::from_reason(format!("Failed to process action {}: {}", action_type, e)))
   }
 
   #[napi]
@@ -204,11 +207,14 @@ impl ZubridgeMiddleware {
   
   #[napi]
   pub async fn track_action_dispatch(&self, action: Action) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
     // Convert payload string to JSON if present
-    let payload = if let Some(json_str) = action.payload {
-      match serde_json::from_str(&json_str) {
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
         Ok(value) => Some(value),
-        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload: {}", e))),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
       }
     } else {
       None
@@ -232,11 +238,14 @@ impl ZubridgeMiddleware {
   
   #[napi]
   pub async fn track_action_received(&self, action: Action) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
     // Convert payload string to JSON if present
-    let payload = if let Some(json_str) = action.payload {
-      match serde_json::from_str(&json_str) {
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
         Ok(value) => Some(value),
-        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload: {}", e))),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
       }
     } else {
       None
@@ -260,11 +269,14 @@ impl ZubridgeMiddleware {
   
   #[napi]
   pub async fn track_state_update(&self, action: Action, state_json: String) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
     // Convert payload string to JSON if present
-    let payload = if let Some(json_str) = action.payload {
-      match serde_json::from_str(&json_str) {
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
         Ok(value) => Some(value),
-        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload: {}", e))),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
       }
     } else {
       None

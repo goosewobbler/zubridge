@@ -170,3 +170,4 @@ mod tests {
         assert!(json_str.contains("\"total_ms\":15.5"), "total_ms should be converted to a number");
     }
 } 
+ 

@@ -122,7 +122,12 @@ export function createCoreBridge<State extends AnyState>(
 
       // Track action received by middleware
       if (middlewareCallbacks.trackActionReceived) {
-        await middlewareCallbacks.trackActionReceived(action);
+        // Clone action and ensure payload is a string for Rust middleware
+        const actionForMiddleware = { ...action };
+        if (actionForMiddleware.payload !== undefined && typeof actionForMiddleware.payload !== 'string') {
+          actionForMiddleware.payload = JSON.stringify(actionForMiddleware.payload);
+        }
+        await middlewareCallbacks.trackActionReceived(actionForMiddleware);
       }
 
       // Apply middleware before processing action
@@ -231,7 +236,12 @@ export function createCoreBridge<State extends AnyState>(
       // Track state update with middleware
       if (middlewareCallbacks.trackStateUpdate) {
         const currentState = stateManager.getState();
-        await middlewareCallbacks.trackStateUpdate(action, currentState);
+        // Clone action and ensure payload is a string for Rust middleware
+        const actionForMiddleware = { ...action };
+        if (actionForMiddleware.payload !== undefined && typeof actionForMiddleware.payload !== 'string') {
+          actionForMiddleware.payload = JSON.stringify(actionForMiddleware.payload);
+        }
+        await middlewareCallbacks.trackStateUpdate(actionForMiddleware, currentState);
       }
 
       // Send acknowledgment back to the sender if the action has an ID and source window
@@ -364,6 +374,10 @@ export function createCoreBridge<State extends AnyState>(
 
       // Call middleware tracking function if available
       if (middlewareCallbacks.trackActionDispatch) {
+        // Ensure payload is a string for Rust middleware
+        if (actionWithSource.payload !== undefined && typeof actionWithSource.payload !== 'string') {
+          actionWithSource.payload = JSON.stringify(actionWithSource.payload);
+        }
         await middlewareCallbacks.trackActionDispatch(actionWithSource);
       }
     } catch (error) {
