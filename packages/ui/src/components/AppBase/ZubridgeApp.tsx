@@ -6,7 +6,6 @@ import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
 import { SubscriptionControls } from '../SubscriptionControls';
-import { StateGeneration } from '../StateGeneration';
 import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
