@@ -292,7 +292,7 @@ impl ZubridgeMiddleware {
     
     // Parse the state JSON
     let state = serde_json::from_str(&state_json)
-      .map_err(|e| Error::from_reason(format!("Failed to parse state JSON: {}", e)))?;
+      .map_err(|e| Error::from_reason(format!("Failed to parse state JSON for action {}: {}", action_type, e)))?;
     
     // Track the state update
     for middleware in &self.inner.middlewares {

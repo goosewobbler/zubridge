@@ -241,7 +241,11 @@ export function createCoreBridge<State extends AnyState>(
         if (actionForMiddleware.payload !== undefined && typeof actionForMiddleware.payload !== 'string') {
           actionForMiddleware.payload = JSON.stringify(actionForMiddleware.payload);
         }
-        await middlewareCallbacks.trackStateUpdate(actionForMiddleware, currentState);
+
+        // Convert state to JSON string for Rust middleware
+        const stateJson = JSON.stringify(currentState);
+
+        await middlewareCallbacks.trackStateUpdate(actionForMiddleware, stateJson);
       }
 
       // Send acknowledgment back to the sender if the action has an ID and source window

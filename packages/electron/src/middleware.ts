@@ -20,7 +20,7 @@ export interface ZubridgeMiddleware {
   // Performance tracking methods
   trackActionDispatch?: (action: TypesAction) => Promise<void>;
   trackActionReceived?: (action: TypesAction) => Promise<void>;
-  trackStateUpdate?: (action: TypesAction, state: AnyState) => Promise<void>;
+  trackStateUpdate?: (action: TypesAction, state: string) => Promise<void>;
   trackActionAcknowledged?: (actionId: string) => Promise<void>;
 }
 
