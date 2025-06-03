@@ -633,6 +633,9 @@ describe('Thunk Execution and Behavior', () => {
       await mainSlowThunkButton.click();
       console.log('Slow thunk started');
 
+      // Wait briefly to ensure thunk has started
+      await browser.pause(TIMING.THUNK_START_PAUSE);
+
       // Switch to new window and toggle theme - should not be deferred
       await switchToWindow(newWindowIndex);
       console.log(`Switched to window ${newWindowIndex} to toggle theme`);
@@ -645,6 +648,9 @@ describe('Thunk Execution and Behavior', () => {
 
       // Theme toggle should complete quickly (under 1 second)
       expect(toggleDuration).toBeLessThan(1000);
+
+      // Wait briefly to ensure thunk has finished
+      await browser.pause(TIMING.THUNK_WAIT_TIME);
 
       // Switch back to main window and verify thunk completed
       await switchToWindow(0);
@@ -661,7 +667,7 @@ describe('Thunk Execution and Behavior', () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       console.log(`Initial counter value: ${initialValue}`);
-      expect(initialValue).toBe(4);
+      expect(initialValue).toBe(2);
 
       // Create a new window for cross-window testing
       await (await getButtonInCurrentWindow('create')).click();
@@ -700,7 +706,7 @@ describe('Thunk Execution and Behavior', () => {
       console.log('Slow thunk started');
 
       // Wait briefly to ensure thunk has started
-      await browser.pause(500);
+      await browser.pause(TIMING.THUNK_START_PAUSE);
 
       // Switch to new window and perform multiple theme toggles - should not be deferred
       await switchToWindow(newWindowIndex);
@@ -715,7 +721,7 @@ describe('Thunk Execution and Behavior', () => {
         const toggleTime = Date.now() - beforeToggle;
         toggleTimes.push(toggleTime);
         console.log(`Theme toggle ${i + 1} took ${toggleTime}ms`);
-        await browser.pause(100); // Small pause between toggles
+        await browser.pause(TIMING.BUTTON_CLICK_PAUSE); // Small pause between toggles
       }
 
       // Each toggle should complete quickly (under 1 second)
