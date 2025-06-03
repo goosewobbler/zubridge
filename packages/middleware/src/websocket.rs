@@ -25,6 +25,9 @@ pub struct WebSocketServer {
     /// Port to listen on
     port: u16,
 
+    /// Address to bind to
+    bind_address: String,
+
     /// Broadcast channel for sending messages to clients
     sender: broadcast::Sender<Vec<u8>>,
 
@@ -45,6 +48,7 @@ impl WebSocketServer {
 
         Self {
             port,
+            bind_address: "127.0.0.1".to_string(), // Default to localhost for security
             sender,
             clients: Arc::new(RwLock::new(HashMap::new())),
             log_history,
@@ -52,12 +56,31 @@ impl WebSocketServer {
         }
     }
 
+    /// Set the bind address
+    pub fn with_bind_address(mut self, address: &str) -> Self {
+        self.bind_address = address.to_string();
+        self
+    }
+
     /// Start the WebSocket server
     pub async fn start(&self) -> Result<()> {
-        // Bind only to localhost (127.0.0.1) for security
-        let addr = format!("127.0.0.1:{}", self.port);
-        let listener = TcpListener::bind(&addr).await
-            .map_err(|e| Error::WebSocket(format!("WebSocket server bind failed: {}", e)))?;
+        // Bind to configured address
+        let addr = format!("{}:{}", self.bind_address, self.port);
+        let listener = match TcpListener::bind(&addr).await {
+            Ok(l) => l,
+            Err(e) => {
+                // If binding fails and we're not already using the default localhost,
+                // try to fall back to localhost
+                if self.bind_address != "127.0.0.1" {
+                    log::warn!("Failed to bind to {}: {}. Falling back to localhost", addr, e);
+                    let fallback_addr = format!("127.0.0.1:{}", self.port);
+                    TcpListener::bind(&fallback_addr).await
+                        .map_err(|e| Error::WebSocket(format!("WebSocket server bind failed (tried original and fallback): {}", e)))?
+                } else {
+                    return Err(Error::WebSocket(format!("WebSocket server bind failed: {}", e)));
+                }
+            }
+        };
 
         info!("WebSocket server listening on {} with {:?} serialization",
               addr, self.serialization_format);

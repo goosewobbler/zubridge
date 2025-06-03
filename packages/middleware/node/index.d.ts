@@ -13,6 +13,7 @@ export interface PerformanceConfig {
 export interface TelemetryConfig {
   enabled?: boolean
   websocketPort?: number
+  websocketBindAddress?: string
   consoleOutput?: boolean
   logLimit?: number
   measurePerformance?: boolean
@@ -32,6 +33,8 @@ export interface Action {
   sourceWindowId?: number
 }
 export declare function initZubridgeMiddleware(config?: ZubridgeMiddlewareConfig | undefined | null): ZubridgeMiddleware
+/** Function to set up file logging with a custom path */
+export declare function setupFileLogging(logPath: string): void
 /** Wrapper for Rust ZubridgeMiddleware to expose to JS */
 export declare class ZubridgeMiddleware {
   processAction(action: Action): Promise<void>

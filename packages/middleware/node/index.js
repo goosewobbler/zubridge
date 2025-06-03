@@ -310,7 +310,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { ZubridgeMiddleware, initZubridgeMiddleware } = nativeBinding
+const { ZubridgeMiddleware, initZubridgeMiddleware, setupFileLogging } = nativeBinding
 
 module.exports.ZubridgeMiddleware = ZubridgeMiddleware
 module.exports.initZubridgeMiddleware = initZubridgeMiddleware
+module.exports.setupFileLogging = setupFileLogging

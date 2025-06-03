@@ -5,6 +5,11 @@ use std::sync::Arc;
 use napi_derive::napi;
 use napi::bindgen_prelude::*;
 
+// Add necessary dependencies for logging
+use log::{self, LevelFilter};
+use fern;
+use chrono;
+
 // Re-export the types we need from the middleware crate
 use zubridge_middleware::{
   ZubridgeMiddleware as RustZubridgeMiddleware,
@@ -26,6 +31,7 @@ pub struct PerformanceConfig {
 pub struct TelemetryConfig {
   pub enabled: Option<bool>,
   pub websocket_port: Option<u32>,
+  pub websocket_bind_address: Option<String>,
   pub console_output: Option<bool>,
   pub log_limit: Option<u32>,
   pub measure_performance: Option<bool>,
@@ -60,6 +66,10 @@ impl From<TelemetryConfig> for RustTelemetryConfig {
 
     if let Some(port) = config.websocket_port {
       result.websocket_port = Some(port as u16);
+    }
+    
+    if let Some(bind_address) = config.websocket_bind_address {
+      result.websocket_bind_address = bind_address;
     }
 
     if let Some(console_output) = config.console_output {
@@ -329,4 +339,45 @@ pub fn init_zubridge_middleware(config: Option<ZubridgeMiddlewareConfig>) -> Zub
   ZubridgeMiddleware {
     inner: Arc::new(middleware),
   }
+}
+
+/// Function to set up file logging with a custom path
+#[napi]
+pub fn setup_file_logging(log_path: String) -> Result<()> {
+  // First try to open the log file
+  let log_file = match fern::log_file(&log_path) {
+    Ok(file) => file,
+    Err(e) => {
+      return Err(Error::from_reason(format!(
+        "Failed to open log file at {}: {}",
+        log_path, e
+      )))
+    }
+  };
+
+  // Then configure and apply the logger
+  match fern::Dispatch::new()
+    .format(|out, message, record| {
+      out.finish(format_args!(
+        "[{}][{}][{}] {}",
+        chrono::Utc::now().to_rfc3339(),
+        record.level(),
+        record.target(),
+        message
+      ))
+    })
+    .level(LevelFilter::Debug)
+    .chain(log_file)
+    .apply() {
+      Ok(_) => {
+        log::info!("Middleware file logging initialized to {}", log_path);
+        Ok(())
+      },
+      Err(e) => {
+        Err(Error::from_reason(format!(
+          "Failed to initialize logging system: {}",
+          e
+        )))
+      }
+    }
 }

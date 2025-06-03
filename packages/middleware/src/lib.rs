@@ -269,9 +269,13 @@ pub mod tauri {
 
 /// Start the Zubridge middleware with the specified configuration
 pub fn init_middleware(config: ZubridgeMiddlewareConfig) -> ZubridgeMiddleware {
-    // Set up logging to a file using fern
-    let log_path = "/tmp/zubridge_middleware_debug.log";
-    fern::Dispatch::new()
+    // Get a platform-appropriate temp directory path for logging
+    let temp_dir = std::env::temp_dir();
+    let log_path = temp_dir.join("zubridge_middleware_debug.log");
+    let log_path_str = log_path.to_string_lossy();
+    
+    // Try to set up logging to a file using fern, but continue even if it fails
+    let logger = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
                 "[{}][{}][{}] {}",
@@ -281,12 +285,29 @@ pub fn init_middleware(config: ZubridgeMiddlewareConfig) -> ZubridgeMiddleware {
                 message
             ))
         })
-        .level(LevelFilter::Debug)
-        .chain(fern::log_file(log_path).expect("Failed to open log file for fern"))
-        .apply()
-        .expect("Failed to initialize fern logger");
-
-    log::info!("Zubridge middleware logging initialized to {} (fern)", log_path);
+        .level(LevelFilter::Debug);
+        
+    // Try to open the log file, but don't fail if we can't
+    match fern::log_file(&log_path) {
+        Ok(log_file) => {
+            // If we successfully opened the log file, chain it to the logger
+            match logger.chain(log_file).apply() {
+                Ok(_) => {
+                    log::info!("Zubridge middleware logging initialized to {} (fern)", log_path_str);
+                },
+                Err(e) => {
+                    eprintln!("Warning: Failed to apply fern logger: {}. Continuing without file logging.", e);
+                }
+            }
+        },
+        Err(e) => {
+            eprintln!("Warning: Failed to open log file for fern: {}. Continuing without file logging.", e);
+            // Still apply the logger to stderr at least
+            if let Err(e) = logger.chain(std::io::stderr()).apply() {
+                eprintln!("Warning: Failed to initialize any logging: {}", e);
+            }
+        }
+    };
 
     // Assume Tokio runtime is available
     log::debug!("Initializing middleware with Tokio runtime");

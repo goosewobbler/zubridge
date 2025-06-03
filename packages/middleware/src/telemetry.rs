@@ -26,6 +26,10 @@ pub struct TelemetryConfig {
 
     /// Port for the WebSocket server (None to disable)
     pub websocket_port: Option<u16>,
+    
+    /// Bind address for the WebSocket server
+    #[serde(default = "default_bind_address")]
+    pub websocket_bind_address: String,
 
     /// Whether to output to console
     #[serde(default = "default_true")]
@@ -84,11 +88,16 @@ fn default_serialization_format() -> SerializationFormat {
     SerializationFormat::Json
 }
 
+fn default_bind_address() -> String {
+    "127.0.0.1".to_string()
+}
+
 impl Default for TelemetryConfig {
     fn default() -> Self {
         Self {
             enabled: true,
             websocket_port: Some(9000),
+            websocket_bind_address: default_bind_address(),
             console_output: true,
             log_limit: default_log_limit(),
             measure_performance: true,
@@ -260,21 +269,24 @@ impl TelemetryMiddleware {
         
         // Start WebSocket server if enabled
         let websocket = if let Some(port) = updated_config.websocket_port {
-            log::info!("Initializing WebSocket server on port {}", port);
+            log::info!("Initializing WebSocket server on port {} with bind address {}", port, updated_config.websocket_bind_address);
             
             let websocket = WebSocketServer::new(
                 port, 
                 log_history.clone(), 
                 serialization_format,
-            );
+            ).with_bind_address(&updated_config.websocket_bind_address);
             let websocket_arc = Arc::new(websocket);
 
             // Spawn WebSocket server with improved error handling
             let ws = websocket_arc.clone();
             
+            // Clone the bind address for use in the async block
+            let bind_address = updated_config.websocket_bind_address.clone();
+            
             // Use spawn_blocking to ensure WebSocket server runs even if the current thread doesn't have a runtime
             tokio::task::spawn(async move {
-                log::info!("Starting WebSocket server on port {}...", port);
+                log::info!("Starting WebSocket server on {}:{}...", bind_address, port);
                 match ws.start().await {
                     Ok(_) => {
                         log::info!("WebSocket server stopped normally");
@@ -289,7 +301,7 @@ impl TelemetryMiddleware {
                 }
             });
 
-            log::info!("WebSocket server initialized successfully on port {}", port);
+            log::info!("WebSocket server initialized successfully on {}:{}", updated_config.websocket_bind_address, port);
             Some(websocket_arc)
         } else {
             log::debug!("WebSocket server disabled (no port specified)");

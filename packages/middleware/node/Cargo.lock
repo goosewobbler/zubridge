@@ -1494,6 +1494,9 @@ dependencies = [
 name = "zubridge-middleware-node"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "fern",
+ "log",
  "napi",
  "napi-build",
  "napi-derive",
