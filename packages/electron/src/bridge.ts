@@ -45,7 +45,7 @@ export interface CoreBridgeOptions {
 interface MiddlewareCallbacks {
   trackActionDispatch?: (action: Action) => Promise<void>;
   trackActionReceived?: (action: Action) => Promise<void>;
-  trackStateUpdate?: (action: Action, state: AnyState) => Promise<void>;
+  trackStateUpdate?: (action: Action, state: string) => Promise<void>;
   trackActionAcknowledged?: (actionId: string) => Promise<void>;
 }
 
