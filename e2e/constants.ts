@@ -30,7 +30,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_CHANGE_PAUSE: 200,
     WINDOW_WAIT_TIMEOUT: 10000,
     WINDOW_WAIT_INTERVAL: 500,
-    THUNK_WAIT_TIME: 5000,
+    THUNK_WAIT_TIME: 10000,
   },
 };
 
