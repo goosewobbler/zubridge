@@ -6,11 +6,12 @@ export type Thunk<S> = (getState: () => Promise<Partial<S>>, dispatch: Dispatch<
 export type Action<T extends string = string> = {
   type: T;
   payload?: unknown;
-  id?: string; // Unique identifier for tracking action acknowledgements
+  __id?: string; // Unique identifier for tracking action acknowledgements
+  __bypassAccessControl?: boolean; // Flag to bypass subscription validation
+  __bypassThunkLock?: boolean; // Flag to bypass thunk lock
   __thunkParentId?: string; // Parent thunk ID if action is part of a thunk
   __sourceWindowId?: number; // Source window ID where the action originated
   __keys?: string[];
-  __force?: boolean;
   __isFromMainProcess?: boolean;
   __startsThunk?: boolean;
   __endsThunk?: boolean;
@@ -93,11 +94,18 @@ export type MainZustandBridge = <S extends AnyState, Store extends StoreApi<S>>(
   options?: MainZustandBridgeOpts<S>,
 ) => ZustandBridge;
 
-export type DispatchOptions = { keys?: string[]; force?: boolean };
+export type DispatchOptions = {
+  keys?: string[];
+  bypassAccessControl?: boolean;
+  bypassThunkLock?: boolean;
+};
 
 export type Dispatch<S> = {
+  // String action with optional payload and options
   (action: string, payload?: unknown, options?: DispatchOptions): Promise<any>;
+  // Action object with options
   (action: Action, options?: DispatchOptions): Promise<any>;
+  // Thunk with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<any>;
 };
 
@@ -125,19 +133,19 @@ export type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialStat
  * @template TActions A record mapping action type strings to their payload types
  */
 export type DispatchFunc<S, TActions extends Record<string, any> = Record<string, any>> = {
-  // Handle thunks
+  // Handle thunks with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<any>;
 
-  // Handle string action types with optional payload
+  // Handle string action types with optional payload and options
   (action: string, payload?: unknown, options?: DispatchOptions): Promise<any>;
 
-  // Handle strongly typed action objects
+  // Handle strongly typed action objects with options
   <TType extends keyof TActions>(
     action: { type: TType; payload?: TActions[TType] },
     options?: DispatchOptions,
   ): Promise<any>;
 
-  // Handle generic action objects
+  // Handle generic action objects with options
   (action: Action, options?: DispatchOptions): Promise<any>;
 };
 
