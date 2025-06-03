@@ -175,10 +175,10 @@ export class RendererThunkProcessor {
         // Handle string actions by converting to action objects
         const actionObj: Action =
           typeof action === 'string'
-            ? { type: action, payload, id: uuidv4() }
-            : { ...(action as Action), id: (action as Action).id || uuidv4() };
+            ? { type: action, payload, __id: uuidv4() }
+            : { ...action, __id: action.__id || uuidv4() };
 
-        const actionId = actionObj.id as string;
+        const actionId = actionObj.__id as string;
 
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} dispatching action ${actionObj.type} (${actionId})`);
 
@@ -301,12 +301,12 @@ export class RendererThunkProcessor {
 
     const actionObj: Action =
       typeof action === 'string'
-        ? { type: action, payload, id: uuidv4() }
-        : { ...(action as Action), id: (action as Action).id || uuidv4() };
+        ? { type: action, payload, __id: uuidv4() }
+        : { ...action, __id: action.__id || uuidv4() };
 
-    debug('ipc', `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.id})`);
+    debug('ipc', `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.__id})`);
     await this.actionSender(actionObj, parentId);
-    debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.id} sent.`);
+    debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);
   }
 }
 

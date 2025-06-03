@@ -1,7 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Handlers, Thunk } from '@zubridge/types';
+import type { Action, AnyState, Handlers, Thunk, DispatchOptions } from '@zubridge/types';
 import { IpcChannel } from './constants.js';
 import { debug } from '@zubridge/core';
 import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
@@ -61,8 +61,8 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
   const trackActionDispatch = (action: Action) => {
     // Send a message to the main process to track this action dispatch
     try {
-      if (action.id) {
-        debug('middleware', `Tracking dispatch of action ${action.id} (${action.type})`);
+      if (action.__id) {
+        debug('middleware', `Tracking dispatch of action ${action.__id} (${action.type})`);
         ipcRenderer.send(IpcChannel.TRACK_ACTION_DISPATCH, { action });
       }
     } catch (error) {
@@ -110,19 +110,62 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
     dispatch(
       action: string | Action | Thunk<S>,
-      payloadOrOptions?: unknown | { keys?: string[]; force?: boolean },
-      options?: { keys?: string[]; force?: boolean },
+      payloadOrOptions?: unknown | DispatchOptions,
+      options?: DispatchOptions,
     ) {
+      // Parse options from different argument positions
+      let dispatchOptions: DispatchOptions | undefined;
+      let payload: unknown = undefined;
+
+      // Handle different argument combinations
+      if (options && typeof options === 'object') {
+        // If the third argument is provided as options, use it
+        dispatchOptions = options;
+      } else if (
+        payloadOrOptions &&
+        typeof payloadOrOptions === 'object' &&
+        !Array.isArray(payloadOrOptions) &&
+        ('bypassAccessControl' in payloadOrOptions ||
+          'bypassThunkLock' in payloadOrOptions ||
+          'keys' in payloadOrOptions)
+      ) {
+        // If second argument looks like options, use it as options
+        dispatchOptions = payloadOrOptions as DispatchOptions;
+      } else {
+        // Otherwise, second argument is payload
+        payload = payloadOrOptions;
+      }
+
+      const bypassAccessControl = dispatchOptions?.bypassAccessControl === true;
+      const bypassThunkLock = dispatchOptions?.bypassThunkLock === true;
+
+      debug(
+        'ipc',
+        `Dispatch called with bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
+      );
+
       // Handle string actions
       if (typeof action === 'string') {
-        const payload = options === undefined && typeof payloadOrOptions !== 'object' ? payloadOrOptions : undefined;
-        debug('ipc', `Dispatching string action: ${action}`);
+        debug(
+          'ipc',
+          `Dispatching string action: ${action}, bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
+        );
         const actionObj: Action = {
           type: action,
           payload: payload,
-          id: uuidv4(),
+          __id: uuidv4(),
         };
-        debug('ipc', `Created action object with ID: ${actionObj.id}`);
+
+        // Add bypass flags if specified
+        if (bypassAccessControl) {
+          actionObj.__bypassAccessControl = true;
+        }
+
+        if (bypassThunkLock) {
+          actionObj.__bypassThunkLock = true;
+        }
+
+        debug('ipc', `Created action object with ID: ${actionObj.__id}`);
 
         // Track action dispatch for performance metrics
         trackActionDispatch(actionObj);
@@ -130,22 +173,54 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         // Dispatch directly to main process through the thunk processor
         return thunkProcessor.dispatchAction(actionObj, payload).then(() => actionObj);
       }
+
       // Handle thunks (functions)
       if (typeof action === 'function') {
-        debug('ipc', 'Executing thunk in renderer');
+        debug(
+          'ipc',
+          `Executing thunk in renderer, bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
+        );
+
         // Create a getState function that uses the handlers.getState
         const getState = async () => {
           debug('ipc', 'Getting state for thunk via handlers.getState');
           return handlers.getState();
         };
+
+        // Store the bypass flags in the thunk
+        if (bypassAccessControl) {
+          (action as any).__bypassAccessControl = true;
+        }
+
+        if (bypassThunkLock) {
+          (action as any).__bypassThunkLock = true;
+        }
+
         // Execute the thunk through the thunk processor
-        return thunkProcessor.executeThunk(action as Thunk<S>, getState);
+        const parentId = undefined;
+        return thunkProcessor.executeThunk(action as Thunk<S>, getState, parentId);
       }
 
       // It's an action object
-      // Ensure action has an ID
-      const actionObj = { ...action, id: action.id || uuidv4() };
-      debug('ipc', `Dispatching action: ${actionObj.type}`);
+      // Ensure action has an ID and add bypass flags if specified
+      const actionObj: Action = {
+        ...action,
+        __id: action.__id || uuidv4(),
+      };
+
+      // Add bypass flags if specified
+      if (bypassAccessControl) {
+        actionObj.__bypassAccessControl = true;
+      }
+
+      if (bypassThunkLock) {
+        actionObj.__bypassThunkLock = true;
+      }
+
+      debug(
+        'ipc',
+        `Dispatching action: ${actionObj.type}, bypassAccessControl=${!!actionObj.__bypassAccessControl}, bypassThunkLock=${!!actionObj.__bypassThunkLock}`,
+      );
 
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
@@ -201,7 +276,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           windowId,
           // Function to send actions to main process
           actionSender: async (action: Action, parentId?: string) => {
-            debug('ipc', `Sending action: ${action.type}, id: ${action.id}${parentId ? `, parent: ${parentId}` : ''}`);
+            debug(
+              'ipc',
+              `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}`,
+            );
             ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
           },
           // Function to register thunks with main process

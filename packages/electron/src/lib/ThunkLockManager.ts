@@ -140,6 +140,13 @@ export class ThunkLockManager extends EventEmitter {
    * Implements key-based and global locking.
    */
   canProcessAction(action: Action): boolean {
+    // If the action has the bypass thunk lock flag, allow it to bypass all locks
+    if (action.__bypassThunkLock === true) {
+      debug('thunk-lock', `Action ${action.type} allowed - has bypassThunkLock flag`);
+      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'bypass-thunk-lock' });
+      return true;
+    }
+
     // If no thunks are active, allow all actions
     if (this.activeThunks.size === 0) {
       debug('thunk-lock', `Action ${action.type} allowed - no active thunks`);
