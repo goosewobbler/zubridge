@@ -4,40 +4,7 @@ import { debug } from '@zubridge/core';
 // Import app window augmentations
 import type {} from '@zubridge/types/app';
 import { Button } from '../Button';
-
-interface ErrorLogProps {
-  errors: Array<{ message: string; timestamp: number }>;
-  onClear: () => void;
-}
-
-function ErrorLog({ errors, onClear }: ErrorLogProps) {
-  if (errors.length === 0) {
-    return (
-      <div className="error-log empty" data-testid="error-log">
-        No errors logged
-      </div>
-    );
-  }
-
-  return (
-    <div className="error-log" data-testid="error-log">
-      <div className="error-log-header">
-        <h4>Error Log ({errors.length})</h4>
-        <Button onClick={onClear} variant="reset" size="sm" data-testid="clear-errors-btn">
-          Clear
-        </Button>
-      </div>
-      <div className="error-log-content">
-        {errors.map((err, i) => (
-          <div key={i} className="error-entry" data-testid="error-entry">
-            <div className="error-time">{new Date(err.timestamp).toLocaleTimeString()}</div>
-            <div className="error-message">{err.message}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { ErrorLog } from '../ErrorLog';
 
 interface ErrorTestingProps {
   dispatch: any;
@@ -65,37 +32,46 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
 
   const handleAccessUnsubscribed = useCallback(() => {
     try {
-      // Try to directly access a state key we're not subscribed to
-      if (window.zubridge && typeof window.zubridge.getState === 'function') {
-        // Check current subscriptions to find something we're not subscribed to
-        const targetKey =
-          typeof currentSubscriptions === 'string'
-            ? 'nonExistentKey'
-            : currentSubscriptions.includes('counter')
-              ? 'nonExistentKey'
-              : 'counter';
+      debug('ui', 'Testing access to unsubscribed state');
 
-        const state = window.zubridge.getState();
-
-        // Using any here because we're deliberately accessing properties that might not exist
-        // to trigger errors for testing
-        const value = (state as any)[targetKey];
-        debug('ui', `Successfully accessed ${targetKey}: ${value}`);
-      } else {
-        throw new Error('zubridge.getState is not available');
+      // Force an error by attempting to access a state key we're not subscribed to
+      if (!window.zubridge) {
+        throw new Error('zubridge is not available');
       }
+
+      // Instead of trying to check what we're subscribed to,
+      // let's just try to access a state property that doesn't exist
+      const nonExistentKey = 'nonExistentKey_' + Date.now();
+      debug('ui', `Attempting to access nonexistent key: ${nonExistentKey}`);
+
+      // Try to dispatch an action for a state we're not subscribed to
+      dispatch({
+        type: 'TEST:ACCESS_UNSUBSCRIBED',
+        payload: { targetKey: nonExistentKey },
+        __testErrorTrigger: true,
+      });
+
+      logError(
+        `Successfully accessed unsubscribed state (${nonExistentKey}). This should have failed if access control is working.`,
+      );
     } catch (error) {
       logError(error instanceof Error ? error.message : String(error));
     }
-  }, [currentSubscriptions, logError]);
+  }, [dispatch, logError]);
 
   const handleDispatchInvalid = useCallback(() => {
     try {
-      // Try to dispatch an action with invalid payload
+      debug('ui', 'Testing dispatch with invalid payload');
+
+      // Use a string value that's invalid for the counter
+      // This should cause an error in the reducer but won't crash React
       dispatch({
         type: 'COUNTER:SET',
-        payload: { invalidPayloadStructure: true },
+        payload: 'not-a-number',
       });
+
+      // If we get here, no error was thrown synchronously
+      debug('ui', 'Dispatch completed - check for async errors');
     } catch (error) {
       logError(error instanceof Error ? error.message : String(error));
     }
@@ -103,22 +79,22 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
 
   const handleAccessNonexistent = useCallback(() => {
     try {
-      // Try to access a non-existent nested property
-      if (window.zubridge && typeof window.zubridge.getState === 'function') {
-        const state = window.zubridge.getState();
+      debug('ui', 'Testing access to non-existent nested property');
 
-        // Using any to allow accessing non-existent properties to trigger errors
-        // This is intentional for testing error handling
-        const counter = (state as any).counter;
-        if (counter) {
-          const value = (counter as any).nonExistentProperty?.deeplyNested;
-          debug('ui', `Successfully accessed nested property: ${value}`);
-        } else {
-          throw new Error('Counter property does not exist in state');
-        }
-      } else {
+      // Try to access a non-existent nested property
+      if (!window.zubridge || typeof window.zubridge.getState !== 'function') {
         throw new Error('zubridge.getState is not available');
       }
+
+      const state = window.zubridge.getState();
+
+      // Using any to allow accessing non-existent properties to trigger errors
+      // This is intentional for testing error handling
+      const nonExistentValue = (state as any).nonExistentProperty?.deeplyNested?.evenDeeper;
+
+      // If we reach here without an error, log it
+      debug('ui', `Successfully accessed deeply nested non-existent property: ${nonExistentValue}`);
+      logError('Expected an error when accessing non-existent property, but none occurred');
     } catch (error) {
       logError(error instanceof Error ? error.message : String(error));
     }
@@ -126,8 +102,8 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
 
   return (
     <div className="error-testing-container">
-      <h3>Error Testing</h3>
-      <div className="error-buttons flex flex-wrap gap-2">
+      <h3 className="mt-0 mb-3 text-lg font-semibold">Error Testing</h3>
+      <div className="flex flex-wrap gap-2 error-buttons">
         <Button onClick={handleAccessUnsubscribed} variant="close" data-testid="access-unsubscribed-btn">
           Access Unsubscribed
         </Button>

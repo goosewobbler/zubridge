@@ -33,7 +33,7 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
           Clear
         </button>
       </div>
-      <div className="error-log-content">
+      <div className="error-log-content overflow-y-auto max-h-40">
         {errors.map((err, i) => (
           <div key={i} className="p-1 text-sm border-b border-gray-100" data-testid="error-entry">
             <div className="text-xs text-gray-500 mb-0.5">{new Date(err.timestamp).toLocaleTimeString()}</div>
@@ -41,64 +41,6 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-export interface ErrorTestingProps {
-  dispatch: any;
-  onError?: (message: string) => void;
-}
-
-export function ErrorTesting({ dispatch, onError }: ErrorTestingProps) {
-  const handleError = useCallback(
-    (error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-      debug('ui:error', message);
-      if (onError) {
-        onError(message);
-      }
-    },
-    [onError],
-  );
-
-  const handleAccessUnsubscribed = useCallback(() => {
-    try {
-      // This will be handled by the error boundary or caught in the bridge
-      dispatch('TEST:ACCESS_UNSUBSCRIBED');
-    } catch (error) {
-      handleError(error);
-    }
-  }, [dispatch, handleError]);
-
-  const handleDispatchInvalid = useCallback(() => {
-    try {
-      // Try to dispatch an action with invalid payload
-      dispatch({
-        type: 'COUNTER:SET',
-        payload: { invalidPayloadStructure: true },
-      });
-    } catch (error) {
-      handleError(error);
-    }
-  }, [dispatch, handleError]);
-
-  return (
-    <div className="flex gap-3 mb-4">
-      <button
-        className="px-4 py-2 text-sm text-white transition-colors bg-red-500 border-0 rounded cursor-pointer hover:bg-red-600"
-        onClick={handleAccessUnsubscribed}
-        data-testid="access-unsubscribed-btn"
-      >
-        Access Unsubscribed
-      </button>
-      <button
-        className="px-4 py-2 text-sm text-white transition-colors bg-red-500 border-0 rounded cursor-pointer hover:bg-red-600"
-        onClick={handleDispatchInvalid}
-        data-testid="dispatch-invalid-btn"
-      >
-        Dispatch Invalid
-      </button>
     </div>
   );
 }
