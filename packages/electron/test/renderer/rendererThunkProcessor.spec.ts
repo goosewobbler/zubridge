@@ -20,7 +20,7 @@ describe('RendererThunkProcessor', () => {
     mockActionSender = vi.fn().mockImplementation(async (action) => {
       // Simulate the main process completing the action
       setTimeout(() => {
-        processor.completeAction(action.id as string, action);
+        processor.completeAction(action.__id as string, action);
       }, 0);
     });
     mockThunkRegistrar = vi.fn().mockResolvedValue(undefined);
@@ -181,7 +181,7 @@ describe('RendererThunkProcessor', () => {
       const sentAction = mockActionSender.mock.calls[0][0];
       expect(sentAction.type).toBe('TEST_ACTION');
       expect(sentAction.payload).toBe(42);
-      expect(sentAction.id).toBeDefined();
+      expect(sentAction.__id).toBeDefined();
     });
 
     it('should dispatch an action object', async () => {
@@ -196,7 +196,7 @@ describe('RendererThunkProcessor', () => {
       const sentAction = mockActionSender.mock.calls[0][0];
       expect(sentAction.type).toBe('TEST_ACTION');
       expect(sentAction.payload).toBe(42);
-      expect(sentAction.id).toBeDefined();
+      expect(sentAction.__id).toBeDefined();
     });
   });
 
