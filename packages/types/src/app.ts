@@ -16,6 +16,14 @@ export interface ZubridgeAppWindow extends ZubridgeInternalWindow {
   };
 
   /**
+   * Bypass flags for testing access control and thunk locking
+   */
+  bypassFlags?: {
+    bypassAccessControl: boolean;
+    bypassThunkLock: boolean;
+  };
+
+  /**
    * Electron IPC API exposed through contextBridge
    */
   electronAPI?: {
@@ -37,14 +45,6 @@ export interface ZubridgeAppWindow extends ZubridgeInternalWindow {
   processAPI?: {
     platform: string;
     env: (name: string) => string | undefined;
-  };
-
-  /**
-   * Bypass flags for action and thunk dispatching
-   */
-  bypassFlags?: {
-    bypassAccessControl: boolean;
-    bypassThunkLock: boolean;
   };
 }
 
