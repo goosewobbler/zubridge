@@ -1,6 +1,6 @@
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
-import { isSubscribedToKey, getWindowSubscriptions } from './subscriptionValidator.js';
+import { isSubscribedToKey, getWindowSubscriptions, stateKeyExists } from './subscriptionValidator.js';
 
 // Map of action types to the state keys they affect
 // This needs to be populated by the application based on its action structure
@@ -67,6 +67,12 @@ export async function canDispatchAction(action: Action): Promise<boolean> {
 
   // Check if the window is subscribed to all affected keys
   for (const key of affectedKeys) {
+    // First check if the key exists in the state
+    if (!stateKeyExists(window.zubridge?.getState(), key)) {
+      debug('action-validator', `State key ${key} does not exist in the store`);
+      return false;
+    }
+
     const hasAccess = await isSubscribedToKey(key);
     if (!hasAccess) {
       debug('action-validator', `Window lacks permission to affect key ${key} with action ${actionType}`);
@@ -93,11 +99,27 @@ export async function validateActionDispatch(action: Action): Promise<void> {
     return;
   }
 
+  const actionType = action.type;
+  const affectedKeys = getAffectedStateKeys(actionType);
+
+  // If no mapping exists, we can't validate - default to allowing the action
+  if (affectedKeys.length === 0) {
+    debug('action-validator', `No mapping for action ${actionType}, allowing by default`);
+    return;
+  }
+
+  // Check if all affected keys exist in the state
+  for (const key of affectedKeys) {
+    // Verify key exists in state
+    if (!stateKeyExists(window.zubridge?.getState(), key)) {
+      throw new Error(`State key '${key}' does not exist in the store`);
+    }
+  }
+
   const canDispatch = await canDispatchAction(action);
 
   if (!canDispatch) {
     const subscriptions = await getWindowSubscriptions();
-    const affectedKeys = getAffectedStateKeys(action.type);
 
     throw new Error(
       `Unauthorized action dispatch: This window cannot dispatch action '${action.type}' ` +
