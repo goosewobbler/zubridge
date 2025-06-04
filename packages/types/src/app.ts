@@ -38,6 +38,14 @@ export interface ZubridgeAppWindow extends ZubridgeInternalWindow {
     platform: string;
     env: (name: string) => string | undefined;
   };
+
+  /**
+   * Bypass flags for action and thunk dispatching
+   */
+  bypassFlags?: {
+    bypassAccessControl: boolean;
+    bypassThunkLock: boolean;
+  };
 }
 
 // Extend Window with application-specific properties
