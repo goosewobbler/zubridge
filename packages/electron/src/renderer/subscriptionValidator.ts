@@ -1,12 +1,18 @@
 import { debug } from '@zubridge/core';
-import { IpcChannel } from '../constants.js';
-import { ipcRenderer } from 'electron';
 import type { Action } from '@zubridge/types';
 
 // Cache for window subscriptions - updated when getWindowSubscriptions is called
 let cachedSubscriptions: string[] = [];
 let lastSubscriptionFetchTime = 0;
 const SUBSCRIPTION_CACHE_TTL = 1000; // 1 second
+
+// Access the subscription validator API exposed through the preload script
+const getSubscriptionAPI = () => {
+  if (typeof window !== 'undefined' && window.__zubridge_subscriptionValidator) {
+    return window.__zubridge_subscriptionValidator;
+  }
+  return null;
+};
 
 /**
  * Gets the current window's subscriptions from the main process
@@ -20,17 +26,20 @@ export async function getWindowSubscriptions(): Promise<string[]> {
       return cachedSubscriptions;
     }
 
-    // Get the window ID
-    const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+    const api = getSubscriptionAPI();
+    if (api) {
+      // Use the preload-exposed API
+      const result = await api.getWindowSubscriptions();
 
-    // Then fetch subscriptions for this window ID
-    const result = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_SUBSCRIPTIONS, windowId);
+      // Update cache
+      cachedSubscriptions = Array.isArray(result) ? result : [];
+      lastSubscriptionFetchTime = now;
 
-    // Update cache
-    cachedSubscriptions = Array.isArray(result) ? result : [];
-    lastSubscriptionFetchTime = now;
-
-    return cachedSubscriptions;
+      return cachedSubscriptions;
+    } else {
+      debug('subscription:error', 'Subscription validator API not available');
+      return [];
+    }
   } catch (error) {
     debug('subscription:error', 'Error getting window subscriptions:', error);
     return [];
@@ -51,6 +60,13 @@ export function clearSubscriptionCache(): void {
  * @returns True if subscribed, false otherwise
  */
 export async function isSubscribedToKey(key: string): Promise<boolean> {
+  const api = getSubscriptionAPI();
+  if (api) {
+    // Use the preload-exposed API
+    return api.isSubscribedToKey(key);
+  }
+
+  // Fallback to original implementation if API not available
   // Get current subscriptions
   const subscriptions = await getWindowSubscriptions();
 
@@ -164,6 +180,13 @@ export async function validateStateAccessBatch(keys: string[], action?: Action):
  * @returns True if the key exists, false otherwise
  */
 export function stateKeyExists(state: any, key: string): boolean {
+  const api = getSubscriptionAPI();
+  if (api) {
+    // Use the preload-exposed API
+    return api.stateKeyExists(state, key);
+  }
+
+  // Fallback implementation
   if (!key || !state) return false;
 
   // Handle dot notation by traversing the object

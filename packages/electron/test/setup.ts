@@ -1,18 +1,6 @@
 import { vi } from 'vitest';
 import type { Action, Handlers, AnyState } from '@zubridge/types';
-
-// Extend Window interface through global augmentation
-declare global {
-  interface Window {
-    zubridge: Handlers<AnyState>;
-    __zubridge_windowId?: string;
-    __zubridge_thunkProcessor?: {
-      executeThunk: (thunk: any, getState: () => any, parentId?: string) => Promise<any>;
-      completeAction: (actionId: string, result: any) => void;
-      dispatchAction: (action: string | Action, payload?: unknown, parentId?: string) => Promise<void>;
-    };
-  }
-}
+import type {} from '@zubridge/types/internal'; // Import internal window augmentations
 
 // Set up mocks for the window object
 const mockZubridge = {

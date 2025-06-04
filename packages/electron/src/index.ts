@@ -7,13 +7,6 @@ import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 // Export types
 export type * from '@zubridge/types';
 
-// Add type declaration for window.zubridge
-declare global {
-  interface Window {
-    zubridge: Handlers<AnyState>;
-  }
-}
-
 // Store registry to implement singleton pattern
 // Maps handler objects to their corresponding stores
 const storeRegistry = new WeakMap<Handlers<any>, StoreApi<any>>();

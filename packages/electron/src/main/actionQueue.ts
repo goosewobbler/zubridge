@@ -114,7 +114,7 @@ export class ActionQueueManager {
 
       // --- Selective/forced action support ---
       // If action has __force, allow it to process regardless of lock
-      if (action.__force) {
+      if (action.__bypassThunkLock) {
         return i;
       }
       // If action has __keys, use key-based short-circuiting
@@ -157,7 +157,7 @@ export class ActionQueueManager {
 
     debug(
       'queue',
-      `Processing action: ${action.type} (id: ${action.id}) from window ${sourceWindowId}${
+      `Processing action: ${action.type} (id: ${action.__id}) from window ${sourceWindowId}${
         action.__thunkParentId ? `, parent thunk: ${action.__thunkParentId}` : ''
       }`,
     );
@@ -213,7 +213,7 @@ export class ActionQueueManager {
 
     debug(
       'queue',
-      `Enqueueing action: ${action.type} (id: ${action.id}) from window ${sourceWindowId}${
+      `Enqueueing action: ${action.type} (id: ${action.__id}) from window ${sourceWindowId}${
         parentThunkId ? `, parent thunk: ${parentThunkId}` : ''
       }`,
     );

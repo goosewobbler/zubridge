@@ -1,22 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Thunk, Dispatch } from '@zubridge/types';
+import type { Action, AnyState, Thunk, Dispatch, ZubridgeInternalWindow } from '@zubridge/types';
 import { debug } from '@zubridge/core';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
+// Import internal window augmentations
+import type {} from '@zubridge/types/internal';
 
 // Default timeout for action completion (10 seconds)
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
-
-// Add a declaration for our exposed interface
-declare global {
-  interface Window {
-    __zubridge_thunkProcessor?: {
-      executeThunk: (thunk: any, getState: () => any, parentId?: string) => Promise<any>;
-      completeAction: (actionId: string, result: any) => void;
-      dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) => Promise<void>;
-    };
-    __zubridge_windowId?: string;
-  }
-}
 
 /**
  * Handles thunk execution in the renderer process

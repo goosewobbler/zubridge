@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Action, AnyState, Handlers, Thunk, DispatchOptions } from '@zubridge/types';
 import { IpcChannel } from './constants.js';
 import { debug } from '@zubridge/core';
-import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Return type for preload bridge function
@@ -23,32 +22,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
   // Get or create the thunk processor
   const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
-    // Get the default processor
-    const defaultProcessor = getThunkProcessor();
+    const actionCompletionTimeoutMs = 30000;
 
-    // Try to get config from the window
-    let actionCompletionTimeoutMs: number | undefined;
-    try {
-      if (typeof window !== 'undefined' && (window as any).__ZUBRIDGE_CONFIG) {
-        actionCompletionTimeoutMs = (window as any).__ZUBRIDGE_CONFIG.actionCompletionTimeoutMs;
-      }
-
-      // Fallback to process.env if available
-      if (actionCompletionTimeoutMs === undefined && process.env.ZUBRIDGE_ACTION_TIMEOUT) {
-        actionCompletionTimeoutMs = parseInt(process.env.ZUBRIDGE_ACTION_TIMEOUT, 10);
-      }
-
-      // If we have a timeout, create a new processor with it
-      if (actionCompletionTimeoutMs !== undefined) {
-        debug('core', `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
-        return new RendererThunkProcessor(actionCompletionTimeoutMs);
-      }
-    } catch (error) {
-      debug('core:error', 'Error configuring thunk processor, using default');
-    }
-
-    // Use the default processor if no custom timeout
-    return defaultProcessor;
+    debug('core', `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
+    return new RendererThunkProcessor(actionCompletionTimeoutMs);
   };
 
   // Get a properly configured thunk processor
@@ -298,6 +275,81 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
         debug('ipc', 'Renderer thunk processor initialized');
 
+        // Create subscription validation API
+        const subscriptionValidatorAPI = {
+          // Get window subscriptions via IPC
+          getWindowSubscriptions: async (): Promise<string[]> => {
+            try {
+              // Get the window ID
+              const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+              // Then fetch subscriptions for this window ID
+              const result = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_SUBSCRIPTIONS, windowId);
+              return Array.isArray(result) ? result : [];
+            } catch (error) {
+              debug('subscription:error', 'Error getting window subscriptions:', error);
+              return [];
+            }
+          },
+
+          // Check if window is subscribed to a key
+          isSubscribedToKey: async (key: string): Promise<boolean> => {
+            const subscriptions = await subscriptionValidatorAPI.getWindowSubscriptions();
+
+            // Subscribed to everything with '*'
+            if (subscriptions.includes('*')) {
+              return true;
+            }
+
+            // Check direct key match
+            if (subscriptions.includes(key)) {
+              return true;
+            }
+
+            // Check if the key is a parent of any subscription (e.g., 'user' includes 'user.profile')
+            if (key.includes('.')) {
+              const keyParts = key.split('.');
+              for (let i = 1; i <= keyParts.length; i++) {
+                const parentKey = keyParts.slice(0, i).join('.');
+                if (subscriptions.includes(parentKey)) {
+                  return true;
+                }
+              }
+            }
+
+            // Check if any subscription is a parent of this key (e.g., 'user' subscription includes 'user.profile' access)
+            for (const subscription of subscriptions) {
+              if (key.startsWith(`${subscription}.`)) {
+                return true;
+              }
+            }
+
+            return false;
+          },
+
+          // Check if a state key exists in an object
+          stateKeyExists: (state: any, key: string): boolean => {
+            if (!key || !state) return false;
+
+            // Handle dot notation by traversing the object
+            const parts = key.split('.');
+            let current = state;
+
+            for (const part of parts) {
+              if (current === undefined || current === null || typeof current !== 'object') {
+                return false;
+              }
+
+              if (!(part in current)) {
+                return false;
+              }
+
+              current = current[part];
+            }
+
+            return true;
+          },
+        };
+
         // Make the thunk processor available to the renderer via context bridge
         if (contextBridge) {
           debug('ipc', 'Exposing thunk processor to renderer via contextBridge');
@@ -309,6 +361,14 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
             completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
             dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>
               thunkProcessor.dispatchAction(action, payload, parentId),
+          });
+
+          // Expose subscription validator API
+          debug('ipc', 'Exposing subscription validator to renderer via contextBridge');
+          contextBridge.exposeInMainWorld('__zubridge_subscriptionValidator', {
+            getWindowSubscriptions: () => subscriptionValidatorAPI.getWindowSubscriptions(),
+            isSubscribedToKey: (key: string) => subscriptionValidatorAPI.isSubscribedToKey(key),
+            stateKeyExists: (state: any, key: string) => subscriptionValidatorAPI.stateKeyExists(state, key),
           });
         }
       } catch (error) {

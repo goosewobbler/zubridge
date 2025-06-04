@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events';
-import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
 import { type Action, ThunkState } from '@zubridge/types';
 import { Thunk } from './Thunk.js';
@@ -268,7 +267,7 @@ export class ThunkManager extends EventEmitter {
     const thunkLockManager = getThunkLockManager();
     const rootId = this.getRootThunkId(action.__thunkParentId);
     const thunk = this.thunks.get(rootId);
-    if (thunk && thunkLockManager.acquire(rootId, thunk.keys, thunk.force)) {
+    if (thunk && thunkLockManager.acquire(rootId, thunk.keys, thunk.bypassLock)) {
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, rootId);
       return true;
@@ -290,7 +289,7 @@ export class ThunkManager extends EventEmitter {
 
     const thunkLockManager = getThunkLockManager();
 
-    if (thunkLockManager.acquire(thunkId, thunk.keys, thunk.force)) {
+    if (thunkLockManager.acquire(thunkId, thunk.keys, thunk.bypassLock)) {
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, thunkId);
       return true;
