@@ -1,5 +1,8 @@
+// No need to redeclare the window global since it's in @zubridge/types
 import { useState, useCallback } from 'react';
 import { debug } from '@zubridge/core';
+// Import app window augmentations
+import type {} from '@zubridge/types/app';
 
 interface ErrorLogProps {
   errors: Array<{ message: string; timestamp: number }>;
@@ -38,15 +41,22 @@ function ErrorLog({ errors, onClear }: ErrorLogProps) {
 interface ErrorTestingProps {
   dispatch: any;
   currentSubscriptions?: string[] | '*';
+  onError?: (message: string) => void;
 }
 
-export function ErrorTesting({ dispatch, currentSubscriptions = '*' }: ErrorTestingProps) {
+export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: ErrorTestingProps) {
   const [errors, setErrors] = useState<Array<{ message: string; timestamp: number }>>([]);
 
-  const logError = useCallback((message: string) => {
-    debug('ui:error', message);
-    setErrors((prev) => [...prev, { message, timestamp: Date.now() }]);
-  }, []);
+  const logError = useCallback(
+    (message: string) => {
+      debug('ui:error', message);
+      setErrors((prev) => [...prev, { message, timestamp: Date.now() }]);
+      if (onError) {
+        onError(message);
+      }
+    },
+    [onError],
+  );
 
   const clearErrors = useCallback(() => {
     setErrors([]);

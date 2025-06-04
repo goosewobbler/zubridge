@@ -1,20 +1,5 @@
-// Global interface extensions
-interface Window {
-  // Electron API exposed through contextBridge
-  electronAPI?: {
-    createRuntimeWindow: () => Promise<{ success: boolean; windowId: number }>;
-    closeCurrentWindow: () => Promise<void>;
-    quitApp: () => Promise<void>;
-    getWindowInfo: () => Promise<{ id: number; type: string; subscriptions: string[] }>;
-    getMode: () => Promise<{ modeName: string; name?: string }>;
-    subscribe: (keys: string[]) => Promise<void>;
-    unsubscribe: (keys: string[]) => Promise<void>;
-  };
-  counter?: {
-    executeMainThunk: () => Promise<{ success: boolean; result?: number }>;
-    executeMainThunkSlow: () => Promise<{ success: boolean; result?: number }>;
-  };
-}
+// Import app window augmentations
+import type {} from '@zubridge/types/app';
 
 // Add module declarations for external modules
 declare module '@zubridge/electron';

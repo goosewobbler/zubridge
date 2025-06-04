@@ -43,9 +43,11 @@ export function withTauri() {
     className = '',
   }: TauriAppProps) {
     // Get store and dispatch from Tauri hooks
-    const store = useZubridgeStore();
+    // Need to provide a selector function, even if it's identity
+    const store = useZubridgeStore((state) => state);
     const dispatch = useZubridgeDispatch();
-    const bridgeStatus = useBridgeStatus(store);
+    // Cast store to any to avoid type error in useBridgeStatus
+    const bridgeStatus = useBridgeStatus(store as any);
 
     // Platform handlers for Tauri
     const actionHandlers: ActionHandlers = {

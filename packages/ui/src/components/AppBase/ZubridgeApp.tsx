@@ -6,7 +6,8 @@ import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
 import { SubscriptionControls } from '../SubscriptionControls';
-import { ErrorLog, ErrorTesting } from '../ErrorLog';
+import { ErrorLog } from '../ErrorLog';
+import { ErrorTesting } from '../ErrorTesting';
 import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
@@ -319,7 +320,7 @@ export function ZubridgeApp({
               <div className="error-testing-section">
                 <div className="pt-4 mt-5 border-t border-gray-200">
                   <h3 className="mt-0 mb-4 text-red-600">Error Testing</h3>
-                  <ErrorTesting dispatch={dispatch} onError={handleError} />
+                  <ErrorTesting dispatch={dispatch} onError={handleError} currentSubscriptions={currentSubscriptions} />
                   <ErrorLog errors={errors} onClear={clearErrors} />
                 </div>
               </div>

@@ -1,17 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
-
-// Define a type for the process API that matches your preload script
-interface ProcessAPI {
-  platform: string;
-  env: (name: string) => string | undefined;
-}
-
-declare global {
-  interface Window {
-    processAPI?: ProcessAPI;
-  }
-}
+// Import app window augmentations
+import type {} from '@zubridge/types/app';
 
 interface HeaderProps {
   windowId: number | string;
