@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { debug } from '@zubridge/core';
 // Import app window augmentations
 import type {} from '@zubridge/types/app';
+import { Button } from '../Button';
 
 interface ErrorLogProps {
   errors: Array<{ message: string; timestamp: number }>;
@@ -22,9 +23,9 @@ function ErrorLog({ errors, onClear }: ErrorLogProps) {
     <div className="error-log" data-testid="error-log">
       <div className="error-log-header">
         <h4>Error Log ({errors.length})</h4>
-        <button className="clear-errors-btn" onClick={onClear} data-testid="clear-errors-btn">
+        <Button onClick={onClear} variant="reset" size="sm" data-testid="clear-errors-btn">
           Clear
-        </button>
+        </Button>
       </div>
       <div className="error-log-content">
         {errors.map((err, i) => (
@@ -126,16 +127,16 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
   return (
     <div className="error-testing-container">
       <h3>Error Testing</h3>
-      <div className="error-buttons">
-        <button className="error-btn" onClick={handleAccessUnsubscribed} data-testid="access-unsubscribed-btn">
+      <div className="error-buttons flex flex-wrap gap-2">
+        <Button onClick={handleAccessUnsubscribed} variant="close" data-testid="access-unsubscribed-btn">
           Access Unsubscribed
-        </button>
-        <button className="error-btn" onClick={handleDispatchInvalid} data-testid="dispatch-invalid-btn">
+        </Button>
+        <Button onClick={handleDispatchInvalid} variant="close" data-testid="dispatch-invalid-btn">
           Dispatch Invalid
-        </button>
-        <button className="error-btn" onClick={handleAccessNonexistent} data-testid="access-nonexistent-btn">
+        </Button>
+        <Button onClick={handleAccessNonexistent} variant="close" data-testid="access-nonexistent-btn">
           Access Non-existent
-        </button>
+        </Button>
       </div>
 
       <ErrorLog errors={errors} onClear={clearErrors} />
