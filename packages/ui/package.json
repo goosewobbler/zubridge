@@ -47,6 +47,7 @@
     "clean": "shx rm -rf .turbo node_modules dist"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^2.5.0",
     "@tailwindcss/cli": "^4.1.7",
     "@tailwindcss/postcss": "^4.1.4",
     "@types/react": "^19.1.2",
@@ -66,6 +67,7 @@
     "clsx": "^2.1.1"
   },
   "peerDependencies": {
+    "@tauri-apps/api": "^2.0.0",
     "@zubridge/electron": "workspace:*",
     "@zubridge/tauri": "workspace:*",
     "react": "^19.1.0"

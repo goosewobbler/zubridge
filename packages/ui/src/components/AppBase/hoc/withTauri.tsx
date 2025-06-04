@@ -58,7 +58,8 @@ export function withTauri() {
           const WebviewWindow = module.WebviewWindow;
           const uniqueLabel = `window-${Date.now()}`;
 
-          const webview = new WebviewWindow(uniqueLabel, {
+          // Create a new window with the proper options
+          await new WebviewWindow(uniqueLabel, {
             url: window.location.pathname,
             title: `Window (${uniqueLabel})`,
             width: 800,
@@ -77,7 +78,7 @@ export function withTauri() {
           // Import dynamically to avoid issues with SSR
           const module = await import('@tauri-apps/api/webviewWindow');
           const WebviewWindow = module.WebviewWindow;
-          const currentWindow = WebviewWindow.getByLabel(windowInfo.id.toString());
+          const currentWindow = await WebviewWindow.getByLabel(windowInfo.id.toString());
 
           if (currentWindow) {
             await currentWindow.close();
