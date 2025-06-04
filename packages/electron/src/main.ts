@@ -6,7 +6,6 @@ import { createDispatch } from './main/dispatch.js';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
 import { removeStateManager } from './lib/stateManagerRegistry.js';
-import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 
 /**
  * Re-export main process functionality
@@ -14,6 +13,7 @@ import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 export { createCoreBridge } from './bridge.js';
 export { createBridgeFromStore } from './bridge.js';
 export { createDispatch } from './main/dispatch.js';
+export { createMiddlewareOptions } from './middleware.js';
 
 // Export validation functions with proper parameter types
 export {

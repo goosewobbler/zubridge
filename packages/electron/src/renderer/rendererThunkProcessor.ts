@@ -14,6 +14,7 @@ declare global {
       completeAction: (actionId: string, result: any) => void;
       dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) => Promise<void>;
     };
+    __zubridge_windowId?: string;
   }
 }
 
