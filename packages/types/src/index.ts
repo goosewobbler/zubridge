@@ -193,3 +193,7 @@ export enum ThunkState {
   COMPLETED = 'completed', // Successfully completed
   FAILED = 'failed', // Failed with an error
 }
+
+// Export the window interfaces from internal.d.ts and app.d.ts
+export type { ZubridgeInternalWindow } from './internal';
+export type { ZubridgeAppWindow } from './app';
