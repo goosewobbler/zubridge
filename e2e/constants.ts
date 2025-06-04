@@ -8,6 +8,7 @@ export interface TimingConfig {
   WINDOW_WAIT_INTERVAL: number;
   THUNK_WAIT_TIME: number;
   THUNK_START_PAUSE: number;
+  UI_INTERACTION_PAUSE: number;
 }
 
 // Platform-specific timing configurations
@@ -22,6 +23,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_WAIT_INTERVAL: 150, // How often to check window availability
     THUNK_WAIT_TIME: 5000, // Time to wait for thunk to complete
     THUNK_START_PAUSE: 1000, // Time to wait for thunk to start
+    UI_INTERACTION_PAUSE: 500,
   },
 
   // Timing adjustments for Linux (slower CI env)
@@ -34,6 +36,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_WAIT_INTERVAL: 500,
     THUNK_WAIT_TIME: 10000,
     THUNK_START_PAUSE: 1000,
+    UI_INTERACTION_PAUSE: 500,
   },
 };
 
