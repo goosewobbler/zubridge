@@ -32,6 +32,8 @@ export interface ProcessAPI {
 
 // Import the BaseState from apps-shared
 import { BaseState as SharedBaseState } from '@zubridge/apps-shared';
+// Import app window augmentations
+import type {} from '@zubridge/types/app';
 
 /**
  * Base state interface that all mode-specific states share.
@@ -48,17 +50,6 @@ export interface BaseState extends SharedBaseState {
  * For now, it's just an alias for BaseState, but can be extended if needed.
  */
 export type State = BaseState;
-
-/**
- * Augment the Window interface with our custom APIs
- */
-declare global {
-  interface Window {
-    electronAPI?: ElectronAPI;
-    counter?: CounterAPI;
-    processAPI?: ProcessAPI;
-  }
-}
 
 // This file is treated as a module
 export {};
