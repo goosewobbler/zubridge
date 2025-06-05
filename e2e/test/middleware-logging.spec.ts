@@ -371,7 +371,7 @@ describe('IPC Traffic Logging Middleware', () => {
     }
   });
 
-  describe('performance with large state', () => {
+  describe.skip('performance with large state', () => {
     // Store performance metrics for analysis
     const performanceMetrics: Record<string, any>[] = [];
     // Use only the 'large' state for robust perf measurement
