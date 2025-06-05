@@ -3,13 +3,21 @@ import { useState, useCallback } from 'react';
 import { debug } from '@zubridge/core';
 // Import app window augmentations
 import type {} from '@zubridge/types/app';
+import type { Action, Dispatch } from '@zubridge/types';
 import { Button } from '../Button';
 import { ErrorLog } from '../ErrorLog';
 
 interface ErrorTestingProps {
-  dispatch: any;
+  dispatch: Dispatch<Action>;
   currentSubscriptions?: string[] | '*';
   onError?: (message: string) => void;
+}
+
+// Add a simple interface for state access
+interface StateObject {
+  counter?: number;
+  theme?: { mode: string };
+  [key: string]: any;
 }
 
 export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: ErrorTestingProps) {
@@ -30,88 +38,114 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
     setErrors([]);
   }, []);
 
-  const handleAccessUnsubscribed = useCallback(() => {
+  const handleVerifyUnsubscribed = useCallback(() => {
     try {
-      debug('ui', 'Testing access to unsubscribed state');
+      debug('ui', 'Verifying unsubscribed state behavior');
 
-      // Force an error by attempting to access a state key we're not subscribed to
+      // Access state and check what we're subscribed to
       if (!window.zubridge) {
         throw new Error('zubridge is not available');
       }
 
-      // Instead of trying to check what we're subscribed to,
-      // let's just try to access a state property that doesn't exist
-      const nonExistentKey = 'nonExistentKey_' + Date.now();
-      debug('ui', `Attempting to access nonexistent key: ${nonExistentKey}`);
+      const state = window.zubridge.getState() as StateObject;
 
-      // Try to dispatch an action for a state we're not subscribed to
-      dispatch({
-        type: 'TEST:ACCESS_UNSUBSCRIBED',
-        payload: { targetKey: nonExistentKey },
-        __testErrorTrigger: true,
-      });
+      // Determine which key we're not subscribed to
+      const isThemeSubscribed =
+        currentSubscriptions === '*' || (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('theme'));
+      const isCounterSubscribed =
+        currentSubscriptions === '*' ||
+        (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('counter'));
 
-      logError(
-        `Successfully accessed unsubscribed state (${nonExistentKey}). This should have failed if access control is working.`,
-      );
+      // Choose a key we're not subscribed to (or counter if we're subscribed to everything)
+      const keyToCheck = !isCounterSubscribed ? 'counter' : !isThemeSubscribed ? 'theme' : 'counter';
+
+      debug('ui', `Checking access to ${keyToCheck} with subscriptions: ${JSON.stringify(currentSubscriptions)}`);
+
+      const value = state[keyToCheck];
+      const expectUndefined = keyToCheck === 'counter' ? !isCounterSubscribed : !isThemeSubscribed;
+
+      if (expectUndefined && value !== undefined) {
+        logError(
+          `Subscription validation error: Key '${keyToCheck}' is defined as ${JSON.stringify(value)} ` +
+            `when it should be undefined. Current subscriptions: ${JSON.stringify(currentSubscriptions)}`,
+        );
+      } else if (!expectUndefined && value === undefined) {
+        logError(
+          `Subscription validation error: Key '${keyToCheck}' is undefined ` +
+            `when it should be defined. Current subscriptions: ${JSON.stringify(currentSubscriptions)}`,
+        );
+      } else {
+        logError(
+          `Subscription validation succeeded: Key '${keyToCheck}' is ${value === undefined ? 'undefined' : 'defined as ' + JSON.stringify(value)}, ` +
+            `as expected with current subscriptions: ${JSON.stringify(currentSubscriptions)}`,
+        );
+      }
     } catch (error) {
       logError(error instanceof Error ? error.message : String(error));
     }
-  }, [dispatch, logError]);
+  }, [currentSubscriptions, logError]);
 
-  const handleDispatchInvalid = useCallback(() => {
+  const handleDispatchInvalid = useCallback(async () => {
     try {
       debug('ui', 'Testing dispatch with invalid payload');
 
-      // Use a string value that's invalid for the counter
-      // This should cause an error in the reducer but won't crash React
-      dispatch({
+      // Create a circular reference that will fail serialization
+      const circular: any = { name: 'circular-object' };
+      circular.self = circular;
+
+      debug('ui', 'Attempting to dispatch with circular reference payload');
+
+      // Force serialization error by trying to stringify first
+      try {
+        JSON.stringify(circular);
+        logError('Expected JSON.stringify to fail with circular reference, but it succeeded unexpectedly');
+      } catch (jsonError) {
+        // This is the expected path - we caught the serialization error directly
+        logError(`Serialization error: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
+        return;
+      }
+
+      // If we get here, circular reference didn't cause a serialization error as expected
+      // Try the dispatch anyway to see what happens
+      await dispatch({
         type: 'COUNTER:SET',
-        payload: 'not-a-number',
+        payload: circular,
       });
 
-      // If we get here, no error was thrown synchronously
-      debug('ui', 'Dispatch completed - check for async errors');
+      // If we get here, no error was thrown
+      debug('ui', 'Dispatch completed without error - this is unexpected');
+      logError('Expected serialization error, but none occurred during dispatch');
     } catch (error) {
-      logError(error instanceof Error ? error.message : String(error));
+      logError(`Dispatch error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }, [dispatch, logError]);
 
-  const handleAccessNonexistent = useCallback(() => {
+  const handleTriggerMainError = useCallback(async () => {
     try {
-      debug('ui', 'Testing access to non-existent nested property');
+      debug('ui', 'Triggering main process error');
 
-      // Try to access a non-existent nested property
-      if (!window.zubridge || typeof window.zubridge.getState !== 'function') {
-        throw new Error('zubridge.getState is not available');
-      }
+      await dispatch('ERROR:TRIGGER_MAIN_PROCESS_ERROR');
 
-      const state = window.zubridge.getState();
-
-      // Using any to allow accessing non-existent properties to trigger errors
-      // This is intentional for testing error handling
-      const nonExistentValue = (state as any).nonExistentProperty?.deeplyNested?.evenDeeper;
-
-      // If we reach here without an error, log it
-      debug('ui', `Successfully accessed deeply nested non-existent property: ${nonExistentValue}`);
-      logError('Expected an error when accessing non-existent property, but none occurred');
+      // If we get here without an immediate error, log it
+      // The error might be asynchronous and show up later
+      debug('ui', 'Main process error dispatch completed - check for async errors');
     } catch (error) {
-      logError(error instanceof Error ? error.message : String(error));
+      logError(`Main process error: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [logError]);
+  }, [dispatch, logError]);
 
   return (
     <div className="error-testing-container">
       <h3 className="mt-0 mb-3 text-lg font-semibold">Error Testing</h3>
       <div className="flex flex-wrap gap-2 error-buttons">
-        <Button onClick={handleAccessUnsubscribed} variant="close" data-testid="access-unsubscribed-btn">
-          Access Unsubscribed
+        <Button onClick={handleVerifyUnsubscribed} variant="close" data-testid="verify-unsubscribed-btn">
+          Verify Unsubscribed
         </Button>
         <Button onClick={handleDispatchInvalid} variant="close" data-testid="dispatch-invalid-btn">
-          Dispatch Invalid
+          Invalid Payload
         </Button>
-        <Button onClick={handleAccessNonexistent} variant="close" data-testid="access-nonexistent-btn">
-          Access Non-existent
+        <Button onClick={handleTriggerMainError} variant="close" data-testid="trigger-main-error-btn">
+          Main Process Error
         </Button>
       </div>
 
