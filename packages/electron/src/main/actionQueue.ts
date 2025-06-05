@@ -15,8 +15,10 @@ interface QueuedAction {
   sourceWindowId: number;
   /** Time the action was received */
   receivedTime: number;
-  /** Optional callback when action is completed */
-  onComplete?: () => void;
+  /** Optional callback when action is completed or failed
+   * @param error Error object if processing failed, null if successful
+   */
+  onComplete?: (error: Error | null) => void;
 }
 
 /**
@@ -169,7 +171,23 @@ export class ActionQueueManager {
       }
 
       // Process the action
-      await this.actionProcessor(action);
+      const processorResult = await this.actionProcessor(action);
+      debug(
+        'queue',
+        `Action ${action.type} processing result: ${processorResult ? JSON.stringify(processorResult) : 'null'}`,
+      );
+
+      if (processorResult) {
+        debug('queue', `Action ${action.type} returned non-null result - checking for error`);
+        debug('queue', `Result type: ${typeof processorResult}, instanceof Error: ${processorResult instanceof Error}`);
+
+        if (processorResult instanceof Error) {
+          debug('queue:error', `Error instance returned from processor for ${action.type}: ${processorResult.message}`);
+          queuedAction.onComplete?.(processorResult);
+          return;
+        }
+      }
+
       debug('queue', `Action ${action.type} processed successfully`);
 
       // If this action required window sync, add a small delay to ensure state propagation
@@ -183,9 +201,12 @@ export class ActionQueueManager {
         this.thunkManager.processThunkAction(action);
       }
 
-      queuedAction.onComplete?.();
+      queuedAction.onComplete?.(null);
     } catch (error) {
       debug('queue:error', `Error processing action ${action.type}: ${error as string}`);
+      // Pass the error to the onComplete callback so it can be propagated back to the renderer
+      const actionError = error instanceof Error ? error : new Error(String(error));
+      queuedAction.onComplete?.(actionError);
     }
 
     // Process the next action in the queue
@@ -195,7 +216,12 @@ export class ActionQueueManager {
   /**
    * Enqueue an action for processing
    */
-  public enqueueAction(action: Action, sourceWindowId: number, parentThunkId?: string, onComplete?: () => void): void {
+  public enqueueAction(
+    action: Action,
+    sourceWindowId: number,
+    parentThunkId?: string,
+    onComplete?: (error: Error | null) => void,
+  ): void {
     if (parentThunkId) {
       action.__thunkParentId = parentThunkId;
 

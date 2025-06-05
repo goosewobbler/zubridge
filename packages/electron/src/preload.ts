@@ -85,11 +85,11 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       }
     },
 
-    dispatch(
+    async dispatch(
       action: string | Action | Thunk<S>,
       payloadOrOptions?: unknown | DispatchOptions,
       options?: DispatchOptions,
-    ) {
+    ): Promise<Action> {
       // Parse options from different argument positions
       let dispatchOptions: DispatchOptions | undefined;
       let payload: unknown = undefined;
@@ -147,8 +147,21 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         // Track action dispatch for performance metrics
         trackActionDispatch(actionObj);
 
-        // Dispatch directly to main process through the thunk processor
-        return thunkProcessor.dispatchAction(actionObj, payload).then(() => actionObj);
+        // Create a promise that will catch errors from the main process
+        return new Promise<Action>((resolve, reject) => {
+          console.log('preload', 'Dispatching action:', actionObj);
+          // Dispatch and handle the result
+          thunkProcessor
+            .dispatchAction(actionObj, payload)
+            .then(() => {
+              console.log('preload', 'Action dispatched successfully');
+              resolve(actionObj);
+            })
+            .catch((err) => {
+              console.log('preload', 'Action dispatch failed:', err);
+              reject(err);
+            });
+        });
       }
 
       // Handle thunks (functions)
@@ -202,8 +215,14 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
 
-      // Dispatch directly to main process
-      return thunkProcessor.dispatchAction(actionObj).then(() => actionObj);
+      // Dispatch directly to main process and handle errors properly
+      return thunkProcessor
+        .dispatchAction(actionObj)
+        .then(() => actionObj)
+        .catch((error) => {
+          debug('ipc:error', `Error dispatching action ${actionObj.__id}: ${error}`);
+          throw error; // Re-throw to propagate to caller
+        });
     },
   };
 
