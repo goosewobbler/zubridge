@@ -87,33 +87,31 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
 
   const handleDispatchInvalid = useCallback(async () => {
     try {
-      debug('ui', 'Testing dispatch with invalid payload');
+      console.log('ui', 'Testing dispatch with invalid payload');
 
-      // Create a circular reference that will fail serialization
-      const circular: any = { name: 'circular-object' };
-      circular.self = circular;
+      // Create a non-serializable object with a function and symbol properties
+      // This can't be serialized but won't crash React if rendered
+      const nonSerializable = {
+        id: Symbol('unique-id'),
+        method: function () {
+          return 'This is a function';
+        },
+        calculate: () => Math.random(),
+        toString: function () {
+          return '[Complex Object]';
+        },
+      };
 
-      debug('ui', 'Attempting to dispatch with circular reference payload');
+      console.log('ui', 'Attempting to dispatch with non-serializable payload');
 
-      // Force serialization error by trying to stringify first
-      try {
-        JSON.stringify(circular);
-        logError('Expected JSON.stringify to fail with circular reference, but it succeeded unexpectedly');
-      } catch (jsonError) {
-        // This is the expected path - we caught the serialization error directly
-        logError(`Serialization error: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
-        return;
-      }
-
-      // If we get here, circular reference didn't cause a serialization error as expected
-      // Try the dispatch anyway to see what happens
+      // Dispatch with the non-serializable object as payload
       await dispatch({
         type: 'COUNTER:SET',
-        payload: circular,
+        payload: nonSerializable,
       });
 
       // If we get here, no error was thrown
-      debug('ui', 'Dispatch completed without error - this is unexpected');
+      console.log('ui', 'Dispatch completed without error - this is unexpected');
       logError('Expected serialization error, but none occurred during dispatch');
     } catch (error) {
       logError(`Dispatch error: ${error instanceof Error ? error.message : String(error)}`);
@@ -126,8 +124,7 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
 
       await dispatch('ERROR:TRIGGER_MAIN_PROCESS_ERROR');
 
-      // If we get here without an immediate error, log it
-      // The error might be asynchronous and show up later
+      // We should never get here as the error should be caught above
       debug('ui', 'Main process error dispatch completed - check for async errors');
     } catch (error) {
       logError(`Main process error: ${error instanceof Error ? error.message : String(error)}`);
