@@ -152,10 +152,12 @@ export type DispatchFunc<S, TActions extends Record<string, any> = Record<string
 /**
  * Result of processing an action
  * Contains information about whether the action was processed synchronously
+ * and any error that occurred during processing
  */
 export type ProcessResult = {
   isSync: boolean;
   completion?: Promise<any>; // Allow any return type, not just void
+  error?: Error | unknown; // Add error field to propagate errors to the caller
 };
 
 // Shared state manager interface that can be implemented by different backends
