@@ -105,7 +105,7 @@ describe('Error Handling', () => {
       // Verify an error was logged with appropriate message
       expect(errorMessages.length).toBeGreaterThan(0);
       const errorMessage = errorMessages[0];
-      expect(errorMessage).toContain('circular');
+      expect(errorMessage).toBe('Dispatch error: An object could not be cloned.');
     });
   });
 
