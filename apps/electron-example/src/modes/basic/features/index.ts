@@ -3,6 +3,7 @@ import { type BaseState } from '@zubridge/apps-shared';
 import { attachCounterHandlers } from './counter/index.js';
 import { attachThemeHandlers } from './theme/index.js';
 import { attachStateHandlers } from './state/index.js';
+import { attachErrorHandlers } from './error/index.js';
 
 /**
  * Types for the basic mode state
@@ -18,6 +19,7 @@ export interface State extends BaseState {
   'THEME:SET': (isDark: boolean) => void;
   'STATE:RESET': () => void;
   'STATE:GENERATE-FILLER': () => void;
+  'ERROR:TRIGGER_MAIN_PROCESS_ERROR': () => void;
 }
 
 /**
@@ -28,4 +30,5 @@ export const attachFeatureHandlers = <S extends BaseState>(store: StoreApi<S>) =
   attachCounterHandlers(store);
   attachThemeHandlers(store);
   attachStateHandlers(store);
+  attachErrorHandlers(store);
 };

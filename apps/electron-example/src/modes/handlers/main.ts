@@ -2,14 +2,12 @@ import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
 import type { ZustandBridge, ZubridgeMiddleware } from '@zubridge/electron/main';
 
-// Import counter handlers
 import { incrementCounter, decrementCounter, setCounter, setCounterSlow } from './features/counter/index.js';
-// Import theme handlers
 import { toggleTheme, setTheme } from './features/theme/index.js';
-// Import the state type
+import { resetState, generateLargeState } from './features/state/index.js';
+import { triggerMainProcessError } from './features/error/index.js';
 import type { BaseState } from '../../types.js';
 import type { ActionHandlers } from './features/index.js';
-import { resetState, generateLargeState } from './features/state/index.js';
 
 /**
  * Creates action handlers for the handlers mode
@@ -24,6 +22,7 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
     'THEME:SET': setTheme(store),
     'STATE:RESET': resetState(store),
     'STATE:GENERATE-FILLER': generateLargeState(store),
+    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError(store),
   };
 };
 
