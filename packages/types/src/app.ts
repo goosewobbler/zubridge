@@ -1,12 +1,9 @@
-import type { AnyState } from './index';
-import { ZubridgeInternalWindow } from './internal';
-
 /**
  * Application-specific window augmentations
  * For use by example applications and E2E testing
  * Extends ZubridgeInternalWindow to gain access to the core APIs
  */
-export interface ZubridgeAppWindow extends ZubridgeInternalWindow {
+export interface ZubridgeAppWindow {
   /**
    * Counter API for thunk testing
    */
