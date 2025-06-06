@@ -149,7 +149,14 @@ export const getButtonInCurrentWindow = async (
     | 'toggleTheme'
     | 'generateLargeState'
     | 'doubleObject'
-    | 'slowObject',
+    | 'slowObject'
+    | 'access-unsubscribed-btn'
+    | 'dispatch-invalid-btn'
+    | 'access-nonexistent-btn'
+    | 'verify-unsubscribed-btn'
+    | 'trigger-main-error-btn'
+    | 'thunk-error-btn'
+    | 'clear-errors-btn',
 ) => {
   let selector = '';
   switch (buttonType) {
@@ -200,6 +207,27 @@ export const getButtonInCurrentWindow = async (
       break;
     case 'slowObject':
       selector = 'button=Double (Slow Object)';
+      break;
+    case 'access-unsubscribed-btn':
+      selector = '[data-testid="access-unsubscribed-btn"]';
+      break;
+    case 'dispatch-invalid-btn':
+      selector = '[data-testid="dispatch-invalid-btn"]';
+      break;
+    case 'access-nonexistent-btn':
+      selector = '[data-testid="access-nonexistent-btn"]';
+      break;
+    case 'verify-unsubscribed-btn':
+      selector = '[data-testid="verify-unsubscribed-btn"]';
+      break;
+    case 'trigger-main-error-btn':
+      selector = '[data-testid="trigger-main-error-btn"]';
+      break;
+    case 'thunk-error-btn':
+      selector = '[data-testid="thunk-error-btn"]';
+      break;
+    case 'clear-errors-btn':
+      selector = '[data-testid="clear-errors-btn"]';
       break;
     default:
       // Ensure all cases are handled, or throw an error for an unhandled button type.

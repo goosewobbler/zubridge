@@ -81,7 +81,7 @@ export class ThunkRegistrationQueue {
         'queue',
         `[THUNK-QUEUE] Attempting to acquire lock for thunk ${thunk.id} from window ${thunk.sourceWindowId}`,
       );
-      const lockAcquired = thunkLockManager.acquire(thunk.id, thunk.keys, thunk.force);
+      const lockAcquired = thunkLockManager.acquire(thunk.id, thunk.keys, thunk.bypassLock);
       if (!lockAcquired) {
         debug('queue', `[THUNK-QUEUE] Lock acquisition failed for thunk ${thunk.id}, re-queueing`);
         this.thunkRegistrationQueue.unshift(reg);

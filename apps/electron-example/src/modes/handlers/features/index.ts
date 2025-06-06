@@ -3,6 +3,7 @@ import type { Handler } from '@zubridge/types';
 import { incrementCounter, decrementCounter, setCounter, setCounterSlow } from './counter/index.js';
 import { toggleTheme, setTheme } from './theme/index.js';
 import { resetState, generateLargeState } from './state/index.js';
+import { triggerMainProcessError } from './error/index.js';
 
 /**
  * Types for the handlers mode state
@@ -37,8 +38,15 @@ export interface StateHandlers {
   'STATE:GENERATE-FILLER': () => Promise<void>;
 }
 
+/**
+ * Error action handlers for the handlers mode
+ */
+export interface ErrorHandlers {
+  'ERROR:TRIGGER_MAIN_PROCESS_ERROR': () => void;
+}
+
 // Define ActionHandlers as a Record<string, Handler> to be compatible with createDispatch
-export type ActionHandlers = Record<string, Handler> & CounterHandlers & ThemeHandlers & StateHandlers;
+export type ActionHandlers = Record<string, Handler> & CounterHandlers & ThemeHandlers & StateHandlers & ErrorHandlers;
 
 /**
  * All handlers for the handlers mode
@@ -52,4 +60,5 @@ export const handlers = {
   'THEME:SET': setTheme,
   'STATE:RESET': resetState,
   'STATE:GENERATE-FILLER': generateLargeState,
+  'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError,
 };

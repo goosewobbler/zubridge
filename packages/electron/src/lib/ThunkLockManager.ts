@@ -38,7 +38,7 @@ interface ActiveThunkLock {
 export class ThunkLockManager extends EventEmitter {
   private state: ThunkLockState = ThunkLockState.IDLE;
   private activeThunkLock: ActiveThunkLock | null = null;
-  private activeThunks: Map<string, { keys?: string[]; force?: boolean }>; // thunkId -> { keys, force }
+  private activeThunks: Map<string, { keys?: string[]; bypassLock?: boolean }>; // thunkId -> { keys, bypassLock }
 
   constructor() {
     super();
@@ -67,33 +67,33 @@ export class ThunkLockManager extends EventEmitter {
    * @param force If true, bypass all locks
    * @returns true if lock acquired, false if blocked
    */
-  acquire(thunkId: string, keys?: string[], force?: boolean): boolean {
-    if (force) {
-      this.activeThunks.set(thunkId, { keys, force });
+  acquire(thunkId: string, keys?: string[], bypassLock?: boolean): boolean {
+    if (bypassLock) {
+      this.activeThunks.set(thunkId, { keys, bypassLock });
       return true;
     }
     // If any active thunk is a global lock, block
-    for (const { keys: activeKeys, force: activeForce } of this.activeThunks.values()) {
-      if (activeForce) continue; // ignore forced thunks
+    for (const { keys: activeKeys, bypassLock: activeBypassLock } of this.activeThunks.values()) {
+      if (activeBypassLock) continue; // ignore forced thunks
       if (!activeKeys) return false; // global lock present
     }
     // If this is a global lock, block if any non-forced thunks are active
     if (!keys) {
-      for (const { force: activeForce } of this.activeThunks.values()) {
-        if (!activeForce) return false;
+      for (const { bypassLock: activeBypassLock } of this.activeThunks.values()) {
+        if (!activeBypassLock) return false;
       }
-      this.activeThunks.set(thunkId, { keys, force });
+      this.activeThunks.set(thunkId, { keys, bypassLock });
       return true;
     }
     // Otherwise, check for key overlap
-    for (const { keys: activeKeys, force: activeForce } of this.activeThunks.values()) {
-      if (activeForce) continue;
+    for (const { keys: activeKeys, bypassLock: activeBypassLock } of this.activeThunks.values()) {
+      if (activeBypassLock) continue;
       if (!activeKeys) return false; // global lock present
       if (activeKeys.some((k) => keys.includes(k)) || keys.some((k) => activeKeys.includes(k))) {
         return false; // overlap
       }
     }
-    this.activeThunks.set(thunkId, { keys, force });
+    this.activeThunks.set(thunkId, { keys, bypassLock });
     return true;
   }
 
@@ -117,8 +117,8 @@ export class ThunkLockManager extends EventEmitter {
    */
   isLocked(keys?: string[]): boolean {
     // If any forced thunks, ignore them
-    for (const { keys: activeKeys, force: activeForce } of this.activeThunks.values()) {
-      if (activeForce) continue;
+    for (const { keys: activeKeys, bypassLock: activeBypassLock } of this.activeThunks.values()) {
+      if (activeBypassLock) continue;
       if (!activeKeys) return true; // global lock present
       if (!keys) return true; // global lock requested, but other locks present
       if (activeKeys.some((k) => keys.includes(k)) || keys.some((k) => activeKeys.includes(k))) {
@@ -132,7 +132,7 @@ export class ThunkLockManager extends EventEmitter {
    * Get a summary of active thunks (for debugging/monitoring).
    */
   getActiveThunksSummary() {
-    return Array.from(this.activeThunks.entries()).map(([id, { keys, force }]) => ({ id, keys, force }));
+    return Array.from(this.activeThunks.entries()).map(([id, { keys, bypassLock }]) => ({ id, keys, bypassLock }));
   }
 
   /**
@@ -140,6 +140,13 @@ export class ThunkLockManager extends EventEmitter {
    * Implements key-based and global locking.
    */
   canProcessAction(action: Action): boolean {
+    // If the action has the bypass thunk lock flag, allow it to bypass all locks
+    if (action.__bypassThunkLock === true) {
+      debug('thunk-lock', `Action ${action.type} allowed - has bypassThunkLock flag`);
+      this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'bypass-thunk-lock' });
+      return true;
+    }
+
     // If no thunks are active, allow all actions
     if (this.activeThunks.size === 0) {
       debug('thunk-lock', `Action ${action.type} allowed - no active thunks`);
@@ -149,8 +156,8 @@ export class ThunkLockManager extends EventEmitter {
 
     // If this action is not associated with a thunk, block if any global lock is present
     if (!action.__thunkParentId) {
-      for (const { keys, force } of this.activeThunks.values()) {
-        if (force) continue;
+      for (const { keys, bypassLock } of this.activeThunks.values()) {
+        if (bypassLock) continue;
         if (!keys) {
           debug('thunk-lock', `Action ${action.type} blocked - global lock present`);
           this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-lock-present' });
@@ -167,8 +174,8 @@ export class ThunkLockManager extends EventEmitter {
     const thisThunk = this.activeThunks.get(action.__thunkParentId);
     if (!thisThunk) {
       // If the thunk is not active, block if any global lock or overlapping keys
-      for (const [id, { keys, force }] of this.activeThunks.entries()) {
-        if (force) continue;
+      for (const [id, { keys, bypassLock }] of this.activeThunks.entries()) {
+        if (bypassLock) continue;
         if (!keys) {
           debug('thunk-lock', `Action ${action.type} blocked - global lock present`);
           this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-lock-present' });

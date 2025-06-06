@@ -4,6 +4,7 @@ import { type BaseState } from '@zubridge/apps-shared';
 import { counterSlice } from './counter/index.js';
 import { themeSlice } from './theme/index.js';
 import { stateSlice } from './state/index.js';
+import { errorSlice } from './error/index.js';
 
 // Define the root state type
 export interface State extends BaseState {}
@@ -13,6 +14,7 @@ export const rootReducer = combineReducers({
   counter: counterSlice.reducer,
   theme: themeSlice.reducer,
   state: stateSlice.reducer,
+  error: errorSlice.reducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;
@@ -27,4 +29,5 @@ export const actions = {
   'THEME:SET': themeSlice.actions.setTheme,
   'STATE:RESET': stateSlice.actions.reset,
   'STATE:GENERATE-FILLER': stateSlice.actions.generateLargeState,
+  'ERROR:TRIGGER_MAIN_PROCESS_ERROR': errorSlice.actions.triggerMainProcessError,
 };

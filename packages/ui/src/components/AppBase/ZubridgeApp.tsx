@@ -6,6 +6,8 @@ import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
 import { SubscriptionControls } from '../SubscriptionControls';
+import { ErrorTesting } from '../ErrorTesting';
+import { BypassControls } from '../BypassControls';
 import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
@@ -139,11 +141,11 @@ export function ZubridgeApp({
 
   // Action handlers with logging
   const handleIncrement = useCallback(() => {
-    dispatch('COUNTER:INCREMENT');
+    dispatch('COUNTER:INCREMENT', window.bypassFlags);
   }, [dispatch]);
 
   const handleDecrement = useCallback(() => {
-    dispatch('COUNTER:DECREMENT');
+    dispatch('COUNTER:DECREMENT', window.bypassFlags);
   }, [dispatch]);
 
   const handleResetState = useCallback(() => {
@@ -172,13 +174,13 @@ export function ZubridgeApp({
         // Use the actionHandlers thunk if available
         if (actionHandlers.doubleCounter) {
           debug('ui', `Using shared thunk for method: ${method}`);
-          return dispatch(actionHandlers.doubleCounter(counter));
+          return dispatch(actionHandlers.doubleCounter(counter), window.bypassFlags);
         }
       } else if (method === 'slow-thunk') {
         // Use the slow thunk if available
         if (actionHandlers.doubleCounterSlow) {
           debug('ui', `Using shared slow thunk for method: ${method}`);
-          return dispatch(actionHandlers.doubleCounterSlow(counter));
+          return dispatch(actionHandlers.doubleCounterSlow(counter), window.bypassFlags);
         }
       } else if (method === 'main-thunk') {
         debug('ui', `Starting ${method} execution`);
@@ -208,18 +210,24 @@ export function ZubridgeApp({
         return result;
       } else if (method === 'slow-object') {
         debug('ui', `Dispatching slow action for ${method}`);
-        const result = dispatch({
-          type: 'COUNTER:SET:SLOW',
-          payload: counter * 2,
-        });
+        const result = dispatch(
+          {
+            type: 'COUNTER:SET:SLOW',
+            payload: counter * 2,
+          },
+          window.bypassFlags,
+        );
         debug('ui', `Slow action dispatch returned:`, result);
         return result;
       } else {
         debug('ui', `Dispatching regular action for ${method}`);
-        const result = dispatch({
-          type: 'COUNTER:SET',
-          payload: counter * 2,
-        });
+        const result = dispatch(
+          {
+            type: 'COUNTER:SET',
+            payload: counter * 2,
+          },
+          window.bypassFlags,
+        );
         debug('ui', `Regular action dispatch returned:`, result);
         return result;
       }
@@ -301,6 +309,18 @@ export function ZubridgeApp({
                 )}
 
                 <GenerateLargeState onGenerate={handleGenerateLargeState} />
+              </div>
+
+              <div className="bypass-flags-section">
+                <div className="pt-4 mt-5 border-t border-gray-200">
+                  <BypassControls />
+                </div>
+              </div>
+
+              <div className="error-testing-section">
+                <div className="pt-4 mt-5 border-t border-gray-200">
+                  <ErrorTesting dispatch={dispatch} currentSubscriptions={currentSubscriptions} />
+                </div>
               </div>
 
               <div className="window-actions-section">

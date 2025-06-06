@@ -86,6 +86,7 @@
     "@types/shelljs": "^0.8.15",
     "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^3.0.5",
+    "@zubridge/types": "workspace:*",
     "jsdom": "^26.0.0",
     "react": "^19.0.0",
     "redux": "^5.0.1",
@@ -106,7 +107,6 @@
   "dependencies": {
     "@types/debug": "^4.1.12",
     "@zubridge/core": "workspace:*",
-    "@zubridge/types": "workspace:*",
     "dequal": "^2.0.3",
     "uuid": "^11.1.0",
     "weald": "^1.0.4",

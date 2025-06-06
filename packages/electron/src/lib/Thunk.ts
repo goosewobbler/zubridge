@@ -7,7 +7,7 @@ export interface ThunkOptions {
   type: 'main' | 'renderer';
   parentId?: string;
   keys?: string[];
-  force?: boolean;
+  bypassLock?: boolean;
 }
 
 /**
@@ -38,8 +38,8 @@ export class Thunk {
   /** Keys this thunk will affect (for key-based locking) */
   public keys?: string[];
 
-  /** Force flag for lock bypass */
-  public force?: boolean;
+  /** Flag for lock bypass */
+  public bypassLock?: boolean;
 
   constructor(options: ThunkOptions) {
     this.id = options.id || uuidv4();
@@ -50,7 +50,7 @@ export class Thunk {
     this.startTime = Date.now();
     this.children = new Set();
     this.keys = options.keys;
-    this.force = options.force;
+    this.bypassLock = options.bypassLock;
   }
 
   /**

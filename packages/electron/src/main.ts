@@ -1,27 +1,44 @@
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import type { BackendBridge, AnyState, Dispatch, WrapperOrWebContents } from '@zubridge/types';
-import { createCoreBridge, createBridgeFromStore, CoreBridgeOptions } from './bridge.js';
+import { createBridgeFromStore, CoreBridgeOptions } from './bridge.js';
 import { createDispatch } from './main/dispatch.js';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
 import { removeStateManager } from './lib/stateManagerRegistry.js';
-import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
 
 /**
- * Export the core bridge creation function for custom implementations
+ * Re-export main process functionality
  */
-export { createCoreBridge };
+export { createCoreBridge } from './bridge.js';
+export { createBridgeFromStore } from './bridge.js';
+export { createDispatch } from './main/dispatch.js';
+export { createMiddlewareOptions } from './middleware.js';
 
-/**
- * Re-export adapter options types and middleware options
- */
-export type { ZustandOptions, ReduxOptions, CoreBridgeOptions, ZubridgeMiddleware };
+// Export validation functions with proper parameter types
+export {
+  validateStateAccess,
+  validateStateAccessWithExistence,
+  validateStateAccessBatch,
+  stateKeyExists,
+  isSubscribedToKey,
+  getWindowSubscriptions,
+} from './renderer/subscriptionValidator.js';
 
-/**
- * Export middleware helper
- */
-export { createMiddlewareOptions };
+// Export action validation functions with proper parameter types
+export {
+  registerActionMapping,
+  registerActionMappings,
+  getAffectedStateKeys,
+  canDispatchAction,
+  validateActionDispatch,
+} from './renderer/actionValidator.js';
+
+// Export types
+export type { ZustandOptions } from './adapters/zustand.js';
+export type { ReduxOptions } from './adapters/redux.js';
+export type { CoreBridgeOptions } from './bridge.js';
+export type { ZubridgeMiddleware } from './middleware.js';
 
 /**
  * Interface for a bridge that connects a Zustand store to the main process
@@ -109,5 +126,3 @@ export function createReduxBridge<S extends AnyState>(
  * Please update your code to use createZustandBridge directly in the future.
  */
 export const mainZustandBridge = createZustandBridge;
-
-export { createDispatch } from './main/dispatch.js';

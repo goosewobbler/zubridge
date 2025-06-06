@@ -79,14 +79,14 @@ export function createDispatch<S extends AnyState>(
             actionObj = {
               type: actionOrThunk,
               payload,
-              id: uuidv4(),
+              __id: uuidv4(),
             };
           } else if (actionOrThunk && typeof actionOrThunk === 'object') {
             // Handle action objects
             debug('core', `Dispatching action object: ${(actionOrThunk as Action).type}`);
             actionObj = {
               ...(actionOrThunk as Action),
-              id: (actionOrThunk as Action).id || uuidv4(),
+              __id: (actionOrThunk as Action).__id || uuidv4(),
             };
           } else {
             throw new Error(`Invalid action type: ${typeof actionOrThunk}`);
@@ -101,8 +101,8 @@ export function createDispatch<S extends AnyState>(
 
             // Mark this as a thunk start action if it's the first action with this parent
             if (mainThunkProcessor.isFirstActionForThunk(parentId)) {
-              debug('core', `Marking action ${actionObj.id} as starting thunk ${parentId}`);
-              (actionObj as any).__startsThunk = true;
+              debug('core', `Marking action ${actionObj.__id} as starting thunk ${parentId}`);
+              actionObj.__startsThunk = true;
             }
           }
 
