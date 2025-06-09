@@ -68,8 +68,16 @@ export class ThunkLockManager extends EventEmitter {
    * @returns true if lock acquired, false if blocked
    */
   acquire(thunkId: string, keys?: string[], bypassLock?: boolean): boolean {
+    debug(
+      'lock',
+      `[THUNK-LOCK] acquire called: thunkId=${thunkId}, keys=${JSON.stringify(keys)}, bypassLock=${bypassLock}, currentState=${this.state}`,
+    );
     if (bypassLock) {
       this.activeThunks.set(thunkId, { keys, bypassLock });
+      debug(
+        'lock',
+        `[THUNK-LOCK] acquire result: thunkId=${thunkId}, bypassLock=${bypassLock}, result=${true}, newState=${this.state}`,
+      );
       return true;
     }
     // If any active thunk is a global lock, block
@@ -83,6 +91,10 @@ export class ThunkLockManager extends EventEmitter {
         if (!activeBypassLock) return false;
       }
       this.activeThunks.set(thunkId, { keys, bypassLock });
+      debug(
+        'lock',
+        `[THUNK-LOCK] acquire result: thunkId=${thunkId}, bypassLock=${bypassLock}, result=${true}, newState=${this.state}`,
+      );
       return true;
     }
     // Otherwise, check for key overlap
@@ -90,10 +102,18 @@ export class ThunkLockManager extends EventEmitter {
       if (activeBypassLock) continue;
       if (!activeKeys) return false; // global lock present
       if (activeKeys.some((k) => keys.includes(k)) || keys.some((k) => activeKeys.includes(k))) {
+        debug(
+          'lock',
+          `[THUNK-LOCK] acquire result: thunkId=${thunkId}, bypassLock=${bypassLock}, result=${false}, newState=${this.state}`,
+        );
         return false; // overlap
       }
     }
     this.activeThunks.set(thunkId, { keys, bypassLock });
+    debug(
+      'lock',
+      `[THUNK-LOCK] acquire result: thunkId=${thunkId}, bypassLock=${bypassLock}, result=${true}, newState=${this.state}`,
+    );
     return true;
   }
 
@@ -140,10 +160,15 @@ export class ThunkLockManager extends EventEmitter {
    * Implements key-based and global locking.
    */
   canProcessAction(action: Action): boolean {
+    debug(
+      'lock',
+      `[THUNK-LOCK] canProcessAction called: actionId=${action.__id}, type=${action.type}, bypassThunkLock=${action.__bypassThunkLock}, currentState=${this.state}`,
+    );
     // If the action has the bypass thunk lock flag, allow it to bypass all locks
     if (action.__bypassThunkLock === true) {
       debug('thunk-lock', `Action ${action.type} allowed - has bypassThunkLock flag`);
       this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'bypass-thunk-lock' });
+      debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${true}`);
       return true;
     }
 
@@ -151,6 +176,7 @@ export class ThunkLockManager extends EventEmitter {
     if (this.activeThunks.size === 0) {
       debug('thunk-lock', `Action ${action.type} allowed - no active thunks`);
       this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'no-active-thunks' });
+      debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${true}`);
       return true;
     }
 
@@ -161,12 +187,14 @@ export class ThunkLockManager extends EventEmitter {
         if (!keys) {
           debug('thunk-lock', `Action ${action.type} blocked - global lock present`);
           this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-lock-present' });
+          debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${false}`);
           return false;
         }
       }
       // No global lock, allow
       debug('thunk-lock', `Action ${action.type} allowed - not part of a thunk, no global lock`);
       this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'not-part-of-thunk-no-global-lock' });
+      debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${true}`);
       return true;
     }
 
@@ -179,24 +207,28 @@ export class ThunkLockManager extends EventEmitter {
         if (!keys) {
           debug('thunk-lock', `Action ${action.type} blocked - global lock present`);
           this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'global-lock-present' });
+          debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${false}`);
           return false;
         }
         // If action has __keys, check for overlap
         if (action.__keys && keys.some((k) => action.__keys!.includes(k))) {
           debug('thunk-lock', `Action ${action.type} blocked - key overlap with active thunk ${id}`);
           this.emit(ThunkLockEvent.ACTION_BLOCKED, { action, reason: 'key-overlap' });
+          debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${false}`);
           return false;
         }
       }
       // No global lock or overlap, allow
       debug('thunk-lock', `Action ${action.type} allowed - thunk not active, no global lock/overlap`);
       this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'thunk-not-active-no-global-lock-or-overlap' });
+      debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${true}`);
       return true;
     }
 
     // If the thunk is active, allow actions from it
     debug('thunk-lock', `Action ${action.type} allowed - part of active thunk ${action.__thunkParentId}`);
     this.emit(ThunkLockEvent.ACTION_ALLOWED, { action, reason: 'same-thunk' });
+    debug('lock', `[THUNK-LOCK] canProcessAction result: actionId=${action.__id}, result=${true}`);
     return true;
   }
 

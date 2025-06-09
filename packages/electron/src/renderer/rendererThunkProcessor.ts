@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Thunk, Dispatch, ZubridgeInternalWindow } from '@zubridge/types';
+import type { Action, AnyState, Thunk, Dispatch, InternalThunk, DispatchOptions } from '@zubridge/types';
 import { debug } from '@zubridge/core';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
 // Import internal window augmentations
@@ -19,7 +19,12 @@ export class RendererThunkProcessor {
   private actionSender?: (action: Action, parentId?: string) => Promise<void>;
 
   // Function to register thunks with main process
-  private thunkRegistrar?: (thunkId: string, parentId?: string) => Promise<void>;
+  private thunkRegistrar?: (
+    thunkId: string,
+    parentId?: string,
+    bypassThunkLock?: boolean,
+    bypassAccessControl?: boolean,
+  ) => Promise<void>;
 
   // Function to notify thunk completion
   private thunkCompleter?: (thunkId: string) => Promise<void>;
@@ -47,7 +52,12 @@ export class RendererThunkProcessor {
   public initialize(options: {
     windowId: number;
     actionSender: (action: Action, parentId?: string) => Promise<void>;
-    thunkRegistrar: (thunkId: string, parentId?: string) => Promise<void>;
+    thunkRegistrar: (
+      thunkId: string,
+      parentId?: string,
+      bypassThunkLock?: boolean,
+      bypassAccessControl?: boolean,
+    ) => Promise<void>;
     thunkCompleter: (thunkId: string) => Promise<void>;
     actionCompletionHandler?: (actionId: string, callback: (result: any) => void) => () => void;
     actionCompletionTimeoutMs?: number;
@@ -124,23 +134,26 @@ export class RendererThunkProcessor {
    * Execute a thunk function
    */
   public async executeThunk<S extends AnyState>(
-    thunk: Thunk<S>,
+    thunk: InternalThunk<S>,
     getOriginalState: () => S | Promise<S>,
+    options?: DispatchOptions,
     parentId?: string,
   ): Promise<any> {
     if (typeof window === 'undefined' || !window.__zubridge_thunkProcessor) {
       throw new Error('Zubridge preload script is required for thunk execution.');
     }
+    debug('ipc', `[RENDERER_THUNK] BITCH Executing thunk: (bypassThunkLock=${options?.bypassThunkLock})`);
     // Use the shared processor exposed from preload
-    return window.__zubridge_thunkProcessor.executeThunk(thunk, getOriginalState, parentId);
+    return window.__zubridge_thunkProcessor.executeThunk(thunk, getOriginalState, options, parentId);
   }
 
   /**
    * Internal thunk execution implementation (without preload check)
    */
   public async executeThunkImplementation<S extends AnyState>(
-    thunkFn: Thunk<S>,
+    thunkFn: InternalThunk<S>,
     getOriginalState: () => S | Promise<S>,
+    options?: DispatchOptions,
     parentId?: string,
   ): Promise<any> {
     // Create a Thunk instance
@@ -148,14 +161,20 @@ export class RendererThunkProcessor {
       sourceWindowId: this.currentWindowId ?? 0,
       type: 'renderer',
       parentId,
+      bypassAccessControl: options?.bypassAccessControl ?? false,
+      bypassThunkLock: options?.bypassThunkLock ?? false,
     });
-    console.log('ipc', `[RENDERER_THUNK] Executing thunk ${thunk.id}`);
+    console.log('ipc', `[RENDERER_THUNK] BITCH Executing thunk ${thunk.id} (bypassThunkLock=${thunk.bypassThunkLock})`);
 
+    console.log('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} bypassThunkLock: ${thunk.bypassThunkLock}`);
     // Register the thunk with main process
     if (this.thunkRegistrar && this.currentWindowId) {
       try {
-        console.log('ipc', `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process`);
-        await this.thunkRegistrar(thunk.id, parentId);
+        console.log(
+          'ipc',
+          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (bypassThunkLock=${thunk.bypassThunkLock})`,
+        );
+        await this.thunkRegistrar(thunk.id, parentId, options?.bypassThunkLock, options?.bypassAccessControl);
         console.log('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
       } catch (error) {
         console.log('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
@@ -168,13 +187,17 @@ export class RendererThunkProcessor {
     try {
       // Create a dispatch function for this thunk that tracks each action
       const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
-        console.log('ipc', '[RENDERER_THUNK] Dispatching action:', action);
+        console.log(
+          'ipc',
+          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (bypassThunkLock=${thunk.bypassThunkLock})`,
+          action,
+        );
 
         // Handle nested thunks
         if (typeof action === 'function') {
           console.log('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunk.id}`);
           // For nested thunks, we use the current thunk ID as the parent
-          return this.executeThunkImplementation(action, getOriginalState, thunk.id);
+          return this.executeThunkImplementation(action, getOriginalState, options, thunk.id);
         }
 
         // Handle string actions by converting to action objects
@@ -182,6 +205,14 @@ export class RendererThunkProcessor {
           typeof action === 'string'
             ? { type: action, payload, __id: uuidv4() }
             : { ...action, __id: action.__id || uuidv4() };
+
+        // Pass through bypass flags from the thunk to the action
+        if (thunk.bypassThunkLock) {
+          actionObj.__bypassThunkLock = true;
+        }
+        if (thunk.bypassAccessControl) {
+          actionObj.__bypassAccessControl = true;
+        }
 
         const actionId = actionObj.__id as string;
 

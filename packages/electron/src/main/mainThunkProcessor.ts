@@ -90,7 +90,8 @@ export class MainThunkProcessor {
       type: 'main',
       parentId,
       keys: options?.keys,
-      bypassLock: options?.bypassThunkLock,
+      bypassThunkLock: options?.bypassThunkLock,
+      bypassAccessControl: options?.bypassAccessControl,
     });
 
     debug('core', `[MAIN_THUNK] Executing thunk with ID: ${thunkObj.id}${parentId ? ` (parent: ${parentId})` : ''}`);
@@ -210,7 +211,8 @@ export class MainThunkProcessor {
           sourceWindowId: 0,
           type: 'main',
           keys: options?.keys,
-          bypassLock: options?.bypassThunkLock,
+          bypassThunkLock: options?.bypassThunkLock,
+          bypassAccessControl: options?.bypassAccessControl,
         });
         await this.mainThunkRegistrationQueue.registerThunk(thunkObj);
       }
@@ -219,6 +221,7 @@ export class MainThunkProcessor {
     // Attach keys/force to the action for downstream processing
     if (options?.keys) actionObj.__keys = options.keys;
     if (options?.bypassThunkLock) actionObj.__bypassThunkLock = options.bypassThunkLock;
+    if (options?.bypassAccessControl) actionObj.__bypassAccessControl = options.bypassAccessControl;
 
     // Mark as from main process (use a special source window ID for main process)
     const MAIN_PROCESS_WINDOW_ID = 0;

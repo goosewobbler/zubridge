@@ -115,7 +115,7 @@ export class ActionQueueManager {
       const action = queuedAction.action;
 
       // --- Selective/forced action support ---
-      // If action has __force, allow it to process regardless of lock
+      // If action has __bypassThunkLock, allow it to process regardless of lock
       if (action.__bypassThunkLock) {
         return i;
       }

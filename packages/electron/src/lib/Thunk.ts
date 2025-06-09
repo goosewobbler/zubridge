@@ -7,7 +7,8 @@ export interface ThunkOptions {
   type: 'main' | 'renderer';
   parentId?: string;
   keys?: string[];
-  bypassLock?: boolean;
+  bypassThunkLock?: boolean;
+  bypassAccessControl?: boolean;
 }
 
 /**
@@ -39,7 +40,10 @@ export class Thunk {
   public keys?: string[];
 
   /** Flag for lock bypass */
-  public bypassLock?: boolean;
+  public bypassThunkLock?: boolean;
+
+  /** Flag for access control bypass */
+  public bypassAccessControl?: boolean;
 
   constructor(options: ThunkOptions) {
     this.id = options.id || uuidv4();
@@ -50,7 +54,8 @@ export class Thunk {
     this.startTime = Date.now();
     this.children = new Set();
     this.keys = options.keys;
-    this.bypassLock = options.bypassLock;
+    this.bypassThunkLock = options.bypassThunkLock;
+    this.bypassAccessControl = options.bypassAccessControl;
   }
 
   /**

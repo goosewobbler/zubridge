@@ -113,6 +113,10 @@ export function createCoreBridge<State extends AnyState>(
 
   // Set up the action processor for the bridge action queue
   actionQueue.setActionProcessor(async (action: Action) => {
+    debug(
+      'queue',
+      `[ACTION-QUEUE] Processing action: id=${action.__id}, type=${action.type}, parentId=${(action as any).parentId}, bypassThunkLock=${action.__bypassThunkLock}`,
+    );
     let error = null;
 
     try {
@@ -310,6 +314,10 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Queue the action for processing
+      debug(
+        'queue',
+        `[ACTION-QUEUE] Enqueuing action: id=${actionWithSource.__id}, type=${actionWithSource.type}, parentId=${(actionWithSource as any).parentId}, bypassThunkLock=${actionWithSource.__bypassThunkLock}`,
+      );
       actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId, (error) => {
         // This callback is called when the action is completed (successfully or with error)
         debug('ipc', `[BRIDGE DEBUG] Action ${action.__id} completed with ${error ? 'error' : 'success'}`);
@@ -451,7 +459,7 @@ export function createCoreBridge<State extends AnyState>(
     debug('core', `[BRIDGE DEBUG] Data received:`, data);
 
     try {
-      const { thunkId, parentId } = data;
+      const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = data;
       const sourceWindowId = event.sender.id;
 
       debug(
@@ -465,6 +473,8 @@ export function createCoreBridge<State extends AnyState>(
         sourceWindowId: sourceWindowId,
         type: 'renderer',
         parentId: parentId,
+        bypassThunkLock,
+        bypassAccessControl,
       });
       await thunkRegistrationQueue.registerThunk(thunkObj);
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} registration queued successfully`);

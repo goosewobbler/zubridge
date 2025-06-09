@@ -39,7 +39,7 @@ export class ThunkRegistrationQueue {
   ): Promise<any> {
     debug(
       'queue',
-      `[THUNK-QUEUE] Queuing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}`,
+      `[THUNK-QUEUE] Queuing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}, bypassThunkLock=${thunk.bypassThunkLock}`,
     );
     return new Promise((resolve, reject) => {
       const reg: QueuedThunk = {
@@ -51,6 +51,10 @@ export class ThunkRegistrationQueue {
       };
       this.thunkRegistrationQueue.push(reg);
       debug('queue', `[THUNK-QUEUE] Registration queue length: ${this.thunkRegistrationQueue.length}`);
+      debug(
+        'queue',
+        `[THUNK-QUEUE] Current queue: ${this.thunkRegistrationQueue.map((q) => `${q.thunk.id}:${q.thunk.bypassThunkLock}`).join(', ')}`,
+      );
       this.processNextThunkRegistration();
     });
   }
@@ -65,23 +69,32 @@ export class ThunkRegistrationQueue {
       return;
     }
     const thunkLockManager = getThunkLockManager();
-    if (thunkLockManager.getState() !== ThunkLockState.IDLE) {
+    const nextThunk = this.thunkRegistrationQueue[0]?.thunk;
+    debug(
+      'queue',
+      `[THUNK-QUEUE] Checking lock: state=${thunkLockManager.getState()}, nextThunkId=${nextThunk?.id}, bypassThunkLock=${nextThunk?.bypassThunkLock}`,
+    );
+    if (thunkLockManager.getState() !== ThunkLockState.IDLE && !nextThunk?.bypassThunkLock) {
       debug('queue', '[THUNK-QUEUE] Lock is not idle, cannot process next registration');
       return;
+    }
+    if (thunkLockManager.getState() !== ThunkLockState.IDLE && nextThunk?.bypassThunkLock) {
+      debug('queue', `[THUNK-QUEUE] BYPASS: Processing bypass thunk ${nextThunk.id} while lock is not idle`);
     }
     this.processingThunkRegistration = true;
     const reg = this.thunkRegistrationQueue.shift()!;
     const { thunk, mainThunkCallback, rendererCallback } = reg;
     debug(
       'queue',
-      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}`,
+      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}, bypassThunkLock=${thunk.bypassThunkLock}`,
     );
     try {
       debug(
         'queue',
-        `[THUNK-QUEUE] Attempting to acquire lock for thunk ${thunk.id} from window ${thunk.sourceWindowId}`,
+        `[THUNK-QUEUE] Attempting to acquire lock for thunk ${thunk.id} from window ${thunk.sourceWindowId} (bypassThunkLock=${thunk.bypassThunkLock})`,
       );
-      const lockAcquired = thunkLockManager.acquire(thunk.id, thunk.keys, thunk.bypassLock);
+      const lockAcquired = thunkLockManager.acquire(thunk.id, thunk.keys, thunk.bypassThunkLock);
+      debug('queue', `[THUNK-QUEUE] Lock acquired result for thunk ${thunk.id}: ${lockAcquired}`);
       if (!lockAcquired) {
         debug('queue', `[THUNK-QUEUE] Lock acquisition failed for thunk ${thunk.id}, re-queueing`);
         this.thunkRegistrationQueue.unshift(reg);
@@ -91,6 +104,7 @@ export class ThunkRegistrationQueue {
       debug('queue', `[THUNK-QUEUE] Lock acquired for thunk ${thunk.id}`);
       const handle = this.thunkManager.registerThunk(thunk);
       handle.setSourceWindowId(thunk.sourceWindowId);
+      debug('queue', `[THUNK-QUEUE] Thunk ${thunk.id} registered, invoking callback`);
       if (thunk.type === 'main' && mainThunkCallback) {
         mainThunkCallback().then(reg.resolve).catch(reg.reject);
       } else if (thunk.type === 'renderer' && rendererCallback) {
@@ -104,6 +118,7 @@ export class ThunkRegistrationQueue {
       reg.reject(err);
     } finally {
       this.processingThunkRegistration = false;
+      debug('queue', '[THUNK-QUEUE] Finished processing thunk registration');
       // No need for setTimeout-based polling; rely on event-driven processing
     }
   }

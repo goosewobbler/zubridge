@@ -56,6 +56,10 @@ export class ThunkManager extends EventEmitter {
    * Register a new thunk instance
    */
   registerThunk(thunk: Thunk): ThunkHandle {
+    debug(
+      'thunk',
+      `Registering thunk: id=${thunk.id}, parentId=${thunk.parentId}, bypassThunkLock=${thunk.bypassThunkLock}`,
+    );
     this.thunks.set(thunk.id, thunk);
 
     // If this thunk has a parent, add it as a child of the parent
@@ -82,6 +86,7 @@ export class ThunkManager extends EventEmitter {
    * Mark a thunk as executing
    */
   markThunkExecuting(thunkId: string): void {
+    debug('thunk', `Marking thunk as executing: id=${thunkId}`);
     const thunk = this.thunks.get(thunkId);
     if (!thunk) return;
 
@@ -94,6 +99,7 @@ export class ThunkManager extends EventEmitter {
    * Mark a thunk as completed
    */
   markThunkCompleted(thunkId: string): void {
+    debug('thunk', `Marking thunk as completed: id=${thunkId}`);
     const thunk = this.thunks.get(thunkId);
     if (!thunk) return;
 
@@ -227,17 +233,15 @@ export class ThunkManager extends EventEmitter {
    */
   checkAndReleaseRootThunkLock(thunkId: string): void {
     const rootId = this.getRootThunkId(thunkId);
-
+    debug('thunk', `Checking if root thunk tree is complete for rootId=${rootId}`);
     // Get the current active lock from ThunkLockManager for consistency
     const thunkLockManager = getThunkLockManager();
 
     // Only proceed if there's an active lock and it matches our root thunk
     if (this.isThunkTreeComplete(rootId)) {
       debug('thunk', `Root thunk tree ${rootId} is complete, releasing lock`);
-
       // Release through ThunkLockManager
       thunkLockManager.release(rootId);
-
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, rootId);
     } else {
@@ -267,7 +271,7 @@ export class ThunkManager extends EventEmitter {
     const thunkLockManager = getThunkLockManager();
     const rootId = this.getRootThunkId(action.__thunkParentId);
     const thunk = this.thunks.get(rootId);
-    if (thunk && thunkLockManager.acquire(rootId, thunk.keys, thunk.bypassLock)) {
+    if (thunk && thunkLockManager.acquire(rootId, thunk.keys, thunk.bypassThunkLock)) {
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, rootId);
       return true;
@@ -289,7 +293,7 @@ export class ThunkManager extends EventEmitter {
 
     const thunkLockManager = getThunkLockManager();
 
-    if (thunkLockManager.acquire(thunkId, thunk.keys, thunk.bypassLock)) {
+    if (thunkLockManager.acquire(thunkId, thunk.keys, thunk.bypassThunkLock)) {
       this.incrementStateVersion();
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, thunkId);
       return true;

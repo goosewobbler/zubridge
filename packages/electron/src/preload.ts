@@ -1,7 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Handlers, Thunk, DispatchOptions } from '@zubridge/types';
+import type { Action, AnyState, Handlers, Thunk, DispatchOptions, InternalThunk } from '@zubridge/types';
 import { IpcChannel } from './constants.js';
 import { debug } from '@zubridge/core';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
@@ -119,6 +119,8 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       debug(
         'ipc',
         `Dispatch called with bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
+        `action: ${action}`,
+        `typeof action: ${typeof action}`,
       );
 
       // Handle string actions
@@ -166,10 +168,14 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
       // Handle thunks (functions)
       if (typeof action === 'function') {
+        // TODO: do we ever get here?
+
         debug(
           'ipc',
           `Executing thunk in renderer, bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
         );
+
+        const thunk = action as InternalThunk<S>;
 
         // Create a getState function that uses the handlers.getState
         const getState = async () => {
@@ -178,17 +184,17 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         };
 
         // Store the bypass flags in the thunk
-        if (bypassAccessControl) {
-          (action as any).__bypassAccessControl = true;
-        }
+        thunk.__bypassAccessControl = !!bypassAccessControl;
+        thunk.__bypassThunkLock = !!bypassThunkLock;
 
-        if (bypassThunkLock) {
-          (action as any).__bypassThunkLock = true;
-        }
+        debug(
+          'ipc',
+          `[PRELOAD] Set __bypassThunkLock: ${thunk.__bypassThunkLock} on thunk: ${thunk.name || thunk.toString()}`,
+        );
 
         // Execute the thunk through the thunk processor
         const parentId = undefined;
-        return thunkProcessor.executeThunk(action as Thunk<S>, getState, parentId);
+        return thunkProcessor.executeThunk<S>(thunk, getState, parentId);
       }
 
       // It's an action object
@@ -279,10 +285,16 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
             ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
           },
           // Function to register thunks with main process
-          thunkRegistrar: async (thunkId: string, parentId?: string) => {
+          thunkRegistrar: async (
+            thunkId: string,
+            parentId?: string,
+            bypassThunkLock?: boolean,
+            bypassAccessControl?: boolean,
+          ) => {
+            debug('ipc', `[PRELOAD] BITCH thunkRegistrar: Lock = ${bypassThunkLock}`);
             return new Promise<void>((resolve, reject) => {
               pendingThunkRegistrations.set(thunkId, { resolve, reject });
-              ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId });
+              ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId, bypassThunkLock, bypassAccessControl });
             });
           },
           // Function to notify thunk completion
@@ -373,9 +385,15 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         if (contextBridge) {
           debug('ipc', 'Exposing thunk processor to renderer via contextBridge');
           contextBridge.exposeInMainWorld('__zubridge_thunkProcessor', {
-            executeThunk: (thunk: any, getState: () => any, parentId?: string) => {
+            executeThunk: (
+              thunk: InternalThunk<S>,
+              getState: () => any,
+              options?: DispatchOptions,
+              parentId?: string,
+            ) => {
+              debug('ipc', `[PRELOAD] BITCH executeThunk: Lock = ${options?.bypassThunkLock}`);
               // Call the private implementation directly to avoid infinite recursion
-              return thunkProcessor.executeThunkImplementation(thunk, getState, parentId);
+              return thunkProcessor.executeThunkImplementation(thunk, getState, options, parentId);
             },
             completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
             dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>

@@ -78,8 +78,10 @@ function useDispatch<S extends AnyState = AnyState, TActions extends Record<stri
     maybeOptions?: DispatchOptions,
   ): Promise<any> => {
     if (typeof action === 'function') {
+      // Thunk: no payload, payloadOrOptions is options, maybeOptions is ignored
+      const options = payloadOrOptions as DispatchOptions;
       const thunkProcessor = getThunkProcessor();
-      return thunkProcessor.executeThunk<S>(action as Thunk<S>, store.getState);
+      return thunkProcessor.executeThunk<S>(action as Thunk<S>, store.getState, options);
     } else if (typeof action === 'string') {
       // Action: payloadOrOptions is payload, maybeOptions is options
       if (maybeOptions) {
