@@ -9,6 +9,8 @@ export interface TimingConfig {
   THUNK_WAIT_TIME: number;
   THUNK_START_PAUSE: number;
   UI_INTERACTION_PAUSE: number;
+  FAST_ACTION_MAX_TIME: number;
+  LONG_THUNK_WAIT_TIME: number;
 }
 
 // Platform-specific timing configurations
@@ -24,6 +26,8 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     THUNK_WAIT_TIME: 5000, // Time to wait for thunk to complete
     THUNK_START_PAUSE: 1000, // Time to wait for thunk to start
     UI_INTERACTION_PAUSE: 500,
+    FAST_ACTION_MAX_TIME: 1000, // Maximum time a bypass action should take to complete
+    LONG_THUNK_WAIT_TIME: 15000, // Extended wait time for operations that might take longer
   },
 
   // Timing adjustments for Linux (slower CI env)
@@ -37,6 +41,8 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     THUNK_WAIT_TIME: 10000,
     THUNK_START_PAUSE: 1000,
     UI_INTERACTION_PAUSE: 500,
+    FAST_ACTION_MAX_TIME: 2000, // Maximum time a bypass action should take to complete (slower on Linux)
+    LONG_THUNK_WAIT_TIME: 30000, // Extended wait time for operations that might take longer (slower on Linux)
   },
 };
 
