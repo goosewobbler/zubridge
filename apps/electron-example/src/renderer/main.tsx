@@ -6,7 +6,13 @@ import './styles/index.css';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
 // Import shared utilities
-import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
+import {
+  createDoubleCounterThunk,
+  createDoubleCounterSlowThunk,
+  createDistinctiveCounterThunk,
+  createDistinctiveCounterSlowThunk,
+  type ThunkContext,
+} from '@zubridge/apps-shared';
 // Import debug utility
 import { debug } from '@zubridge/core';
 
@@ -110,6 +116,8 @@ function AppWrapper() {
     },
     doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
     doubleCounterSlow: (counter: number) => createDoubleCounterSlowThunk(counter, thunkContext),
+    distinctiveCounter: (counter: number) => createDistinctiveCounterThunk(counter, thunkContext),
+    distinctiveCounterSlow: (counter: number) => createDistinctiveCounterSlowThunk(counter, thunkContext),
   };
 
   // Create subscription handlers that update the state
