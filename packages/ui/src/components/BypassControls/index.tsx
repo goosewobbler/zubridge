@@ -38,7 +38,6 @@ export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }
             variant={bypassAccessControl ? 'primary' : 'secondary'}
             className="flex-1"
           >
-            {bypassAccessControl ? '✓ ' : ''}
             Bypass Access Control
           </Button>
 
@@ -55,7 +54,6 @@ export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }
             variant={bypassThunkLock ? 'primary' : 'secondary'}
             className="flex-1"
           >
-            {bypassThunkLock ? '✓ ' : ''}
             Bypass Thunk Lock
           </Button>
 

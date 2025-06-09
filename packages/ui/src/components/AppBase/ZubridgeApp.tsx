@@ -1,7 +1,7 @@
 import { useEffect, useCallback, ReactNode } from 'react';
 import { debug } from '@zubridge/core';
 import { WindowDisplay } from '../WindowDisplay';
-import { Counter } from '../Counter';
+import { CounterActions } from '../CounterActions';
 import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { Header } from '../Header';
@@ -13,6 +13,7 @@ import { getWindowTitle } from './WindowInfo.js';
 import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
 import { CounterMethod } from '../../types.js';
 import { GenerateLargeState } from '../GenerateLargeState';
+import { Action, Dispatch } from '@zubridge/types';
 
 export interface ZubridgeAppProps {
   /**
@@ -28,7 +29,7 @@ export interface ZubridgeAppProps {
   /**
    * Dispatch function for actions
    */
-  dispatch: any;
+  dispatch: Dispatch<Action>;
 
   /**
    * Platform-specific action handlers
@@ -140,47 +141,53 @@ export function ZubridgeApp({
   }, [isDarkMode]);
 
   // Action handlers with logging
-  const handleIncrement = useCallback(() => {
-    dispatch('COUNTER:INCREMENT', window.bypassFlags);
+  const handleIncrement = useCallback(async () => {
+    await dispatch('COUNTER:INCREMENT', window.bypassFlags);
   }, [dispatch]);
 
-  const handleDecrement = useCallback(() => {
-    dispatch('COUNTER:DECREMENT', window.bypassFlags);
+  const handleDecrement = useCallback(async () => {
+    await dispatch('COUNTER:DECREMENT', window.bypassFlags);
   }, [dispatch]);
 
-  const handleResetState = useCallback(() => {
-    dispatch('STATE:RESET');
+  const handleResetState = useCallback(async () => {
+    await dispatch('STATE:RESET');
   }, [dispatch]);
 
   const handleGenerateLargeState = useCallback(
-    (variantOrOptions: any) => {
+    async (variantOrOptions: any) => {
       // Check if we received a string variant or an options object
       if (typeof variantOrOptions === 'string' || variantOrOptions === undefined) {
         const variant = variantOrOptions || 'medium';
         debug('ui', `Generating ${variant} test state`);
-        return dispatch('STATE:GENERATE-FILLER', { variant });
+        return await dispatch('STATE:GENERATE-FILLER', { variant });
       } else {
         // We received detailed options
         debug('ui', `Generating custom test state with options:`, variantOrOptions);
-        return dispatch('STATE:GENERATE-FILLER', variantOrOptions);
+        return await dispatch('STATE:GENERATE-FILLER', variantOrOptions);
       }
     },
     [dispatch],
   );
 
   const handleDoubleCounter = useCallback(
-    (method: CounterMethod) => {
+    async (method: CounterMethod) => {
       if (method === 'thunk') {
         // Use the actionHandlers thunk if available
         if (actionHandlers.doubleCounter) {
-          debug('ui', `Using shared thunk for method: ${method}`);
-          return dispatch(actionHandlers.doubleCounter(counter), window.bypassFlags);
+          debug(
+            'ui',
+            `Using shared thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+          );
+          return await dispatch(actionHandlers.doubleCounter(counter), window.bypassFlags);
         }
       } else if (method === 'slow-thunk') {
         // Use the slow thunk if available
         if (actionHandlers.doubleCounterSlow) {
-          debug('ui', `Using shared slow thunk for method: ${method}`);
-          return dispatch(actionHandlers.doubleCounterSlow(counter), window.bypassFlags);
+          debug(
+            'ui',
+            `Using shared slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+          );
+          return await dispatch(actionHandlers.doubleCounterSlow(counter), window.bypassFlags);
         }
       } else if (method === 'main-thunk') {
         debug('ui', `Starting ${method} execution`);
@@ -210,7 +217,7 @@ export function ZubridgeApp({
         return result;
       } else if (method === 'slow-object') {
         debug('ui', `Dispatching slow action for ${method}`);
-        const result = dispatch(
+        const result = await dispatch(
           {
             type: 'COUNTER:SET:SLOW',
             payload: counter * 2,
@@ -221,7 +228,7 @@ export function ZubridgeApp({
         return result;
       } else {
         debug('ui', `Dispatching regular action for ${method}`);
-        const result = dispatch(
+        const result = await dispatch(
           {
             type: 'COUNTER:SET',
             payload: counter * 2,
@@ -235,8 +242,35 @@ export function ZubridgeApp({
     [counter, dispatch, actionHandlers],
   );
 
-  const handleToggleTheme = useCallback(() => {
-    dispatch('THEME:TOGGLE');
+  const handleDistinctiveCounter = useCallback(
+    async (method: CounterMethod) => {
+      if (method === 'thunk') {
+        // Use the actionHandlers thunk if available
+        if (actionHandlers.distinctiveCounter) {
+          debug(
+            'ui',
+            `Using distinctive thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+          );
+          return await dispatch(actionHandlers.distinctiveCounter(counter), window.bypassFlags);
+        }
+      } else if (method === 'slow-thunk') {
+        // Use the slow thunk if available
+        if (actionHandlers.distinctiveCounterSlow) {
+          debug(
+            'ui',
+            `Using distinctive slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+          );
+          return await dispatch(actionHandlers.distinctiveCounterSlow(counter), window.bypassFlags);
+        }
+      }
+      debug('ui:error', `Distinctive counter handler not available for ${method}`);
+      return Promise.reject(new Error(`Distinctive counter handler not available for ${method}`));
+    },
+    [counter, dispatch, actionHandlers],
+  );
+
+  const handleToggleTheme = useCallback(async () => {
+    await dispatch('THEME:TOGGLE');
   }, [dispatch]);
 
   // Window management
@@ -287,11 +321,11 @@ export function ZubridgeApp({
         >
           {children || (
             <>
-              <Counter
-                value={counter}
+              <CounterActions
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
                 onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
+                onDistinctive={(method: CounterMethod) => handleDistinctiveCounter(method)}
                 isLoading={bridgeStatus === 'initializing'}
               />
 

@@ -4,23 +4,23 @@ import clsx from 'clsx';
 import { Button } from '../Button';
 import { CounterMethod } from '../../types';
 
-interface CounterProps {
-  value: number;
+interface CounterActionsProps {
   onIncrement: () => void;
   onDecrement: () => void;
   onDouble: (method: CounterMethod) => void;
+  onDistinctive?: (method: CounterMethod) => void;
   isLoading?: boolean;
   className?: string;
 }
 
 /**
- * Counter component with controls for incrementing, decrementing, doubling, and resetting
+ * CounterActions component with controls for counter operations
  */
-export const Counter: React.FC<CounterProps> = ({
-  value = 0,
+export const CounterActions: React.FC<CounterActionsProps> = ({
   onIncrement,
   onDecrement,
   onDouble,
+  onDistinctive,
   isLoading = false,
   className = '',
 }) => {
@@ -69,6 +69,28 @@ export const Counter: React.FC<CounterProps> = ({
         >
           Double (Main Slow Thunk)
         </Button>
+        {onDistinctive && (
+          <Button
+            onClick={() => onDistinctive('thunk')}
+            disabled={isLoading}
+            aria-label="Apply distinctive pattern (multiply by 3, add 2, subtract 1)"
+            className="w-full"
+            data-testid="distinctive-pattern-btn"
+          >
+            Distinctive Pattern (×3→+2→−1)
+          </Button>
+        )}
+        {onDistinctive && (
+          <Button
+            onClick={() => onDistinctive('slow-thunk')}
+            disabled={isLoading}
+            aria-label="Apply distinctive pattern slowly (multiply by 3, add 2, subtract 1)"
+            className="w-full"
+            data-testid="distinctive-pattern-slow-btn"
+          >
+            Distinctive Pattern Slow (×3→+2→−1)
+          </Button>
+        )}
         <Button
           onClick={() => onDouble('object')}
           disabled={isLoading}
@@ -89,5 +111,3 @@ export const Counter: React.FC<CounterProps> = ({
     </div>
   );
 };
-
-export default Counter;
