@@ -3,6 +3,11 @@ import type { WebContents } from 'electron';
 
 export type Thunk<S> = (getState: () => Promise<Partial<S>>, dispatch: Dispatch<Partial<S>>) => void;
 
+export interface InternalThunk<S> extends Thunk<S> {
+  __bypassAccessControl?: boolean;
+  __bypassThunkLock?: boolean;
+}
+
 export type Action<T extends string = string> = {
   type: T;
   payload?: unknown;
