@@ -2,7 +2,6 @@ import type { AnyState, DispatchFunc, DispatchOptions, Handlers } from '@zubridg
 import { useStore, type StoreApi } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
 import type { Action, Thunk, ExtractState, ReadonlyStoreApi } from '@zubridge/types';
-import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Export types
 export type * from '@zubridge/types';
@@ -51,7 +50,7 @@ export const createHandlers = <S extends AnyState>(): Handlers<S> => {
 };
 
 /**
- * Creates a hook for accessing the store state in React components
+ * Creates a hook for accessing the store state in renderer components
  */
 export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>): UseBoundStore<StoreApi<S>> => {
   const handlers = customHandlers || createHandlers<S>();
@@ -64,35 +63,27 @@ export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>)
   return useBoundStore as UseBoundStore<StoreApi<S>>;
 };
 
+/**
+ * Creates a dispatch function for use in renderer components
+ */
 function useDispatch<S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
   customHandlers?: Handlers<S>,
 ): DispatchFunc<S, TActions> {
   const handlers = customHandlers || createHandlers<S>();
 
-  // Ensure we have a store for these handlers
-  const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
-
-  const dispatch = (
+  // Create a dispatch function that delegates directly to handlers.dispatch
+  const dispatch: DispatchFunc<S, TActions> = (
     action: string | Action | Thunk<S>,
     payloadOrOptions?: unknown | DispatchOptions,
     maybeOptions?: DispatchOptions,
   ): Promise<any> => {
-    if (typeof action === 'function') {
-      // Thunk: no payload, payloadOrOptions is options, maybeOptions is ignored
-      const options = payloadOrOptions as DispatchOptions;
-      const thunkProcessor = getThunkProcessor();
-      return thunkProcessor.executeThunk<S>(action as Thunk<S>, store.getState, options);
-    } else if (typeof action === 'string') {
-      // Action: payloadOrOptions is payload, maybeOptions is options
-      if (maybeOptions) {
-        // If options are provided, pass as second argument (payload is ignored)
-        return handlers.dispatch(action, maybeOptions);
-      } else {
-        return handlers.dispatch(action, payloadOrOptions);
-      }
+    // Delegate based on the action type
+    if (typeof action === 'string') {
+      return handlers.dispatch(action, payloadOrOptions, maybeOptions);
+    } else if (typeof action === 'function') {
+      return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
     } else {
-      // Action object: payloadOrOptions is options
-      return handlers.dispatch(action, payloadOrOptions as DispatchOptions | undefined);
+      return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
     }
   };
 
