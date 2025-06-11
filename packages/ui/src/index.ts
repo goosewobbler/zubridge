@@ -1,6 +1,6 @@
 // Export shared components
 export * from './components/Button';
-export * from './components/Counter';
+export * from './components/CounterActions';
 export * from './components/Header';
 export * from './components/ThemeToggle';
 export * from './components/WindowActions';
