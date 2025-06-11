@@ -197,6 +197,7 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
 export enum ThunkState {
   PENDING = 'pending', // Registered but not started execution
   EXECUTING = 'executing', // Currently executing
+  COMPLETING = 'completing', // Execution finished, waiting for all actions to complete
   COMPLETED = 'completed', // Successfully completed
   FAILED = 'failed', // Failed with an error
 }
