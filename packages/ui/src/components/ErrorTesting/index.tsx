@@ -87,7 +87,7 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
 
   const handleDispatchInvalid = useCallback(async () => {
     try {
-      console.log('ui', 'Testing dispatch with invalid payload');
+      debug('ui', 'Testing dispatch with invalid payload');
 
       // Create a non-serializable object with a function and symbol properties
       // This can't be serialized but won't crash React if rendered
@@ -102,7 +102,7 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
         },
       };
 
-      console.log('ui', 'Attempting to dispatch with non-serializable payload');
+      debug('ui', 'Attempting to dispatch with non-serializable payload');
 
       // Dispatch with the non-serializable object as payload
       await dispatch({
@@ -111,7 +111,7 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
       });
 
       // If we get here, no error was thrown
-      console.log('ui', 'Dispatch completed without error - this is unexpected');
+      debug('ui', 'Dispatch completed without error - this is unexpected');
       logError('Expected serialization error, but none occurred during dispatch');
     } catch (error) {
       logError(`Dispatch error: ${error instanceof Error ? error.message : String(error)}`);
@@ -131,6 +131,42 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
     }
   }, [dispatch, logError]);
 
+  const handleUpdateUnsubscribedState = useCallback(async () => {
+    try {
+      debug('ui', 'Attempting to update unsubscribed state');
+
+      // Determine which key we're not subscribed to
+      const isThemeSubscribed =
+        currentSubscriptions === '*' || (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('theme'));
+      const isCounterSubscribed =
+        currentSubscriptions === '*' ||
+        (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('counter'));
+
+      // Choose a key we're not subscribed to (or counter if we're subscribed to everything)
+      const targetKey = !isCounterSubscribed ? 'counter' : !isThemeSubscribed ? 'theme' : 'counter';
+      const actionType = targetKey === 'counter' ? 'COUNTER:SET' : 'THEME:SET';
+      const payload = targetKey === 'counter' ? 42 : 'dark';
+
+      debug(`ui', 'Attempting to update ${targetKey} with action ${actionType}`);
+
+      // Try to dispatch an action that updates unsubscribed state
+      await dispatch({
+        type: actionType,
+        payload,
+      });
+
+      debug(
+        'ui',
+        `Successfully updated ${targetKey}. If this window is not subscribed to ${targetKey}, bypassAccessControl may be enabled.`,
+      );
+      logError(
+        `Successfully updated ${targetKey} (${payload}). This window ${Array.isArray(currentSubscriptions) ? 'has subscriptions: ' + currentSubscriptions.join(', ') : 'subscription status: ' + currentSubscriptions}`,
+      );
+    } catch (error) {
+      logError(`Access control error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [dispatch, currentSubscriptions, logError]);
+
   return (
     <div className="error-testing-container">
       <h3 className="mt-0 mb-3 text-lg font-semibold">Error Testing</h3>
@@ -143,6 +179,9 @@ export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: 
         </Button>
         <Button onClick={handleTriggerMainError} variant="close" data-testid="trigger-main-error-btn">
           Main Process Error
+        </Button>
+        <Button onClick={handleUpdateUnsubscribedState} variant="close" data-testid="update-unsubscribed-btn">
+          Update Unsubscribed
         </Button>
       </div>
 

@@ -321,19 +321,21 @@ export function ZubridgeApp({
         >
           {children || (
             <>
-              <CounterActions
-                onIncrement={handleIncrement}
-                onDecrement={handleDecrement}
-                onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
-                onDistinctive={(method: CounterMethod) => handleDistinctiveCounter(method)}
-                isLoading={bridgeStatus === 'initializing'}
-              />
+              <div className="p-4 mb-4 border rounded-md counter-actions-section border-accent">
+                <CounterActions
+                  onIncrement={handleIncrement}
+                  onDecrement={handleDecrement}
+                  onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
+                  onDistinctive={(method: CounterMethod) => handleDistinctiveCounter(method)}
+                  isLoading={bridgeStatus === 'initializing'}
+                />
+              </div>
 
-              <div className="theme-section">
+              <div className="mb-4 border rounded-md theme-sectionp-4 border-accent">
                 <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
               </div>
 
-              <div className="subscriptions-section">
+              <div className="p-4 mb-4 border rounded-md subscription-section border-accent">
                 {onSubscribe && onUnsubscribe && (
                   <SubscriptionControls
                     onSubscribe={onSubscribe}
@@ -345,19 +347,19 @@ export function ZubridgeApp({
                 <GenerateLargeState onGenerate={handleGenerateLargeState} />
               </div>
 
-              <div className="bypass-flags-section">
+              <div className="p-4 mb-4 border rounded-md bypass-flags-section border-accent">
                 <div className="pt-4 mt-5 border-t border-gray-200">
                   <BypassControls />
                 </div>
               </div>
 
-              <div className="error-testing-section">
+              <div className="p-4 mb-4 border rounded-md error-testing-section border-accent">
                 <div className="pt-4 mt-5 border-t border-gray-200">
                   <ErrorTesting dispatch={dispatch} currentSubscriptions={currentSubscriptions} />
                 </div>
               </div>
 
-              <div className="window-actions-section">
+              <div className="p-4 mb-4 border rounded-md window-actions-section border-accent">
                 <WindowActions
                   onCreateWindow={handleCreateWindow}
                   onCloseWindow={handleCloseWindow}
