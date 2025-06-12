@@ -1,7 +1,8 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/types';
-import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
 import { debug } from '@zubridge/core';
+import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
+import type { ZubridgeMiddleware } from '../middleware.js';
 
 /**
  * Helper to check if a value is a Promise
@@ -30,6 +31,7 @@ function toVoidPromise<T>(promise: Promise<T>): Promise<void> {
 export interface ZustandOptions<S extends AnyState> {
   handlers?: Record<string, Handler>;
   reducer?: RootReducer<S>;
+  middleware?: ZubridgeMiddleware;
 }
 
 /**

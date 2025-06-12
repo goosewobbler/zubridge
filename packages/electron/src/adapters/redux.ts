@@ -1,7 +1,8 @@
 import type { Store } from 'redux';
 import type { AnyState, Action, Handler, StateManager } from '@zubridge/types';
-import { resolveHandler } from '../utils/handlers.js';
 import { debug } from '@zubridge/core';
+import { resolveHandler } from '../utils/handlers.js';
+import type { ZubridgeMiddleware } from '../middleware.js';
 
 /**
  * Helper to check if a value is a Promise
@@ -15,6 +16,7 @@ function isPromise(value: unknown): value is Promise<unknown> {
  */
 export interface ReduxOptions<S extends AnyState> {
   handlers?: Record<string, Handler>;
+  middleware?: ZubridgeMiddleware;
 }
 
 /**
@@ -73,7 +75,7 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
         // For Redux, we dispatch all actions to the store
         // with our standard Action format
         debug('adapters', `Dispatching action to Redux store: ${action.type}`);
-        store.dispatch(action as any);
+        store.dispatch(action);
         return { isSync: true }; // Redux dispatch is synchronous
       } catch (error) {
         debug('adapters:error', 'Error processing Redux action:', error);
