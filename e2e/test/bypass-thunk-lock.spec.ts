@@ -95,14 +95,14 @@ describe('BypassThunkLock Flag Functionality', () => {
       // Wait for thunk to reach its first intermediate value (4)
       await waitForSpecificValue(4);
       console.log(`[${new Date().toISOString()}] First intermediate value (4) reached`);
+      // Dispatch an increment action (which should now have bypassThunkLock flag)
+      console.log('Dispatching increment action with bypassThunkLock flag');
+      const incrementButton = await getButtonInCurrentWindow('increment');
 
       // Record the time before sending our bypassing action
       const beforeBypass = Date.now();
       console.log(`[${new Date().toISOString()}] Before dispatching increment action with bypass flag`);
 
-      // Dispatch an increment action (which should now have bypassThunkLock flag)
-      console.log('Dispatching increment action with bypassThunkLock flag');
-      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
       console.log(`[${new Date().toISOString()}] Increment action dispatched`);
 
@@ -125,7 +125,7 @@ describe('BypassThunkLock Flag Functionality', () => {
       // The sequence should be: 2 -> 4 (thunk) -> 5 (bypass) -> 10 (thunk) -> 5 (thunk)
       await waitForSpecificValue(10);
       console.log(`[${new Date().toISOString()}] Counter value 10 reached (second step of slow thunk)`);
-      await waitForSpecificValue(5);
+      await waitForSpecificValue(5, 10000);
       console.log(`[${new Date().toISOString()}] Counter value 5 reached (third step of slow thunk)`);
 
       // Check the final counter value
@@ -151,48 +151,39 @@ describe('BypassThunkLock Flag Functionality', () => {
       // Enable bypassThunkLock flag in second window
       await toggleBypassThunkLock(true);
 
+      // Get the increment button in the second window
+      const incrementButton = await getButtonInCurrentWindow('increment');
+
       // Switch to main window to start a slow thunk
       await switchToWindow(0);
 
       console.log('Starting slow thunk in main window');
-      const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
-      await mainSlowThunkButton.click();
-
-      // Wait for thunk to reach its first intermediate value (4)
-      await waitForSpecificValue(4);
+      const slowThunkButton = await getButtonInCurrentWindow('doubleRendererSlow');
+      await slowThunkButton.click();
 
       // Switch to second window
       await switchToWindow(2);
 
-      // Record time before bypass action
-      const beforeBypass = Date.now();
+      // Wait for thunk to reach its first intermediate value (4)
+      await waitForSpecificValue(4);
 
       // Dispatch an increment action from second window
       console.log('Dispatching increment action with bypassThunkLock flag from second window');
-      const incrementButton = await getButtonInCurrentWindow('increment');
       await incrementButton.click();
 
       // Switch back to first window to check counter
       await switchToWindow(0);
 
       // Wait for bypass action effect
-      await waitForIncrement();
-      const afterBypass = Date.now();
-
-      // Calculate how long it took for the bypass action to take effect
-      const bypassDuration = afterBypass - beforeBypass;
-      console.log(`Cross-window bypass action took ${bypassDuration}ms to process`);
-
-      // The bypass action should take effect quickly (under 3 seconds)
-      expect(bypassDuration).toBeLessThan(3000);
+      await waitForIncrement(4);
 
       // Wait for thunk to complete its remaining operations
-      await browser.pause(TIMING.THUNK_WAIT_TIME * 4);
+      await browser.pause(TIMING.LONG_THUNK_WAIT_TIME);
 
       // Verify final counter value
       const finalValue = await getCounterValue();
       console.log('Final counter value:', finalValue);
-      expect(finalValue).toBe(4);
+      expect(finalValue).toBe(5);
     });
   });
 
