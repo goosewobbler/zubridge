@@ -34,10 +34,32 @@ export async function waitForSpecificValue(
   );
 }
 
+export async function waitForIncrement(
+  originalValue?: number,
+  timeout = TIMING.THUNK_WAIT_TIME,
+  interval = 50,
+): Promise<boolean> {
+  let previousValue = originalValue || (await getCounterValue());
+  return await browser.waitUntil(
+    async () => {
+      const currentValue = await getCounterValue();
+      const incrementedValue = previousValue + 1;
+      previousValue = currentValue;
+      console.log(`Counter value is now ${currentValue}, waiting for ${incrementedValue}`);
+      return currentValue === incrementedValue;
+    },
+    {
+      timeout,
+      timeoutMsg: `Counter value did not increment from ${previousValue} after ${timeout}ms`,
+      interval,
+    },
+  );
+}
+
 export const getCounterValue = async () => {
   const counterElement = await browser.$('h2');
   const counterText = await counterElement.getText();
-  return parseInt(counterText.replace('Counter: ', ''));
+  return parseFloat(counterText.replace('Counter: ', ''));
 };
 
 export const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {

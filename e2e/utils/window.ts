@@ -150,13 +150,17 @@ export const getButtonInCurrentWindow = async (
     | 'generateLargeState'
     | 'doubleObject'
     | 'slowObject'
-    | 'access-unsubscribed-btn'
     | 'dispatch-invalid-btn'
     | 'access-nonexistent-btn'
     | 'verify-unsubscribed-btn'
     | 'trigger-main-error-btn'
     | 'thunk-error-btn'
-    | 'clear-errors-btn',
+    | 'clear-errors-btn'
+    | 'update-unsubscribed-btn'
+    | 'bypass-thunk-lock-btn'
+    | 'bypass-access-control-btn'
+    | 'distinctive-pattern-btn'
+    | 'distinctive-pattern-slow-btn',
 ) => {
   let selector = '';
   switch (buttonType) {
@@ -208,9 +212,6 @@ export const getButtonInCurrentWindow = async (
     case 'slowObject':
       selector = 'button=Double (Slow Object)';
       break;
-    case 'access-unsubscribed-btn':
-      selector = '[data-testid="access-unsubscribed-btn"]';
-      break;
     case 'dispatch-invalid-btn':
       selector = '[data-testid="dispatch-invalid-btn"]';
       break;
@@ -228,6 +229,21 @@ export const getButtonInCurrentWindow = async (
       break;
     case 'clear-errors-btn':
       selector = '[data-testid="clear-errors-btn"]';
+      break;
+    case 'update-unsubscribed-btn':
+      selector = '[data-testid="update-unsubscribed-btn"]';
+      break;
+    case 'bypass-thunk-lock-btn':
+      selector = 'button=Bypass Thunk Lock';
+      break;
+    case 'bypass-access-control-btn':
+      selector = 'button=Bypass Access Control';
+      break;
+    case 'distinctive-pattern-btn':
+      selector = '[data-testid="distinctive-pattern-btn"]';
+      break;
+    case 'distinctive-pattern-slow-btn':
+      selector = '[data-testid="distinctive-pattern-slow-btn"]';
       break;
     default:
       // Ensure all cases are handled, or throw an error for an unhandled button type.
