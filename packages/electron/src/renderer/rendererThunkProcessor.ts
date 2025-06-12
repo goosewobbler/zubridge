@@ -29,6 +29,9 @@ export class RendererThunkProcessor {
   // Function to notify thunk completion
   private thunkCompleter?: (thunkId: string) => Promise<void>;
 
+  // Custom state provider function
+  private stateProvider?: () => Promise<any>;
+
   // Queue of pending dispatches (action IDs)
   private pendingDispatches = new Set<string>();
 
@@ -76,6 +79,15 @@ export class RendererThunkProcessor {
 
     debug('ipc', '[RENDERER_THUNK] Action sender:', this.actionSender);
     debug('ipc', `[RENDERER_THUNK] Initialized with window ID ${options.windowId}`);
+  }
+
+  /**
+   * Set a custom state provider function
+   * This allows explicitly registering a way to get state after initialization
+   */
+  public setStateProvider(provider: () => Promise<any>): void {
+    this.stateProvider = provider;
+    debug('ipc', '[RENDERER_THUNK] Custom state provider registered');
   }
 
   /**
@@ -166,10 +178,11 @@ export class RendererThunkProcessor {
     try {
       const getState = async (): Promise<S> => {
         debug('ipc', `[RENDERER_THUNK] getState called for thunk ${thunk.id}`);
-        debug('ipc', `[RENDERER_THUNK] window.zubridge: ${JSON.stringify(window.zubridge)}`);
 
-        if (typeof window !== 'undefined' && window.zubridge?.getState) {
-          return window.zubridge.getState() as Promise<S>;
+        // First try using the custom state provider if available
+        if (this.stateProvider) {
+          debug('ipc', `[RENDERER_THUNK] Using registered state provider for thunk ${thunk.id}`);
+          return this.stateProvider() as Promise<S>;
         }
 
         throw new Error('No state provider available');

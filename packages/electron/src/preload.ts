@@ -366,9 +366,8 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         debug('ipc', 'Exposing subscription validator API to window');
         contextBridge.exposeInMainWorld('__zubridge_subscriptionValidator', subscriptionValidatorAPI);
 
-        // Expose the main handlers to window via contextBridge - this is essential
-        debug('core', 'Exposing handlers to window via contextBridge');
-        contextBridge.exposeInMainWorld('zubridge', handlers);
+        // Add a state provider to the thunk processor
+        thunkProcessor.setStateProvider(() => handlers.getState());
 
         debug('ipc', 'Preload script initialized successfully');
       } catch (error) {
