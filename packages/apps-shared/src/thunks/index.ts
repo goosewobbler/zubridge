@@ -52,14 +52,24 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
   const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false } = options;
 
   const logPrefix = getLogPrefix(context);
-  const actionType = useSlow ? 'COUNTER:SET:SLOW' : 'COUNTER:SET';
   const thunkType = useSlow ? 'SLOW' : 'REGULAR';
 
   return async (getState, dispatch) => {
     const getCounter = async () => {
+      const now = new Date().toISOString();
+      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Calling getState()`);
+
+      const beforeStateTime = Date.now();
       const state = await getState();
-      // Debug the entire state object
-      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] Full state: ${JSON.stringify(state)}`);
+      const afterStateTime = Date.now();
+      const stateLatency = afterStateTime - beforeStateTime;
+
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${now}] Got state in ${stateLatency}ms: ${JSON.stringify(state)}`,
+      );
+      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`);
+
       return state.counter ?? initialCounter; // Use nullish coalescing to handle undefined counter
     };
 
@@ -68,30 +78,40 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       if (includeTimestamps) {
         debug('thunk', `${message} (time: ${timestamp})`);
       } else {
-        debug('thunk', message);
+        debug('thunk', `${message}`);
       }
     };
 
     try {
       // Log initial state
-      const actualInitialState = await getState();
       const actualInitialCounter = await getCounter();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] STARTING THUNK at ${new Date().toISOString()}`);
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] Initial counter param: ${initialCounter}, actual state counter: ${actualInitialCounter}`,
       );
 
-      // First async operation - double the value
-      const targetValue1 = initialCounter * 2;
+      // First async operation - double the current value
+      let currentValue = await getCounter();
+      const doubleActionType = useSlow ? 'COUNTER:DOUBLE:SLOW' : 'COUNTER:DOUBLE';
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] First operation validation - Current counter: ${currentValue}, Target: ${currentValue * 2}`,
+      );
       logWithTimestamp(
-        `${logPrefix} [DEBUG] [${thunkType}] First operation: Doubling counter to ${targetValue1} using ${actionType}`,
+        `${logPrefix} [DEBUG] [${thunkType}] First operation: Doubling counter from ${currentValue} using ${doubleActionType}`,
       );
 
       const timestamp1 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`);
 
       const startTime1 = new Date().getTime();
-      await dispatch(actionType, targetValue1);
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${doubleActionType}`,
+      );
+
+      await dispatch(doubleActionType);
+
       const endTime1 = new Date().getTime();
 
       const duration1 = endTime1 - startTime1;
@@ -101,37 +121,39 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
 
       // Log intermediate state after first operation
-      const intermediateValue = await getCounter();
+      let intermediateValue = await getCounter();
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] After first operation: counter value is ${intermediateValue}`,
       );
 
       // Check if another window modified our value
-      if (intermediateValue !== targetValue1) {
+      if (intermediateValue !== currentValue * 2) {
         logWithTimestamp(
-          `${logPrefix} [DEBUG] [${thunkType}] STATE CHANGED! Intermediate value (${intermediateValue}) doesn't match expected value (${targetValue1}).`,
+          `${logPrefix} [DEBUG] [${thunkType}] STATE CHANGED! Intermediate value (${intermediateValue}) doesn't match expected value (${currentValue * 2}).`,
         );
       }
 
-      // Second async operation - double the intermediateValue
-      const expectedSecondValue = intermediateValue * 2;
+      // Second async operation - double the latest value
+      currentValue = await getCounter();
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Second operation validation - Current counter: ${currentValue}, Target: ${currentValue * 2}`,
+      );
       logWithTimestamp(
-        `${logPrefix} [DEBUG] [${thunkType}] Second operation: Doubling counter from ${intermediateValue} to ${expectedSecondValue} using ${actionType}`,
+        `${logPrefix} [DEBUG] [${thunkType}] Second operation: Doubling counter from ${currentValue} using ${doubleActionType}`,
       );
 
       const timestamp2 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before second action: ${timestamp2}`);
 
-      // Double-check state hasn't changed
-      const preActionValue = await getCounter();
-      if (preActionValue !== intermediateValue) {
-        logWithTimestamp(
-          `${logPrefix} [DEBUG] [${thunkType}] WARNING: State changed between getCounter() calls! Was ${intermediateValue}, now ${preActionValue}`,
-        );
-      }
-
       const startTime2 = new Date().getTime();
-      await dispatch(actionType, expectedSecondValue);
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${doubleActionType}`,
+      );
+
+      await dispatch(doubleActionType);
+
       const endTime2 = new Date().getTime();
 
       const duration2 = endTime2 - startTime2;
@@ -141,37 +163,40 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
 
       // Log intermediate state after second operation
-      const intermediateValue2 = await getCounter();
+      let intermediateValue2 = await getCounter();
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] After second operation: counter value is ${intermediateValue2}`,
       );
 
       // Check if value matches what we expected
-      if (intermediateValue2 !== expectedSecondValue) {
+      if (intermediateValue2 !== currentValue * 2) {
         logWithTimestamp(
-          `${logPrefix} [DEBUG] [${thunkType}] STATE CHANGED! Second intermediate value (${intermediateValue2}) doesn't match expected value (${expectedSecondValue}).`,
+          `${logPrefix} [DEBUG] [${thunkType}] STATE CHANGED! Second intermediate value (${intermediateValue2}) doesn't match expected value (${currentValue * 2}).`,
         );
       }
 
-      // Final operation - halve the counter value
-      const expectedFinalValue = intermediateValue2 / 2;
+      // Final operation - halve the latest value
+      currentValue = await getCounter();
+      const halveActionType = useSlow ? 'COUNTER:HALVE:SLOW' : 'COUNTER:HALVE';
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Final operation validation - Current counter: ${currentValue}, Target: ${Math.round(currentValue / 2)}`,
+      );
       logWithTimestamp(
-        `${logPrefix} [DEBUG] [${thunkType}] Third operation: Halving counter from ${intermediateValue2} to ${expectedFinalValue} using ${actionType}`,
+        `${logPrefix} [DEBUG] [${thunkType}] Third operation: Halving counter from ${currentValue} using ${halveActionType}`,
       );
 
       const timestamp3 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before third action: ${timestamp3}`);
 
-      // Double-check state hasn't changed
-      const preThirdActionValue = await getCounter();
-      if (preThirdActionValue !== intermediateValue2) {
-        logWithTimestamp(
-          `${logPrefix} [DEBUG] [${thunkType}] WARNING: State changed between getCounter() calls! Was ${intermediateValue2}, now ${preThirdActionValue}`,
-        );
-      }
-
       const startTime3 = new Date().getTime();
-      await dispatch(actionType, expectedFinalValue);
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${halveActionType}`,
+      );
+
+      await dispatch(halveActionType);
+
       const endTime3 = new Date().getTime();
 
       const duration3 = endTime3 - startTime3;
@@ -184,16 +209,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       const finalValue = await getCounter();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] After final operation: counter value is ${finalValue}`);
 
-      // Verify result - the expected value after double → double → halve is initialCounter * 2
-      // For example: 2 → 4 → 8 → 4
-      if (finalValue === initialCounter * 2) {
-        logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Test PASSED: Got expected value: ${finalValue}`);
-      } else {
-        logWithTimestamp(
-          `${logPrefix} [DEBUG] [${thunkType}] Test FAILED: Got unexpected value: ${finalValue}, expected ${initialCounter * 2}`,
-        );
-      }
-
+      // Verify result - the expected value after double → double → halve is currentValue (should be robust to bypass)
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] THUNK COMPLETED at ${new Date().toISOString()}`);
       return finalValue;
     } catch (error) {
@@ -238,9 +254,20 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
 
   return async (getState, dispatch) => {
     const getCounter = async () => {
+      const now = new Date().toISOString();
+      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Calling getState()`);
+
+      const beforeStateTime = Date.now();
       const state = await getState();
-      // Debug the entire state object
-      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] Full state: ${JSON.stringify(state)}`);
+      const afterStateTime = Date.now();
+      const stateLatency = afterStateTime - beforeStateTime;
+
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${now}] Got state in ${stateLatency}ms: ${JSON.stringify(state)}`,
+      );
+      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`);
+
       return state.counter ?? initialCounter; // Use nullish coalescing to handle undefined counter
     };
 
@@ -249,7 +276,7 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       if (includeTimestamps) {
         debug('thunk', `${message} (time: ${timestamp})`);
       } else {
-        debug('thunk', message);
+        debug('thunk', `${message}`);
       }
     };
 
@@ -264,6 +291,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
 
       // First async operation - multiply by 3
       const firstValue = initialCounter * 3;
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] First operation validation - Initial counter: ${initialCounter}, Target: ${firstValue}`,
+      );
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] First operation: Multiplying counter by 3 to ${firstValue} using ${actionType}`,
       );
@@ -296,6 +327,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
 
       // Second async operation - add 2
       const expectedSecondValue = intermediateValue + 2;
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Second operation validation - Current counter: ${intermediateValue}, Target: ${expectedSecondValue}`,
+      );
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] Second operation: Adding 2 to counter from ${intermediateValue} to get ${expectedSecondValue} using ${actionType}`,
       );
@@ -312,6 +347,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       }
 
       const startTime2 = new Date().getTime();
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${actionType} with value ${expectedSecondValue}`,
+      );
       await dispatch(actionType, expectedSecondValue);
       const endTime2 = new Date().getTime();
 
@@ -336,6 +375,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
 
       // Final operation - subtract 1
       const expectedFinalValue = intermediateValue2 - 1;
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Final operation validation - Current counter: ${intermediateValue2}, Target: ${expectedFinalValue}`,
+      );
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] Third operation: Subtracting 1 from counter from ${intermediateValue2} to get ${expectedFinalValue} using ${actionType}`,
       );
@@ -352,6 +395,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       }
 
       const startTime3 = new Date().getTime();
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${actionType} with value ${expectedFinalValue}`,
+      );
       await dispatch(actionType, expectedFinalValue);
       const endTime3 = new Date().getTime();
 

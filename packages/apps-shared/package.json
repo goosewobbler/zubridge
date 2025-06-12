@@ -15,7 +15,9 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@zubridge/core": "workspace:*"
+  },
   "peerDependencies": {
     "zustand": "^4.3.0"
   },
