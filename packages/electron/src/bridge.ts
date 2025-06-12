@@ -1,9 +1,12 @@
 import { ipcMain } from 'electron';
 import type { IpcMainEvent, WebContents } from 'electron';
-import type { Action, StateManager, AnyState, BackendBridge, WrapperOrWebContents } from '@zubridge/types';
-import { IpcChannel } from './constants.js';
 import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
+import { debug } from '@zubridge/core';
+import type { Action, StateManager, AnyState, BackendBridge, WrapperOrWebContents } from '@zubridge/types';
+
+import { IpcChannel } from './constants.js';
+import { initActionQueue } from './main/actionQueue.js';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
 import { getStateManager } from './lib/stateManagerRegistry.js';
@@ -17,19 +20,17 @@ import {
 } from './utils/windows.js';
 import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
-import { debug } from '@zubridge/core';
 import { actionQueue } from './main/actionQueue.js';
-import { getThunkManager } from './lib/ThunkManager.js';
-import { getThunkLockManager } from './lib/ThunkLockManager.js';
 import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 import { SubscriptionManager } from './lib/SubscriptionManager.js';
 import { Thunk as ThunkClass } from './lib/Thunk.js';
-
-// Get the global ThunkManager
-const thunkManager = getThunkManager();
+import { thunkManager } from './lib/initThunkManager.js';
 
 // Instantiate the thunk registration queue
-const thunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
+const thunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
+
+// TODO: The ProcessResult interface needs to be updated to include a then method or the code needs to be changed to check for completion property instead of using then.
+// TODO: The generic type constraints for the bridge interface need to be reviewed and made consistent.
 
 export interface CoreBridgeOptions {
   // Middleware hooks
@@ -68,6 +69,9 @@ export function createCoreBridge<State extends AnyState>(
 ): BackendBridge<number> {
   debug('core', 'Creating CoreBridge with options:', options);
 
+  // Initialize action queue with the state manager
+  initActionQueue(stateManager);
+
   // Tracker for WebContents using WeakMap for automatic garbage collection
   const windowTracker: WebContentsTracker = createWebContentsTracker();
 
@@ -102,173 +106,6 @@ export function createCoreBridge<State extends AnyState>(
         options.middleware!.trackActionAcknowledged!(actionId);
     }
   }
-
-  // Add a getter method to the window tracker for retrieving WebContents by ID
-  const getWindowById = (id: number): WebContents | undefined => {
-    const allContents = windowTracker.getActiveWebContents();
-    return allContents.find((contents) => contents.id === id);
-  };
-
-  // Register IPC handlers for the bridge
-
-  // Set up the action processor for the bridge action queue
-  actionQueue.setActionProcessor(async (action: Action) => {
-    debug(
-      'queue',
-      `[ACTION-QUEUE] Processing action: id=${action.__id}, type=${action.type}, parentId=${(action as any).parentId}, bypassThunkLock=${action.__bypassThunkLock}`,
-    );
-    let error = null;
-
-    try {
-      // Check if this is a thunk-related action
-      const isThunkChild = 'parentId' in action && action.parentId !== undefined;
-      if (isThunkChild) {
-        debug('core', `[BRIDGE DEBUG] Processing child action of thunk ${(action as any).parentId}: ${action.type}`);
-      }
-
-      // Track action received by middleware
-      if (middlewareCallbacks.trackActionReceived) {
-        // Clone action and ensure payload is a string for Rust middleware
-        const actionForMiddleware = { ...action };
-        if (actionForMiddleware.payload && typeof actionForMiddleware.payload !== 'string') {
-          try {
-            actionForMiddleware.payload = JSON.stringify(actionForMiddleware.payload);
-          } catch (serializationError) {
-            debug('core:error', `Error serializing payload for middleware: ${serializationError}`);
-            actionForMiddleware.payload = '[serialization error]';
-          }
-        }
-        await middlewareCallbacks.trackActionReceived(actionForMiddleware);
-      }
-
-      // Middleware hook: beforeProcessAction (may transform the action)
-      if (processedOptions?.beforeProcessAction) {
-        try {
-          action = await processedOptions.beforeProcessAction(action, action.__sourceWindowId);
-        } catch (middlewareError) {
-          debug('core:error', '[BRIDGE DEBUG] Error in beforeProcessAction middleware:', middlewareError);
-        }
-      }
-
-      const startTime = performance.now();
-
-      // Process the action through our state manager
-      debug('core', 'Processing action through state manager');
-
-      try {
-        debug('core', `[BRIDGE DEBUG] Processing action ${action.type} (ID: ${action.__id})`);
-
-        // **CRITICAL: Check thunk locking before processing any action**
-        const thunkLockManager = getThunkLockManager();
-        const canProcess = thunkLockManager.canProcessAction(action);
-
-        if (!canProcess) {
-          debug('core', `[BRIDGE DEBUG] Action ${action.type} blocked by thunk lock manager - enqueueing for later`);
-          // Use action queue which will retry when thunk completes
-          actionQueue.enqueueAction(action, action.__sourceWindowId || 0, (action as any).parentId, () => {});
-          return; // Return immediately, action will be processed later
-        }
-
-        debug('core', '[BRIDGE DEBUG] Action allowed by thunk lock manager, processing immediately');
-        debug('core', 'Processing action through state manager');
-        debug('core', `[BRIDGE DEBUG] Processing action through state manager: ${action.type} (ID: ${action.__id})`);
-
-        // Process the action and get the result
-        const result = stateManager.processAction(action);
-
-        // Check if the result contains an error
-        if (result && result.error) {
-          debug(
-            'core:error',
-            `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.__id}) returned an error:`,
-            result.error,
-          );
-          error = result.error;
-        }
-
-        // Check if the action processing was asynchronous
-        let isAsyncAction = false;
-        let stateUpdatePromise: Promise<any> | undefined;
-
-        if (result && !result.isSync) {
-          isAsyncAction = true;
-
-          if (result.completion) {
-            debug(
-              'core',
-              `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.__id}) is asynchronous, waiting for completion`,
-            );
-            stateUpdatePromise = result.completion;
-          } else {
-            debug(
-              'core',
-              `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.__id}) marked as async but no completion promise provided`,
-            );
-          }
-        } else {
-          debug('core', `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.__id}) is synchronous`);
-        }
-
-        // If the action is async and has a completion promise, wait for it
-        if (isAsyncAction && stateUpdatePromise) {
-          try {
-            debug('core', `[BRIDGE DEBUG] Waiting for async action ${action.type} (ID: ${action.__id}) to complete...`);
-            await stateUpdatePromise;
-            debug('core', `[BRIDGE DEBUG] Async action ${action.type} (ID: ${action.__id}) completed successfully`);
-          } catch (asyncError) {
-            debug('core', `[BRIDGE DEBUG] Error in async action completion: ${asyncError}`);
-            error = asyncError;
-          }
-        }
-
-        debug('core', `[BRIDGE DEBUG] Action processing successful: ${action.type}`);
-      } catch (processError) {
-        debug('core:error', '[BRIDGE DEBUG] Error in stateManager.processAction:', processError);
-        error = processError;
-      }
-
-      const processingTime = performance.now() - startTime;
-      debug('core', `Action processed in ${processingTime.toFixed(2)}ms`);
-      debug(
-        'core',
-        `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.__id}) processed in ${processingTime.toFixed(2)}ms`,
-      );
-
-      // Middleware hook: afterProcessAction (post-processing hooks)
-      if (processedOptions?.afterProcessAction) {
-        try {
-          await processedOptions.afterProcessAction(action, processingTime, action.__sourceWindowId);
-        } catch (middlewareError) {
-          debug('core:error', '[BRIDGE DEBUG] Error in afterProcessAction middleware:', middlewareError);
-        }
-      }
-
-      // Track state update with middleware
-      if (middlewareCallbacks.trackStateUpdate) {
-        const currentState = stateManager.getState();
-        // Clone action and ensure payload is a string for Rust middleware
-        const actionForMiddleware = { ...action };
-        if (actionForMiddleware.payload !== undefined && typeof actionForMiddleware.payload !== 'string') {
-          actionForMiddleware.payload = JSON.stringify(actionForMiddleware.payload);
-        }
-
-        // Convert state to JSON string for Rust middleware
-        const stateJson = JSON.stringify(currentState);
-
-        await middlewareCallbacks.trackStateUpdate(actionForMiddleware, stateJson);
-      }
-
-      // Don't send acknowledgment here - let the queue handle it after processing is fully complete
-      // The acknowledgment will be sent by the queue's onComplete callback
-
-      return error; // Return the error if there was one, null otherwise
-    } catch (error) {
-      debug('core:error', 'CRITICAL ERROR during middleware import/initialization or bridge creation:', error);
-      // For CI, re-throw to ensure the process exits with an error if this setup fails
-      // This makes the CI job fail clearly.
-      return error;
-    }
-  });
 
   // Handle dispatch events from renderers
   ipcMain.on(IpcChannel.DISPATCH, async (event: IpcMainEvent, data: any) => {
@@ -308,16 +145,12 @@ export function createCoreBridge<State extends AnyState>(
         const thunkObj = new ThunkClass({
           id: parentId,
           sourceWindowId: event.sender.id,
-          type: 'renderer',
+          source: 'renderer',
         });
         await thunkRegistrationQueue.registerThunk(thunkObj);
       }
 
       // Queue the action for processing
-      debug(
-        'queue',
-        `[ACTION-QUEUE] Enqueuing action: id=${actionWithSource.__id}, type=${actionWithSource.type}, parentId=${(actionWithSource as any).parentId}, bypassThunkLock=${actionWithSource.__bypassThunkLock}`,
-      );
       actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId, (error) => {
         // This callback is called when the action is completed (successfully or with error)
         debug('ipc', `[BRIDGE DEBUG] Action ${action.__id} completed with ${error ? 'error' : 'success'}`);
@@ -442,7 +275,7 @@ export function createCoreBridge<State extends AnyState>(
 
       const state = sanitizeState(rawState);
       debug('ipc', 'Returning sanitized state');
-      debug('ipc', `[BRIDGE DEBUG] Returning sanitized state to renderer ${event.sender.id}`);
+      debug('ipc', `[BRIDGE DEBUG] Returning sanitized state to renderer ${event.sender.id}: ${JSON.stringify(state)}`);
 
       return state;
     } catch (error) {
@@ -471,7 +304,7 @@ export function createCoreBridge<State extends AnyState>(
       const thunkObj = new ThunkClass({
         id: thunkId,
         sourceWindowId: sourceWindowId,
-        type: 'renderer',
+        source: 'renderer',
         parentId: parentId,
         bypassThunkLock,
         bypassAccessControl,
@@ -505,10 +338,10 @@ export function createCoreBridge<State extends AnyState>(
         return;
       }
 
-      // Mark the thunk as completed in the tracker
+      // Mark the thunk as completing in the tracker
       const wasActive = thunkManager.isThunkActive(thunkId);
-      thunkManager.markThunkCompleted(thunkId);
-      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked as completed (was active: ${wasActive})`);
+      thunkManager.markThunkCompleting(thunkId);
+      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked as completing (was active: ${wasActive})`);
 
       // The ThunkTracker will notify ActionQueueManager via state change listener
       debug('core', '[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener');

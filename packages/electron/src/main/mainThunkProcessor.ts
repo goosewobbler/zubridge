@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
 import type { Action, AnyState, Thunk, Dispatch, StateManager, DispatchOptions } from '@zubridge/types';
-import { getThunkManager } from '../lib/ThunkManager.js';
+import { thunkManager } from '../lib/initThunkManager.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 import { actionQueue } from './actionQueue.js';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
@@ -32,7 +32,7 @@ export class MainThunkProcessor {
   private sentFirstActionForThunk = new Set<string>();
 
   // Instantiate the thunk registration queue for main thunks
-  private mainThunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
+  private mainThunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
 
   constructor(actionCompletionTimeoutMs?: number) {
     this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
@@ -45,6 +45,7 @@ export class MainThunkProcessor {
    */
   public initialize(options: { stateManager: StateManager<any> }): void {
     this.stateManager = options.stateManager;
+    thunkManager.setStateManager(this.stateManager);
     debug('core', '[MAIN_THUNK] Initialized with state manager');
   }
 
@@ -81,13 +82,12 @@ export class MainThunkProcessor {
 
     // Register the thunk using the mainThunkRegistrationQueue (returns a promise that resolves when lock is acquired and registered)
     const MAIN_PROCESS_WINDOW_ID = 0;
-    const thunkManager = getThunkManager();
-    const currentActiveRootThunk = thunkManager.getActiveRootThunkId();
+    const currentActiveRootThunk = thunkManager.getRootThunkId();
     const activeThunksSummary = thunkManager.getActiveThunksSummary();
 
     const thunkObj = new ThunkClass({
       sourceWindowId: MAIN_PROCESS_WINDOW_ID,
-      type: 'main',
+      source: 'main',
       parentId,
       keys: options?.keys,
       bypassThunkLock: options?.bypassThunkLock,
@@ -98,7 +98,8 @@ export class MainThunkProcessor {
     debug('core', `[MAIN_THUNK] Current active root thunk: ${currentActiveRootThunk || 'none'}`);
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
     debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
-    await this.mainThunkRegistrationQueue.registerThunk(
+
+    return this.mainThunkRegistrationQueue.registerThunk(
       thunkObj,
       async () => {
         try {
@@ -127,18 +128,15 @@ export class MainThunkProcessor {
           const result = await thunk(getState, dispatch);
           debug('core', '[MAIN_THUNK] Thunk executed successfully, result:', result);
 
-          // Mark thunk as completed
-          thunkManager.markThunkCompleted(thunkObj.id);
           return result;
         } catch (error) {
           debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
-          thunkManager.markThunkFailed(thunkObj.id);
+          thunkManager.markThunkFailed(thunkObj.id, error instanceof Error ? error : new Error(String(error)));
           throw error;
         }
       },
       undefined, // rendererCallback
     );
-    return undefined;
   }
 
   /**
@@ -204,12 +202,12 @@ export class MainThunkProcessor {
       }
 
       // Ensure thunk is registered before enqueueing the action
-      if (!getThunkManager().hasThunk(parentId)) {
+      if (!thunkManager.hasThunk(parentId)) {
         debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.__id}`);
         const thunkObj = new ThunkClass({
           id: parentId,
           sourceWindowId: 0,
-          type: 'main',
+          source: 'main',
           keys: options?.keys,
           bypassThunkLock: options?.bypassThunkLock,
           bypassAccessControl: options?.bypassAccessControl,

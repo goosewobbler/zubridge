@@ -1,0 +1,381 @@
+import { EventEmitter } from 'node:events';
+import { v4 as uuid } from 'uuid';
+import { type Action } from '@zubridge/types';
+import { debug } from '@zubridge/core';
+import { ThunkManager } from './ThunkManager.js';
+import { ThunkScheduler } from './ThunkScheduler.js';
+
+/**
+ * Prioritized action in the queue
+ */
+interface QueuedAction {
+  /** The action to process */
+  action: Action;
+  /** The window ID that sent this action */
+  sourceWindowId: number;
+  /** Time the action was received */
+  receivedTime: number;
+  /** Priority of the action (higher = more important) */
+  priority: number;
+  /** Optional callback when action is completed or failed */
+  onComplete?: (error: Error | null) => void;
+}
+
+/**
+ * Events emitted by ActionScheduler
+ */
+export enum ActionSchedulerEvents {
+  ACTION_ENQUEUED = 'action:enqueued',
+  ACTION_STARTED = 'action:started',
+  ACTION_COMPLETED = 'action:completed',
+  ACTION_FAILED = 'action:failed',
+}
+
+/**
+ * ActionScheduler is responsible for scheduling action execution with proper concurrency control.
+ * It works with ThunkManager to determine when actions can be executed.
+ */
+export class ActionScheduler extends EventEmitter {
+  /**
+   * Queue of actions waiting to be processed
+   */
+  private queue: QueuedAction[] = [];
+
+  /**
+   * Set of action IDs currently being processed
+   */
+  private runningActions = new Set<string>();
+
+  /**
+   * Flag to prevent recursive queue processing
+   */
+  private processing = false;
+
+  /**
+   * ThunkManager reference for concurrency decisions
+   */
+  private thunkManager: ThunkManager;
+
+  /**
+   * Function to process actions
+   */
+  private actionProcessor?: (action: Action) => Promise<any>;
+
+  /**
+   * Create a new ActionScheduler
+   */
+  constructor(thunkManager: ThunkManager) {
+    super();
+    this.thunkManager = thunkManager;
+    debug('scheduler', 'ActionScheduler initialized');
+
+    // Listen for thunk completion events to process queued actions
+    this.thunkManager.on('thunk:completed', () => {
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Set the action processor function
+   */
+  public setActionProcessor(processor: (action: Action) => Promise<any>): void {
+    debug('scheduler', 'Setting action processor');
+    this.actionProcessor = processor;
+  }
+
+  /**
+   * Enqueue an action for execution
+   * Returns true if the action was executed immediately, false if it was queued
+   */
+  public enqueueAction(
+    action: Action,
+    options: {
+      sourceWindowId: number;
+      onComplete?: (error: Error | null) => void;
+    },
+  ): boolean {
+    const { sourceWindowId, onComplete } = options;
+
+    // Ensure action has an ID
+    if (!action.__id) {
+      action.__id = uuid();
+    }
+
+    debug(
+      'scheduler',
+      `Enqueueing action: ${action.type} (id: ${action.__id}) from window ${sourceWindowId}${
+        action.__thunkParentId ? `, parent thunk: ${action.__thunkParentId}` : ''
+      }`,
+    );
+
+    // Record the source window ID on the action
+    action.__sourceWindowId = sourceWindowId;
+
+    // Check if we can execute immediately based on concurrency rules
+    if (this.canExecuteImmediately(action)) {
+      debug('scheduler', `Action ${action.type} (${action.__id}) can execute immediately`);
+      this.executeAction(action, sourceWindowId, onComplete);
+      return true;
+    }
+
+    // Add to queue for later execution
+    debug('scheduler', `Action ${action.type} (${action.__id}) queued for later execution`);
+    this.queue.push({
+      action,
+      sourceWindowId,
+      receivedTime: Date.now(),
+      priority: this.getPriorityForAction(action),
+      onComplete,
+    });
+
+    // Sort queue by priority (highest first) and then by received time (earliest first)
+    this.sortQueue();
+
+    // Emit event
+    this.emit(ActionSchedulerEvents.ACTION_ENQUEUED, action);
+
+    // Return false to indicate the action was queued
+    return false;
+  }
+
+  /**
+   * Check if an action can be executed immediately based on concurrency rules
+   */
+  public canExecuteImmediately(action: Action): boolean {
+    // Actions with bypassThunkLock can always execute immediately
+    if (action.__bypassThunkLock) {
+      debug('scheduler', `Action ${action.type} (${action.__id}) has bypassThunkLock, can execute immediately`);
+      return true;
+    }
+
+    // If there are no running tasks, any action can execute immediately
+    const runningTasks = this.getScheduler().getRunningTasks();
+    if (runningTasks.length === 0) {
+      debug('scheduler', `No running tasks, action ${action.type} (${action.__id}) can execute immediately`);
+      return true;
+    }
+
+    // Check if any running tasks are non-concurrent (blocking tasks)
+    const hasBlockingTask = runningTasks.some((task) => !task.canRunConcurrently);
+    if (!hasBlockingTask) {
+      debug('scheduler', `No blocking tasks running, action ${action.type} (${action.__id}) can execute immediately`);
+      return true;
+    }
+
+    // If this is a thunk action, it must wait for any current thunk to complete
+    if (action.__thunkParentId) {
+      debug('scheduler', `Thunk action ${action.type} (${action.__id}) must wait for current thunk to complete`);
+      return false;
+    }
+
+    // Default to blocking for safety
+    debug('scheduler', `Action ${action.type} (${action.__id}) must wait due to blocking tasks running`);
+    return false;
+  }
+
+  /**
+   * Process the queue, attempting to execute any pending actions
+   * that can now be executed based on concurrency rules
+   */
+  public processQueue(): void {
+    // Prevent recursive processing
+    if (this.processing || !this.actionProcessor) {
+      return;
+    }
+
+    this.processing = true;
+
+    try {
+      debug('scheduler', `Processing queue with ${this.queue.length} actions`);
+
+      // Find all actions that can be executed now
+      const executableActions: QueuedAction[] = [];
+      const remainingActions: QueuedAction[] = [];
+
+      // Check each action in order
+      for (const queuedAction of this.queue) {
+        if (this.canExecuteImmediately(queuedAction.action)) {
+          executableActions.push(queuedAction);
+        } else {
+          remainingActions.push(queuedAction);
+        }
+      }
+
+      // Update the queue
+      this.queue = remainingActions;
+
+      // Execute all executable actions
+      for (const queuedAction of executableActions) {
+        this.executeAction(queuedAction.action, queuedAction.sourceWindowId, queuedAction.onComplete);
+      }
+
+      debug('scheduler', `Executed ${executableActions.length} actions, ${this.queue.length} remaining in queue`);
+    } finally {
+      this.processing = false;
+    }
+  }
+
+  /**
+   * Execute a single action with the action processor
+   */
+  private async executeAction(
+    action: Action,
+    sourceWindowId: number,
+    onComplete?: (error: Error | null) => void,
+  ): Promise<void> {
+    if (!this.actionProcessor) {
+      debug('scheduler', 'No action processor set, cannot execute action');
+      onComplete?.(new Error('No action processor set'));
+      return;
+    }
+
+    // Mark action as running
+    const actionId = action.__id as string;
+    this.runningActions.add(actionId);
+
+    // Emit event
+    this.emit(ActionSchedulerEvents.ACTION_STARTED, action);
+
+    debug('scheduler', `Executing action ${action.type} (${actionId}) from window ${sourceWindowId}`);
+
+    try {
+      // Process the action
+      const result = await this.actionProcessor(action);
+      debug('scheduler', `Action ${action.type} (${actionId}) completed successfully`);
+
+      // Mark action as completed
+      this.runningActions.delete(actionId);
+
+      // Notify ThunkManager of action completion
+      if (action.__thunkParentId) {
+        this.thunkManager.handleActionComplete(actionId);
+      }
+
+      // Call completion callback
+      onComplete?.(null);
+
+      // Emit event
+      this.emit(ActionSchedulerEvents.ACTION_COMPLETED, action, result);
+
+      // Process queue again in case any waiting actions can now be executed
+      this.processQueue();
+    } catch (error) {
+      debug('scheduler', `Action ${action.type} (${actionId}) failed: ${error}`);
+
+      // Mark action as completed (even though it failed)
+      this.runningActions.delete(actionId);
+
+      // Call completion callback with error
+      onComplete?.(error instanceof Error ? error : new Error(String(error)));
+
+      // Emit event
+      this.emit(ActionSchedulerEvents.ACTION_FAILED, action, error);
+
+      // Process queue again in case any waiting actions can now be executed
+      this.processQueue();
+    }
+  }
+
+  /**
+   * Sort the queue by priority (highest first) and then by received time (earliest first)
+   */
+  private sortQueue(): void {
+    this.queue.sort((a, b) => {
+      // Higher priority first
+      if (a.priority !== b.priority) {
+        return b.priority - a.priority;
+      }
+
+      // Earlier received time first
+      return a.receivedTime - b.receivedTime;
+    });
+  }
+
+  /**
+   * Notify the scheduler that a thunk has completed
+   * This may allow queued actions to be processed
+   */
+  public onThunkCompleted(thunkId: string): void {
+    debug('scheduler', `Thunk ${thunkId} completed, processing queue`);
+    this.processQueue();
+  }
+
+  /**
+   * Notify the scheduler that an action has completed
+   * This may allow dependent actions to be processed
+   */
+  public onActionCompleted(actionId: string): void {
+    debug('scheduler', `Action ${actionId} completed, processing queue`);
+
+    // Remove from running actions
+    this.runningActions.delete(actionId);
+
+    // Process queue
+    this.processQueue();
+  }
+
+  /**
+   * Get the priority for an action
+   * Higher priority actions are executed first
+   */
+  private getPriorityForAction(action: Action): number {
+    // Priority levels (higher is more important):
+    // 100: System actions (bypass thunk lock)
+    // 80: Root thunk actions
+    // 60: Child thunk actions that can run concurrently
+    // 50: Child thunk actions (normal)
+    // 30: Regular actions with bypassThunkLock
+    // 0: Regular actions
+
+    // Bypass thunk lock actions get highest priority
+    if (action.__bypassThunkLock) {
+      // Extra priority for thunk actions with bypass
+      if (action.__thunkParentId) {
+        return 100; // System-level thunk action with bypass
+      }
+      return 80; // Regular action with bypass
+    }
+
+    // Actions belonging to the active root thunk get high priority
+    const rootThunkId = this.thunkManager.getRootThunkId();
+    if (rootThunkId && action.__thunkParentId === rootThunkId) {
+      return 70; // Actions in active root thunk
+    }
+
+    // Actions with thunk parents get medium priority
+    if (action.__thunkParentId) {
+      return 50; // Regular thunk actions
+    }
+
+    // Default priority for regular actions
+    return 0;
+  }
+
+  /**
+   * Get the ThunkScheduler instance
+   */
+  public getScheduler(): ThunkScheduler {
+    return this.thunkManager.getScheduler();
+  }
+}
+
+// Singleton instance
+let actionSchedulerInstance: ActionScheduler | undefined;
+
+/**
+ * Initialize the global ActionScheduler
+ */
+export function initActionScheduler(thunkManager: ThunkManager): ActionScheduler {
+  actionSchedulerInstance = new ActionScheduler(thunkManager);
+  return actionSchedulerInstance;
+}
+
+/**
+ * Get the global ActionScheduler instance
+ */
+export function getActionScheduler(): ActionScheduler {
+  if (!actionSchedulerInstance) {
+    throw new Error('ActionScheduler not initialized');
+  }
+  return actionSchedulerInstance;
+}

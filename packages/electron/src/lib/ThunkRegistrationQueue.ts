@@ -1,15 +1,14 @@
 import { debug } from '@zubridge/core';
-import { ThunkLockState, getThunkLockManager, ThunkLockEvent } from './ThunkLockManager.js';
-import type { ThunkManager } from './ThunkManager.js';
-import type { Thunk } from './Thunk.js';
+import { ThunkManager, ThunkManagerEvent } from './ThunkManager.js';
+import { Thunk } from './Thunk.js';
 
 // Type for queued thunk registration
-export interface QueuedThunk {
+interface QueuedThunk<T = any> {
   thunk: Thunk;
-  mainThunkCallback?: () => Promise<any>;
+  mainThunkCallback?: () => Promise<T>;
   rendererCallback?: () => void;
-  resolve: (result: any) => void;
-  reject: (err: any) => void;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: any) => void;
 }
 
 export enum IpcChannel {
@@ -24,102 +23,212 @@ export class ThunkRegistrationQueue {
 
   constructor(thunkManager: ThunkManager) {
     this.thunkManager = thunkManager;
-    // Subscribe to lock release events
-    const thunkLockManager = getThunkLockManager();
-    thunkLockManager.on(ThunkLockEvent.LOCK_RELEASED, () => {
-      debug('queue', '[THUNK-QUEUE] Received LOCK_RELEASED event, processing next registration');
+    debug('queue', '[THUNK-QUEUE] ThunkRegistrationQueue initialized');
+
+    // Listen for thunk completion events to process the next registration
+    this.thunkManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, () => {
+      debug('queue', `[THUNK-QUEUE] Received ROOT_THUNK_COMPLETED event, processing next registration`);
+      this.processNextThunkRegistration();
+    });
+
+    // Listen for thunk started events (useful for bypass thunks)
+    this.thunkManager.on(ThunkManagerEvent.THUNK_STARTED, () => {
+      debug('queue', `[THUNK-QUEUE] Received THUNK_STARTED event, processing next registration for bypass thunks`);
       this.processNextThunkRegistration();
     });
   }
 
-  public registerThunk(
+  public registerThunk<T = any>(
     thunk: Thunk,
-    mainThunkCallback?: () => Promise<any>,
+    mainThunkCallback?: () => Promise<T>,
     rendererCallback?: () => void,
-  ): Promise<any> {
+  ): Promise<T> {
     debug(
       'queue',
-      `[THUNK-QUEUE] Queuing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}, bypassThunkLock=${thunk.bypassThunkLock}`,
+      `[THUNK-QUEUE] Registering thunk ${thunk.id} from ${thunk.source}${thunk.bypassThunkLock ? ' (bypass)' : ''}`,
     );
-    return new Promise((resolve, reject) => {
-      const reg: QueuedThunk = {
+
+    return new Promise<T>((resolve, reject) => {
+      this.thunkRegistrationQueue.push({
         thunk,
         mainThunkCallback,
         rendererCallback,
         resolve,
         reject,
-      };
-      this.thunkRegistrationQueue.push(reg);
-      debug('queue', `[THUNK-QUEUE] Registration queue length: ${this.thunkRegistrationQueue.length}`);
-      debug(
-        'queue',
-        `[THUNK-QUEUE] Current queue: ${this.thunkRegistrationQueue.map((q) => `${q.thunk.id}:${q.thunk.bypassThunkLock}`).join(', ')}`,
-      );
+      });
+
       this.processNextThunkRegistration();
     });
   }
 
   public processNextThunkRegistration() {
+    debug('queue-debug', `[DEBUG] processNextThunkRegistration called`);
+
     if (this.processingThunkRegistration) {
-      debug('queue', '[THUNK-QUEUE] Already processing a thunk registration, skipping');
+      debug('queue-debug', `[DEBUG] Already processing a thunk registration, not proceeding`);
       return;
     }
+
     if (this.thunkRegistrationQueue.length === 0) {
-      debug('queue', '[THUNK-QUEUE] No thunk registrations to process');
+      debug('queue-debug', `[DEBUG] No thunk registrations in the queue, not proceeding`);
       return;
     }
-    const thunkLockManager = getThunkLockManager();
+
     const nextThunk = this.thunkRegistrationQueue[0]?.thunk;
-    debug(
-      'queue',
-      `[THUNK-QUEUE] Checking lock: state=${thunkLockManager.getState()}, nextThunkId=${nextThunk?.id}, bypassThunkLock=${nextThunk?.bypassThunkLock}`,
-    );
-    if (thunkLockManager.getState() !== ThunkLockState.IDLE && !nextThunk?.bypassThunkLock) {
-      debug('queue', '[THUNK-QUEUE] Lock is not idle, cannot process next registration');
+
+    // Special handling for bypass thunks - they proceed regardless of the current state
+    if (nextThunk?.bypassThunkLock) {
+      this.processingThunkRegistration = true;
+      const registration = this.thunkRegistrationQueue.shift();
+      if (registration) {
+        this.processThunkRegistration(registration);
+      } else {
+        this.processingThunkRegistration = false;
+      }
       return;
     }
-    if (thunkLockManager.getState() !== ThunkLockState.IDLE && nextThunk?.bypassThunkLock) {
-      debug('queue', `[THUNK-QUEUE] BYPASS: Processing bypass thunk ${nextThunk.id} while lock is not idle`);
+
+    // Check if there are no active thunks (scheduler is idle)
+    const status = this.thunkManager.getActiveThunksSummary();
+    const canRegister = status.thunks.length === 0;
+
+    if (canRegister) {
+      debug('queue', `[THUNK-QUEUE] Scheduler allows thunk registration, processing next thunk registration`);
+      this.processingThunkRegistration = true;
+      const registration = this.thunkRegistrationQueue.shift();
+      if (registration) {
+        this.processThunkRegistration(registration);
+      } else {
+        this.processingThunkRegistration = false;
+      }
+    } else {
+      debug('queue', `[THUNK-QUEUE] Scheduler state doesn't allow registration, waiting for state change`);
     }
-    this.processingThunkRegistration = true;
-    const reg = this.thunkRegistrationQueue.shift()!;
-    const { thunk, mainThunkCallback, rendererCallback } = reg;
+  }
+
+  private handleCompletion<T>(registration: QueuedThunk<T>, result: T) {
+    // Complete the promise
+    registration.resolve(result);
+
+    // Process the next thunk in queue
+    this.processingThunkRegistration = false;
+    this.processNextThunkRegistration();
+  }
+
+  private handleError(registration: QueuedThunk<any>, error: any) {
+    // Fail the promise
+    registration.reject(error);
+
+    // Process the next thunk in queue
+    this.processingThunkRegistration = false;
+    this.processNextThunkRegistration();
+  }
+
+  private processThunkRegistration<T>(registration: QueuedThunk<T>) {
+    const { thunk, mainThunkCallback, rendererCallback } = registration;
+
     debug(
       'queue',
-      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.type}, bypassThunkLock=${thunk.bypassThunkLock}`,
+      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.source}, bypassThunkLock=${thunk.bypassThunkLock}`,
     );
+
     try {
-      debug(
-        'queue',
-        `[THUNK-QUEUE] Attempting to acquire lock for thunk ${thunk.id} from window ${thunk.sourceWindowId} (bypassThunkLock=${thunk.bypassThunkLock})`,
-      );
-      const lockAcquired = thunkLockManager.acquire(thunk.id, thunk.keys, thunk.bypassThunkLock);
-      debug('queue', `[THUNK-QUEUE] Lock acquired result for thunk ${thunk.id}: ${lockAcquired}`);
-      if (!lockAcquired) {
-        debug('queue', `[THUNK-QUEUE] Lock acquisition failed for thunk ${thunk.id}, re-queueing`);
-        this.thunkRegistrationQueue.unshift(reg);
+      // Check if there are no active thunks (scheduler is idle) or if this is a bypass thunk
+      const status = this.thunkManager.getActiveThunksSummary();
+      const canRegister = status.thunks.length === 0 || thunk.bypassThunkLock;
+
+      if (!canRegister) {
+        debug('queue', `[THUNK-QUEUE] Thunk ${thunk.id} cannot register, queueing for later`);
+        this.thunkRegistrationQueue.unshift(registration);
         this.processingThunkRegistration = false;
         return;
       }
-      debug('queue', `[THUNK-QUEUE] Lock acquired for thunk ${thunk.id}`);
-      const handle = this.thunkManager.registerThunk(thunk);
-      handle.setSourceWindowId(thunk.sourceWindowId);
-      debug('queue', `[THUNK-QUEUE] Thunk ${thunk.id} registered, invoking callback`);
-      if (thunk.type === 'main' && mainThunkCallback) {
-        mainThunkCallback().then(reg.resolve).catch(reg.reject);
-      } else if (thunk.type === 'renderer' && rendererCallback) {
-        rendererCallback();
-        reg.resolve(undefined);
+
+      // Register with the ThunkManager
+      debug(
+        'thunk',
+        `Registering thunk: id=${thunk.id}, parentId=${thunk.parentId}, bypassThunkLock=${thunk.bypassThunkLock}`,
+      );
+
+      // Register the thunk with the manager
+      this.thunkManager.registerThunk(thunk.id, thunk, {
+        parentId: thunk.parentId,
+        windowId: thunk.sourceWindowId,
+        bypassThunkLock: thunk.bypassThunkLock,
+      });
+
+      // Execute the thunk based on its source type
+      if (thunk.source === 'main' && mainThunkCallback) {
+        debug('queue-debug', `[DEBUG] Executing main thunk callback for thunk ${thunk.id} directly`);
+
+        // Mark the thunk as executing (starts it in the scheduler)
+        this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
+
+        // Run the callback directly
+        Promise.resolve().then(async () => {
+          try {
+            debug('queue-debug', `[DEBUG] Main thunk ${thunk.id} starting execution`);
+            const result = await mainThunkCallback();
+            debug('queue-debug', `[DEBUG] Main thunk ${thunk.id} completed successfully`);
+
+            // Mark the thunk as completing
+            this.thunkManager.markThunkCompleting(thunk.id, result);
+
+            // Handle completion
+            this.handleCompletion(registration, result);
+          } catch (error) {
+            debug('queue-debug', `[DEBUG] Main thunk ${thunk.id} failed with error: ${error}`);
+
+            // Mark the thunk as failed
+            this.thunkManager.markThunkFailed(thunk.id, error as Error);
+
+            // Handle error
+            this.handleError(registration, error);
+          }
+        });
+      } else if (thunk.source === 'renderer' && rendererCallback) {
+        debug('queue-debug', `[DEBUG] Executing renderer callback for thunk ${thunk.id}`);
+
+        // Mark the thunk as executing (starts it in the scheduler)
+        this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
+
+        // Run the callback directly
+        Promise.resolve().then(async () => {
+          try {
+            debug('queue-debug', `[DEBUG] Renderer thunk ${thunk.id} starting execution`);
+            await rendererCallback();
+            debug('queue-debug', `[DEBUG] Renderer thunk ${thunk.id} completed successfully`);
+
+            // Mark the thunk as completing
+            this.thunkManager.markThunkCompleting(thunk.id);
+
+            // Handle completion with null result (renderer callbacks don't return anything)
+            this.handleCompletion(registration, null as unknown as T);
+          } catch (error) {
+            debug('queue-debug', `[DEBUG] Renderer thunk ${thunk.id} failed with error: ${error}`);
+
+            // Mark the thunk as failed
+            this.thunkManager.markThunkFailed(thunk.id, error as Error);
+
+            // Handle error
+            this.handleError(registration, error);
+          }
+        });
       } else {
-        reg.resolve(undefined);
+        debug('queue', `[THUNK-QUEUE] No callback for thunk ${thunk.id}, skipping execution`);
+
+        // Mark thunk as started and then immediately completed
+        this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
+        this.thunkManager.markThunkCompleting(thunk.id);
+
+        // Handle completion with undefined result
+        this.handleCompletion(registration, null as unknown as T);
       }
-    } catch (err) {
-      debug('queue', `[THUNK-QUEUE] Error processing thunk registration: ${(err as Error).message}`);
-      reg.reject(err);
-    } finally {
-      this.processingThunkRegistration = false;
-      debug('queue', '[THUNK-QUEUE] Finished processing thunk registration');
-      // No need for setTimeout-based polling; rely on event-driven processing
+    } catch (error) {
+      debug('queue', `[THUNK-QUEUE] Error processing thunk ${thunk.id}: ${error}`);
+
+      // Handle error
+      this.handleError(registration, error);
     }
   }
 }

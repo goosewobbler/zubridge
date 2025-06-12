@@ -58,3 +58,74 @@ export enum IpcChannel {
    */
   GET_WINDOW_SUBSCRIPTIONS = 'zubridge:get-window-subscriptions',
 }
+
+/**
+ * Defines priority levels for thunks in the scheduler
+ * Higher numbers indicate higher priority
+ */
+export enum ThunkPriority {
+  /**
+   * Highest priority thunks that can run concurrently with other thunks
+   * Used for bypass thunks that should not be blocked
+   */
+  BYPASS = 100,
+
+  /**
+   * High priority thunks
+   * Reserved for future use (high priority but not bypass)
+   */
+  HIGH = 75,
+
+  /**
+   * Standard priority for most thunks
+   * This is the default priority level
+   */
+  NORMAL = 50,
+
+  /**
+   * Lower priority thunks
+   * Used for background tasks that can wait
+   */
+  LOW = 25,
+
+  /**
+   * Lowest priority
+   * Only runs when nothing else is running
+   */
+  IDLE = 0,
+}
+
+/**
+ * Events emitted by the ThunkScheduler
+ */
+export const ThunkSchedulerEvents = {
+  /**
+   * Emitted when a task is added to the queue
+   * Payload: task
+   */
+  TASK_QUEUED: 'task:queued',
+
+  /**
+   * Emitted when a task starts execution
+   * Payload: task
+   */
+  TASK_STARTED: 'task:started',
+
+  /**
+   * Emitted when a task completes successfully
+   * Payload: task, result
+   */
+  TASK_COMPLETED: 'task:completed',
+
+  /**
+   * Emitted when a task fails with an error
+   * Payload: task, error
+   */
+  TASK_FAILED: 'task:failed',
+
+  /**
+   * Emitted when the queue state changes
+   * (task added, started, completed, or failed)
+   */
+  QUEUE_CHANGED: 'queue:changed',
+} as const;
