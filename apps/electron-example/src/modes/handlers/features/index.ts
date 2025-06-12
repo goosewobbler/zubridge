@@ -1,6 +1,15 @@
 import { type BaseState } from '@zubridge/apps-shared';
 import type { Handler } from '@zubridge/types';
-import { incrementCounter, decrementCounter, setCounter, setCounterSlow } from './counter/index.js';
+import {
+  incrementCounter,
+  decrementCounter,
+  setCounter,
+  setCounterSlow,
+  doubleCounterSlow,
+  halveCounterSlow,
+  doubleCounter,
+  halveCounter,
+} from './counter/index.js';
 import { toggleTheme, setTheme } from './theme/index.js';
 import { resetState, generateLargeState } from './state/index.js';
 import { triggerMainProcessError } from './error/index.js';
@@ -20,6 +29,10 @@ export interface CounterHandlers {
   'COUNTER:DECREMENT': () => void;
   'COUNTER:SET': (value: number) => void;
   'COUNTER:SET:SLOW': (value: number) => void;
+  'COUNTER:DOUBLE:SLOW': () => void;
+  'COUNTER:HALVE:SLOW': () => void;
+  'COUNTER:DOUBLE': () => void;
+  'COUNTER:HALVE': () => void;
 }
 
 /**
@@ -56,6 +69,10 @@ export const handlers = {
   'COUNTER:DECREMENT': decrementCounter,
   'COUNTER:SET': setCounter,
   'COUNTER:SET:SLOW': setCounterSlow,
+  'COUNTER:DOUBLE:SLOW': doubleCounterSlow,
+  'COUNTER:HALVE:SLOW': halveCounterSlow,
+  'COUNTER:DOUBLE': doubleCounter,
+  'COUNTER:HALVE': halveCounter,
   'THEME:TOGGLE': toggleTheme,
   'THEME:SET': setTheme,
   'STATE:RESET': resetState,

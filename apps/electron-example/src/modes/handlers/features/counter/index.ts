@@ -53,3 +53,81 @@ export const setCounterSlow =
       counter: value,
     }));
   };
+
+/**
+ * Creates a handler function for doubling the counter with a delay
+ */
+export const doubleCounterSlow =
+  <S extends BaseState>(store: StoreApi<S>) =>
+  async () => {
+    console.log('[Handlers] Doubling counter with delay');
+    console.log(`[Handlers] Time before delay: ${new Date().toISOString()}`);
+
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+
+    console.log(`[Handlers] Time after delay: ${new Date().toISOString()}`);
+    store.setState((state) => {
+      const newValue = (state.counter || 0) * 2;
+      console.log(`[Handlers] Counter doubled from ${state.counter} to ${newValue}`);
+      return {
+        ...state,
+        counter: newValue,
+      };
+    });
+  };
+
+/**
+ * Creates a handler function for halving the counter with a delay
+ */
+export const halveCounterSlow =
+  <S extends BaseState>(store: StoreApi<S>) =>
+  async () => {
+    console.log('[Handlers] Halving counter with delay');
+    console.log(`[Handlers] Time before delay: ${new Date().toISOString()}`);
+
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+
+    console.log(`[Handlers] Time after delay: ${new Date().toISOString()}`);
+    store.setState((state) => {
+      const newValue = Math.round((state.counter || 0) / 2);
+      console.log(`[Handlers] Counter halved from ${state.counter} to ${newValue}`);
+      return {
+        ...state,
+        counter: newValue,
+      };
+    });
+  };
+
+/**
+ * Creates a handler function for doubling the counter (no delay)
+ */
+export const doubleCounter =
+  <S extends BaseState>(store: StoreApi<S>) =>
+  () => {
+    console.log('[Handlers] Doubling counter immediately');
+    store.setState((state) => {
+      const newValue = (state.counter || 0) * 2;
+      console.log(`[Handlers] Counter doubled from ${state.counter} to ${newValue}`);
+      return {
+        ...state,
+        counter: newValue,
+      };
+    });
+  };
+
+/**
+ * Creates a handler function for halving the counter (no delay)
+ */
+export const halveCounter =
+  <S extends BaseState>(store: StoreApi<S>) =>
+  () => {
+    console.log('[Handlers] Halving counter immediately');
+    store.setState((state) => {
+      const newValue = Math.round((state.counter || 0) / 2);
+      console.log(`[Handlers] Counter halved from ${state.counter} to ${newValue}`);
+      return {
+        ...state,
+        counter: newValue,
+      };
+    });
+  };

@@ -28,9 +28,42 @@ export const counterSlice = createSlice({
       console.log(`[Redux Slice] Setting counter (slow) to ${action.payload}`);
       return action.payload;
     },
+    doubleValueSlow: (state) => {
+      // Note: Redux reducers must be pure functions, so we can't implement delays here
+      // The delay would be handled by middleware (like redux-thunk) or UI side effects
+      const newValue = state * 2;
+      console.log(`[Redux Slice] Doubling counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+    halveValueSlow: (state) => {
+      // Note: Redux reducers must be pure functions, so we can't implement delays here
+      // The delay would be handled by middleware (like redux-thunk) or UI side effects
+      const newValue = Math.round(state / 2);
+      console.log(`[Redux Slice] Halving counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+    doubleValue: (state) => {
+      const newValue = state * 2;
+      console.log(`[Redux Slice] Doubling counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+    halveValue: (state) => {
+      const newValue = Math.round(state / 2);
+      console.log(`[Redux Slice] Halving counter from ${state} to ${newValue}`);
+      return newValue;
+    },
   },
 });
 
 // Export actions and reducer
-export const { increment, decrement, setValue, setValueSlow } = counterSlice.actions;
+export const {
+  increment,
+  decrement,
+  setValue,
+  setValueSlow,
+  doubleValueSlow,
+  halveValueSlow,
+  doubleValue,
+  halveValue,
+} = counterSlice.actions;
 export const { reducer } = counterSlice;
