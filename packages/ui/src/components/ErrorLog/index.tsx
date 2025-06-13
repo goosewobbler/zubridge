@@ -15,10 +15,6 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
     return date.toLocaleTimeString();
   }, []);
 
-  if (errors.length === 0) {
-    return null;
-  }
-
   return (
     <div className="error-log mt-4">
       <div className="flex justify-between items-center mb-2">
@@ -30,14 +26,22 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
         )}
       </div>
       <div className="error-entries max-h-40 overflow-y-auto border border-red-300 rounded p-2 bg-red-50">
-        {errors.map((error, index) => (
-          <div key={`${error.timestamp}-${index}`} className="error-log-entry mb-2 last:mb-0" data-testid="error-entry">
-            <div className="text-sm">
-              <span className="text-gray-500">[{formatTime(error.timestamp)}]</span>{' '}
-              <span className="text-red-600">{error.message}</span>
+        {errors.length === 0 ? (
+          <div className="text-sm text-gray-500 italic">No errors</div>
+        ) : (
+          errors.map((error, index) => (
+            <div
+              key={`${error.timestamp}-${index}`}
+              className="error-log-entry mb-2 last:mb-0"
+              data-testid="error-entry"
+            >
+              <div className="text-sm">
+                <span className="text-gray-500">[{formatTime(error.timestamp)}]</span>{' '}
+                <span className="text-red-600">{error.message}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
