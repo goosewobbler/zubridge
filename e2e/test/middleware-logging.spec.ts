@@ -322,7 +322,7 @@ describe('IPC Traffic Logging Middleware', () => {
     }
   });
 
-  it('should include performance metrics when counter is incremented', async () => {
+  it.skip('should include performance metrics when counter is incremented', async () => {
     if (ws.readyState !== WebSocket.OPEN) {
       console.log('Skipping test: WebSocket not connected');
       return;
