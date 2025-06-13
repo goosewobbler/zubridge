@@ -116,12 +116,18 @@ export class ThunkManager extends EventEmitter {
       return;
     }
 
+    // Add debug logs to track thunk state
+    debug('thunk-debug', `Thunk ${thunkId} state before activation: ${thunk.state}`);
+    debug('thunk-debug', `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`);
+
     // Update thunk state
     thunk.activate();
+    debug('thunk-debug', `Thunk ${thunkId} state after activation: ${thunk.state}`);
 
     // Update root thunk if needed
     if (!this.rootThunkId) {
       this.rootThunkId = thunkId;
+      debug('thunk-debug', `Set root thunk to ${thunkId}`);
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, thunk);
     }
 
@@ -166,6 +172,47 @@ export class ThunkManager extends EventEmitter {
   }
 
   /**
+   * Directly complete a thunk when all actions are finished
+   */
+  completeThunk(thunkId: string, result?: unknown): void {
+    debug('thunk', `Completing thunk: id=${thunkId}`);
+
+    const thunk = this.thunks.get(thunkId);
+    if (!thunk) {
+      debug('thunk-debug', `Cannot complete thunk ${thunkId} - not found`);
+      return;
+    }
+
+    // Add debug logs to track thunk state
+    debug('thunk-debug', `Thunk ${thunkId} state before completion: ${thunk.state}`);
+    debug('thunk-debug', `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`);
+    debug('thunk-debug', `Root thunk is currently: ${this.rootThunkId || 'none'}`);
+
+    // Check if the thunk is already completed
+    if (thunk.state === ThunkState.COMPLETED) {
+      debug('thunk-debug', `Thunk ${thunkId} already completed, ignoring completion request`);
+      return;
+    }
+
+    // Store the result if provided
+    if (result !== undefined) {
+      this.thunkResults.set(thunkId, result);
+    }
+
+    // Emit completing event
+    this.emit(ThunkManagerEvent.THUNK_COMPLETING, thunk);
+
+    // Check if there are any pending actions for this thunk
+    const pendingActions = this.thunkActions.get(thunkId);
+    if (!pendingActions || pendingActions.size === 0) {
+      debug('thunk-debug', `Thunk ${thunkId} has no pending actions, finalizing completion now`);
+      this.finalizeThunkCompletion(thunkId);
+    } else {
+      debug('thunk-debug', `Thunk ${thunkId} has ${pendingActions.size} pending actions, deferring completion`);
+    }
+  }
+
+  /**
    * Actually complete the thunk after all its actions are done
    */
   private finalizeThunkCompletion(thunkId: string): void {
@@ -174,6 +221,13 @@ export class ThunkManager extends EventEmitter {
     const thunk = this.thunks.get(thunkId);
     if (!thunk) {
       debug('thunk-debug', `Cannot finalize thunk ${thunkId} - not found`);
+      return;
+    }
+
+    // Double check if there are any pending actions for this thunk
+    const pendingActions = this.thunkActions.get(thunkId);
+    if (pendingActions && pendingActions.size > 0) {
+      debug('thunk-debug', `Thunk ${thunkId} still has ${pendingActions.size} pending actions, deferring completion`);
       return;
     }
 
@@ -308,6 +362,15 @@ export class ThunkManager extends EventEmitter {
       return false;
     }
 
+    // Make sure thunk is in EXECUTING state, not COMPLETED
+    if (thunk.state === ThunkState.COMPLETED || thunk.state === ThunkState.FAILED) {
+      debug(
+        'thunk-debug',
+        `Thunk ${thunkId} is already in terminal state (${thunk.state}), ignoring action ${action.type}`,
+      );
+      return false;
+    }
+
     // Make sure we have a state manager
     if (!this.stateManager) {
       debug('thunk-error', 'No state manager set, cannot process action');
@@ -320,6 +383,8 @@ export class ThunkManager extends EventEmitter {
       thunkActionSet = new Set<string>();
       this.thunkActions.set(thunkId, thunkActionSet);
     }
+
+    debug('thunk-debug', `Adding action ${action.__id} (${action.type}) to thunk ${thunkId} tracking`);
     thunkActionSet.add(action.__id);
 
     // Create a ThunkTask for this action
@@ -342,6 +407,13 @@ export class ThunkManager extends EventEmitter {
       handler: async () => {
         debug('thunk-task', `Executing task ${taskId} for action ${action.type}`);
         try {
+          // Check if action is still part of thunk's tracked actions
+          const actionSet = this.thunkActions.get(thunkId);
+          if (!actionSet || !actionSet.has(action.__id!)) {
+            debug('thunk-debug', `Action ${action.__id} no longer tracked for thunk ${thunkId}, skipping execution`);
+            return null;
+          }
+
           // Process the action using the state manager
           const result = this.stateManager!.processAction(action);
 
@@ -385,13 +457,14 @@ export class ThunkManager extends EventEmitter {
           `Action ${actionId} completed and removed from thunk ${thunkId}, ${actions.size} actions remaining`,
         );
 
-        // If thunk is marked for completion and has no more tracked actions, complete it
-        const thunk = this.thunks.get(thunkId);
-        if (thunk && thunk.state === ThunkState.COMPLETING && actions.size === 0) {
+        // If actions set is now empty AND this thunk has a pending completion request, finalize it
+        if (actions.size === 0 && this.thunkResults.has(`${thunkId}:pendingCompletion`)) {
           debug(
             'thunk-debug',
-            `Thunk ${thunkId} has no more pending actions and is marked for completion, finalizing now`,
+            `Thunk ${thunkId} has no more pending actions and has a pending completion request, finalizing now`,
           );
+          // Remove the pending completion marker
+          this.thunkResults.delete(`${thunkId}:pendingCompletion`);
           this.finalizeThunkCompletion(thunkId);
         }
 

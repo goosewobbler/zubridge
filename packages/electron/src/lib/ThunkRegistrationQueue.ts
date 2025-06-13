@@ -172,7 +172,7 @@ export class ThunkRegistrationQueue {
             debug('queue-debug', `[DEBUG] Main thunk ${thunk.id} completed successfully`);
 
             // Mark the thunk as completing
-            this.thunkManager.markThunkCompleting(thunk.id, result);
+            this.thunkManager.completeThunk(thunk.id, result);
 
             // Handle completion
             this.handleCompletion(registration, result);
@@ -200,7 +200,7 @@ export class ThunkRegistrationQueue {
             debug('queue-debug', `[DEBUG] Renderer thunk ${thunk.id} completed successfully`);
 
             // Mark the thunk as completing
-            this.thunkManager.markThunkCompleting(thunk.id);
+            this.thunkManager.completeThunk(thunk.id);
 
             // Handle completion with null result (renderer callbacks don't return anything)
             this.handleCompletion(registration, null as unknown as T);
@@ -215,13 +215,14 @@ export class ThunkRegistrationQueue {
           }
         });
       } else {
-        debug('queue', `[THUNK-QUEUE] No callback for thunk ${thunk.id}, skipping execution`);
+        debug('queue', `[THUNK-QUEUE] No callback for thunk ${thunk.id}, only marking as executing`);
 
-        // Mark thunk as started and then immediately completed
+        // For renderer thunks, only mark them as executing
+        // They will be completed when the renderer calls completeThunk
         this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
-        this.thunkManager.markThunkCompleting(thunk.id);
 
-        // Handle completion with undefined result
+        // Handle completion with undefined result, but don't complete the thunk yet
+        // The thunk will be completed when all its actions are processed
         this.handleCompletion(registration, null as unknown as T);
       }
     } catch (error) {

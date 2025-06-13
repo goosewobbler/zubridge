@@ -340,8 +340,8 @@ export function createCoreBridge<State extends AnyState>(
 
       // Mark the thunk as completing in the tracker
       const wasActive = thunkManager.isThunkActive(thunkId);
-      thunkManager.markThunkCompleting(thunkId);
-      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked as completing (was active: ${wasActive})`);
+      thunkManager.completeThunk(thunkId);
+      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked for completion (was active: ${wasActive})`);
 
       // The ThunkTracker will notify ActionQueueManager via state change listener
       debug('core', '[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener');

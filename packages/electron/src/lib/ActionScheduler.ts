@@ -142,14 +142,53 @@ export class ActionScheduler extends EventEmitter {
    * Check if an action can be executed immediately based on concurrency rules
    */
   public canExecuteImmediately(action: Action): boolean {
+    // Log the current action being evaluated
+    debug('scheduler-debug', `[DECISION] Evaluating if action ${action.type} (${action.__id}) can execute immediately`);
+    debug(
+      'scheduler-debug',
+      `[DECISION] Action details: parentThunkId=${action.__thunkParentId}, bypassThunkLock=${action.__bypassThunkLock}`,
+    );
+
     // Actions with bypassThunkLock can always execute immediately
     if (action.__bypassThunkLock) {
       debug('scheduler', `Action ${action.type} (${action.__id}) has bypassThunkLock, can execute immediately`);
       return true;
     }
 
-    // If there are no running tasks, any action can execute immediately
+    // Check if there are any active thunks
+    const rootThunkId = this.thunkManager.getRootThunkId();
+    const hasActiveThunk = rootThunkId && this.thunkManager.isThunkActive(rootThunkId);
+
+    debug('scheduler-debug', `[DECISION] Root thunk: ${rootThunkId || 'none'}, active: ${hasActiveThunk}`);
+
+    // If there's an active thunk and this is not a thunk action, it must wait
+    if (hasActiveThunk && !action.__thunkParentId) {
+      debug(
+        'scheduler',
+        `Active thunk ${rootThunkId} exists and ${action.type} (${action.__id}) is not a thunk action, must wait`,
+      );
+      return false;
+    }
+
+    // If this is a thunk action, check if it belongs to the active root thunk
+    if (action.__thunkParentId && hasActiveThunk) {
+      const belongsToRootThunk = action.__thunkParentId === rootThunkId;
+      debug('scheduler-debug', `[DECISION] Action belongs to root thunk: ${belongsToRootThunk}`);
+
+      if (!belongsToRootThunk) {
+        debug(
+          'scheduler',
+          `Thunk action ${action.type} (${action.__id}) belongs to thunk ${action.__thunkParentId}, not root thunk ${rootThunkId}, must wait`,
+        );
+        return false;
+      }
+    }
+
+    // Get running tasks from scheduler
     const runningTasks = this.getScheduler().getRunningTasks();
+    debug('scheduler-debug', `[DECISION] Running tasks: ${runningTasks.length}`);
+
+    // If there are no running tasks, the action can execute immediately
     if (runningTasks.length === 0) {
       debug('scheduler', `No running tasks, action ${action.type} (${action.__id}) can execute immediately`);
       return true;
@@ -157,13 +196,26 @@ export class ActionScheduler extends EventEmitter {
 
     // Check if any running tasks are non-concurrent (blocking tasks)
     const hasBlockingTask = runningTasks.some((task) => !task.canRunConcurrently);
+    debug('scheduler-debug', `[DECISION] Has blocking tasks: ${hasBlockingTask}`);
+
     if (!hasBlockingTask) {
       debug('scheduler', `No blocking tasks running, action ${action.type} (${action.__id}) can execute immediately`);
       return true;
     }
 
-    // If this is a thunk action, it must wait for any current thunk to complete
+    // If this is a thunk action, check if it belongs to the same thunk as running tasks
     if (action.__thunkParentId) {
+      const belongsToRunningThunk = runningTasks.some((task) => task.thunkId === action.__thunkParentId);
+      debug('scheduler-debug', `[DECISION] Action belongs to running thunk: ${belongsToRunningThunk}`);
+
+      if (belongsToRunningThunk) {
+        debug(
+          'scheduler',
+          `Action ${action.type} (${action.__id}) belongs to running thunk ${action.__thunkParentId}, can execute immediately`,
+        );
+        return true;
+      }
+
       debug('scheduler', `Thunk action ${action.type} (${action.__id}) must wait for current thunk to complete`);
       return false;
     }
