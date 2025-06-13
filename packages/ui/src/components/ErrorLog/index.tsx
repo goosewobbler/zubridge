@@ -16,8 +16,8 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
   }, []);
 
   return (
-    <div className="error-log mt-4">
-      <div className="flex justify-between items-center mb-2">
+    <div className="mt-4 error-log">
+      <div className="flex items-center justify-between mb-2">
         <h4 className="font-semibold text-red-600">Error Log</h4>
         {onClear && (
           <Button onClick={onClear} variant="close" size="sm" data-testid="clear-errors-btn">
@@ -25,14 +25,14 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
           </Button>
         )}
       </div>
-      <div className="error-entries max-h-40 overflow-y-auto border border-red-300 rounded p-2 bg-red-50">
+      <div className="p-2 overflow-y-auto border border-red-300 rounded error-entries max-h-40 bg-red-50">
         {errors.length === 0 ? (
-          <div className="text-sm text-gray-500 italic">No errors</div>
+          <div className="text-sm italic text-gray-500">No errors</div>
         ) : (
           errors.map((error, index) => (
             <div
               key={`${error.timestamp}-${index}`}
-              className="error-log-entry mb-2 last:mb-0"
+              className="mb-2 error-log-entry last:mb-0"
               data-testid="error-entry"
             >
               <div className="text-sm">
