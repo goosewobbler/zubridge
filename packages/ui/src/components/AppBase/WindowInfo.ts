@@ -53,6 +53,11 @@ export interface ActionHandlers {
   doubleCounterSlow?: (counter: number) => any;
 
   /**
+   * Double counter thunk implementation with getState override (setting bypassAccessControl: true)
+   */
+  doubleCounterWithGetStateOverride?: (counter: number) => any;
+
+  /**
    * Distinctive counter thunk implementation (multiply by 3, add 2, subtract 1)
    */
   distinctiveCounter?: (counter: number) => any;

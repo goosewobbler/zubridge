@@ -46,6 +46,15 @@ export const CounterActions: React.FC<CounterActionsProps> = ({
           Double (Renderer Thunk)
         </Button>
         <Button
+          onClick={() => onDouble('thunk-get-state-override')}
+          disabled={isLoading}
+          aria-label="Double counter using renderer thunk with getState override"
+          className="w-full"
+          data-testid="doubleRendererGetStateOverride"
+        >
+          Double (GetState Override)
+        </Button>
+        <Button
           onClick={() => onDouble('slow-thunk')}
           disabled={isLoading}
           aria-label="Double counter using slow renderer thunk"

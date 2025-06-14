@@ -16,7 +16,8 @@ export type CounterMethod =
   | 'slow-main-thunk'
   | 'slow-object'
   | 'distinctive'
-  | 'distinctive-slow';
+  | 'distinctive-slow'
+  | 'thunk-get-state-override';
 
 // Button variants
 export type ButtonVariant = 'primary' | 'secondary' | 'reset' | 'create' | 'close';

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, ReactNode } from 'react';
+import { useEffect, useCallback, ReactNode, useState } from 'react';
 import { debug } from '@zubridge/core';
 import { WindowDisplay } from '../WindowDisplay';
 import { CounterActions } from '../CounterActions';
@@ -171,72 +171,87 @@ export function ZubridgeApp({
 
   const handleDoubleCounter = useCallback(
     async (method: CounterMethod) => {
-      if (method === 'thunk') {
-        // Use the actionHandlers thunk if available
-        if (actionHandlers.doubleCounter) {
-          debug(
-            'ui',
-            `Using shared thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+      try {
+        if (method === 'thunk') {
+          // Use the actionHandlers thunk if available
+          if (actionHandlers.doubleCounter) {
+            debug(
+              'ui',
+              `Using shared thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+            );
+            return await dispatch(actionHandlers.doubleCounter(counter), window.bypassFlags);
+          }
+        } else if (method === 'thunk-get-state-override') {
+          // Use the actionHandlers thunk with getState override if available
+          if (actionHandlers.doubleCounterWithGetStateOverride) {
+            debug(
+              'ui',
+              `Using shared thunk with getState override for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+            );
+            return await dispatch(actionHandlers.doubleCounterWithGetStateOverride(counter), window.bypassFlags);
+          }
+        } else if (method === 'slow-thunk') {
+          // Use the slow thunk if available
+          if (actionHandlers.doubleCounterSlow) {
+            debug(
+              'ui',
+              `Using shared slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+            );
+            return await dispatch(actionHandlers.doubleCounterSlow(counter), window.bypassFlags);
+          }
+        } else if (method === 'main-thunk') {
+          debug('ui', `Starting ${method} execution`);
+          debug('ui', `window.counter available:`, !!window.counter);
+          debug('ui', `window.counter.executeMainThunk available:`, !!window.counter?.executeMainThunk);
+
+          if (!window.counter?.executeMainThunk) {
+            debug('ui:error', `window.counter.executeMainThunk not available for ${method}`);
+            return Promise.reject(new Error('Main thunk execution not available'));
+          }
+
+          const result = window.counter.executeMainThunk();
+          debug('ui', `${method} IPC call made, result:`, result);
+          return result;
+        } else if (method === 'slow-main-thunk') {
+          debug('ui', `Starting ${method} execution`);
+          debug('ui', `window.counter available:`, !!window.counter);
+          debug('ui', `window.counter.executeMainThunkSlow available:`, !!window.counter?.executeMainThunkSlow);
+
+          if (!window.counter?.executeMainThunkSlow) {
+            debug('ui:error', `window.counter.executeMainThunkSlow not available for ${method}`);
+            return Promise.reject(new Error('Main slow thunk execution not available'));
+          }
+
+          const result = window.counter.executeMainThunkSlow();
+          debug('ui', `${method} IPC call made, result:`, result);
+          return result;
+        } else if (method === 'slow-object') {
+          debug('ui', `Dispatching slow action for ${method}`);
+          const result = await dispatch(
+            {
+              type: 'COUNTER:SET:SLOW',
+              payload: counter * 2,
+            },
+            window.bypassFlags,
           );
-          return await dispatch(actionHandlers.doubleCounter(counter), window.bypassFlags);
-        }
-      } else if (method === 'slow-thunk') {
-        // Use the slow thunk if available
-        if (actionHandlers.doubleCounterSlow) {
-          debug(
-            'ui',
-            `Using shared slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+          debug('ui', `Slow action dispatch returned:`, result);
+          return result;
+        } else {
+          debug('ui', `Dispatching regular action for ${method}`);
+          const result = await dispatch(
+            {
+              type: 'COUNTER:SET',
+              payload: counter * 2,
+            },
+            window.bypassFlags,
           );
-          return await dispatch(actionHandlers.doubleCounterSlow(counter), window.bypassFlags);
+          debug('ui', `Regular action dispatch returned:`, result);
+          return result;
         }
-      } else if (method === 'main-thunk') {
-        debug('ui', `Starting ${method} execution`);
-        debug('ui', `window.counter available:`, !!window.counter);
-        debug('ui', `window.counter.executeMainThunk available:`, !!window.counter?.executeMainThunk);
-
-        if (!window.counter?.executeMainThunk) {
-          debug('ui:error', `window.counter.executeMainThunk not available for ${method}`);
-          return Promise.reject(new Error('Main thunk execution not available'));
-        }
-
-        const result = window.counter.executeMainThunk();
-        debug('ui', `${method} IPC call made, result:`, result);
-        return result;
-      } else if (method === 'slow-main-thunk') {
-        debug('ui', `Starting ${method} execution`);
-        debug('ui', `window.counter available:`, !!window.counter);
-        debug('ui', `window.counter.executeMainThunkSlow available:`, !!window.counter?.executeMainThunkSlow);
-
-        if (!window.counter?.executeMainThunkSlow) {
-          debug('ui:error', `window.counter.executeMainThunkSlow not available for ${method}`);
-          return Promise.reject(new Error('Main slow thunk execution not available'));
-        }
-
-        const result = window.counter.executeMainThunkSlow();
-        debug('ui', `${method} IPC call made, result:`, result);
-        return result;
-      } else if (method === 'slow-object') {
-        debug('ui', `Dispatching slow action for ${method}`);
-        const result = await dispatch(
-          {
-            type: 'COUNTER:SET:SLOW',
-            payload: counter * 2,
-          },
-          window.bypassFlags,
-        );
-        debug('ui', `Slow action dispatch returned:`, result);
-        return result;
-      } else {
-        debug('ui', `Dispatching regular action for ${method}`);
-        const result = await dispatch(
-          {
-            type: 'COUNTER:SET',
-            payload: counter * 2,
-          },
-          window.bypassFlags,
-        );
-        debug('ui', `Regular action dispatch returned:`, result);
-        return result;
+      } catch (error) {
+        debug('ui:error', `Error in doubleCounter: ${error}`);
+        handleError(`Error in doubleCounter: ${error}`);
+        return Promise.reject(error);
       }
     },
     [counter, dispatch, actionHandlers],
@@ -298,6 +313,14 @@ export function ZubridgeApp({
   const isMainWindow = windowInfo.type === 'main';
   const isRuntimeWindow = windowInfo.type === 'runtime';
 
+  // Centralized error log state
+  const [errorLog, setErrorLog] = useState<Array<{ message: string; timestamp: number }>>([]);
+
+  // Centralized error handler
+  const handleError = (message: string) => {
+    setErrorLog((prev) => [...prev, { message, timestamp: Date.now() }]);
+  };
+
   return (
     <div className={`zubridge-app ${className}`}>
       <Header
@@ -355,7 +378,13 @@ export function ZubridgeApp({
 
               <div className="p-4 mb-4 border rounded-md error-testing-section border-accent">
                 <div className="pt-4 mt-5 border-t border-gray-200">
-                  <ErrorTesting dispatch={dispatch} currentSubscriptions={currentSubscriptions} />
+                  <ErrorTesting
+                    dispatch={dispatch}
+                    currentSubscriptions={currentSubscriptions}
+                    onError={handleError}
+                    errors={errorLog}
+                    onClear={() => setErrorLog([])}
+                  />
                 </div>
               </div>
 

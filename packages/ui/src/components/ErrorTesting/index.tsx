@@ -11,6 +11,8 @@ interface ErrorTestingProps {
   dispatch: Dispatch<Action>;
   currentSubscriptions?: string[] | '*';
   onError?: (message: string) => void;
+  errors?: Array<{ message: string; timestamp: number }>;
+  onClear?: () => void;
 }
 
 // Add a simple interface for state access
@@ -20,23 +22,28 @@ interface StateObject {
   [key: string]: any;
 }
 
-export function ErrorTesting({ dispatch, currentSubscriptions = '*', onError }: ErrorTestingProps) {
-  const [errors, setErrors] = useState<Array<{ message: string; timestamp: number }>>([]);
+export function ErrorTesting({
+  dispatch,
+  currentSubscriptions = '*',
+  onError,
+  errors: externalErrors,
+  onClear,
+}: ErrorTestingProps) {
+  const [internalErrors, setInternalErrors] = useState<Array<{ message: string; timestamp: number }>>([]);
+  const errors = externalErrors ?? internalErrors;
+  const clearErrors = onClear ?? (() => setInternalErrors([]));
 
   const logError = useCallback(
     (message: string) => {
       debug('ui:error', message);
-      setErrors((prev) => [...prev, { message, timestamp: Date.now() }]);
       if (onError) {
         onError(message);
+      } else {
+        setInternalErrors((prev) => [...prev, { message, timestamp: Date.now() }]);
       }
     },
     [onError],
   );
-
-  const clearErrors = useCallback(() => {
-    setErrors([]);
-  }, []);
 
   const handleVerifyUnsubscribed = useCallback(() => {
     try {
