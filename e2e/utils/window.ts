@@ -139,6 +139,7 @@ export const getButtonInCurrentWindow = async (
     | 'create'
     | 'close'
     | 'doubleRendererSlow'
+    | 'doubleRendererGetStateOverride'
     | 'doubleMainSlow'
     | 'doubleRenderer'
     | 'doubleMain'
@@ -244,6 +245,9 @@ export const getButtonInCurrentWindow = async (
       break;
     case 'distinctive-pattern-slow-btn':
       selector = '[data-testid="distinctive-pattern-slow-btn"]';
+      break;
+    case 'doubleRendererGetStateOverride':
+      selector = '[data-testid="doubleRendererGetStateOverride"]';
       break;
     default:
       // Ensure all cases are handled, or throw an error for an unhandled button type.

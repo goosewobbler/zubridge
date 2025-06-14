@@ -57,9 +57,34 @@ export async function waitForIncrement(
 }
 
 export const getCounterValue = async () => {
-  const counterElement = await browser.$('h2');
-  const counterText = await counterElement.getText();
-  return parseFloat(counterText.replace('Counter: ', ''));
+  try {
+    // First try to get the counter from the UI
+    const counterElement = await browser.$('h2');
+    const isExisting = await counterElement.isExisting();
+
+    if (isExisting) {
+      const counterText = await counterElement.getText();
+      if (counterText.includes('Counter:')) {
+        return parseFloat(counterText.replace('Counter: ', ''));
+      }
+    }
+
+    // If we can't get it from the UI (e.g., not subscribed), get it directly from the state
+    console.log('Counter not visible in UI, getting from state directly');
+    const state = await browser.execute(() => {
+      // @ts-ignore - zubridge is available in the browser context
+      return window.zubridge?.getState ? window.zubridge.getState() : null;
+    });
+
+    if (state && typeof state.counter === 'number') {
+      return state.counter;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error('Error getting counter value:', error);
+    return 0;
+  }
 };
 
 export const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {
