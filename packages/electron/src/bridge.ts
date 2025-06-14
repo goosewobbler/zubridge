@@ -25,6 +25,7 @@ import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 import { SubscriptionManager } from './lib/SubscriptionManager.js';
 import { Thunk as ThunkClass } from './lib/Thunk.js';
 import { thunkManager } from './lib/initThunkManager.js';
+import { getPartialState } from './lib/SubscriptionManager.js';
 
 // Instantiate the thunk registration queue
 const thunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
@@ -251,7 +252,7 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle getState requests from renderers
-  ipcMain.handle(IpcChannel.GET_STATE, (event) => {
+  ipcMain.handle(IpcChannel.GET_STATE, (event, options) => {
     try {
       debug('ipc', 'Handling getState request');
       debug('ipc', `[BRIDGE DEBUG] Handling getState request from renderer ${event.sender.id}`);
@@ -260,7 +261,6 @@ export function createCoreBridge<State extends AnyState>(
         debug('core', '[BRIDGE DEBUG] State manager is undefined or null in getState handler');
         return {};
       }
-
       if (!stateManager.getState) {
         debug('core', '[BRIDGE DEBUG] State manager missing getState method');
         return {};
@@ -272,12 +272,24 @@ export function createCoreBridge<State extends AnyState>(
         `[BRIDGE DEBUG] Raw state retrieved:`,
         typeof rawState === 'object' ? Object.keys(rawState) : typeof rawState,
       );
-
       const state = sanitizeState(rawState);
-      debug('ipc', 'Returning sanitized state');
-      debug('ipc', `[BRIDGE DEBUG] Returning sanitized state to renderer ${event.sender.id}: ${JSON.stringify(state)}`);
 
-      return state;
+      // Get window ID and subscriptions
+      const windowId = event.sender.id;
+      const subManager = subscriptionManagers.get(windowId);
+      const subscriptions = subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
+
+      // Check for bypassAccessControl in options or '*' subscription
+      if ((options && options.bypassAccessControl) || subscriptions.includes('*')) {
+        debug('ipc', `[BRIDGE DEBUG] Returning full state to renderer ${windowId}`);
+        return state;
+      }
+
+      // Otherwise, filter state by subscriptions
+      debug('ipc', `[BRIDGE DEBUG] Filtering state for renderer ${windowId} with subscriptions: ${subscriptions}`);
+      const filteredState = getPartialState(state, subscriptions);
+      debug('ipc', `[BRIDGE DEBUG] Returning filtered state to renderer ${windowId}: ${JSON.stringify(filteredState)}`);
+      return filteredState;
     } catch (error) {
       debug('core:error', 'Error handling getState:', error);
       debug('core:error', '[BRIDGE DEBUG] Error handling getState:', error);
@@ -338,7 +350,6 @@ export function createCoreBridge<State extends AnyState>(
         return;
       }
 
-      // Mark the thunk as completing in the tracker
       const wasActive = thunkManager.isThunkActive(thunkId);
       thunkManager.completeThunk(thunkId);
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked for completion (was active: ${wasActive})`);

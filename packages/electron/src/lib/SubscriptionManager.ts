@@ -55,7 +55,7 @@ function getSubscriptionKey(windowId: number): string {
 /**
  * Extracts a partial state object for the given keys using deepGet.
  */
-function getPartialState<S>(state: S, keys?: string[]): Partial<S> {
+export function getPartialState<S>(state: S, keys?: string[]): Partial<S> {
   const normalized = normalizeKeys(keys);
   if (normalized === '*') return { ...state };
   if (normalized.length === 0) return {};

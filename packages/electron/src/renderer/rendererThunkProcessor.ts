@@ -30,7 +30,7 @@ export class RendererThunkProcessor {
   private thunkCompleter?: (thunkId: string) => Promise<void>;
 
   // Custom state provider function
-  private stateProvider?: () => Promise<any>;
+  private stateProvider?: (opts?: { bypassAccessControl?: boolean }) => Promise<any>;
 
   // Queue of pending dispatches (action IDs)
   private pendingDispatches = new Set<string>();
@@ -85,7 +85,7 @@ export class RendererThunkProcessor {
    * Set a custom state provider function
    * This allows explicitly registering a way to get state after initialization
    */
-  public setStateProvider(provider: () => Promise<any>): void {
+  public setStateProvider(provider: (opts?: { bypassAccessControl?: boolean }) => Promise<any>): void {
     this.stateProvider = provider;
     debug('ipc', '[RENDERER_THUNK] Custom state provider registered');
   }
@@ -176,13 +176,16 @@ export class RendererThunkProcessor {
     }
 
     try {
-      const getState = async (): Promise<S> => {
+      const getState = async (getStateOptions?: { bypassAccessControl?: boolean }): Promise<S> => {
         debug('ipc', `[RENDERER_THUNK] getState called for thunk ${thunk.id}`);
 
         // First try using the custom state provider if available
         if (this.stateProvider) {
           debug('ipc', `[RENDERER_THUNK] Using registered state provider for thunk ${thunk.id}`);
-          return this.stateProvider() as Promise<S>;
+          // Pass bypassAccessControl option if provided, otherwise use the thunk's flag
+          return this.stateProvider({
+            bypassAccessControl: getStateOptions?.bypassAccessControl ?? thunk.bypassAccessControl,
+          }) as Promise<S>;
         }
 
         throw new Error('No state provider available');

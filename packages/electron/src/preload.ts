@@ -75,9 +75,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
     },
 
     // Get current state from main process
-    async getState(): Promise<S> {
+    async getState(options?: { bypassAccessControl?: boolean }): Promise<S> {
       debug('ipc', 'Getting state from main process');
-      return ipcRenderer.invoke(IpcChannel.GET_STATE) as Promise<S>;
+      return ipcRenderer.invoke(IpcChannel.GET_STATE, options) as Promise<S>;
     },
 
     // Dispatch actions to main process
@@ -367,7 +367,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         contextBridge.exposeInMainWorld('__zubridge_subscriptionValidator', subscriptionValidatorAPI);
 
         // Add a state provider to the thunk processor
-        thunkProcessor.setStateProvider(() => handlers.getState());
+        thunkProcessor.setStateProvider((opts) => handlers.getState(opts));
 
         debug('ipc', 'Preload script initialized successfully');
       } catch (error) {

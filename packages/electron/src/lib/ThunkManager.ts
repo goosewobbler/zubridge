@@ -21,7 +21,6 @@ export enum ThunkActionType {
 export enum ThunkManagerEvent {
   THUNK_REGISTERED = 'thunk:registered',
   THUNK_STARTED = 'thunk:started',
-  THUNK_COMPLETING = 'thunk:completing',
   THUNK_COMPLETED = 'thunk:completed',
   THUNK_FAILED = 'thunk:failed',
   ROOT_THUNK_CHANGED = 'thunk:root:changed',
@@ -134,43 +133,6 @@ export class ThunkManager extends EventEmitter {
     // Emit started event
     this.emit(ThunkManagerEvent.THUNK_STARTED, thunk);
   }
-
-  /**
-   * Mark a thunk as completing (started the completion process)
-   */
-  markThunkCompleting(thunkId: string, result?: unknown): void {
-    debug('thunk', `Marking thunk as completing: id=${thunkId}`);
-
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      debug('thunk-debug', `Cannot complete thunk ${thunkId} - not found`);
-      return;
-    }
-
-    // Check if the thunk is already completed or completing
-    if (thunk.state === ThunkState.COMPLETED) {
-      debug('thunk-debug', `Thunk ${thunkId} already completed, ignoring completion request`);
-      return;
-    }
-
-    // Store the result for later
-    if (result !== undefined) {
-      this.thunkResults.set(thunkId, result);
-    }
-
-    // Emit completing event
-    this.emit(ThunkManagerEvent.THUNK_COMPLETING, thunk);
-
-    // Check if there are any pending actions for this thunk
-    const pendingActions = this.thunkActions.get(thunkId);
-    if (!pendingActions || pendingActions.size === 0) {
-      debug('thunk-debug', `Thunk ${thunkId} has no pending actions, finalizing completion now`);
-      this.finalizeThunkCompletion(thunkId);
-    } else {
-      debug('thunk-debug', `Thunk ${thunkId} has ${pendingActions.size} pending actions, deferring completion`);
-    }
-  }
-
   /**
    * Directly complete a thunk when all actions are finished
    */
@@ -198,9 +160,6 @@ export class ThunkManager extends EventEmitter {
     if (result !== undefined) {
       this.thunkResults.set(thunkId, result);
     }
-
-    // Emit completing event
-    this.emit(ThunkManagerEvent.THUNK_COMPLETING, thunk);
 
     // Check if there are any pending actions for this thunk
     const pendingActions = this.thunkActions.get(thunkId);

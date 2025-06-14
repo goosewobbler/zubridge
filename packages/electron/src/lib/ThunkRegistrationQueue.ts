@@ -171,7 +171,6 @@ export class ThunkRegistrationQueue {
             const result = await mainThunkCallback();
             debug('queue-debug', `[DEBUG] Main thunk ${thunk.id} completed successfully`);
 
-            // Mark the thunk as completing
             this.thunkManager.completeThunk(thunk.id, result);
 
             // Handle completion
@@ -199,7 +198,6 @@ export class ThunkRegistrationQueue {
             await rendererCallback();
             debug('queue-debug', `[DEBUG] Renderer thunk ${thunk.id} completed successfully`);
 
-            // Mark the thunk as completing
             this.thunkManager.completeThunk(thunk.id);
 
             // Handle completion with null result (renderer callbacks don't return anything)
