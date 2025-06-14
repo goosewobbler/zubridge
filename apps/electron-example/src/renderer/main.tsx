@@ -11,6 +11,7 @@ import {
   createDoubleCounterSlowThunk,
   createDistinctiveCounterThunk,
   createDistinctiveCounterSlowThunk,
+  createDoubleCounterWithGetStateOverrideThunk,
   type ThunkContext,
 } from '@zubridge/apps-shared';
 // Import debug utility
@@ -118,6 +119,8 @@ function AppWrapper() {
     doubleCounterSlow: (counter: number) => createDoubleCounterSlowThunk(counter, thunkContext),
     distinctiveCounter: (counter: number) => createDistinctiveCounterThunk(counter, thunkContext),
     distinctiveCounterSlow: (counter: number) => createDistinctiveCounterSlowThunk(counter, thunkContext),
+    doubleCounterWithGetStateOverride: (counter: number) =>
+      createDoubleCounterWithGetStateOverrideThunk(counter, thunkContext),
   };
 
   // Create subscription handlers that update the state
