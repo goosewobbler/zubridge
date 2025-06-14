@@ -1,7 +1,14 @@
 import type { StoreApi } from 'zustand';
 import type { WebContents } from 'electron';
 
-export type Thunk<S> = (getState: () => Promise<Partial<S>>, dispatch: Dispatch<Partial<S>>) => void;
+type ThunkGetStateOptions = {
+  bypassAccessControl?: boolean;
+};
+
+// The type of the getState function for a thunk
+export type ThunkGetState<S> = (options?: ThunkGetStateOptions) => Promise<Partial<S>>;
+
+export type Thunk<S> = (getState: ThunkGetState<S>, dispatch: Dispatch<Partial<S>>) => void;
 
 export interface InternalThunk<S> extends Thunk<S> {
   __bypassAccessControl?: boolean;
@@ -119,7 +126,7 @@ interface BaseHandler<S> {
 }
 
 export interface Handlers<S extends AnyState> extends BaseHandler<S> {
-  getState(): Promise<S>;
+  getState(options?: ThunkGetStateOptions): Promise<S>;
   subscribe(callback: (newState: S) => void): () => void;
 }
 
@@ -197,7 +204,6 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
 export enum ThunkState {
   PENDING = 'pending', // Registered but not started execution
   EXECUTING = 'executing', // Currently executing
-  COMPLETING = 'completing', // Execution finished, waiting for all actions to complete
   COMPLETED = 'completed', // Successfully completed
   FAILED = 'failed', // Failed with an error
 }
