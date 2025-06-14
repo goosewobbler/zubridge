@@ -33,6 +33,11 @@ export interface DoubleCounterOptions {
    * Default: false
    */
   includeTimestamps?: boolean;
+
+  /**
+   * If true, getState will be called with bypassAccessControl: true
+   */
+  bypassAccessControlOverride?: boolean;
 }
 
 /**
@@ -49,7 +54,12 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
   context: ThunkContext,
   options: DoubleCounterOptions = {},
 ): Thunk<Partial<S>> => {
-  const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false } = options;
+  const {
+    useSlow = false,
+    delayBetweenOperations = 100,
+    includeTimestamps = false,
+    bypassAccessControlOverride = false,
+  } = options;
 
   const logPrefix = getLogPrefix(context);
   const thunkType = useSlow ? 'SLOW' : 'REGULAR';
@@ -60,7 +70,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Calling getState()`);
 
       const beforeStateTime = Date.now();
-      const state = await getState();
+      const state = bypassAccessControlOverride ? await getState({ bypassAccessControl: true }) : await getState();
       const afterStateTime = Date.now();
       const stateLatency = afterStateTime - beforeStateTime;
 
@@ -70,7 +80,11 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       );
       debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`);
 
-      return state.counter ?? initialCounter; // Use nullish coalescing to handle undefined counter
+      if (state.counter === undefined) {
+        throw new Error('Counter is undefined');
+      }
+
+      return state.counter;
     };
 
     const logWithTimestamp = (message: string) => {
@@ -229,6 +243,18 @@ export const createDoubleCounterSlowThunk = <S extends BaseState = BaseState>(
   return createDoubleCounterThunk(initialCounter, context, {
     useSlow: true,
     includeTimestamps: true,
+  });
+};
+
+/**
+ * Convenience function to create a double counter thunk with getState override (setting bypassAccessControl: true)
+ */
+export const createDoubleCounterWithGetStateOverrideThunk = <S extends BaseState = BaseState>(
+  initialCounter: number,
+  context: ThunkContext,
+): Thunk<Partial<S>> => {
+  return createDoubleCounterThunk(initialCounter, context, {
+    bypassAccessControlOverride: true,
   });
 };
 
