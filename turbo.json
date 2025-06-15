@@ -21,6 +21,7 @@
         "@zubridge/ui#build",
         "@zubridge/apps-shared#build"
       ],
+      "outputs": ["packages/*/dist/**"],
       "cache": false
     },
     "build:electron-examples": {
