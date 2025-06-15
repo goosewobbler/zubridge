@@ -11,6 +11,11 @@ on:
         options:
           - main # Current stable
           - feature # Next major development
+      feature_branch_name:
+        description: 'Custom feature branch name (only used when branch is "feature")'
+        required: false
+        type: string
+        default: ''
       release_version:
         description: 'Release type - patch, minor, or major'
         required: true
@@ -41,6 +46,7 @@ jobs:
     uses: ./.github/workflows/_release-orchestration.reusable.yml
     with:
       branch: ${{ inputs.branch }}
+      feature_branch_name: ${{ inputs.feature_branch_name }}
       release_version: ${{ inputs.release_version }}
       packages: ${{ inputs.packages }}
       dry_run: ${{ inputs.dry_run }}

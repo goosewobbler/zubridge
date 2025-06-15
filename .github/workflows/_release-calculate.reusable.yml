@@ -7,6 +7,11 @@ on:
         description: 'Branch type to release from (feature, main)'
         required: true
         type: string
+      feature_branch_name:
+        description: 'Custom feature branch name (only used when branch is "feature")'
+        required: false
+        type: string
+        default: ''
       release_version:
         description: 'Release type (patch, minor, major, prepatch, preminor, premajor, prerelease)'
         required: true
@@ -153,20 +158,22 @@ jobs:
           FEATURE_MAJOR_VERSION: ${{ steps.calculate_versions.outputs.feature-major-version}}
           CURRENT_FEATURE_MAJOR_VERSION: ${{ steps.calculate_versions.outputs.current-feature-major-version}}
           PACKAGE_NAME: ${{ steps.calculate_versions.outputs.package_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          FEATURE_BRANCH_NAME: ${{ inputs.feature_branch_name }}
         run: |
           TARGET_BRANCH_NAME=""
           NEXT_BRANCH_NAME=""
 
           if [ "${BRANCH_TYPE}" == 'feature' ]; then
-            # If the release is 'major' or 'premajor', it establishes the NEXT feature branch line.
-            # Otherwise, for 'prerelease', 'prepatch', 'preminor' from a feature branch,
-            # it targets the CURRENT feature branch line.
-            if [ "${RELEASE_TYPE}" == "major" ] || [ "${RELEASE_TYPE}" == "premajor" ]; then
-              TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
+            # For feature branch releases, use the custom branch name if provided
+            if [ -n "${FEATURE_BRANCH_NAME}" ]; then
+              TARGET_BRANCH_NAME="${FEATURE_BRANCH_NAME}"
+              echo "Using custom feature branch name: ${TARGET_BRANCH_NAME}"
             else
+              # Default to conventional feature branch name if no custom name provided
               TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${CURRENT_FEATURE_MAJOR_VERSION}.x"
+              echo "Using default feature branch name: ${TARGET_BRANCH_NAME}"
             fi
-            echo "Calculated target branch for feature release: ${TARGET_BRANCH_NAME}"
             echo "target_branch=${TARGET_BRANCH_NAME}" >> "$GITHUB_OUTPUT"
           else
             # For main branch releases (patch, minor, prerelease), target is the branch itself (e.g., 'main').
@@ -185,19 +192,34 @@ jobs:
         env:
           BRANCH_TYPE: ${{ inputs.branch }}
           TARGET_BRANCH: ${{ steps.define_branches.outputs.target_branch }}
+          INPUT_PACKAGES: ${{ inputs.packages }}
+          FEATURE_BRANCH_NAME: ${{ inputs.feature_branch_name }}
         run: |
           echo "Verifying branch: ${TARGET_BRANCH}"
 
           # Check if branch exists remotely
           if ! git ls-remote --heads origin "${TARGET_BRANCH}" | grep -q "${TARGET_BRANCH}"; then
             if [ "${BRANCH_TYPE}" == "feature" ]; then
-              echo "::error::Feature branch '${TARGET_BRANCH}' does not exist. Please create this branch first or specify a different branch."
-              # Update error message to reflect the new convention
-              echo "::error::Expected branch naming convention: feature/{package_name}-v{next_major_version}.x (e.g., feature/electron-v2.x)"
+              if [ -n "${FEATURE_BRANCH_NAME}" ]; then
+                echo "::error::Custom feature branch '${TARGET_BRANCH}' does not exist. Please create this branch first or specify a different branch."
+              else
+                echo "::error::Feature branch '${TARGET_BRANCH}' does not exist. Please create this branch first or specify a custom branch name using the 'feature_branch_name' field."
+                echo "::error::Expected branch naming convention: feature/{package_name}-v{next_major_version}.x (e.g., feature/electron-v2.x)"
+              fi
             else
               echo "::error::Branch '${TARGET_BRANCH}' does not exist."
             fi
             exit 1
+          fi
+          
+          # For feature branches, provide info but don't enforce naming convention
+          if [ "${BRANCH_TYPE}" == "feature" ]; then
+            if [ -n "${FEATURE_BRANCH_NAME}" ]; then
+              echo "ℹ️ Releasing package '${INPUT_PACKAGES}' from custom feature branch '${TARGET_BRANCH}'"
+            else
+              echo "ℹ️ Releasing package '${INPUT_PACKAGES}' from feature branch '${TARGET_BRANCH}'"
+              echo "ℹ️ Recommended naming convention: feature/{package_name}-v{next_major_version}.x"
+            fi
           fi
 
           echo "✅ Branch '${TARGET_BRANCH}' exists and is valid"
