@@ -5,40 +5,60 @@ use std::sync::Arc;
 use napi_derive::napi;
 use napi::bindgen_prelude::*;
 
+// Add necessary dependencies for logging
+use log::{self, LevelFilter};
+use fern;
+use chrono;
+
 // Re-export the types we need from the middleware crate
 use zubridge_middleware::{
   ZubridgeMiddleware as RustZubridgeMiddleware,
   ZubridgeMiddlewareConfig as RustZubridgeMiddlewareConfig,
-  LoggingConfig as RustLoggingConfig,
+  TelemetryConfig as RustTelemetryConfig,
   Action as RustAction,
 };
 
 #[napi(object)]
-pub struct LoggingConfig {
+pub struct PerformanceConfig {
+  pub enabled: Option<bool>,
+  pub detail: Option<String>,
+  pub include_in_logs: Option<bool>,
+  pub record_timings: Option<bool>,
+  pub verbose_output: Option<bool>,
+}
+
+#[napi(object)]
+pub struct TelemetryConfig {
   pub enabled: Option<bool>,
   pub websocket_port: Option<u32>,
+  pub websocket_bind_address: Option<String>,
   pub console_output: Option<bool>,
   pub log_limit: Option<u32>,
   pub measure_performance: Option<bool>,
+  pub record_state_size: Option<bool>,
+  pub record_state_delta: Option<bool>,
   pub pretty_print: Option<bool>,
   pub verbose: Option<bool>,
+  pub performance: Option<PerformanceConfig>,
 }
 
 #[napi(object)]
 pub struct ZubridgeMiddlewareConfig {
-  pub logging: Option<LoggingConfig>,
+  pub telemetry: Option<TelemetryConfig>,
 }
 
 #[napi(object)]
 pub struct Action {
   pub r#type: String,
   pub payload: Option<String>,
+  pub id: Option<String>,
+  pub source_window_id: Option<u32>,
 }
 
-/// Convert JS LoggingConfig to Rust LoggingConfig
-impl From<LoggingConfig> for RustLoggingConfig {
-  fn from(config: LoggingConfig) -> Self {
-    let mut result = RustLoggingConfig::default();
+/// Convert JS TelemetryConfig to Rust TelemetryConfig
+impl From<TelemetryConfig> for RustTelemetryConfig {
+  fn from(config: TelemetryConfig) -> Self {
+    let mut result = RustTelemetryConfig::default();
 
     if let Some(enabled) = config.enabled {
       result.enabled = enabled;
@@ -46,6 +66,10 @@ impl From<LoggingConfig> for RustLoggingConfig {
 
     if let Some(port) = config.websocket_port {
       result.websocket_port = Some(port as u16);
+    }
+    
+    if let Some(bind_address) = config.websocket_bind_address {
+      result.websocket_bind_address = bind_address;
     }
 
     if let Some(console_output) = config.console_output {
@@ -60,12 +84,59 @@ impl From<LoggingConfig> for RustLoggingConfig {
       result.measure_performance = measure_performance;
     }
 
+    if let Some(record_state_size) = config.record_state_size {
+      result.record_state_size = record_state_size;
+    }
+
+    if let Some(record_state_delta) = config.record_state_delta {
+      result.record_state_delta = record_state_delta;
+    }
+
     if let Some(pretty_print) = config.pretty_print {
       result.pretty_print = pretty_print;
     }
 
     if let Some(verbose) = config.verbose {
       result.verbose = verbose;
+    }
+
+    // Handle performance config if present
+    if let Some(perf) = config.performance {
+      // We can't directly access the performance struct fields using module path
+      // because the telemetry module is private, so we need to use the metadata approach
+      let mut perf_map = std::collections::HashMap::new();
+      
+      if let Some(enabled) = perf.enabled {
+        // Set the performance.enabled field directly (this one is accessible)
+        result.performance.enabled = enabled;
+        perf_map.insert("enabled".to_string(), serde_json::json!(enabled));
+      }
+      
+      if let Some(detail) = &perf.detail {
+        // We'll use the metadata approach for the detail field since we can't access the enum directly
+        perf_map.insert("detail".to_string(), serde_json::json!(detail));
+      }
+      
+      if let Some(include_in_logs) = perf.include_in_logs {
+        // Set the field directly
+        result.performance.include_in_logs = include_in_logs;
+        perf_map.insert("include_in_logs".to_string(), serde_json::json!(include_in_logs));
+      }
+      
+      if let Some(record_timings) = perf.record_timings {
+        // Set the field directly
+        result.performance.record_timings = record_timings;
+        perf_map.insert("record_timings".to_string(), serde_json::json!(record_timings));
+      }
+      
+      if let Some(verbose_output) = perf.verbose_output {
+        // Set the field directly
+        result.performance.verbose_output = verbose_output;
+        perf_map.insert("verbose_output".to_string(), serde_json::json!(verbose_output));
+      }
+      
+      // Add the performance_config to metadata for the internal interpretation
+      result.metadata.insert("performance_config".to_string(), serde_json::json!(perf_map));
     }
 
     result
@@ -77,8 +148,8 @@ impl From<ZubridgeMiddlewareConfig> for RustZubridgeMiddlewareConfig {
   fn from(config: ZubridgeMiddlewareConfig) -> Self {
     let mut result = RustZubridgeMiddlewareConfig::default();
 
-    if let Some(logging) = config.logging {
-      result.logging = RustLoggingConfig::from(logging);
+    if let Some(telemetry) = config.telemetry {
+      result.telemetry = RustTelemetryConfig::from(telemetry);
     }
 
     result
@@ -95,11 +166,14 @@ pub struct ZubridgeMiddleware {
 impl ZubridgeMiddleware {
   #[napi]
   pub async fn process_action(&self, action: Action) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
     // Convert payload string to JSON if present
-    let payload = if let Some(json_str) = action.payload {
-      match serde_json::from_str(&json_str) {
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
         Ok(value) => Some(value),
-        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload: {}", e))),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
       }
     } else {
       None
@@ -109,12 +183,14 @@ impl ZubridgeMiddleware {
     let rust_action = RustAction {
       action_type: action.r#type,
       payload,
+      id: action.id,
+      source_window_id: action.source_window_id,
     };
 
     // Process the action
     self.inner.process_action(rust_action)
       .await
-      .map_err(|e| Error::from_reason(format!("Failed to process action: {}", e)))
+      .map_err(|e| Error::from_reason(format!("Failed to process action {}: {}", action_type, e)))
   }
 
   #[napi]
@@ -138,18 +214,170 @@ impl ZubridgeMiddleware {
       .await
       .map_err(|e| Error::from_reason(format!("Failed to set state: {}", e)))
   }
+  
+  #[napi]
+  pub async fn track_action_dispatch(&self, action: Action) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
+    // Convert payload string to JSON if present
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
+        Ok(value) => Some(value),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
+      }
+    } else {
+      None
+    };
+
+    // Create Rust action
+    let rust_action = RustAction {
+      action_type: action.r#type,
+      payload,
+      id: action.id,
+      source_window_id: action.source_window_id,
+    };
+    
+    // Track the action dispatch
+    for middleware in &self.inner.middlewares {
+      middleware.record_action_dispatch(&rust_action).await;
+    }
+    
+    Ok(())
+  }
+  
+  #[napi]
+  pub async fn track_action_received(&self, action: Action) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
+    // Convert payload string to JSON if present
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
+        Ok(value) => Some(value),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
+      }
+    } else {
+      None
+    };
+
+    // Create Rust action
+    let rust_action = RustAction {
+      action_type: action.r#type,
+      payload,
+      id: action.id,
+      source_window_id: action.source_window_id,
+    };
+    
+    // Track the action received in main process
+    for middleware in &self.inner.middlewares {
+      middleware.record_action_received(&rust_action).await;
+    }
+    
+    Ok(())
+  }
+  
+  #[napi]
+  pub async fn track_state_update(&self, action: Action, state_json: String) -> Result<()> {
+    // Store the action type for later use in error messages
+    let action_type = action.r#type.clone();
+    
+    // Convert payload string to JSON if present
+    let payload = if let Some(payload_str) = &action.payload {
+      match serde_json::from_str::<serde_json::Value>(payload_str) {
+        Ok(value) => Some(value),
+        Err(e) => return Err(Error::from_reason(format!("Failed to parse action payload for {}: {}", action_type, e))),
+      }
+    } else {
+      None
+    };
+
+    // Create Rust action
+    let rust_action = RustAction {
+      action_type: action.r#type,
+      payload,
+      id: action.id,
+      source_window_id: action.source_window_id,
+    };
+    
+    // Parse the state JSON
+    let state = serde_json::from_str(&state_json)
+      .map_err(|e| Error::from_reason(format!("Failed to parse state JSON for action {}: {}", action_type, e)))?;
+    
+    // Track the state update
+    for middleware in &self.inner.middlewares {
+      middleware.record_state_update(&rust_action, &state).await;
+    }
+    
+    Ok(())
+  }
+  
+  #[napi]
+  pub async fn track_action_acknowledged(&self, action_id: String) -> Result<()> {
+    // Track the action acknowledged
+    for middleware in &self.inner.middlewares {
+      middleware.record_action_acknowledgement(&action_id).await;
+    }
+    
+    Ok(())
+  }
 }
 
 #[napi]
 pub fn init_zubridge_middleware(config: Option<ZubridgeMiddlewareConfig>) -> ZubridgeMiddleware {
-  let rust_config = match config {
-    Some(config) => RustZubridgeMiddlewareConfig::from(config),
-    None => RustZubridgeMiddlewareConfig::default(),
+  // Create default config if none provided
+  let rust_config = if let Some(js_config) = config {
+    RustZubridgeMiddlewareConfig::from(js_config)
+  } else {
+    RustZubridgeMiddlewareConfig::default()
   };
-
+  
+  // Initialize middleware
   let middleware = zubridge_middleware::init_middleware(rust_config);
-
+  
+  // Wrap in our JS-friendly wrapper
   ZubridgeMiddleware {
     inner: Arc::new(middleware),
   }
+}
+
+/// Function to set up file logging with a custom path
+#[napi]
+pub fn setup_file_logging(log_path: String) -> Result<()> {
+  // First try to open the log file
+  let log_file = match fern::log_file(&log_path) {
+    Ok(file) => file,
+    Err(e) => {
+      return Err(Error::from_reason(format!(
+        "Failed to open log file at {}: {}",
+        log_path, e
+      )))
+    }
+  };
+
+  // Then configure and apply the logger
+  match fern::Dispatch::new()
+    .format(|out, message, record| {
+      out.finish(format_args!(
+        "[{}][{}][{}] {}",
+        chrono::Utc::now().to_rfc3339(),
+        record.level(),
+        record.target(),
+        message
+      ))
+    })
+    .level(LevelFilter::Debug)
+    .chain(log_file)
+    .apply() {
+      Ok(_) => {
+        log::info!("Middleware file logging initialized to {}", log_path);
+        Ok(())
+      },
+      Err(e) => {
+        Err(Error::from_reason(format!(
+          "Failed to initialize logging system: {}",
+          e
+        )))
+      }
+    }
 }

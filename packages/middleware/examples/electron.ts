@@ -11,6 +11,7 @@ interface AppState {
   theme: {
     isDark: boolean;
   };
+  lastActionProcessingTime?: number;
 }
 
 // Create a Zustand store with typed state
@@ -41,16 +42,38 @@ const handlers = {
       },
     }));
   },
+  // Add a slow action for demonstrating performance metrics
+  'COUNTER:INCREMENT_SLOW': () => {
+    // Simulate a slow operation
+    console.log('Starting slow increment...');
+    const startTime = Date.now();
+
+    // Busy-wait to simulate CPU-bound work
+    while (Date.now() - startTime < 500) {
+      // Do nothing
+    }
+
+    console.log(`Slow increment completed in ${Date.now() - startTime}ms`);
+    store.setState((state) => ({ ...state, counter: state.counter + 1 }));
+  },
 };
 
 // Handle app startup
 app.whenReady().then(() => {
-  // Initialize middleware with WebSocket server for debugging
+  // Initialize middleware with WebSocket server for debugging and performance tracking
   const middleware: ZubridgeMiddleware = initZubridgeMiddleware({
     logging: {
       enabled: true,
-      websocket_port: 9000,
+      websocket_port: 9000, // WebSocket server for monitoring
       console_output: true,
+      measure_performance: true, // Enable performance measurement
+      performance: {
+        enabled: true,
+        detail: 'high', // Collect detailed metrics
+        include_in_logs: true,
+        record_timings: true,
+        verbose_output: true, // Enable verbose output for debugging
+      },
     },
   });
 
@@ -67,8 +90,20 @@ app.whenReady().then(() => {
   // Create bridge with middleware - directly pass middleware instance
   const bridge: ZustandBridge<AppState> = createZustandBridge(store, [mainWindow], {
     handlers,
-    // Just pass the middleware instance directly
+    // Pass the middleware instance directly
     middleware,
+    // Add a hook to capture performance metrics
+    afterProcessAction: (action, processingTime, windowId) => {
+      console.log(
+        `[Performance] Action ${action.type} processed in ${processingTime.toFixed(2)}ms from window ${windowId}`,
+      );
+
+      // Store the processing time in state for display in the UI
+      store.setState((state) => ({
+        ...state,
+        lastActionProcessingTime: processingTime,
+      }));
+    },
   });
 
   // Load your app
@@ -84,11 +119,12 @@ app.whenReady().then(() => {
   bridge.dispatch({ type: 'COUNTER:INCREMENT' });
 
   // Log useful info
-  console.log('Zubridge + Middleware Example (TypeScript/ESM)');
-  console.log('=============================================');
+  console.log('Zubridge + Middleware Example with Performance Tracking');
+  console.log('=====================================================');
   console.log('✅ Bridge initialized with middleware');
   console.log('🔌 WebSocket server running on ws://localhost:9000');
-  console.log('🔍 Connect with any WebSocket client to monitor state and actions');
+  console.log('📊 Performance metrics collection enabled');
+  console.log('🔍 Connect with any WebSocket client to monitor state, actions, and performance');
 });
 
 // Quit when all windows are closed

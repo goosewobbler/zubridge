@@ -1,17 +1,20 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ThunkState } from '@zubridge/types';
+import { debug } from '@zubridge/core';
 
 export interface ThunkOptions {
   id?: string;
   sourceWindowId: number;
-  type: 'main' | 'renderer';
+  source: 'main' | 'renderer';
   parentId?: string;
   keys?: string[];
-  force?: boolean;
+  bypassThunkLock?: boolean;
+  bypassAccessControl?: boolean;
+  contextId?: string; // Optional linked execution context ID
 }
 
 /**
- * Represents a thunk in the system
+ * Base Thunk class that works in both main and renderer processes
  */
 export class Thunk {
   /** Unique identifier for this thunk */
@@ -23,11 +26,11 @@ export class Thunk {
   /** Parent thunk ID if this is a nested thunk */
   readonly parentId?: string;
 
-  /** Thunk type: 'main' or 'renderer' */
-  public type: 'main' | 'renderer';
+  /** Thunk source - the process that dispatched this thunk */
+  public source: 'main' | 'renderer';
 
   /** Current state of the thunk */
-  private _state: ThunkState;
+  protected _state: ThunkState;
 
   /** Time when the thunk was created */
   readonly startTime: number;
@@ -38,19 +41,29 @@ export class Thunk {
   /** Keys this thunk will affect (for key-based locking) */
   public keys?: string[];
 
-  /** Force flag for lock bypass */
-  public force?: boolean;
+  /** Flag for lock bypass */
+  public bypassThunkLock?: boolean;
+
+  /** Flag for access control bypass */
+  public bypassAccessControl?: boolean;
+
+  /** ID of the linked execution context */
+  protected _contextId?: string;
 
   constructor(options: ThunkOptions) {
     this.id = options.id || uuidv4();
     this._sourceWindowId = options.sourceWindowId;
     this.parentId = options.parentId;
-    this.type = options.type;
+    this.source = options.source;
     this._state = ThunkState.PENDING;
     this.startTime = Date.now();
     this.children = new Set();
     this.keys = options.keys;
-    this.force = options.force;
+    this.bypassThunkLock = options.bypassThunkLock;
+    this.bypassAccessControl = options.bypassAccessControl;
+    this._contextId = options.contextId;
+
+    debug('thunk', `Created thunk ${this.id} (type: ${this.source}, bypassThunkLock: ${this.bypassThunkLock})`);
   }
 
   /**
@@ -72,6 +85,20 @@ export class Thunk {
    */
   get state(): ThunkState {
     return this._state;
+  }
+
+  /**
+   * Get the execution context ID
+   */
+  get contextId(): string | undefined {
+    return this._contextId;
+  }
+
+  /**
+   * Set the execution context ID
+   */
+  set contextId(contextId: string | undefined) {
+    this._contextId = contextId;
   }
 
   /**
@@ -113,6 +140,6 @@ export class Thunk {
    * Check if the thunk is in a terminal state (completed or failed)
    */
   isComplete(): boolean {
-    return this._state === ThunkState.COMPLETED || this._state === ThunkState.FAILED;
+    return this.state === ThunkState.COMPLETED || this.state === ThunkState.FAILED;
   }
 }

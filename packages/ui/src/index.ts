@@ -1,10 +1,12 @@
 // Export shared components
 export * from './components/Button';
-export * from './components/Counter';
+export * from './components/CounterActions';
 export * from './components/Header';
 export * from './components/ThemeToggle';
 export * from './components/WindowActions';
 export * from './components/WindowDisplay';
+export * from './components/SubscriptionControls';
+export * from './components/GenerateLargeState';
 
 // Export shared hooks
 export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';

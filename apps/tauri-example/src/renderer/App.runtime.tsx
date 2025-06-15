@@ -5,7 +5,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow'; // Import Webview
 // Import Zubridge hooks
 import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri'; // Removed initializeBridge import
 import type { AnyState } from '@zubridge/tauri'; // Import state type if needed for selectors
-import { Counter, ThemeToggle, WindowDisplay, WindowActions } from '@zubridge/ui';
+import { CounterActions, ThemeToggle, WindowDisplay, WindowActions } from '@zubridge/ui';
 import './styles/index.css';
 
 interface RuntimeAppProps {
@@ -86,11 +86,6 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
     dispatch({ type: 'THEME:TOGGLE' });
   };
 
-  const resetCounter = () => {
-    console.log('[App.runtime] Resetting counter');
-    dispatch({ type: 'COUNTER:RESET' });
-  };
-
   // Use Tauri API for window creation
   const createWindow = () => {
     const uniqueLabel = `runtime_${Date.now()}`;
@@ -129,12 +124,10 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
       bridgeStatus={bridgeStatus === 'uninitialized' ? 'initializing' : bridgeStatus}
       isRuntimeWindow={true}
     >
-      <Counter
-        value={counter}
+      <CounterActions
         onIncrement={incrementCounter}
         onDecrement={decrementCounter}
         onDouble={(method) => (method === 'thunk' ? doubleCounterThunk() : doubleCounterAction())}
-        onReset={resetCounter}
         isLoading={bridgeStatus === 'initializing'}
       />
 

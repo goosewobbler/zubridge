@@ -7,6 +7,10 @@ export interface TimingConfig {
   WINDOW_WAIT_TIMEOUT: number;
   WINDOW_WAIT_INTERVAL: number;
   THUNK_WAIT_TIME: number;
+  THUNK_START_PAUSE: number;
+  UI_INTERACTION_PAUSE: number;
+  FAST_ACTION_MAX_TIME: number;
+  LONG_THUNK_WAIT_TIME: number;
 }
 
 // Platform-specific timing configurations
@@ -20,6 +24,10 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_WAIT_TIMEOUT: 3000, // Maximum time to wait for window operations
     WINDOW_WAIT_INTERVAL: 150, // How often to check window availability
     THUNK_WAIT_TIME: 5000, // Time to wait for thunk to complete
+    THUNK_START_PAUSE: 1000, // Time to wait for thunk to start
+    UI_INTERACTION_PAUSE: 500,
+    FAST_ACTION_MAX_TIME: 1000, // Maximum time a bypass action should take to complete
+    LONG_THUNK_WAIT_TIME: 15000, // Extended wait time for operations that might take longer
   },
 
   // Timing adjustments for Linux (slower CI env)
@@ -30,7 +38,11 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_CHANGE_PAUSE: 200,
     WINDOW_WAIT_TIMEOUT: 10000,
     WINDOW_WAIT_INTERVAL: 500,
-    THUNK_WAIT_TIME: 5000,
+    THUNK_WAIT_TIME: 15000,
+    THUNK_START_PAUSE: 1000,
+    UI_INTERACTION_PAUSE: 500,
+    FAST_ACTION_MAX_TIME: 2000, // Maximum time a bypass action should take to complete (slower on Linux)
+    LONG_THUNK_WAIT_TIME: 30000, // Extended wait time for operations that might take longer (slower on Linux)
   },
 };
 

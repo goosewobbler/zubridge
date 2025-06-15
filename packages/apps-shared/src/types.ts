@@ -5,8 +5,9 @@ import type { AnyState, Thunk } from '@zubridge/types';
  * All properties are optional to ensure compatibility with dispatch functions
  */
 export interface BaseState extends AnyState {
-  counter?: number;
-  theme?: 'light' | 'dark';
+  counter: number;
+  theme: 'light' | 'dark';
+  filler?: Record<string, number>;
 }
 
 /**

@@ -34,10 +34,57 @@ export async function waitForSpecificValue(
   );
 }
 
+export async function waitForIncrement(
+  originalValue?: number,
+  timeout = TIMING.THUNK_WAIT_TIME,
+  interval = 50,
+): Promise<boolean> {
+  let previousValue = originalValue || (await getCounterValue());
+  return await browser.waitUntil(
+    async () => {
+      const currentValue = await getCounterValue();
+      const incrementedValue = previousValue + 1;
+      previousValue = currentValue;
+      console.log(`Counter value is now ${currentValue}, waiting for ${incrementedValue}`);
+      return currentValue === incrementedValue;
+    },
+    {
+      timeout,
+      timeoutMsg: `Counter value did not increment from ${previousValue} after ${timeout}ms`,
+      interval,
+    },
+  );
+}
+
 export const getCounterValue = async () => {
-  const counterElement = await browser.$('h2');
-  const counterText = await counterElement.getText();
-  return parseInt(counterText.replace('Counter: ', ''));
+  try {
+    // First try to get the counter from the UI
+    const counterElement = await browser.$('h2');
+    const isExisting = await counterElement.isExisting();
+
+    if (isExisting) {
+      const counterText = await counterElement.getText();
+      if (counterText.includes('Counter:')) {
+        return parseFloat(counterText.replace('Counter: ', ''));
+      }
+    }
+
+    // If we can't get it from the UI (e.g., not subscribed), get it directly from the state
+    console.log('Counter not visible in UI, getting from state directly');
+    const state = await browser.execute(() => {
+      // @ts-ignore - zubridge is available in the browser context
+      return window.zubridge?.getState ? window.zubridge.getState() : null;
+    });
+
+    if (state && typeof state.counter === 'number') {
+      return state.counter;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error('Error getting counter value:', error);
+    return 0;
+  }
 };
 
 export const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {

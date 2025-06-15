@@ -1,11 +1,12 @@
 import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
+import path from 'node:path';
 
 import { isDev } from '@zubridge/electron';
-import { createDispatch } from '@zubridge/electron/main';
+import { createDispatch, ReduxBridge } from '@zubridge/electron/main';
 import { debug } from '@zubridge/core';
 import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
-import type { WrapperOrWebContents } from '@zubridge/types';
+import type { WebContentsWrapper, WrapperOrWebContents, ZustandBridge } from '@zubridge/types';
 import 'wdio-electron-service/main';
 
 import { store, initStore } from './store.js';
@@ -99,52 +100,83 @@ app
     await initStore();
     debug('store', 'Store initialized');
 
-    let bridge: any; // Declare bridge outside try/catch
-    let subscribe: any; // Declare subscribe outside try/catch
+    let bridge: ZustandBridge | ReduxBridge; // Declare bridge outside try/catch
+    let subscribe: ZustandBridge['subscribe'] | ReduxBridge['subscribe']; // Declare subscribe outside try/catch
 
-    try {
-      debug('core', 'Attempting to createRequire...');
-      const { createRequire } = await import('node:module');
-      const customRequire = createRequire(import.meta.url);
-      debug('core', 'customRequire created. Attempting to require "@zubridge/middleware"...');
+    debug('core', 'Attempting to createRequire...');
+    const { createRequire } = await import('node:module');
+    const customRequire = createRequire(import.meta.url);
+    debug('core', 'customRequire created. Attempting to require "@zubridge/middleware"...');
 
-      const middlewareModule = customRequire('@zubridge/middleware');
-      debug('core', '"@zubridge/middleware" required successfully. Module keys:', Object.keys(middlewareModule));
+    const middlewareModule = customRequire('@zubridge/middleware');
+    debug('core', '"@zubridge/middleware" required successfully. Module keys:', Object.keys(middlewareModule));
 
-      const { initZubridgeMiddleware } = middlewareModule;
+    // Get the initialization function
+    const { initZubridgeMiddleware } = middlewareModule;
 
-      if (typeof initZubridgeMiddleware !== 'function') {
-        debug('core', 'CRITICAL ERROR - initZubridgeMiddleware is NOT a function after require!');
-        throw new Error('initZubridgeMiddleware is not a function'); // Ensure it throws to be caught
+    if (typeof initZubridgeMiddleware !== 'function') {
+      debug('core', 'CRITICAL ERROR - initZubridgeMiddleware is NOT a function after require!');
+      throw new Error('initZubridgeMiddleware is not a function'); // Ensure it throws to be caught
+    }
+    debug('core', 'initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
+
+    // Initialize file logging for debugging
+    const middlewareSetupFileLogging = middlewareModule.setup_file_logging;
+    if (typeof middlewareSetupFileLogging === 'function') {
+      debug('core', 'Setting up middleware file logging');
+      try {
+        const logPath = path.join(app.getPath('logs'), 'middleware_debug.log');
+        debug('core', `Using log path: ${logPath}`);
+        middlewareSetupFileLogging(logPath);
+        debug('core', 'Middleware file logging initialized successfully');
+      } catch (error) {
+        debug('core:error', 'Failed to initialize middleware file logging:', error);
+        // Continue execution even if logging setup fails
       }
-      debug('core', 'initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
+    } else {
+      debug('core:warning', 'setup_file_logging is not available in middleware module');
+    }
 
-      const middleware = initZubridgeMiddleware({
-        logging: {
+    // Create middleware configuration with detailed telemetry (camelCase required for NAPI-RS)
+    const middlewareConfig = {
+      telemetry: {
+        enabled: true,
+        websocketPort: 9000,
+        consoleOutput: true,
+        measurePerformance: true,
+        recordStateSize: true,
+        recordStateDelta: true,
+        verbose: true,
+        performance: {
           enabled: true,
-          websocketPort: 9000,
-          consoleOutput: true,
+          detail: 'high',
+          includeInLogs: true,
+          recordTimings: true,
+          verboseOutput: true,
         },
-      });
-      debug('core', 'Middleware instance initialized successfully.');
+      },
+    };
 
-      // Assign to the outer scope bridge
-      bridge = await createBridge(store, middleware);
-      debug('core', 'Bridge created successfully.');
+    // Log the configuration for debugging
+    debug('core:middleware', 'Initializing middleware with config:', JSON.stringify(middlewareConfig, null, 2));
+    debug('core:middleware', 'Performance measurement enabled:', middlewareConfig.telemetry.measurePerformance);
+    debug('core:middleware', 'Performance config:', JSON.stringify(middlewareConfig.telemetry.performance, null, 2));
 
-      // Assign to the outer scope subscribe
-      if (bridge && typeof bridge.subscribe === 'function') {
-        subscribe = bridge.subscribe;
-        debug('core', 'Subscribe function retrieved from bridge.');
-      } else {
-        debug('core', 'CRITICAL ERROR - Bridge or bridge.subscribe is not available!');
-        throw new Error('Bridge or bridge.subscribe not available');
-      }
-    } catch (error) {
-      debug('core', 'CRITICAL ERROR during middleware import/initialization or bridge creation:', error);
-      // For CI, re-throw to ensure the process exits with an error if this setup fails
-      // This makes the CI job fail clearly.
-      throw error;
+    // Initialize the middleware using the provided init function
+    const middleware = initZubridgeMiddleware(middlewareConfig);
+    debug('core', 'Middleware instance initialized successfully.');
+
+    // Assign to the outer scope bridge
+    bridge = await createBridge(store, middleware);
+    debug('core', 'Bridge created successfully.');
+
+    // Assign to the outer scope subscribe
+    if (bridge && typeof bridge.subscribe === 'function') {
+      subscribe = bridge.subscribe;
+      debug('core', 'Subscribe function retrieved from bridge.');
+    } else {
+      debug('core', 'CRITICAL ERROR - Bridge or bridge.subscribe is not available!');
+      throw new Error('Bridge or bridge.subscribe not available');
     }
 
     // Create a more general array that accepts different window/view types
@@ -171,7 +203,10 @@ app
     }
 
     debug('example-app:init', `Subscribing ${windowsAndViews.length} windows/views to the bridge`);
-    subscribe(windowsAndViews);
+    if (windowsAndViews.length > 0) {
+      subscribe(windowsAndViews as [WebContentsWrapper, ...WebContentsWrapper[]], ['*']);
+      debug('example-app:init', 'All windows subscribed to full state with "*" parameter');
+    }
 
     // Create the system tray
     debug('example-app:init', 'Creating system tray');
@@ -187,7 +222,7 @@ app
       const hasMainWindow = mainWindow && !mainWindow.isDestroyed();
       const hasDirectWebContentsWindow = directWebContentsWindow && !directWebContentsWindow.isDestroyed();
       const hasBrowserViewWindow = browserViewWindow && !browserViewWindow.isDestroyed();
-      const hasWebContentsViewWindow = webContentsViewWindow && !webContentsViewWindow.isDestroyed();
+      const hasWebContentsViewWindow = webContentsViewWindow && !webContentsViewWindow.isVisible();
 
       debug(
         'example-app:init',
@@ -432,11 +467,19 @@ app
         windowType = 'browserView';
       } else if (window === webContentsViewWindow) {
         windowType = 'webContentsView';
+      } else if (browserViewWindow && browserView && event.sender.id === browserView.webContents.id) {
+        // Special case for BrowserView - it has its own WebContents that's different from the window
+        windowType = 'browserView';
       }
-      // No need to check runtimeWindows array explicitly, default handles it
 
-      debug('example-app:init', `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}`);
-      return { type: windowType, id: windowId };
+      // Get the subscriptions for this window - default to '*' if function not available
+      const subscriptions = bridge.getWindowSubscriptions ? bridge.getWindowSubscriptions(event.sender.id) : '*';
+
+      debug(
+        'example-app:init',
+        `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}, subscriptions=${subscriptions}`,
+      );
+      return { type: windowType, id: windowId, subscriptions };
     });
 
     // IPC Handler for creating runtime windows
@@ -522,6 +565,86 @@ app
         return { success: true, result };
       } catch (error) {
         debug('core', '[MAIN] Error executing main process slow thunk:', error);
+        return { success: false, error: String(error) };
+      }
+    });
+
+    ipcMain.handle(AppIpcChannel.UNSUBSCRIBE, (event, keys: string[]) => {
+      debug(
+        'example-app:init',
+        `[IPC] Unsubscribe request from window ${event.sender.id}, keys: ${keys ? keys.join(', ') : 'all'}`,
+      );
+      const windowOrView = BrowserWindow.fromWebContents(event.sender);
+      if (!windowOrView) {
+        debug('example-app:init', `[IPC] No window found for sender ${event.sender.id}`);
+        return { success: false, error: 'No window found' };
+      }
+
+      try {
+        // Get current subscriptions before unsubscribing
+        const beforeSubs = bridge.getWindowSubscriptions(windowOrView.id);
+        debug(
+          'example-app:init',
+          `[IPC] Current subscriptions before unsubscribe: ${beforeSubs?.join(', ') || 'none'}`,
+        );
+
+        // If no keys provided or empty array, unsubscribe from everything
+        if (!keys || keys.length === 0 || keys.includes('*')) {
+          debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from all state`);
+          bridge.unsubscribe([windowOrView as WebContentsWrapper]);
+        } else {
+          debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from keys: ${keys.join(', ')}`);
+          bridge.unsubscribe([windowOrView as WebContentsWrapper], keys);
+        }
+
+        // Get current subscriptions after unsubscribing
+        const currentSubscriptions = bridge.getWindowSubscriptions(windowOrView.id);
+        debug(
+          'example-app:init',
+          `[IPC] Current subscriptions after unsubscribe: ${currentSubscriptions?.join(', ') || 'none'}`,
+        );
+
+        // Return the current subscriptions - if empty array, return it as is
+        return { success: true, subscriptions: currentSubscriptions || [] };
+      } catch (error) {
+        debug('example-app:init', `[IPC] Error unsubscribing window ${event.sender.id}:`, error);
+        return { success: false, error: String(error) };
+      }
+    });
+
+    ipcMain.handle(AppIpcChannel.SUBSCRIBE, (event, keys: string[]) => {
+      debug('example-app:init', `[IPC] Subscribe request from window ${event.sender.id}, keys: ${keys.join(', ')}`);
+      const windowOrView = BrowserWindow.fromWebContents(event.sender);
+      if (!windowOrView) {
+        debug('example-app:init', `[IPC] No window found for sender ${event.sender.id}`);
+        return { success: false, error: 'No window found' };
+      }
+
+      try {
+        // Get current subscriptions before subscribing
+        const beforeSubs = bridge.getWindowSubscriptions(windowOrView.id);
+        debug('example-app:init', `[IPC] Current subscriptions before subscribe: ${beforeSubs?.join(', ') || 'none'}`);
+
+        if (!keys || keys.length === 0 || keys.includes('*')) {
+          debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to all state`);
+          bridge.subscribe([windowOrView as WebContentsWrapper]);
+        } else {
+          debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to keys: ${keys.join(', ')}`);
+          bridge.subscribe([windowOrView as WebContentsWrapper], keys);
+        }
+
+        // Get current subscriptions after subscribing
+        debug('example-app:init', `[IPC] Getting current subscriptions for window ${event.sender.id}`);
+        const currentSubscriptions = bridge.getWindowSubscriptions(windowOrView.id);
+        debug(
+          'example-app:init',
+          `[IPC] Current subscriptions after subscribe: ${currentSubscriptions?.join(', ') || 'none'}`,
+        );
+
+        // Return the current subscriptions - if empty array, return it as is
+        return { success: true, subscriptions: currentSubscriptions || [] };
+      } catch (error) {
+        debug('example-app:init', `[IPC] Error subscribing window ${event.sender.id}:`, error);
         return { success: false, error: String(error) };
       }
     });

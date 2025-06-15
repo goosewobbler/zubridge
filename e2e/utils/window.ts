@@ -1,6 +1,7 @@
 // Utility functions for E2E window and counter management
 import { browser } from 'wdio-electron-service';
-import { TIMING } from '../constants';
+import { TIMING } from '../constants.js';
+import { subscribeToAllState } from './subscription.js';
 
 // Store windows by index rather than by title since all windows have the same title
 export const windowHandles: string[] = [];
@@ -139,9 +140,29 @@ export const getButtonInCurrentWindow = async (
     | 'create'
     | 'close'
     | 'doubleRendererSlow'
+    | 'doubleRendererGetStateOverride'
     | 'doubleMainSlow'
     | 'doubleRenderer'
-    | 'doubleMain',
+    | 'doubleMain'
+    | 'subscribe'
+    | 'unsubscribe'
+    | 'subscribeAll'
+    | 'unsubscribeAll'
+    | 'toggleTheme'
+    | 'generateLargeState'
+    | 'doubleObject'
+    | 'slowObject'
+    | 'dispatch-invalid-btn'
+    | 'access-nonexistent-btn'
+    | 'verify-unsubscribed-btn'
+    | 'trigger-main-error-btn'
+    | 'thunk-error-btn'
+    | 'clear-errors-btn'
+    | 'update-unsubscribed-btn'
+    | 'bypass-thunk-lock-btn'
+    | 'bypass-access-control-btn'
+    | 'distinctive-pattern-btn'
+    | 'distinctive-pattern-slow-btn',
 ) => {
   let selector = '';
   switch (buttonType) {
@@ -168,6 +189,66 @@ export const getButtonInCurrentWindow = async (
       break;
     case 'doubleMain':
       selector = 'button=Double (Main Thunk)';
+      break;
+    case 'subscribe':
+      selector = 'button=Subscribe';
+      break;
+    case 'unsubscribe':
+      selector = 'button=Unsubscribe';
+      break;
+    case 'subscribeAll':
+      selector = 'button=Subscribe All';
+      break;
+    case 'unsubscribeAll':
+      selector = 'button=Unsubscribe All';
+      break;
+    case 'toggleTheme':
+      selector = 'button*=Switch Theme';
+      break;
+    case 'generateLargeState':
+      selector = 'button=Generate Large State';
+      break;
+    case 'doubleObject':
+      selector = 'button=Double (Object)';
+      break;
+    case 'slowObject':
+      selector = 'button=Double (Slow Object)';
+      break;
+    case 'dispatch-invalid-btn':
+      selector = '[data-testid="dispatch-invalid-btn"]';
+      break;
+    case 'access-nonexistent-btn':
+      selector = '[data-testid="access-nonexistent-btn"]';
+      break;
+    case 'verify-unsubscribed-btn':
+      selector = '[data-testid="verify-unsubscribed-btn"]';
+      break;
+    case 'trigger-main-error-btn':
+      selector = '[data-testid="trigger-main-error-btn"]';
+      break;
+    case 'thunk-error-btn':
+      selector = '[data-testid="thunk-error-btn"]';
+      break;
+    case 'clear-errors-btn':
+      selector = '[data-testid="clear-errors-btn"]';
+      break;
+    case 'update-unsubscribed-btn':
+      selector = '[data-testid="update-unsubscribed-btn"]';
+      break;
+    case 'bypass-thunk-lock-btn':
+      selector = 'button=Bypass Thunk Lock';
+      break;
+    case 'bypass-access-control-btn':
+      selector = 'button=Bypass Access Control';
+      break;
+    case 'distinctive-pattern-btn':
+      selector = '[data-testid="distinctive-pattern-btn"]';
+      break;
+    case 'distinctive-pattern-slow-btn':
+      selector = '[data-testid="distinctive-pattern-slow-btn"]';
+      break;
+    case 'doubleRendererGetStateOverride':
+      selector = '[data-testid="doubleRendererGetStateOverride"]';
       break;
     default:
       // Ensure all cases are handled, or throw an error for an unhandled button type.
@@ -228,6 +309,9 @@ export const setupTestEnvironment = async (coreWindowCount: number): Promise<voi
   if (windowHandles.length > 0) {
     await switchToWindow(0);
   }
+
+  // subscribe to all state
+  await subscribeToAllState();
 };
 
 /**
@@ -302,3 +386,73 @@ async function closeExcessWindows(coreCount: number): Promise<void> {
     console.error(`Error closing windows: ${error}`);
   }
 }
+
+/**
+ * Gets a mapping between window indices (used in the tests) and actual Electron window IDs
+ * This helps debug why window indices and window IDs in headers might not match
+ */
+export const getWindowIndexToIdMapping = async (): Promise<{ [index: number]: number }> => {
+  await refreshWindowHandles();
+
+  const mapping: { [index: number]: number } = {};
+
+  // For each window handle, get the actual window ID
+  for (let i = 0; i < windowHandles.length; i++) {
+    try {
+      await browser.switchToWindow(windowHandles[i]);
+      // Get the window ID from the window info displayed in the header
+      const windowId = await browser.execute(() => {
+        // Find the window ID element in the header
+        const idElement = document.querySelector('.window-type');
+        if (idElement) {
+          // Extract the ID from text like "ID: 123"
+          const idText = idElement.textContent || '';
+          const match = idText.match(/ID:\s*(\d+)/);
+          return match ? parseInt(match[1], 10) : null;
+        }
+        return null;
+      });
+
+      if (windowId !== null) {
+        mapping[i] = windowId;
+      }
+    } catch (error) {
+      console.error(`Error getting window ID for index ${i}:`, error);
+    }
+  }
+
+  console.log('Window index to ID mapping:', mapping);
+  return mapping;
+};
+
+/**
+ * Logs window information to help debug tests
+ * Includes the relationship between window indices and IDs
+ */
+export const logWindowInfo = async (): Promise<void> => {
+  console.log('--- Window Information ---');
+  const mapping = await getWindowIndexToIdMapping();
+
+  // Print each window's information
+  for (let i = 0; i < windowHandles.length; i++) {
+    try {
+      await browser.switchToWindow(windowHandles[i]);
+      const title = await browser.getTitle();
+      const id = mapping[i] || 'unknown';
+      console.log(`Window[${i}]: ID=${id}, Title="${title}"`);
+
+      // Get subscription info if available
+      const subscriptions = await browser.execute(() => {
+        const subscriptionElement = document.querySelector('.header-right span.text-xs');
+        return subscriptionElement ? subscriptionElement.textContent : null;
+      });
+
+      if (subscriptions) {
+        console.log(`  Subscriptions: ${subscriptions}`);
+      }
+    } catch (error) {
+      console.log(`Window[${i}]: Error getting info - ${error}`);
+    }
+  }
+  console.log('-------------------------');
+};

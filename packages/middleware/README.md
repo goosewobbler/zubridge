@@ -1,4 +1,21 @@
-# Zubridge Middleware
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" style="max-height: 415px;">
+</picture>
+
+<h1 align="center" style="display:none;" id="middleware-fallback-title">Zubridge Middleware</h1>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var img = document.querySelector('picture img');
+    img.onerror = function() {
+      this.style.display = 'none';
+      document.getElementById('middleware-fallback-title').style.display = 'block';
+    };
+  });
+</script>
+
+_Advanced debugging, logging and state management tools for Zubridge applications_
 
 The Zubridge Middleware package provides powerful debugging, logging, and state management tools for Zubridge-enabled applications. Implemented in Rust with NAPI-rs bindings for JavaScript, this middleware works seamlessly with both Electron and Tauri applications.
 

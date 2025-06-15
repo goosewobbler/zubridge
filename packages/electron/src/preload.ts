@@ -1,10 +1,9 @@
 import { ipcRenderer, contextBridge } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Handlers, Thunk } from '@zubridge/types';
+import type { Action, AnyState, Handlers, Thunk, DispatchOptions, InternalThunk } from '@zubridge/types';
 import { IpcChannel } from './constants.js';
 import { debug } from '@zubridge/core';
-import { getThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Return type for preload bridge function
@@ -23,114 +22,184 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
   // Get or create the thunk processor
   const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
-    // Get the default processor
-    const defaultProcessor = getThunkProcessor();
+    const actionCompletionTimeoutMs = 30000;
 
-    // Try to get config from the window
-    let actionCompletionTimeoutMs: number | undefined;
-    try {
-      if (typeof window !== 'undefined' && (window as any).__ZUBRIDGE_CONFIG) {
-        actionCompletionTimeoutMs = (window as any).__ZUBRIDGE_CONFIG.actionCompletionTimeoutMs;
-      }
-
-      // Fallback to process.env if available
-      if (actionCompletionTimeoutMs === undefined && process.env.ZUBRIDGE_ACTION_TIMEOUT) {
-        actionCompletionTimeoutMs = parseInt(process.env.ZUBRIDGE_ACTION_TIMEOUT, 10);
-      }
-
-      // If we have a timeout, create a new processor with it
-      if (actionCompletionTimeoutMs !== undefined) {
-        debug('core', `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
-        return new RendererThunkProcessor(actionCompletionTimeoutMs);
-      }
-    } catch (error) {
-      debug('core:error', 'Error configuring thunk processor, using default');
-    }
-
-    // Use the default processor if no custom timeout
-    return defaultProcessor;
+    debug('core', `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
+    return new RendererThunkProcessor(actionCompletionTimeoutMs);
   };
 
   // Get a properly configured thunk processor
   const thunkProcessor = getThunkProcessorWithConfig();
 
   // Map to track pending thunk registration promises
-  const pendingThunkRegistrations = new Map<string, { resolve: () => void; reject: (err: any) => void }>();
+  const pendingThunkRegistrations = new Map<string, { resolve: () => void; reject: (err: unknown) => void }>();
 
-  // Create the handlers object that will be exposed to clients
+  // Helper function to track action dispatch
+  const trackActionDispatch = (action: Action) => {
+    // Send a message to the main process to track this action dispatch
+    try {
+      if (action.__id) {
+        debug('middleware', `Tracking dispatch of action ${action.__id} (${action.type})`);
+        ipcRenderer.send(IpcChannel.TRACK_ACTION_DISPATCH, { action });
+      }
+    } catch (error) {
+      debug('middleware:error', 'Error tracking action dispatch:', error);
+    }
+  };
+
+  // Define the handlers object with subscribe, getState, and dispatch methods
   const handlers: Handlers<S> = {
+    // Subscribe to state changes
     subscribe(callback: (state: S) => void) {
-      // Add the listener
       listeners.add(callback);
+      debug('ipc', 'Subscribing to state changes');
 
-      // Set up the IPC listener for state updates if not already done
+      // Set up subscription IPC channel if not already done
       if (listeners.size === 1) {
-        debug('ipc', 'Setting up IPC state update listener');
-        ipcRenderer.on(IpcChannel.SUBSCRIBE, (_event: IpcRendererEvent, newState: S) => {
-          debug('ipc', 'Received state update');
-          // Notify all listeners of the state update
-          listeners.forEach((listener) => listener(newState));
+        debug('ipc', 'First subscriber - setting up subscription listener');
+        ipcRenderer.on(IpcChannel.SUBSCRIBE, (_event, state) => {
+          debug('ipc', 'Received state update, notifying subscribers');
+          listeners.forEach((fn) => fn(state));
         });
+
+        // Setup initial subscription
+        debug('ipc', 'Sending initial subscription request');
+        ipcRenderer.send(IpcChannel.SUBSCRIBE, { keys: ['*'] });
       }
 
       // Return unsubscribe function
       return () => {
+        debug('ipc', 'Unsubscribing from state changes');
         listeners.delete(callback);
-        if (listeners.size === 0) {
-          debug('ipc', 'Removing IPC state update listener');
-          ipcRenderer.removeAllListeners(IpcChannel.SUBSCRIBE);
-        }
       };
     },
 
-    // Get the current state from main process
-    async getState(): Promise<S> {
-      try {
-        debug('ipc', 'Getting state from main process');
-        const state = await ipcRenderer.invoke(IpcChannel.GET_STATE);
-        return state as S;
-      } catch (error) {
-        debug('core:error', 'Error getting state:', error);
-        throw error;
-      }
+    // Get current state from main process
+    async getState(options?: { bypassAccessControl?: boolean }): Promise<S> {
+      debug('ipc', 'Getting state from main process');
+      return ipcRenderer.invoke(IpcChannel.GET_STATE, options) as Promise<S>;
     },
 
-    dispatch(
+    // Dispatch actions to main process
+    async dispatch(
       action: string | Action | Thunk<S>,
-      payloadOrOptions?: unknown | { keys?: string[]; force?: boolean },
-      options?: { keys?: string[]; force?: boolean },
-    ) {
-      // Handle string actions
-      if (typeof action === 'string') {
-        const payload = options === undefined && typeof payloadOrOptions !== 'object' ? payloadOrOptions : undefined;
-        debug('ipc', `Dispatching string action: ${action}`);
-        const actionObj: Action = {
-          type: action,
-          payload: payload,
-          id: uuidv4(),
-        };
-        debug('ipc', `Created action object with ID: ${actionObj.id}`);
-        // Dispatch directly to main process through the thunk processor
-        return thunkProcessor.dispatchAction(actionObj, payload).then(() => actionObj);
-      }
+      payloadOrOptions?: unknown | DispatchOptions,
+      options?: DispatchOptions,
+    ): Promise<Action> {
+      debug('ipc', 'Dispatch called with:', { action, payloadOrOptions, options });
+
+      // Extract options or default to empty object
+      const dispatchOptions =
+        typeof payloadOrOptions === 'object' && !Array.isArray(payloadOrOptions) && payloadOrOptions !== null
+          ? (payloadOrOptions as DispatchOptions)
+          : options || {};
+
+      // Extract bypass flags
+      const bypassAccessControl = dispatchOptions.bypassAccessControl;
+      const bypassThunkLock = dispatchOptions.bypassThunkLock;
+
+      debug(
+        'ipc',
+        `Dispatch called with bypass flags: accessControl=${bypassAccessControl}, thunkLock=${bypassThunkLock}`,
+      );
+
       // Handle thunks (functions)
       if (typeof action === 'function') {
-        debug('ipc', 'Executing thunk in renderer');
-        // Create a getState function that uses the handlers.getState
-        const getState = async () => {
-          debug('ipc', 'Getting state for thunk via handlers.getState');
-          return handlers.getState();
+        debug(
+          'ipc',
+          `Executing thunk in renderer, bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
+        );
+
+        const thunk = action as InternalThunk<S>;
+
+        // Store the bypass flags in the options
+        const thunkOptions: DispatchOptions = {
+          bypassAccessControl: !!bypassAccessControl,
+          bypassThunkLock: !!bypassThunkLock,
         };
-        // Execute the thunk through the thunk processor
-        return thunkProcessor.executeThunk(action as Thunk<S>, getState);
+
+        debug('ipc', `[PRELOAD] Set bypassThunkLock: ${thunkOptions.bypassThunkLock} for thunk execution`);
+
+        // Execute the thunk directly through the thunkProcessor implementation
+        // This avoids the circular reference where executeThunk calls back to preload
+        return thunkProcessor.executeThunk<S>(thunk, thunkOptions);
       }
 
-      // It's an action object
-      // Ensure action has an ID
-      const actionObj = { ...action, id: action.id || uuidv4() };
-      debug('ipc', `Dispatching action: ${actionObj.type}`);
-      // Dispatch directly to main process
-      return thunkProcessor.dispatchAction(actionObj).then(() => actionObj);
+      // For string or action object types, create a standardized action object
+      const actionObj: Action =
+        typeof action === 'string'
+          ? {
+              type: action,
+              payload:
+                payloadOrOptions !== undefined && typeof payloadOrOptions !== 'object' ? payloadOrOptions : undefined,
+              __id: uuidv4(),
+            }
+          : {
+              ...action,
+              __id: action.__id || uuidv4(),
+            };
+
+      // Add bypass flags if specified
+      if (bypassAccessControl) {
+        actionObj.__bypassAccessControl = true;
+      }
+
+      if (bypassThunkLock) {
+        actionObj.__bypassThunkLock = true;
+      }
+
+      debug(
+        'ipc',
+        `Dispatching action: ${actionObj.type}, bypassAccessControl=${!!actionObj.__bypassAccessControl}, bypassThunkLock=${!!actionObj.__bypassThunkLock}`,
+      );
+
+      // Track action dispatch for performance metrics
+      trackActionDispatch(actionObj);
+
+      // Create a Promise that will resolve when we get an acknowledgment
+      return new Promise<Action>((resolve, reject) => {
+        const actionId = actionObj.__id as string;
+
+        // Set up a one-time listener for the acknowledgment of this specific action
+        const ackListener = (_event: IpcRendererEvent, payload: any) => {
+          // Check if this acknowledgment is for our action
+          if (payload && payload.actionId === actionId) {
+            // Remove the listener since we got our response
+            ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
+
+            if (payload.error) {
+              debug('ipc:error', `Action ${actionId} failed with error: ${payload.error}`);
+              reject(new Error(payload.error));
+            } else {
+              debug('ipc', `Action ${actionId} completed successfully`);
+              resolve(actionObj);
+            }
+          }
+        };
+
+        // Register the acknowledgment listener
+        ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
+
+        // Send the action to the main process
+        debug('ipc', `Sending action ${actionId} to main process`);
+        ipcRenderer.send(IpcChannel.DISPATCH, { action: actionObj });
+
+        // Set up a timeout in case we don't get an acknowledgment
+        const timeoutMs = 30000; // 30 seconds
+        const timeoutId = setTimeout(() => {
+          // Remove the listener if we timed out
+          ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
+          debug('ipc:error', `Timeout waiting for acknowledgment of action ${actionId}`);
+          reject(new Error(`Timeout waiting for acknowledgment of action ${actionId}`));
+        }, timeoutMs);
+
+        // Make sure to clear the timeout when the promise settles
+        const clearTimeoutFn = () => {
+          clearTimeout(timeoutId);
+        };
+        resolve = Object.assign(resolve, { toString: clearTimeoutFn });
+        reject = Object.assign(reject, { toString: clearTimeoutFn });
+      });
     },
   };
 
@@ -138,8 +207,8 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
   if (!initialized) {
     initialized = true;
 
-    // Set up acknowledgment listener
-    debug('ipc', 'Set up IPC acknowledgement listener');
+    // Set up acknowledgment listener for the thunk processor
+    debug('ipc', 'Set up IPC acknowledgement listener for thunk processor');
     ipcRenderer.on(IpcChannel.DISPATCH_ACK, (_event: IpcRendererEvent, payload: any) => {
       const { actionId, thunkState } = payload || {};
 
@@ -180,14 +249,23 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           windowId,
           // Function to send actions to main process
           actionSender: async (action: Action, parentId?: string) => {
-            debug('ipc', `Sending action: ${action.type}, id: ${action.id}${parentId ? `, parent: ${parentId}` : ''}`);
+            debug(
+              'ipc',
+              `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}`,
+            );
             ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
           },
           // Function to register thunks with main process
-          thunkRegistrar: async (thunkId: string, parentId?: string) => {
+          thunkRegistrar: async (
+            thunkId: string,
+            parentId?: string,
+            bypassThunkLock?: boolean,
+            bypassAccessControl?: boolean,
+          ) => {
+            debug('ipc', `[PRELOAD] Registering thunk: thunkId=${thunkId}, bypassThunkLock=${bypassThunkLock}`);
             return new Promise<void>((resolve, reject) => {
               pendingThunkRegistrations.set(thunkId, { resolve, reject });
-              ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId });
+              ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId, bypassThunkLock, bypassAccessControl });
             });
           },
           // Function to notify thunk completion
@@ -199,25 +277,103 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
         debug('ipc', 'Renderer thunk processor initialized');
 
-        // Make the thunk processor available to the renderer via context bridge
-        if (contextBridge) {
-          debug('ipc', 'Exposing thunk processor to renderer via contextBridge');
-          contextBridge.exposeInMainWorld('__zubridge_thunkProcessor', {
-            executeThunk: (thunk: any, getState: () => any, parentId?: string) => {
-              // Call the private implementation directly to avoid infinite recursion
-              return thunkProcessor.executeThunkImplementation(thunk, getState, parentId);
-            },
-            completeAction: (actionId: string, result: any) => thunkProcessor.completeAction(actionId, result),
-            dispatchAction: (action: Action | string, payload?: unknown, parentId?: string) =>
-              thunkProcessor.dispatchAction(action, payload, parentId),
-          });
-        }
+        // Create subscription validation API
+        const subscriptionValidatorAPI = {
+          // Get window subscriptions via IPC
+          getWindowSubscriptions: async (): Promise<string[]> => {
+            try {
+              // Get the window ID
+              const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+              // Then fetch subscriptions for this window ID
+              const result = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_SUBSCRIPTIONS, windowId);
+              return Array.isArray(result) ? result : [];
+            } catch (error) {
+              debug('subscription:error', 'Error getting window subscriptions:', error);
+              return [];
+            }
+          },
+
+          // Check if window is subscribed to a key
+          isSubscribedToKey: async (key: string): Promise<boolean> => {
+            const subscriptions = await subscriptionValidatorAPI.getWindowSubscriptions();
+
+            // Subscribed to everything with '*'
+            if (subscriptions.includes('*')) {
+              return true;
+            }
+
+            // Check direct key match
+            if (subscriptions.includes(key)) {
+              return true;
+            }
+
+            // Check if the key is a parent of any subscription (e.g., 'user' includes 'user.profile')
+            if (key.includes('.')) {
+              const keyParts = key.split('.');
+              for (let i = 1; i <= keyParts.length; i++) {
+                const parentKey = keyParts.slice(0, i).join('.');
+                if (subscriptions.includes(parentKey)) {
+                  return true;
+                }
+              }
+            }
+
+            // Check if any subscription is a parent of this key (e.g., 'user' subscription includes 'user.profile' access)
+            for (const subscription of subscriptions) {
+              if (key.startsWith(`${subscription}.`)) {
+                return true;
+              }
+            }
+
+            return false;
+          },
+
+          // Validate that we have access to a key
+          validateStateAccess: async (key: string): Promise<boolean> => {
+            const isSubscribed = await subscriptionValidatorAPI.isSubscribedToKey(key);
+            if (!isSubscribed) {
+              debug('subscription:error', `State access validation failed: not subscribed to key '${key}'`);
+              return false;
+            }
+            return true;
+          },
+
+          // Check if a state key exists in an object
+          stateKeyExists: (state: any, key: string): boolean => {
+            if (!key || !state) return false;
+
+            // Handle dot notation by traversing the object
+            const parts = key.split('.');
+            let current = state;
+
+            for (const part of parts) {
+              if (current === undefined || current === null || typeof current !== 'object') {
+                return false;
+              }
+
+              if (!(part in current)) {
+                return false;
+              }
+
+              current = current[part];
+            }
+
+            return true;
+          },
+        };
+
+        // Expose the subscription validator API to the window
+        debug('ipc', 'Exposing subscription validator API to window');
+        contextBridge.exposeInMainWorld('__zubridge_subscriptionValidator', subscriptionValidatorAPI);
+
+        // Add a state provider to the thunk processor
+        thunkProcessor.setStateProvider((opts) => handlers.getState(opts));
+
+        debug('ipc', 'Preload script initialized successfully');
       } catch (error) {
-        debug('core:error', 'Error initializing thunk processor:', error);
+        debug('core:error', 'Error initializing preload script:', error);
       }
     })();
-
-    debug('ipc', 'Bridge initialized');
   }
 
   return {

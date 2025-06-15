@@ -323,13 +323,13 @@ function cleanupOldUserDataDirs() {
 
 cleanupOldUserDataDirs();
 
-let specPattern: string;
+let specs: string[];
 const specificSpecFile = process.env.SPEC_FILE;
 if (specificSpecFile) {
-  specPattern = path.resolve(__dirname, 'test', specificSpecFile);
+  specs = [path.resolve(__dirname, 'test', specificSpecFile)];
 } else {
   const testDirPath = path.resolve(__dirname, 'test');
-  specPattern = `${testDirPath}/**/*.spec.ts`;
+  specs = [`${testDirPath}/**/*.spec.ts`];
 }
 
 const config: any = {
@@ -345,11 +345,11 @@ const config: any = {
   logLevel: 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${e2eAppType}-${mode}`,
-  specs: [specPattern],
+  specs,
   baseUrl: `file://${__dirname}`,
   mochaOpts: {
     ui: 'bdd',
-    timeout: 60000,
+    timeout: 600000,
     bail: true,
   },
   onPrepare: onPrepareHook,

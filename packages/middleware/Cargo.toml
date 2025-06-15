@@ -25,6 +25,7 @@ futures-util = "0.3"
 
 # Utilities
 log = "0.4"
+fern = "0.6"
 thiserror = "1.0"
 async-trait = "0.1"
 uuid = { version = "1.4", features = ["v4"] }
@@ -39,4 +40,3 @@ tauri = ["dep:tauri"]
 
 [dev-dependencies]
 tokio-test = "0.4"
-env_logger = "0.10"

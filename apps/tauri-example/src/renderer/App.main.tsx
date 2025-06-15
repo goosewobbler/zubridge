@@ -4,7 +4,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invoke } from '@tauri-apps/api/core';
 import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
 import type { AnyState } from '@zubridge/tauri';
-import { Counter, ThemeToggle, WindowDisplay, WindowActions } from '@zubridge/ui';
+import { CounterActions, ThemeToggle, WindowDisplay, WindowActions, Header } from '@zubridge/ui';
 import './styles/index.css';
 
 interface MainAppProps {
@@ -53,10 +53,6 @@ export function MainApp({ windowLabel }: MainAppProps) {
     dispatch({ type: 'THEME:TOGGLE' });
   };
 
-  const handleResetCounter = () => {
-    dispatch({ type: 'COUNTER:RESET' });
-  };
-
   const handleCreateWindow = () => {
     const uniqueLabel = `runtime_${Date.now()}`;
     const webview = new WebviewWindow(uniqueLabel, {
@@ -100,12 +96,18 @@ export function MainApp({ windowLabel }: MainAppProps) {
       mode="Tauri"
       bridgeStatus={bridgeStatus === 'uninitialized' ? 'initializing' : bridgeStatus}
     >
-      <Counter
-        value={counter}
+      <Header
+        windowId={windowLabel}
+        windowTitle={isMainWindow ? 'Main Window' : 'Secondary Window'}
+        mode="Tauri"
+        bridgeStatus={bridgeStatus === 'uninitialized' ? 'initializing' : bridgeStatus}
+        counterValue={counter}
+      />
+
+      <CounterActions
         onIncrement={handleIncrement}
         onDecrement={handleDecrement}
         onDouble={(method) => (method === 'thunk' ? handleDoubleCounter() : handleDoubleCounter())}
-        onReset={handleResetCounter}
         isLoading={bridgeStatus === 'initializing'}
       />
 

@@ -1,9 +1,12 @@
 import { ipcMain } from 'electron';
 import type { IpcMainEvent, WebContents } from 'electron';
-import type { Action, StateManager, AnyState, BackendBridge, WrapperOrWebContents } from '@zubridge/types';
-import { IpcChannel } from './constants.js';
 import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
+import { debug } from '@zubridge/core';
+import type { Action, StateManager, AnyState, BackendBridge, WrapperOrWebContents } from '@zubridge/types';
+
+import { IpcChannel } from './constants.js';
+import { initActionQueue } from './main/actionQueue.js';
 import { ZustandOptions } from './adapters/zustand.js';
 import { ReduxOptions } from './adapters/redux.js';
 import { getStateManager } from './lib/stateManagerRegistry.js';
@@ -17,25 +20,18 @@ import {
 } from './utils/windows.js';
 import { sanitizeState } from './utils/serialization.js';
 import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
-import { debug } from '@zubridge/core';
 import { actionQueue } from './main/actionQueue.js';
-import { getThunkManager } from './lib/ThunkManager.js';
-import { getThunkLockManager } from './lib/ThunkLockManager.js';
 import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 import { SubscriptionManager } from './lib/SubscriptionManager.js';
 import { Thunk as ThunkClass } from './lib/Thunk.js';
-
-// Get the global ThunkManager
-const thunkManager = getThunkManager();
+import { thunkManager } from './lib/initThunkManager.js';
+import { getPartialState } from './lib/SubscriptionManager.js';
 
 // Instantiate the thunk registration queue
-const thunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
+const thunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
 
-// Extend the Action type to include source window ID for internal use
-interface ActionWithSource extends Action {
-  __sourceWindowId?: number;
-  parentId?: string;
-}
+// TODO: The ProcessResult interface needs to be updated to include a then method or the code needs to be changed to check for completion property instead of using then.
+// TODO: The generic type constraints for the bridge interface need to be reviewed and made consistent.
 
 export interface CoreBridgeOptions {
   // Middleware hooks
@@ -45,13 +41,23 @@ export interface CoreBridgeOptions {
   beforeStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   afterStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   onBridgeDestroy?: () => Promise<void> | void;
+}
 
-  /**
-   * Maximum time (in milliseconds) to wait for an action to complete before auto-resolving
-   * Used for actions that might contain async operations without proper acknowledgment
-   * Default: 10000 (10 seconds)
-   */
-  actionCompletionTimeoutMs?: number;
+// Middleware callback functions
+interface MiddlewareCallbacks {
+  trackActionDispatch?: (action: Action) => Promise<void>;
+  trackActionReceived?: (action: Action) => Promise<void>;
+  trackStateUpdate?: (action: Action, state: string) => Promise<void>;
+  trackActionAcknowledged?: (actionId: string) => Promise<void>;
+}
+
+// Global middleware callbacks
+let middlewareCallbacks: MiddlewareCallbacks = {};
+
+// Export function to set middleware callbacks
+export function setMiddlewareCallbacks(callbacks: MiddlewareCallbacks) {
+  middlewareCallbacks = callbacks;
+  debug('core', 'Middleware callbacks set:', Object.keys(callbacks).join(', '));
 }
 
 /**
@@ -64,8 +70,8 @@ export function createCoreBridge<State extends AnyState>(
 ): BackendBridge<number> {
   debug('core', 'Creating CoreBridge with options:', options);
 
-  // Get the action completion timeout from options or use default
-  const actionCompletionTimeoutMs = options?.actionCompletionTimeoutMs;
+  // Initialize action queue with the state manager
+  initActionQueue(stateManager);
 
   // Tracker for WebContents using WeakMap for automatic garbage collection
   const windowTracker: WebContentsTracker = createWebContentsTracker();
@@ -85,174 +91,22 @@ export function createCoreBridge<State extends AnyState>(
       ...options,
       ...middlewareOptions,
     };
-  }
 
-  // Add a getter method to the window tracker for retrieving WebContents by ID
-  const getWindowById = (id: number): WebContents | undefined => {
-    const allContents = windowTracker.getActiveWebContents();
-    return allContents.find((contents) => contents.id === id);
-  };
-
-  // Register IPC handlers for the bridge
-
-  // Set up the action processor for the bridge action queue
-  actionQueue.setActionProcessor(async (action: Action) => {
-    try {
-      const actionWithSource = action as ActionWithSource;
-
-      // Check if this is a thunk-related action
-      const isThunkChild = 'parentId' in action && action.parentId !== undefined;
-      if (isThunkChild) {
-        debug(
-          'core',
-          `[BRIDGE DEBUG] Processing child action of thunk ${(action as ActionWithSource).parentId}: ${action.type}`,
-        );
-      }
-
-      // Apply middleware before processing action
-      if (processedOptions?.beforeProcessAction) {
-        debug('core', 'Applying beforeProcessAction middleware');
-        try {
-          action = await processedOptions.beforeProcessAction(action, actionWithSource.__sourceWindowId);
-        } catch (middlewareError) {
-          debug('core:error', '[BRIDGE DEBUG] Error in beforeProcessAction middleware:', middlewareError);
-        }
-      }
-
-      const startTime = performance.now();
-
-      // Process the action through our state manager
-      debug('core', 'Processing action through state manager');
-      debug('core', `[BRIDGE DEBUG] Processing action through state manager: ${action.type} (ID: ${action.id})`);
-
-      if (!stateManager) {
-        debug('core', '[BRIDGE DEBUG] State manager is undefined or null');
-        return;
-      }
-
-      if (!stateManager.processAction) {
-        debug('core', '[BRIDGE DEBUG] State manager missing processAction method');
-        return;
-      }
-
-      let isAsyncAction = false;
-      let stateUpdatePromise: Promise<any> | undefined;
-
-      try {
-        debug('core', `[BRIDGE DEBUG] Processing action ${action.type} (ID: ${action.id})`);
-
-        // **CRITICAL: Check thunk locking before processing any action**
-        const thunkLockManager = getThunkLockManager();
-        const canProcess = thunkLockManager.canProcessAction(actionWithSource);
-
-        if (!canProcess) {
-          debug('core', `[BRIDGE DEBUG] Action ${action.type} blocked by thunk lock manager - enqueueing for later`);
-          // Use action queue which will retry when thunk completes
-          actionQueue.enqueueAction(
-            actionWithSource,
-            actionWithSource.__sourceWindowId || 0,
-            actionWithSource.parentId,
-            () => {},
-          );
-          return; // Return immediately, action will be processed later
-        }
-
-        debug('core', '[BRIDGE DEBUG] Action allowed by thunk lock manager, processing immediately');
-        debug('core', 'Processing action through state manager');
-        debug('core', `[BRIDGE DEBUG] Processing action through state manager: ${action.type} (ID: ${action.id})`);
-
-        // Process the action and get the result
-        const result = stateManager.processAction(action);
-
-        // Check if the action processing was asynchronous
-        if (result && !result.isSync) {
-          isAsyncAction = true;
-
-          if (result.completion) {
-            debug(
-              'core',
-              `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) is asynchronous, waiting for completion`,
-            );
-            stateUpdatePromise = result.completion;
-          } else {
-            debug(
-              'core',
-              `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) marked as async but no completion promise provided`,
-            );
-          }
-        } else {
-          debug('core', `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) is synchronous`);
-        }
-
-        // If the action is async and has a completion promise, wait for it
-        if (isAsyncAction && stateUpdatePromise) {
-          try {
-            debug('core', `[BRIDGE DEBUG] Waiting for async action ${action.type} (ID: ${action.id}) to complete...`);
-            await stateUpdatePromise;
-            debug('core', `[BRIDGE DEBUG] Async action ${action.type} (ID: ${action.id}) completed successfully`);
-          } catch (asyncError) {
-            debug('core', `[BRIDGE DEBUG] Error in async action completion: ${asyncError}`);
-          }
-        }
-
-        debug('core', `[BRIDGE DEBUG] Action processing successful: ${action.type}`);
-      } catch (processError) {
-        debug('core:error', '[BRIDGE DEBUG] Error in stateManager.processAction:', processError);
-      }
-
-      const processingTime = performance.now() - startTime;
-      debug('core', `Action processed in ${processingTime.toFixed(2)}ms`);
-      debug(
-        'core',
-        `[BRIDGE DEBUG] Action ${action.type} (ID: ${action.id}) processed in ${processingTime.toFixed(2)}ms`,
-      );
-
-      // Apply middleware after processing action
-      if (processedOptions?.afterProcessAction) {
-        debug('core', 'Applying afterProcessAction middleware');
-        try {
-          await processedOptions.afterProcessAction(action, processingTime, actionWithSource.__sourceWindowId);
-        } catch (middlewareError) {
-          debug('core:error', '[BRIDGE DEBUG] Error in afterProcessAction middleware:', middlewareError);
-        }
-      }
-
-      // Send acknowledgment back to the sender if the action has an ID and source window
-      if (action.id && actionWithSource.__sourceWindowId) {
-        debug('ipc', `Sending acknowledgment for action ${action.id}`);
-        debug('ipc', `[BRIDGE DEBUG] Sending acknowledgment for action ${action.id}`);
-        try {
-          const windowId = actionWithSource.__sourceWindowId;
-          const contents = getWindowById(windowId);
-
-          if (contents && !isDestroyed(contents)) {
-            // Get current thunk state to piggyback with acknowledgment
-            const thunkState = thunkManager.getActiveThunksSummary();
-
-            debug('ipc', `[BRIDGE DEBUG] Including thunk state (version ${thunkState.version}) with acknowledgment`);
-            debug('ipc', `[BRIDGE DEBUG] Active thunks: ${thunkState.thunks.length}`);
-
-            // Send acknowledgment with thunk state
-            safelySendToWindow(contents, IpcChannel.DISPATCH_ACK, {
-              actionId: action.id,
-              thunkState,
-            });
-
-            debug('ipc', `[BRIDGE DEBUG] Acknowledgment sent for action ${action.id} to window ${windowId}`);
-          } else {
-            debug('ipc', `[BRIDGE DEBUG] Cannot send acknowledgment - WebContents destroyed or not found`);
-          }
-        } catch (ackError) {
-          debug('ipc:error', '[BRIDGE DEBUG] Error sending acknowledgment:', ackError);
-        }
-      }
-    } catch (error) {
-      debug('core:error', 'CRITICAL ERROR during middleware import/initialization or bridge creation:', error);
-      // For CI, re-throw to ensure the process exits with an error if this setup fails
-      // This makes the CI job fail clearly.
-      throw error;
+    // Register middleware callbacks if the middleware provides them
+    if (options?.middleware?.trackActionDispatch) {
+      middlewareCallbacks.trackActionDispatch = (action) => options.middleware!.trackActionDispatch!(action);
     }
-  });
+    if (options?.middleware?.trackActionReceived) {
+      middlewareCallbacks.trackActionReceived = (action) => options.middleware!.trackActionReceived!(action);
+    }
+    if (options?.middleware?.trackStateUpdate) {
+      middlewareCallbacks.trackStateUpdate = (action, state) => options.middleware!.trackStateUpdate!(action, state);
+    }
+    if (options?.middleware?.trackActionAcknowledged) {
+      middlewareCallbacks.trackActionAcknowledged = (actionId) =>
+        options.middleware!.trackActionAcknowledged!(actionId);
+    }
+  }
 
   // Handle dispatch events from renderers
   ipcMain.on(IpcChannel.DISPATCH, async (event: IpcMainEvent, data: any) => {
@@ -269,7 +123,7 @@ export function createCoreBridge<State extends AnyState>(
 
       debug('ipc', `[BRIDGE DEBUG] Received action from renderer ${event.sender.id}:`, {
         type: action.type,
-        id: action.id,
+        id: action.__id,
         payload: action.payload,
         parentId: parentId,
       });
@@ -280,7 +134,7 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Add the source window ID to the action for acknowledgment purposes
-      const actionWithSource: ActionWithSource = {
+      const actionWithSource: Action = {
         ...action,
         __sourceWindowId: event.sender.id,
         parentId: parentId,
@@ -288,17 +142,60 @@ export function createCoreBridge<State extends AnyState>(
 
       // If this is a thunk action, ensure the thunk is registered before enqueueing
       if (parentId && !thunkManager.hasThunk(parentId)) {
-        debug('ipc', `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.id}`);
+        debug('ipc', `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.__id}`);
         const thunkObj = new ThunkClass({
           id: parentId,
           sourceWindowId: event.sender.id,
-          type: 'renderer',
+          source: 'renderer',
         });
         await thunkRegistrationQueue.registerThunk(thunkObj);
       }
 
       // Queue the action for processing
-      actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId);
+      actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId, (error) => {
+        // This callback is called when the action is completed (successfully or with error)
+        debug('ipc', `[BRIDGE DEBUG] Action ${action.__id} completed with ${error ? 'error' : 'success'}`);
+
+        if (error) {
+          debug(
+            'ipc:error',
+            `[BRIDGE DEBUG] Error details for action ${action.__id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          debug(
+            'ipc:error',
+            `[BRIDGE DEBUG] Error object type: ${typeof error}, instanceof Error: ${error instanceof Error}`,
+          );
+          debug(
+            'ipc:error',
+            `[BRIDGE DEBUG] Error stack: ${error instanceof Error ? error.stack : 'No stack available'}`,
+          );
+        }
+
+        try {
+          if (!isDestroyed(event.sender)) {
+            // Get current thunk state to piggyback with acknowledgment
+            const thunkState = thunkManager.getActiveThunksSummary();
+
+            // Send acknowledgment with thunk state and error information
+            safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
+              actionId: action.__id,
+              thunkState,
+              // Include error information if there was an error
+              error: error ? (error instanceof Error ? error.message : String(error)) : null,
+            });
+
+            debug('ipc', `[BRIDGE DEBUG] Acknowledgment sent for action ${action.__id} to window ${event.sender.id}`);
+
+            // Track action acknowledged with middleware
+            if (middlewareCallbacks.trackActionAcknowledged) {
+              // Use void to indicate we're intentionally not awaiting
+              void middlewareCallbacks.trackActionAcknowledged(action.__id);
+            }
+          }
+        } catch (ackError) {
+          debug('ipc:error', '[BRIDGE DEBUG] Error sending acknowledgment:', ackError);
+        }
+      });
     } catch (error) {
       debug('core:error', 'Error handling dispatch:', error);
       debug('core:error', '[BRIDGE DEBUG] Error handling dispatch:', error);
@@ -306,15 +203,16 @@ export function createCoreBridge<State extends AnyState>(
       // Even on error, we should acknowledge the action was processed
       try {
         const { action } = data || {};
-        if (action?.id) {
-          debug('ipc', `Sending acknowledgment for action ${action.id} despite error`);
-          debug('ipc', `[BRIDGE DEBUG] Sending acknowledgment for action ${action.id} despite error`);
+        if (action?.__id) {
+          debug('ipc', `Sending acknowledgment for action ${action.__id} despite error`);
+          debug('ipc', `[BRIDGE DEBUG] Sending acknowledgment for action ${action.__id} despite error`);
           if (!isDestroyed(event.sender)) {
             safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
-              actionId: action.id,
+              actionId: action.__id,
               thunkState: { version: 0, thunks: [] },
+              error: error instanceof Error ? error.message : String(error),
             });
-            debug('ipc', `[BRIDGE DEBUG] Error acknowledgment sent for action ${action.id}`);
+            debug('ipc', `[BRIDGE DEBUG] Error acknowledgment sent for action ${action.__id}`);
           }
         }
       } catch (ackError) {
@@ -323,8 +221,38 @@ export function createCoreBridge<State extends AnyState>(
     }
   });
 
+  // Handle track_action_dispatch events from renderers
+  ipcMain.on(IpcChannel.TRACK_ACTION_DISPATCH, async (event: IpcMainEvent, data: any) => {
+    try {
+      const { action } = data || {};
+      if (!action || !action.type) {
+        debug('middleware:error', 'Invalid action tracking data received');
+        return;
+      }
+
+      debug('middleware', `Received action dispatch tracking for ${action.type} (ID: ${action.__id})`);
+
+      // Add source window ID to the action
+      const actionWithSource = {
+        ...action,
+        __sourceWindowId: event.sender.id,
+      };
+
+      // Call middleware tracking function if available
+      if (middlewareCallbacks.trackActionDispatch) {
+        // Ensure payload is a string for Rust middleware
+        if (actionWithSource.payload !== undefined && typeof actionWithSource.payload !== 'string') {
+          actionWithSource.payload = JSON.stringify(actionWithSource.payload);
+        }
+        await middlewareCallbacks.trackActionDispatch(actionWithSource);
+      }
+    } catch (error) {
+      debug('middleware:error', 'Error handling action dispatch tracking:', error);
+    }
+  });
+
   // Handle getState requests from renderers
-  ipcMain.handle(IpcChannel.GET_STATE, (event) => {
+  ipcMain.handle(IpcChannel.GET_STATE, (event, options) => {
     try {
       debug('ipc', 'Handling getState request');
       debug('ipc', `[BRIDGE DEBUG] Handling getState request from renderer ${event.sender.id}`);
@@ -333,7 +261,6 @@ export function createCoreBridge<State extends AnyState>(
         debug('core', '[BRIDGE DEBUG] State manager is undefined or null in getState handler');
         return {};
       }
-
       if (!stateManager.getState) {
         debug('core', '[BRIDGE DEBUG] State manager missing getState method');
         return {};
@@ -345,12 +272,24 @@ export function createCoreBridge<State extends AnyState>(
         `[BRIDGE DEBUG] Raw state retrieved:`,
         typeof rawState === 'object' ? Object.keys(rawState) : typeof rawState,
       );
-
       const state = sanitizeState(rawState);
-      debug('ipc', 'Returning sanitized state');
-      debug('ipc', `[BRIDGE DEBUG] Returning sanitized state to renderer ${event.sender.id}`);
 
-      return state;
+      // Get window ID and subscriptions
+      const windowId = event.sender.id;
+      const subManager = subscriptionManagers.get(windowId);
+      const subscriptions = subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
+
+      // Check for bypassAccessControl in options or '*' subscription
+      if ((options && options.bypassAccessControl) || subscriptions.includes('*')) {
+        debug('ipc', `[BRIDGE DEBUG] Returning full state to renderer ${windowId}`);
+        return state;
+      }
+
+      // Otherwise, filter state by subscriptions
+      debug('ipc', `[BRIDGE DEBUG] Filtering state for renderer ${windowId} with subscriptions: ${subscriptions}`);
+      const filteredState = getPartialState(state, subscriptions);
+      debug('ipc', `[BRIDGE DEBUG] Returning filtered state to renderer ${windowId}: ${JSON.stringify(filteredState)}`);
+      return filteredState;
     } catch (error) {
       debug('core:error', 'Error handling getState:', error);
       debug('core:error', '[BRIDGE DEBUG] Error handling getState:', error);
@@ -365,7 +304,7 @@ export function createCoreBridge<State extends AnyState>(
     debug('core', `[BRIDGE DEBUG] Data received:`, data);
 
     try {
-      const { thunkId, parentId } = data;
+      const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = data;
       const sourceWindowId = event.sender.id;
 
       debug(
@@ -377,8 +316,10 @@ export function createCoreBridge<State extends AnyState>(
       const thunkObj = new ThunkClass({
         id: thunkId,
         sourceWindowId: sourceWindowId,
-        type: 'renderer',
+        source: 'renderer',
         parentId: parentId,
+        bypassThunkLock,
+        bypassAccessControl,
       });
       await thunkRegistrationQueue.registerThunk(thunkObj);
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} registration queued successfully`);
@@ -409,10 +350,9 @@ export function createCoreBridge<State extends AnyState>(
         return;
       }
 
-      // Mark the thunk as completed in the tracker
       const wasActive = thunkManager.isThunkActive(thunkId);
-      thunkManager.markThunkCompleted(thunkId);
-      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked as completed (was active: ${wasActive})`);
+      thunkManager.completeThunk(thunkId);
+      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked for completion (was active: ${wasActive})`);
 
       // The ThunkTracker will notify ActionQueueManager via state change listener
       debug('core', '[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener');
@@ -453,6 +393,17 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // --- Selective Subscription API (windows first, keys optional) ---
+  /**
+   * Subscribe windows to state updates for specific keys.
+   *
+   * @param windows - The window(s) to subscribe
+   * @param keys - Optional array of state keys to subscribe to:
+   *   - undefined: Subscribe to all state (default)
+   *   - []: Subscribe to no state
+   *   - ['*']: Subscribe to all state
+   *   - ['key1', 'key2']: Subscribe to specific keys
+   * @returns An object with an unsubscribe function
+   */
   function selectiveSubscribe(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
     keys?: string[],
@@ -479,11 +430,15 @@ export function createCoreBridge<State extends AnyState>(
         destroyListenerSet.add(webContents.id);
       }
       // Register a subscription for the keys with an actual callback that sends state updates
-      const unsubscribe = subManager.subscribe(keys, (state) => {
-        debug('core', `Sending state update to window ${webContents.id}`);
-        const sanitizedState = sanitizeState(state);
-        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, sanitizedState);
-      });
+      const unsubscribe = subManager.subscribe(
+        keys,
+        (state) => {
+          debug('core', `Sending state update to window ${webContents.id}`);
+          const sanitizedState = sanitizeState(state);
+          safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, sanitizedState);
+        },
+        webContents.id,
+      );
       unsubs.push(unsubscribe);
       if (tracked) {
         const initialState = sanitizeState(stateManager.getState());
@@ -500,32 +455,32 @@ export function createCoreBridge<State extends AnyState>(
     };
   }
 
-  function selectiveUnsubscribe(windows: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
-    const wrappers = Array.isArray(windows) ? windows : [windows];
-    for (const wrapper of wrappers) {
-      const webContents = getWebContents(wrapper);
-      if (!webContents) continue;
-      const subManager = subscriptionManagers.get(webContents.id);
-      if (subManager) {
-        subManager.unsubscribe(keys, () => {});
-        if (subManager.getCurrentSubscriptionKeys().length === 0) {
-          subscriptionManagers.delete(webContents.id);
-        }
-      }
-      windowTracker.untrack(webContents);
-    }
-  }
-
   // Unified subscribe API (windows first, keys optional)
+  /**
+   * Subscribe windows to state updates.
+   *
+   * @param windows - The window(s) to subscribe
+   * @param keys - Optional array of state keys to subscribe to:
+   *   - undefined: Subscribe to all state (default)
+   *   - []: Subscribe to no state
+   *   - ['*']: Subscribe to all state
+   *   - ['key1', 'key2']: Subscribe to specific keys
+   * @returns An object with an unsubscribe function
+   */
   function subscribe(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
     keys?: string[],
   ): { unsubscribe: () => void } {
+    debug('core', `[subscribe] Called with windows and keys: ${keys ? JSON.stringify(keys) : 'undefined'}`);
+
     // If windows is not provided, subscribe all windows to full state
     if (!windows) {
       const allWindows = windowTracker.getActiveWebContents();
       return selectiveSubscribe(allWindows);
     }
+
+    // Pass keys as undefined (not []) when not specified to subscribe to all state
+    // This ensures subscribe(windows) subscribes to all state
     return selectiveSubscribe(windows, keys);
   }
 
@@ -537,14 +492,15 @@ export function createCoreBridge<State extends AnyState>(
       windowTracker.cleanup();
       return;
     }
+
     const wrappers = Array.isArray(windows) ? windows : [windows];
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents) continue;
       const subManager = subscriptionManagers.get(webContents.id);
       if (subManager) {
-        subManager.unsubscribe(keys, () => {});
-        if (subManager.getCurrentSubscriptionKeys().length === 0) {
+        subManager.unsubscribe(keys, () => {}, webContents.id);
+        if (subManager.getCurrentSubscriptionKeys(webContents.id).length === 0) {
           subscriptionManagers.delete(webContents.id);
         }
       }
@@ -559,9 +515,28 @@ export function createCoreBridge<State extends AnyState>(
     return activeIds;
   };
 
+  const getWindowSubscriptions = (windowId: number): string[] => {
+    const subManager = subscriptionManagers.get(windowId);
+    return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
+  };
+
   // Handle registering and accessing WebContents IDs
   ipcMain.handle(IpcChannel.GET_WINDOW_ID, (event) => {
     return event.sender.id;
+  });
+
+  // Handle requests for window subscriptions
+  ipcMain.handle(IpcChannel.GET_WINDOW_SUBSCRIPTIONS, (event, windowId) => {
+    try {
+      // If no explicit windowId is provided, use the sender's ID
+      const targetWindowId = windowId || event.sender.id;
+      const subscriptions = getWindowSubscriptions(targetWindowId);
+      debug('subscription', `[GET_WINDOW_SUBSCRIPTIONS] Window ${targetWindowId} subscriptions: ${subscriptions}`);
+      return subscriptions;
+    } catch (error) {
+      debug('subscription:error', `[GET_WINDOW_SUBSCRIPTIONS] Error getting subscriptions:`, error);
+      return [];
+    }
   });
 
   // Handle requests for current global thunk state
@@ -612,6 +587,7 @@ export function createCoreBridge<State extends AnyState>(
     unsubscribe,
     getSubscribedWindows,
     destroy,
+    getWindowSubscriptions,
   };
 }
 

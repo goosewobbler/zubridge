@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
 import type { Action, AnyState, Thunk, Dispatch, StateManager, DispatchOptions } from '@zubridge/types';
-import { getThunkManager } from '../lib/ThunkManager.js';
+import { thunkManager } from '../lib/initThunkManager.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 import { actionQueue } from './actionQueue.js';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
@@ -32,7 +32,7 @@ export class MainThunkProcessor {
   private sentFirstActionForThunk = new Set<string>();
 
   // Instantiate the thunk registration queue for main thunks
-  private mainThunkRegistrationQueue = new ThunkRegistrationQueue(getThunkManager());
+  private mainThunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
 
   constructor(actionCompletionTimeoutMs?: number) {
     this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
@@ -45,6 +45,7 @@ export class MainThunkProcessor {
    */
   public initialize(options: { stateManager: StateManager<any> }): void {
     this.stateManager = options.stateManager;
+    thunkManager.setStateManager(this.stateManager);
     debug('core', '[MAIN_THUNK] Initialized with state manager');
   }
 
@@ -81,23 +82,24 @@ export class MainThunkProcessor {
 
     // Register the thunk using the mainThunkRegistrationQueue (returns a promise that resolves when lock is acquired and registered)
     const MAIN_PROCESS_WINDOW_ID = 0;
-    const thunkManager = getThunkManager();
-    const currentActiveRootThunk = thunkManager.getActiveRootThunkId();
+    const currentActiveRootThunk = thunkManager.getRootThunkId();
     const activeThunksSummary = thunkManager.getActiveThunksSummary();
 
     const thunkObj = new ThunkClass({
       sourceWindowId: MAIN_PROCESS_WINDOW_ID,
-      type: 'main',
+      source: 'main',
       parentId,
       keys: options?.keys,
-      force: options?.force,
+      bypassThunkLock: options?.bypassThunkLock,
+      bypassAccessControl: options?.bypassAccessControl,
     });
 
     debug('core', `[MAIN_THUNK] Executing thunk with ID: ${thunkObj.id}${parentId ? ` (parent: ${parentId})` : ''}`);
     debug('core', `[MAIN_THUNK] Current active root thunk: ${currentActiveRootThunk || 'none'}`);
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
     debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
-    await this.mainThunkRegistrationQueue.registerThunk(
+
+    return this.mainThunkRegistrationQueue.registerThunk(
       thunkObj,
       async () => {
         try {
@@ -126,18 +128,15 @@ export class MainThunkProcessor {
           const result = await thunk(getState, dispatch);
           debug('core', '[MAIN_THUNK] Thunk executed successfully, result:', result);
 
-          // Mark thunk as completed
-          thunkManager.markThunkCompleted(thunkObj.id);
           return result;
         } catch (error) {
           debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
-          thunkManager.markThunkFailed(thunkObj.id);
+          thunkManager.markThunkFailed(thunkObj.id, error instanceof Error ? error : new Error(String(error)));
           throw error;
         }
       },
       undefined, // rendererCallback
     );
-    return undefined;
   }
 
   /**
@@ -150,14 +149,14 @@ export class MainThunkProcessor {
 
     // Convert string actions to object form
     const actionObj: Action =
-      typeof action === 'string' ? { type: action, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
+      typeof action === 'string' ? { type: action, __id: uuidv4() } : { ...action, __id: action.__id || uuidv4() };
 
     // Mark the action as originating from the main process
     actionObj.__isFromMainProcess = true;
 
     // Attach keys/force to the action for downstream processing
     if (options?.keys) actionObj.__keys = options.keys;
-    if (options?.force) actionObj.__force = options.force;
+    if (options?.bypassThunkLock) actionObj.__bypassThunkLock = options.bypassThunkLock;
 
     // Process the action
     debug('core', `[MAIN_THUNK] Processing standalone action: ${actionObj.type}`);
@@ -182,11 +181,13 @@ export class MainThunkProcessor {
 
     // Convert string actions to object form
     const actionObj: Action =
-      typeof action === 'string' ? { type: action, payload, id: uuidv4() } : { ...action, id: action.id || uuidv4() };
+      typeof action === 'string'
+        ? { type: action, payload, __id: uuidv4() }
+        : { ...action, __id: action.__id || uuidv4() };
 
     // Ensure action has an ID
-    if (!actionObj.id) {
-      actionObj.id = uuidv4();
+    if (!actionObj.__id) {
+      actionObj.__id = uuidv4();
     }
 
     // Add metadata for thunks
@@ -195,20 +196,21 @@ export class MainThunkProcessor {
 
       // Mark the first action in a thunk with __startsThunk
       if (isFirstActionForThunk) {
-        debug('core', `[MAIN_THUNK] Marking action ${actionObj.id} as starting thunk ${parentId}`);
+        debug('core', `[MAIN_THUNK] Marking action ${actionObj.__id} as starting thunk ${parentId}`);
         actionObj.__startsThunk = true;
         this.sentFirstActionForThunk.add(parentId);
       }
 
       // Ensure thunk is registered before enqueueing the action
-      if (!getThunkManager().hasThunk(parentId)) {
-        debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.id}`);
+      if (!thunkManager.hasThunk(parentId)) {
+        debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.__id}`);
         const thunkObj = new ThunkClass({
           id: parentId,
           sourceWindowId: 0,
-          type: 'main',
+          source: 'main',
           keys: options?.keys,
-          force: options?.force,
+          bypassThunkLock: options?.bypassThunkLock,
+          bypassAccessControl: options?.bypassAccessControl,
         });
         await this.mainThunkRegistrationQueue.registerThunk(thunkObj);
       }
@@ -216,35 +218,39 @@ export class MainThunkProcessor {
 
     // Attach keys/force to the action for downstream processing
     if (options?.keys) actionObj.__keys = options.keys;
-    if (options?.force) actionObj.__force = options.force;
+    if (options?.bypassThunkLock) actionObj.__bypassThunkLock = options.bypassThunkLock;
+    if (options?.bypassAccessControl) actionObj.__bypassAccessControl = options.bypassAccessControl;
 
     // Mark as from main process (use a special source window ID for main process)
     const MAIN_PROCESS_WINDOW_ID = 0;
 
     // Enqueue the action through the action queue to ensure proper ordering
-    debug('core', `[MAIN_THUNK] Enqueueing action: ${actionObj.type} (${actionObj.id}) through action queue`);
+    debug('core', `[MAIN_THUNK] Enqueueing action: ${actionObj.type} (${actionObj.__id}) through action queue`);
 
     return new Promise((resolve, reject) => {
       // Create a promise for this action
-      this.pendingActionPromises.set(actionObj.id!, {
+      this.pendingActionPromises.set(actionObj.__id!, {
         resolve,
-        promise: Promise.resolve(actionObj.id),
+        promise: Promise.resolve(actionObj.__id),
       });
 
       // Set up a timeout for the action
       const timeout = setTimeout(() => {
-        debug('core:error', `[MAIN_THUNK] Action ${actionObj.id} timed out after ${this.actionCompletionTimeoutMs}ms`);
-        this.pendingActionPromises.delete(actionObj.id!);
-        reject(new Error(`Action ${actionObj.id} timed out`));
+        debug(
+          'core:error',
+          `[MAIN_THUNK] Action ${actionObj.__id} timed out after ${this.actionCompletionTimeoutMs}ms`,
+        );
+        this.pendingActionPromises.delete(actionObj.__id!);
+        reject(new Error(`Action ${actionObj.__id} timed out`));
       }, this.actionCompletionTimeoutMs);
 
       // Create the completion callback that will be called when the action actually finishes
       const onComplete = () => {
         clearTimeout(timeout);
-        debug('core', `[MAIN_THUNK] Action ${actionObj.id} completed through action queue`);
+        debug('core', `[MAIN_THUNK] Action ${actionObj.__id} completed through action queue`);
 
         // Complete the action (this will resolve our promise)
-        this.completeAction(actionObj.id!);
+        this.completeAction(actionObj.__id!);
       };
 
       // Enqueue through action queue with proper source window ID and completion callback

@@ -47,14 +47,17 @@
     "clean": "shx rm -rf .turbo node_modules dist"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.1.7",
-    "@tailwindcss/postcss": "^4.1.4",
-    "@types/react": "^19.1.2",
+    "@tailwindcss/cli": "^4.1.10",
+    "@tailwindcss/postcss": "^4.1.10",
+    "@tauri-apps/api": "^2.5.0",
+    "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.2",
+    "@zubridge/electron": "workspace:*",
+    "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.4.17",
-    "postcss": "^8.5.3",
+    "postcss": "^8.5.5",
     "react": "^19.1.0",
-    "tailwindcss": "^4.1.7",
+    "tailwindcss": "^4.1.10",
     "tsup": "^8.4.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.3"
@@ -64,6 +67,7 @@
     "clsx": "^2.1.1"
   },
   "peerDependencies": {
+    "@tauri-apps/api": "^2.0.0",
     "@zubridge/electron": "workspace:*",
     "@zubridge/tauri": "workspace:*",
     "react": "^19.1.0"

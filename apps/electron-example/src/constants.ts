@@ -23,4 +23,8 @@ export enum AppIpcChannel {
   EXECUTE_MAIN_THUNK = '__electron_example_execute_main_thunk',
   /** Channel for executing a main process slow thunk */
   EXECUTE_MAIN_THUNK_SLOW = '__electron_example_execute_main_thunk_slow',
+  /** Channel for subscribing to state changes */
+  SUBSCRIBE = '__electron_example_subscribe',
+  /** Channel for unsubscribing from state changes */
+  UNSUBSCRIBE = '__electron_example_unsubscribe',
 }

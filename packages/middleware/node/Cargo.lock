@@ -208,6 +208,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fern"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9f0c14694cbd524c8720dd69b0e3179344f04ebb5f90f2e4a440c6ea3b2f1ee"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1469,6 +1478,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "fern",
  "futures-util",
  "log",
  "rmp-serde",
@@ -1484,6 +1494,9 @@ dependencies = [
 name = "zubridge-middleware-node"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "fern",
+ "log",
  "napi",
  "napi-build",
  "napi-derive",

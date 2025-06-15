@@ -36,6 +36,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('[Preload] Invoking create-runtime-window');
     return ipcRenderer.invoke(AppIpcChannel.CREATE_RUNTIME_WINDOW);
   },
+  subscribe: (keys: string[]) => {
+    console.log('[Preload] Invoking subscribe');
+    return ipcRenderer.invoke(AppIpcChannel.SUBSCRIBE, keys);
+  },
+  unsubscribe: (keys: string[]) => {
+    console.log('[Preload] Invoking unsubscribe');
+    return ipcRenderer.invoke(AppIpcChannel.UNSUBSCRIBE, keys);
+  },
+});
+
+// Expose the process API with a different name to avoid conflicts
+contextBridge.exposeInMainWorld('processAPI', {
+  platform: process.platform,
+  env: (name: string) => process.env[name],
 });
 
 // Expose counter API

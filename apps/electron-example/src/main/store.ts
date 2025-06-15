@@ -4,6 +4,7 @@ import { getZubridgeMode } from '../utils/mode.js';
 import type { State } from '../types.js';
 import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
 import { debug } from '@zubridge/core';
+import { initialState } from '@zubridge/apps-shared';
 
 // Singleton store instance
 let store: UnifiedStore<State>;
@@ -51,14 +52,7 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
 
     default:
       debug('store', 'Unknown mode, falling back to basic store');
-      return createZustandAdapter(
-        create<State>()(() => {
-          return {
-            counter: 0,
-            theme: 'dark' as const, // Use const assertion to make TypeScript recognize this as a string literal
-          };
-        }),
-      );
+      return createZustandAdapter(create<State>()(() => initialState));
   }
 }
 
@@ -68,5 +62,6 @@ export { store };
 // Initialize the store
 export const initStore = async () => {
   store = await createModeStore();
+  store.setState(initialState);
   return store;
 };

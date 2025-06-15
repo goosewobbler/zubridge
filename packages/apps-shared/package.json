@@ -12,15 +12,17 @@
     "clean": "pnpm run clean:output && pnpm dlx shx rm -rf dist node_modules",
     "clean:output": "pnpm dlx shx rm -rf ./dist",
     "clean:cache": "pnpm dlx shx rm -rf .turbo",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zubridge/types": "workspace:*"
+    "@zubridge/core": "workspace:*"
   },
   "peerDependencies": {
     "zustand": "^4.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.4"
+    "@zubridge/types": "workspace:*",
+    "typescript": "^5.8.3"
   }
 }

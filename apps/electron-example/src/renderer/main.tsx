@@ -6,7 +6,16 @@ import './styles/index.css';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
 // Import shared utilities
-import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
+import {
+  createDoubleCounterThunk,
+  createDoubleCounterSlowThunk,
+  createDistinctiveCounterThunk,
+  createDistinctiveCounterSlowThunk,
+  createDoubleCounterWithGetStateOverrideThunk,
+  type ThunkContext,
+} from '@zubridge/apps-shared';
+// Import debug utility
+import { debug } from '@zubridge/core';
 
 // Create the Electron app component
 const ElectronApp = withElectron();
@@ -20,6 +29,7 @@ function AppWrapper() {
   const [windowType, setWindowType] = useState<WindowType | null>(null);
   const [windowId, setWindowId] = useState<number | null>(null);
   const [modeName, setModeName] = useState('unknown');
+  const [currentSubscriptions, setCurrentSubscriptions] = useState<string[] | '*'>('*');
 
   // Fetch window info on mount
   useEffect(() => {
@@ -33,6 +43,7 @@ function AppWrapper() {
           if (info) {
             setWindowType(info.type as WindowType);
             setWindowId(info.id);
+            setCurrentSubscriptions(info.subscriptions);
           }
           if (modeInfo) {
             setModeName((modeInfo.modeName || modeInfo.name || 'unknown').toLowerCase());
@@ -106,6 +117,42 @@ function AppWrapper() {
     },
     doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
     doubleCounterSlow: (counter: number) => createDoubleCounterSlowThunk(counter, thunkContext),
+    distinctiveCounter: (counter: number) => createDistinctiveCounterThunk(counter, thunkContext),
+    distinctiveCounterSlow: (counter: number) => createDistinctiveCounterSlowThunk(counter, thunkContext),
+    doubleCounterWithGetStateOverride: (counter: number) =>
+      createDoubleCounterWithGetStateOverrideThunk(counter, thunkContext),
+  };
+
+  // Create subscription handlers that update the state
+  const handleSubscribe = async (keys: string[]) => {
+    debug('ui', `[AppWrapper] Attempting to subscribe to keys: ${keys.join(', ')}`);
+    if (window.electronAPI) {
+      try {
+        // Subscribe directly to the requested keys without first unsubscribing
+        const result = await window.electronAPI.subscribe(keys);
+        debug('ui', '[AppWrapper] Subscribe API call successful:', result);
+        if (result.success && result.subscriptions) {
+          setCurrentSubscriptions(result.subscriptions);
+        }
+      } catch (error) {
+        debug('ui:error', '[AppWrapper] Error in subscribe:', error);
+      }
+    }
+  };
+
+  const handleUnsubscribe = async (keys: string[]) => {
+    debug('ui', `[AppWrapper] Attempting to unsubscribe from keys: ${keys.join(', ')}`);
+    if (window.electronAPI) {
+      try {
+        const result = await window.electronAPI.unsubscribe(keys);
+        debug('ui', '[AppWrapper] Unsubscribe API call successful:', result);
+        if (result.success && result.subscriptions) {
+          setCurrentSubscriptions(result.subscriptions);
+        }
+      } catch (error) {
+        debug('ui:error', '[AppWrapper] Error in unsubscribe:', error);
+      }
+    }
   };
 
   // Render the ElectronApp component with the window info
@@ -119,6 +166,9 @@ function AppWrapper() {
       windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
       appName={`Zubridge - ${modeTitle} Mode`}
       actionHandlers={actionHandlers}
+      currentSubscriptions={currentSubscriptions}
+      onSubscribe={handleSubscribe}
+      onUnsubscribe={handleUnsubscribe}
     />
   );
 }

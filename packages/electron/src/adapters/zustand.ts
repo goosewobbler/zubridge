@@ -1,7 +1,8 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/types';
-import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
 import { debug } from '@zubridge/core';
+import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
+import type { ZubridgeMiddleware } from '../middleware.js';
 
 /**
  * Helper to check if a value is a Promise
@@ -30,6 +31,7 @@ function toVoidPromise<T>(promise: Promise<T>): Promise<void> {
 export interface ZustandOptions<S extends AnyState> {
   handlers?: Record<string, Handler>;
   reducer?: RootReducer<S>;
+  middleware?: ZubridgeMiddleware;
 }
 
 /**
@@ -172,7 +174,15 @@ export function createZustandAdapter<S extends AnyState>(
         }
       } catch (error) {
         debug('adapters:error', 'Error processing action:', error);
-        return { isSync: true }; // Default to sync if error occurred
+        debug('adapters:error', `Error type: ${typeof error}, instanceof Error: ${error instanceof Error}`);
+        debug('adapters:error', `Error message: ${error instanceof Error ? error.message : String(error)}`);
+        debug('adapters:error', `Stack trace: ${error instanceof Error ? error.stack : 'No stack available'}`);
+
+        // Return the error so it can be propagated to the renderer
+        return {
+          isSync: true,
+          error: error,
+        }; // Include the error with the result
       }
     },
   };

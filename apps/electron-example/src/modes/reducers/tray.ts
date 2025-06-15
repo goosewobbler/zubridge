@@ -16,7 +16,7 @@ export class ReducersSystemTray extends BaseSystemTray {
     this.window = window;
 
     // Create dispatch directly from the store with reducer option
-    this.dispatch = createDispatch(store, { reducer: rootReducer });
+    this.dispatch = createDispatch<State>(store, { reducer: rootReducer });
 
     // Initialize immediately with current state
     this.update(store.getState());

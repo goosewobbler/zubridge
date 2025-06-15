@@ -1,40 +1,69 @@
-import { createAction } from '@reduxjs/toolkit';
-import type { UnknownAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 // Define the initial state as a direct number value (matching other modes)
 const initialState = 0;
 
-// Define action creators with explicit action types
-export const increment = createAction('COUNTER:INCREMENT');
-export const decrement = createAction('COUNTER:DECREMENT');
-export const setValue = createAction('COUNTER:SET');
-export const setValueSlow = createAction('COUNTER:SET:SLOW');
-export const reset = createAction('COUNTER:RESET');
-
-// Traditional reducer function that handles our specific action types directly
-export const counterReducer = (state = initialState, action: UnknownAction) => {
-  switch (action.type) {
-    case 'COUNTER:INCREMENT':
-      console.log('[Redux Reducer] Incrementing counter');
+/**
+ * Counter slice using Redux Toolkit
+ */
+export const counterSlice = createSlice({
+  name: 'counter',
+  initialState,
+  reducers: {
+    increment: (state) => {
+      console.log('[Redux Slice] Incrementing counter');
       return state + 1;
-    case 'COUNTER:DECREMENT':
-      console.log('[Redux Reducer] Decrementing counter');
+    },
+    decrement: (state) => {
+      console.log('[Redux Slice] Decrementing counter');
       return state - 1;
-    case 'COUNTER:SET':
-      console.log(`[Redux Reducer] Setting counter to ${action.payload}`);
+    },
+    setValue: (_state, action: PayloadAction<number>) => {
+      console.log(`[Redux Slice] Setting counter to ${action.payload}`);
       return action.payload;
-    case 'COUNTER:SET:SLOW':
+    },
+    setValueSlow: (_state, action: PayloadAction<number>) => {
       // Note: Redux reducers must be pure functions, so we can't implement delays here
       // The delay would be handled by middleware (like redux-thunk) or UI side effects
-      console.log(`[Redux Reducer] Setting counter (slow) to ${action.payload}`);
+      console.log(`[Redux Slice] Setting counter (slow) to ${action.payload}`);
       return action.payload;
-    case 'COUNTER:RESET':
-      console.log('[Redux Reducer] Resetting counter to 0');
-      return 0;
-    default:
-      return state;
-  }
-};
+    },
+    doubleValueSlow: (state) => {
+      // Note: Redux reducers must be pure functions, so we can't implement delays here
+      // The delay would be handled by middleware (like redux-thunk) or UI side effects
+      const newValue = state * 2;
+      console.log(`[Redux Slice] Doubling counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+    halveValueSlow: (state) => {
+      // Note: Redux reducers must be pure functions, so we can't implement delays here
+      // The delay would be handled by middleware (like redux-thunk) or UI side effects
+      const newValue = Math.round(state / 2);
+      console.log(`[Redux Slice] Halving counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+    doubleValue: (state) => {
+      const newValue = state * 2;
+      console.log(`[Redux Slice] Doubling counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+    halveValue: (state) => {
+      const newValue = Math.round(state / 2);
+      console.log(`[Redux Slice] Halving counter from ${state} to ${newValue}`);
+      return newValue;
+    },
+  },
+});
 
-// Export the reducer as the default export to match other modes pattern
-export { counterReducer as reducer };
+// Export actions and reducer
+export const {
+  increment,
+  decrement,
+  setValue,
+  setValueSlow,
+  doubleValueSlow,
+  halveValueSlow,
+  doubleValue,
+  halveValue,
+} = counterSlice.actions;
+export const { reducer } = counterSlice;

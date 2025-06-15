@@ -1,6 +1,7 @@
-import type { StateManager, AnyState } from '@zubridge/types';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
+import { debug } from '@zubridge/core';
+import type { StateManager, AnyState } from '@zubridge/types';
 import { createZustandAdapter, ZustandOptions } from '../adapters/zustand.js';
 import { createReduxAdapter, ReduxOptions } from '../adapters/redux.js';
 import type { CoreBridgeOptions } from '../bridge.js';
@@ -19,8 +20,10 @@ export function getStateManager<S extends AnyState>(
   store: StoreApi<S> | Store<S>,
   options?: CombinedOptions<S>,
 ): StateManager<S> {
+  debug('state-manager', '[DEBUG] getStateManager called');
   // Check if we already have a state manager for this store
   if (stateManagerRegistry.has(store)) {
+    debug('state-manager', '[DEBUG] Returning cached state manager');
     return stateManagerRegistry.get(store) as StateManager<S>;
   }
 
@@ -28,10 +31,10 @@ export function getStateManager<S extends AnyState>(
   let stateManager: StateManager<S>;
 
   if ('setState' in store) {
-    // It's a Zustand store
+    debug('state-manager', '[DEBUG] Creating Zustand adapter');
     stateManager = createZustandAdapter(store as StoreApi<S>, options as ZustandOptions<S>);
   } else if ('dispatch' in store) {
-    // It's a Redux store
+    debug('state-manager', '[DEBUG] Creating Redux adapter');
     stateManager = createReduxAdapter(store as Store<S>, options as ReduxOptions<S>);
   } else {
     throw new Error('Unrecognized store type. Must be a Zustand StoreApi or Redux Store.');

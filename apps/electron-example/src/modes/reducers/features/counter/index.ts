@@ -4,9 +4,12 @@ import type { Action } from '@zubridge/types';
 export type CounterAction =
   | { type: 'COUNTER:INCREMENT' }
   | { type: 'COUNTER:DECREMENT' }
-  | { type: 'COUNTER:RESET' }
   | { type: 'COUNTER:SET'; payload: number }
-  | { type: 'COUNTER:SET:SLOW'; payload: number };
+  | { type: 'COUNTER:SET:SLOW'; payload: number }
+  | { type: 'COUNTER:DOUBLE:SLOW' }
+  | { type: 'COUNTER:HALVE:SLOW' }
+  | { type: 'COUNTER:DOUBLE' }
+  | { type: 'COUNTER:HALVE' };
 
 /**
  * Reducer for the counter state
@@ -21,9 +24,6 @@ export const reducer: Reducer<number> = (counter = 0, action: Action) => {
     case 'COUNTER:DECREMENT':
       console.log('[Reducer] Decrementing counter');
       return counter - 1;
-    case 'COUNTER:RESET':
-      console.log('[Reducer] Resetting counter to 0');
-      return 0;
     case 'COUNTER:SET':
       console.log(`[Reducer] Setting counter to ${action.payload}`);
       return action.payload as number;
@@ -32,6 +32,24 @@ export const reducer: Reducer<number> = (counter = 0, action: Action) => {
       // The delay would be implemented by middleware, thunks, or in the UI
       console.log(`[Reducer] Setting counter (slow) to ${action.payload}`);
       return action.payload as number;
+    case 'COUNTER:DOUBLE:SLOW':
+      // Note: The 'SLOW' part is handled by middleware or thunks
+      // The reducer itself is synchronous
+      console.log(`[Reducer] Doubling counter from ${counter} to ${counter * 2}`);
+      return counter * 2;
+    case 'COUNTER:HALVE:SLOW':
+      // Note: The 'SLOW' part is handled by middleware or thunks
+      // The reducer itself is synchronous
+      const newValueSlow = Math.round(counter / 2);
+      console.log(`[Reducer] Halving counter from ${counter} to ${newValueSlow}`);
+      return newValueSlow;
+    case 'COUNTER:DOUBLE':
+      console.log(`[Reducer] Doubling counter from ${counter} to ${counter * 2}`);
+      return counter * 2;
+    case 'COUNTER:HALVE':
+      const newValue = Math.round(counter / 2);
+      console.log(`[Reducer] Halving counter from ${counter} to ${newValue}`);
+      return newValue;
     default:
       return counter;
   }

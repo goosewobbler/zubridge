@@ -36,7 +36,8 @@
     "build:reducers": "cross-env ZUBRIDGE_MODE=reducers electron-vite build && cross-env ZUBRIDGE_MODE=reducers electron-builder --config electron-builder.config.ts",
     "build:redux": "cross-env ZUBRIDGE_MODE=redux electron-vite build && cross-env ZUBRIDGE_MODE=redux electron-builder --config electron-builder.config.ts",
     "build:custom": "cross-env ZUBRIDGE_MODE=custom electron-vite build && cross-env ZUBRIDGE_MODE=custom electron-builder --config electron-builder.config.ts",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "local:dev": "cd ../.. && pnpm clean:cache && pnpm build:packages && cd - && cross-env DEBUG=zubridge:*,example-app:* pnpm dev"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.7.0",
@@ -51,10 +52,10 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.4",
-    "@tailwindcss/vite": "^4.1.4",
+    "@tailwindcss/postcss": "^4.1.10",
+    "@tailwindcss/vite": "^4.1.10",
     "@types/node": "^22.14.0",
-    "@types/react": "^19.1.2",
+    "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.0",
     "@zubridge/types": "workspace:*",
@@ -63,8 +64,8 @@
     "electron": "35.0.0",
     "electron-builder": "^26.0.12",
     "electron-vite": "^3.0.0",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.1.7",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^4.1.10",
     "typescript": "^5.7.3",
     "vite": "^6.2.6",
     "wdio-electron-service": "^8.0.1"
