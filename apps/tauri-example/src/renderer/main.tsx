@@ -4,16 +4,18 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { initializeBridge, cleanupZubridge } from '@zubridge/tauri';
-// Import UI package styles before local styles
+import { withTauri } from '@zubridge/ui/tauri';
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
-import { MainApp } from './App.main';
-import { RuntimeApp } from './App.runtime';
+
+// Create the Tauri app component
+const TauriApp = withTauri();
+
+type WindowType = 'main' | 'secondary' | 'runtime';
 
 function AppWrapper() {
-  const [isReady, setIsReady] = useState(false);
+  const [windowType, setWindowType] = useState<WindowType>('main');
   const [windowLabel, setWindowLabel] = useState('main');
-  const [windowType, setWindowType] = useState<'main' | 'secondary' | 'runtime'>('main');
   const [bridgeInitialized, setBridgeInitialized] = useState(false);
 
   useEffect(() => {
@@ -22,11 +24,7 @@ function AppWrapper() {
         // Fetch window info first
         const currentWindow = WebviewWindow.getCurrent();
         const label = currentWindow.label;
-        console.log(`[main.tsx] Current window label: ${label}`);
         setWindowLabel(label);
-        setIsReady(true);
-
-        // Determine window type based on label
         if (label.startsWith('runtime_')) {
           setWindowType('runtime');
         } else if (label === 'main') {
@@ -34,47 +32,54 @@ function AppWrapper() {
         } else {
           setWindowType('secondary');
         }
-
-        // Initialize Zubridge immediately
-        try {
-          console.log('[main.tsx] Initializing Zubridge bridge immediately...');
-          await initializeBridge({
-            invoke,
-            // Cast listen type as needed by initializeBridge
-            listen: listen as <E = unknown>(event: string, handler: (event: E) => void) => Promise<UnlistenFn>,
-          });
-          console.log('[main.tsx] Zubridge bridge initialized successfully');
-          setBridgeInitialized(true); // Bridge is initialized
-        } catch (bridgeError) {
-          console.error('[main.tsx] Error initializing Zubridge:', bridgeError);
-          // Handle bridge initialization error if needed
-        }
+        // Initialize Zubridge bridge
+        await initializeBridge({
+          invoke,
+          listen: listen as <E = unknown>(event: string, handler: (event: E) => void) => Promise<UnlistenFn>,
+        });
+        setBridgeInitialized(true);
       } catch (error) {
-        console.error('[main.tsx] Error setting up app (before bridge init):', error);
         setWindowLabel('error-label');
-        // Still set isReady true even on error to potentially show an error state
-        setIsReady(true);
+        setBridgeInitialized(false);
       }
     };
-
     setupApp();
-
-    // Cleanup function
     return () => {
-      console.log('[main.tsx] Cleaning up Zubridge...');
       cleanupZubridge();
     };
   }, []);
-
-  if (!isReady) {
-    return <div>Loading Window Info...</div>;
-  }
 
   if (!bridgeInitialized) {
     return <div>Initializing Bridge...</div>;
   }
 
-  return windowType === 'runtime' ? <RuntimeApp windowLabel={windowLabel} /> : <MainApp windowLabel={windowLabel} />;
+  // Placeholder/noop handlers for Tauri
+  // const actionHandlers = {
+  //   createWindow: async () => ({ success: false, error: 'Not implemented' }),
+  //   closeWindow: async () => ({ success: false, error: 'Not implemented' }),
+  //   quitApp: async () => ({ success: false, error: 'Not implemented' }),
+  //   doubleCounter: (_counter: number) => undefined,
+  //   doubleCounterSlow: (_counter: number) => undefined,
+  //   distinctiveCounter: (_counter: number) => undefined,
+  //   distinctiveCounterSlow: (_counter: number) => undefined,
+  //   doubleCounterWithGetStateOverride: (_counter: number) => undefined,
+  // };
+
+  // // Subscription handlers (no-op for now)
+  // const handleSubscribe = async (_keys: string[]) => {};
+  // const handleUnsubscribe = async (_keys: string[]) => {};
+
+  return (
+    <TauriApp
+      windowInfo={{
+        id: windowLabel,
+        type: windowType,
+        platform: 'tauri',
+      }}
+      windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
+      appName={`Zubridge - Tauri Example`}
+    />
+  );
 }
 
 const container = document.getElementById('root');
