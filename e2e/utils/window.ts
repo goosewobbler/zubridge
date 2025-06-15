@@ -1,6 +1,7 @@
 // Utility functions for E2E window and counter management
 import { browser } from 'wdio-electron-service';
-import { TIMING } from '../constants';
+import { TIMING } from '../constants.js';
+import { subscribeToAllState } from './subscription.js';
 
 // Store windows by index rather than by title since all windows have the same title
 export const windowHandles: string[] = [];
@@ -308,6 +309,9 @@ export const setupTestEnvironment = async (coreWindowCount: number): Promise<voi
   if (windowHandles.length > 0) {
     await switchToWindow(0);
   }
+
+  // subscribe to all state
+  await subscribeToAllState();
 };
 
 /**
