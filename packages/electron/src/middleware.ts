@@ -9,13 +9,23 @@ interface NapiAction {
 }
 
 /**
- * Interface that defines a Zubridge Middleware instance from @zubridge/middleware.
- * This should match the actual signature of the object returned by initZubridgeMiddleware.
+ * Interface for the middleware provided by @zubridge/middleware
  */
 export interface ZubridgeMiddleware {
-  processAction: (action: NapiAction) => Promise<void> | void;
-  setState: (stateJson: string) => Promise<void> | void;
-  destroy?: () => Promise<void> | void;
+  /**
+   * Process an action before it's sent to the store
+   */
+  processAction: (action: NapiAction) => Promise<void>;
+
+  /**
+   * Update the middleware's state after a state change
+   */
+  setState: (state: string) => Promise<void>;
+
+  /**
+   * Clean up resources when the bridge is destroyed
+   */
+  destroy?: () => Promise<void>;
 
   // Performance tracking methods
   trackActionDispatch?: (action: TypesAction) => Promise<void>;
