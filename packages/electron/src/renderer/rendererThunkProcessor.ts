@@ -5,8 +5,9 @@ import { Thunk } from '../lib/Thunk.js';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
 
-// Default timeout for action completion (10 seconds)
-const DEFAULT_ACTION_COMPLETION_TIMEOUT = 10000;
+// Platform-specific timeout for action completion
+const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
+debug('ipc', `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`);
 
 /**
  * Handles thunk execution in the renderer process

@@ -22,9 +22,13 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
   // Get or create the thunk processor
   const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
-    const actionCompletionTimeoutMs = 30000;
+    // Platform-specific timeout for action completion
+    const actionCompletionTimeoutMs = process.platform === 'linux' ? 60000 : 30000;
 
-    debug('core', `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms`);
+    debug(
+      'core',
+      `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms for platform ${process.platform}`,
+    );
     return new RendererThunkProcessor(actionCompletionTimeoutMs);
   };
 
@@ -185,7 +189,8 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         ipcRenderer.send(IpcChannel.DISPATCH, { action: actionObj });
 
         // Set up a timeout in case we don't get an acknowledgment
-        const timeoutMs = 30000; // 30 seconds
+        const timeoutMs = process.platform === 'linux' ? 60000 : 30000; // Platform-specific timeout
+        debug('ipc', `Setting up acknowledgment timeout of ${timeoutMs}ms for platform ${process.platform}`);
         const timeoutId = setTimeout(() => {
           // Remove the listener if we timed out
           ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
