@@ -16,7 +16,7 @@ runs:
   steps:
     - name: Show Test Logs
       if: inputs.app == 'electron'
-      run: cat ./e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/*.log || echo "No log files found"
+      run: cat ./e2e/wdio-logs-${{ inputs.app }}-${{ inputs.mode }}/wdio.log || echo "No log files found"
       shell: bash
 
     - name: Upload Test Logs
