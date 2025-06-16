@@ -38,7 +38,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     WINDOW_CHANGE_PAUSE: 200,
     WINDOW_WAIT_TIMEOUT: 15000,
     WINDOW_WAIT_INTERVAL: 500,
-    THUNK_WAIT_TIME: 20000,
+    THUNK_WAIT_TIME: 30000,
     THUNK_START_PAUSE: 1000,
     UI_INTERACTION_PAUSE: 500,
     FAST_ACTION_MAX_TIME: 2000, // Maximum time a bypass action should take to complete (slower on Linux)
