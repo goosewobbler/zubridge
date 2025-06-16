@@ -58,11 +58,15 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
 
     // Implement a slow double counter handler with delay
     'COUNTER:DOUBLE:SLOW': async () => {
-      console.log(`[Basic] Doubling counter with 2500ms delay`);
+      console.log(`[Basic] Doubling counter with delay`);
       console.log(`[Basic] Time before delay: ${new Date().toISOString()}`);
 
-      // Wait for 2500ms to simulate a slow operation
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+      // Use a longer delay on Linux to ensure proper sequence execution
+      const delayTime = process.platform === 'linux' ? 5000 : 2500;
+      console.log(`[Basic] Using ${delayTime}ms delay on platform: ${process.platform}`);
+
+      // Wait for the configured delay time to simulate a slow operation
+      await new Promise((resolve) => setTimeout(resolve, delayTime));
 
       console.log(`[Basic] Time after delay: ${new Date().toISOString()}`);
       setState((state) => {

@@ -63,7 +63,11 @@ export const doubleCounterSlow =
     console.log('[Handlers] Doubling counter with delay');
     console.log(`[Handlers] Time before delay: ${new Date().toISOString()}`);
 
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    // Use a longer delay on Linux to ensure proper sequence execution
+    const delayTime = process.platform === 'linux' ? 5000 : 2500;
+    console.log(`[Handlers] Using ${delayTime}ms delay on platform: ${process.platform}`);
+
+    await new Promise((resolve) => setTimeout(resolve, delayTime));
 
     console.log(`[Handlers] Time after delay: ${new Date().toISOString()}`);
     store.setState((state) => {
