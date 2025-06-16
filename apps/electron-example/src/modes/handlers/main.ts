@@ -35,7 +35,7 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
     'THEME:SET': setTheme(store),
     'STATE:RESET': resetState(store),
     'STATE:GENERATE-FILLER': generateLargeState(store),
-    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError(store),
+    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError(),
   };
 };
 

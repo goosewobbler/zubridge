@@ -5,7 +5,7 @@ import type { BaseState } from '../../../../types.js';
 /**
  * Creates a handler that intentionally throws an error for testing error handling
  */
-export const triggerMainProcessError = <S extends BaseState>(_store: StoreApi<S>) => {
+export const triggerMainProcessError = () => {
   return () => {
     debug('main:error', 'Intentionally throwing error in main process for testing');
     throw new Error('Intentional error thrown in main process for testing purposes');
@@ -15,6 +15,6 @@ export const triggerMainProcessError = <S extends BaseState>(_store: StoreApi<S>
 export const attachErrorHandlers = <S extends BaseState>(store: StoreApi<S>) => {
   store.setState((state) => ({
     ...state,
-    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError(store),
+    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError(),
   }));
 };
