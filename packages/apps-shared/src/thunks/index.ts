@@ -38,6 +38,13 @@ export interface DoubleCounterOptions {
    * If true, getState will be called with bypassAccessControl: true
    */
   bypassAccessControlOverride?: boolean;
+
+  /**
+   * Whether the handlers in the state manager are async
+   * Set to false for redux and reducers modes
+   * Default: true
+   */
+  asyncHandlers?: boolean;
 }
 
 /**
@@ -59,6 +66,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
     delayBetweenOperations = 100,
     includeTimestamps = false,
     bypassAccessControlOverride = false,
+    asyncHandlers = true,
   } = options;
 
   const logPrefix = getLogPrefix(context);
@@ -96,6 +104,26 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       }
     };
 
+    // Helper function to dispatch and handle non-async handlers
+    const dispatchWithDelay = async (actionType: string, payload?: any) => {
+      const startTime = new Date().getTime();
+      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] Dispatching action ${actionType}`);
+
+      await dispatch(actionType, payload);
+
+      // If using slow actions with non-async handlers, add a delay to simulate async behavior
+      if (useSlow && !asyncHandlers && actionType.includes('SLOW')) {
+        const delayTime = process.platform === 'linux' ? 5000 : 2500;
+        logWithTimestamp(
+          `${logPrefix} [DEBUG] [${thunkType}] Adding ${delayTime}ms delay after ${actionType} for non-async handler`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayTime));
+      }
+
+      const endTime = new Date().getTime();
+      return endTime - startTime;
+    };
+
     try {
       // Log initial state
       const actualInitialCounter = await getCounter();
@@ -118,17 +146,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       const timestamp1 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`);
 
-      const startTime1 = new Date().getTime();
-      debug(
-        'thunk',
-        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${doubleActionType}`,
-      );
-
-      await dispatch(doubleActionType);
-
-      const endTime1 = new Date().getTime();
-
-      const duration1 = endTime1 - startTime1;
+      const duration1 = await dispatchWithDelay(doubleActionType);
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] First action completed in ${duration1}ms`);
 
       // Add delay to simulate async work
@@ -160,17 +178,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       const timestamp2 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before second action: ${timestamp2}`);
 
-      const startTime2 = new Date().getTime();
-      debug(
-        'thunk',
-        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${doubleActionType}`,
-      );
-
-      await dispatch(doubleActionType);
-
-      const endTime2 = new Date().getTime();
-
-      const duration2 = endTime2 - startTime2;
+      const duration2 = await dispatchWithDelay(doubleActionType);
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Second action completed in ${duration2}ms`);
 
       // Add delay to simulate async work
@@ -203,17 +211,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       const timestamp3 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before third action: ${timestamp3}`);
 
-      const startTime3 = new Date().getTime();
-      debug(
-        'thunk',
-        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${halveActionType}`,
-      );
-
-      await dispatch(halveActionType);
-
-      const endTime3 = new Date().getTime();
-
-      const duration3 = endTime3 - startTime3;
+      const duration3 = await dispatchWithDelay(halveActionType);
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Third action completed in ${duration3}ms`);
 
       // Add delay to simulate async work
@@ -247,6 +245,20 @@ export const createDoubleCounterSlowThunk = <S extends BaseState = BaseState>(
 };
 
 /**
+ * Convenience function to create a slow thunk for redux and reducers modes
+ */
+export const createDoubleCounterSlowThunkForSyncHandlers = <S extends BaseState = BaseState>(
+  initialCounter: number,
+  context: ThunkContext,
+): Thunk<Partial<S>> => {
+  return createDoubleCounterThunk(initialCounter, context, {
+    useSlow: true,
+    includeTimestamps: true,
+    asyncHandlers: false,
+  });
+};
+
+/**
  * Convenience function to create a double counter thunk with getState override (setting bypassAccessControl: true)
  */
 export const createDoubleCounterWithGetStateOverrideThunk = <S extends BaseState = BaseState>(
@@ -272,7 +284,7 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
   context: ThunkContext,
   options: DoubleCounterOptions = {},
 ): Thunk<Partial<S>> => {
-  const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false } = options;
+  const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false, asyncHandlers = true } = options;
 
   const logPrefix = getLogPrefix(context);
   const actionType = useSlow ? 'COUNTER:SET:SLOW' : 'COUNTER:SET';
@@ -306,6 +318,26 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       }
     };
 
+    // Helper function to dispatch and handle non-async handlers
+    const dispatchWithDelay = async (action: string, value: number) => {
+      const startTime = new Date().getTime();
+      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] Dispatching action ${action} with value ${value}`);
+
+      await dispatch(action, value);
+
+      // If using slow actions with non-async handlers, add a delay to simulate async behavior
+      if (useSlow && !asyncHandlers) {
+        const delayTime = process.platform === 'linux' ? 5000 : 2500;
+        logWithTimestamp(
+          `${logPrefix} [DEBUG] [${thunkType}] Adding ${delayTime}ms delay after ${action} for non-async handler`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayTime));
+      }
+
+      const endTime = new Date().getTime();
+      return endTime - startTime;
+    };
+
     try {
       // Log initial state
       const actualInitialState = await getState();
@@ -328,11 +360,7 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       const timestamp1 = new Date().toISOString();
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`);
 
-      const startTime1 = new Date().getTime();
-      await dispatch(actionType, firstValue);
-      const endTime1 = new Date().getTime();
-
-      const duration1 = endTime1 - startTime1;
+      const duration1 = await dispatchWithDelay(actionType, firstValue);
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] First action completed in ${duration1}ms`);
 
       // Add delay to simulate async work
@@ -372,15 +400,7 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
         );
       }
 
-      const startTime2 = new Date().getTime();
-      debug(
-        'thunk',
-        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${actionType} with value ${expectedSecondValue}`,
-      );
-      await dispatch(actionType, expectedSecondValue);
-      const endTime2 = new Date().getTime();
-
-      const duration2 = endTime2 - startTime2;
+      const duration2 = await dispatchWithDelay(actionType, expectedSecondValue);
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Second action completed in ${duration2}ms`);
 
       // Add delay to simulate async work
@@ -420,15 +440,7 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
         );
       }
 
-      const startTime3 = new Date().getTime();
-      debug(
-        'thunk',
-        `${logPrefix} [DEBUG] [${thunkType}] [${new Date().toISOString()}] Dispatching action ${actionType} with value ${expectedFinalValue}`,
-      );
-      await dispatch(actionType, expectedFinalValue);
-      const endTime3 = new Date().getTime();
-
-      const duration3 = endTime3 - startTime3;
+      const duration3 = await dispatchWithDelay(actionType, expectedFinalValue);
       logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Third action completed in ${duration3}ms`);
 
       // Add delay to simulate async work
@@ -467,5 +479,19 @@ export const createDistinctiveCounterSlowThunk = <S extends BaseState = BaseStat
   return createDistinctiveCounterThunk(initialCounter, context, {
     useSlow: true,
     includeTimestamps: true,
+  });
+};
+
+/**
+ * Convenience function to create a slow distinctive thunk for redux and reducers modes
+ */
+export const createDistinctiveCounterSlowThunkForSyncHandlers = <S extends BaseState = BaseState>(
+  initialCounter: number,
+  context: ThunkContext,
+): Thunk<Partial<S>> => {
+  return createDistinctiveCounterThunk(initialCounter, context, {
+    useSlow: true,
+    includeTimestamps: true,
+    asyncHandlers: false,
   });
 };

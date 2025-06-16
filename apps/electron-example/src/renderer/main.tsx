@@ -12,6 +12,8 @@ import {
   createDistinctiveCounterThunk,
   createDistinctiveCounterSlowThunk,
   createDoubleCounterWithGetStateOverrideThunk,
+  createDoubleCounterSlowThunkForSyncHandlers,
+  createDistinctiveCounterSlowThunkForSyncHandlers,
   type ThunkContext,
 } from '@zubridge/apps-shared';
 // Import debug utility
@@ -116,9 +118,21 @@ function AppWrapper() {
       }
     },
     doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
-    doubleCounterSlow: (counter: number) => createDoubleCounterSlowThunk(counter, thunkContext),
+    doubleCounterSlow: (counter: number) => {
+      // Use sync handlers thunk creators for redux and reducers modes
+      if (modeName === 'redux' || modeName === 'reducers') {
+        return createDoubleCounterSlowThunkForSyncHandlers(counter, thunkContext);
+      }
+      return createDoubleCounterSlowThunk(counter, thunkContext);
+    },
     distinctiveCounter: (counter: number) => createDistinctiveCounterThunk(counter, thunkContext),
-    distinctiveCounterSlow: (counter: number) => createDistinctiveCounterSlowThunk(counter, thunkContext),
+    distinctiveCounterSlow: (counter: number) => {
+      // Use sync handlers thunk creators for redux and reducers modes
+      if (modeName === 'redux' || modeName === 'reducers') {
+        return createDistinctiveCounterSlowThunkForSyncHandlers(counter, thunkContext);
+      }
+      return createDistinctiveCounterSlowThunk(counter, thunkContext);
+    },
     doubleCounterWithGetStateOverride: (counter: number) =>
       createDoubleCounterWithGetStateOverrideThunk(counter, thunkContext),
   };
