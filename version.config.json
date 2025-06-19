@@ -4,6 +4,12 @@
   "baseBranch": "main",
   "synced": false,
   "commitMessage": "chore: release ${packageName}@${version} [skip-ci]",
-  "skip": ["zubridge-electron-example", "zubridge-tauri-example", "zubridge-tauri-v1-example", "zubridge-e2e"],
+  "skip": [
+    "@zubridge/apps-shared",
+    "zubridge-electron-example",
+    "zubridge-tauri-example",
+    "zubridge-tauri-v1-example",
+    "zubridge-e2e"
+  ],
   "prereleaseIdentifier": "next"
 }
