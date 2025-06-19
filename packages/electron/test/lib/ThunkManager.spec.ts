@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ThunkState } from '@zubridge/types';
+import { ThunkState } from '../../src/lib/Thunk.js';
 import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
-import { Thunk } from '../../src/lib/Thunk.js';
-import { ThunkScheduler } from '../../src/lib/ThunkScheduler.js';
 import type { ThunkScheduler as IThunkScheduler, ThunkTask } from '../../src/types/thunk';
 
 // Minimal mock Thunk class

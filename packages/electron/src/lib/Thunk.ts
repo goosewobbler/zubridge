@@ -1,6 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
-import { ThunkState } from '@zubridge/types';
 import { debug } from '@zubridge/core';
+
+export enum ThunkState {
+  PENDING = 'pending',
+  EXECUTING = 'executing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
 
 export interface ThunkOptions {
   id?: string;
