@@ -6,7 +6,7 @@ const sharedConfig = {
       preferBuiltins: true,
     }),
   ],
-  external: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'],
+  external: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger', '@zubridge/core'],
 };
 
 export default [
