@@ -1,12 +1,19 @@
 import nodeResolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 
 const sharedConfig = {
   plugins: [
     nodeResolve({
       preferBuiltins: true,
     }),
+    commonjs({
+      // Handle modules that use 'this' in UMD pattern
+      transformMixedEsModules: true,
+    }),
   ],
   external: ['electron', 'zustand', 'zustand/vanilla'],
+  // Handle 'this' context issues
+  context: 'globalThis',
 };
 
 export default [
