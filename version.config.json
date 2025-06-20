@@ -4,6 +4,7 @@
   "baseBranch": "main",
   "synced": false,
   "commitMessage": "chore: release ${packageName}@${version} [skip-ci]",
+  "tagTemplate": "${packageName}@${prefix}${version}",
   "skip": [
     "@zubridge/apps-shared",
     "zubridge-electron-example",
