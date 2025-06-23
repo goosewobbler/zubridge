@@ -281,7 +281,17 @@ export function createCoreBridge<State extends AnyState>(
 
       // Check for bypassAccessControl in options or '*' subscription
       if ((options && options.bypassAccessControl) || subscriptions.includes('*')) {
-        debug('ipc', `[BRIDGE DEBUG] Returning full state to renderer ${windowId}`);
+        debug('ipc', `[BRIDGE DEBUG] Returning full state to renderer ${windowId} (bypass access control)`);
+        return state;
+      }
+
+      // If no subscription manager exists yet, we're in initialization phase
+      // Return full state to avoid race condition where getState() is called before subscription setup
+      if (!subManager) {
+        debug(
+          'ipc',
+          `[BRIDGE DEBUG] No subscription manager for window ${windowId} yet (initialization phase), returning full state`,
+        );
         return state;
       }
 
