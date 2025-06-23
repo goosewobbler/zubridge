@@ -517,6 +517,72 @@ describe('bridge.ts', () => {
       expect(mockTracker.untrack).toHaveBeenCalledWith(webContents1);
       expect(mockTracker.untrack).toHaveBeenCalledWith(webContents2);
     });
+
+    // Test for the race condition fix: GET_STATE should return full state during initialization
+    it('should return full state when no subscription manager exists (initialization phase)', () => {
+      const stateManager = createMockStateManager();
+      const testState = { general: { value: 42 }, theme: { dark: true } };
+      vi.mocked(stateManager.getState).mockReturnValue(testState);
+
+      // Create bridge (this sets up the GET_STATE handler)
+      createCoreBridge(stateManager);
+
+      // Get the GET_STATE handler
+      const getStateHandler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === IpcChannel.GET_STATE)?.[1];
+
+      expect(getStateHandler).toBeDefined();
+
+      if (getStateHandler) {
+        // Mock event with a window ID that has no subscription manager
+        const mockEvent = { sender: { id: 999 } } as any;
+
+        // Call the handler without any options (no bypassAccessControl)
+        const result = (getStateHandler as any)(mockEvent, {});
+
+        // Should return full state since no subscription manager exists for this window
+        expect(result).toEqual(testState);
+
+        // Call with empty options
+        const result2 = (getStateHandler as any)(mockEvent, undefined);
+        expect(result2).toEqual(testState);
+      }
+    });
+
+    // Test that filtering still works after subscription is set up
+    it('should filter state when subscription manager exists', () => {
+      const stateManager = createMockStateManager();
+      const testState = { general: { value: 42 }, theme: { dark: true } };
+      vi.mocked(stateManager.getState).mockReturnValue(testState);
+
+      // Create bridge
+      const bridge = createCoreBridge(stateManager);
+
+      // Set up a subscription to create a subscription manager
+      const wrapper = createMockWrapper(123);
+      const webContents = createMockWebContents(123);
+      vi.mocked(getWebContents).mockReturnValue(webContents);
+
+      // Subscribe to specific keys only
+      bridge.subscribe([wrapper], ['general']);
+
+      // Get the GET_STATE handler
+      const getStateHandler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === IpcChannel.GET_STATE)?.[1];
+
+      if (getStateHandler) {
+        // Mock event with the same window ID that now has a subscription manager
+        const mockEvent = { sender: { id: 123 } } as any;
+
+        // Call the handler without bypassAccessControl
+        const result = (getStateHandler as any)(mockEvent, {});
+
+        // Should return filtered state (only 'general' key) since subscription manager exists
+        expect(result).toEqual({ general: { value: 42 } });
+      }
+    });
   });
 
   describe('createBridgeFromStore', () => {
