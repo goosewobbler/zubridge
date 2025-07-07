@@ -2,8 +2,6 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-// Import our custom UI watcher plugin
-import { watchUIPackage } from '@zubridge/ui/vite-plugin';
 
 // Carefully calculate all paths to ensure consistency
 console.log(`[PATH DEBUG] __dirname: ${__dirname}`);
@@ -36,21 +34,26 @@ const shouldWatchUI = process.env.WATCH_UI === 'true';
 console.log(`[DEBUG] Watch UI: ${shouldWatchUI}`);
 
 // Configure plugins based on whether we should watch UI
-const getPlugins = () => {
+const getPlugins = async () => {
   const plugins = [react()];
 
   // Only add the UI watcher plugin if WATCH_UI=true
   if (shouldWatchUI) {
     console.log('[DEBUG] Adding UI watcher plugin');
-    plugins.push([watchUIPackage()]);
+    try {
+      const { watchUIPackage } = await import('@zubridge/ui/vite-plugin');
+      plugins.push([watchUIPackage()]);
+    } catch (error) {
+      console.warn('[DEBUG] Failed to load UI watcher plugin:', error);
+    }
   }
 
   return plugins;
 };
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: getPlugins(),
+export default defineConfig(async () => ({
+  plugins: await getPlugins(),
 
   // Prevent Vite from clearing the screen
   clearScreen: false,
@@ -80,4 +83,4 @@ export default defineConfig({
     // Empty the output directory before building
     emptyOutDir: true,
   },
-});
+}));
