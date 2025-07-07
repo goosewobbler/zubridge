@@ -15,8 +15,8 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const e2eAppType = process.env.E2E_APP_TYPE || 'electron'; // Default to electron
 const appPathFromEnv = process.env.APP_PATH; // Provided by GH Actions for packaged apps
 
-const appDir = process.env.APP_DIR as string; // e.g., 'electron-example', 'tauri-example'
-const mode = process.env.MODE || 'basic';
+const appDir = process.env.APP_DIR as string; // e.g., 'e2e-electron', 'e2e-tauri'
+const mode = process.env.MODE || 'zustand-basic';
 
 console.log(`[DEBUG] E2E_APP_TYPE: ${e2eAppType}`);
 console.log(`[DEBUG] APP_PATH (from env): ${appPathFromEnv}`);
@@ -127,7 +127,7 @@ if (e2eAppType.startsWith('tauri')) {
   framework = 'mocha'; // Set framework to mocha for Electron as well
   // Reporters will remain undefined for Electron to use defaults
 
-  const electronExampleAppPath = path.join(__dirname, '..', 'apps', appDir || 'electron-example');
+  const electronExampleAppPath = path.join(__dirname, '..', 'apps', appDir || 'e2e-electron');
   const packageJsonPath = path.join(electronExampleAppPath, 'package.json');
   let electronAppVersion: string | undefined;
 

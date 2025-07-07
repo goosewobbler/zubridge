@@ -135,8 +135,8 @@ jobs:
         id: build-app
         shell: bash
         run: |
-          PACKAGE_NAME="zubridge-${{ inputs.app }}-example"
-          APP_DIR_NAME="${{ inputs.app }}-example"
+          PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
           else
@@ -230,7 +230,7 @@ jobs:
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
           path: |
-            ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release/bundle/', inputs.app) }}
+            ${{ inputs.app == 'electron' && format('apps/e2e-electron/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/e2e-tauri/src-tauri/target/release/bundle/' || 'apps/e2e-tauri-v1/src-tauri/target/release/bundle/' }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -284,8 +284,8 @@ jobs:
         id: build-app
         shell: bash
         run: |
-          PACKAGE_NAME="zubridge-${{ inputs.app }}-example"
-          APP_DIR_NAME="${{ inputs.app }}-example"
+          PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
           else
@@ -379,7 +379,7 @@ jobs:
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
           path: |
-            ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release/bundle/', inputs.app) }}
+            ${{ inputs.app == 'electron' && format('apps/e2e-electron/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/e2e-tauri/src-tauri/target/release/bundle/' || 'apps/e2e-tauri-v1/src-tauri/target/release/bundle/' }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -433,8 +433,8 @@ jobs:
         id: build-app
         shell: bash
         run: |
-          PACKAGE_NAME="zubridge-${{ inputs.app }}-example"
-          APP_DIR_NAME="${{ inputs.app }}-example"
+          PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
           else
@@ -528,7 +528,7 @@ jobs:
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
           path: |
-            ${{ inputs.app == 'electron' && format('apps/{0}-example/dist-{1}', inputs.app, inputs.mode) || format('apps/{0}-example/src-tauri/target/release/bundle/', inputs.app) }}
+            ${{ inputs.app == 'electron' && format('apps/e2e-electron/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/e2e-tauri/src-tauri/target/release/bundle/' || 'apps/e2e-tauri-v1/src-tauri/target/release/bundle/' }}
           retention-days: 1
           if-no-files-found: warn
 

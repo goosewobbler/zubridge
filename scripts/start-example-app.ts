@@ -5,13 +5,13 @@
  * This handles finding the correct binary path for the built app in the dist directory.
  *
  * Usage: tsx scripts/start-example-app.ts [app-name]
- * Example: tsx scripts/start-example-app.ts zubridge-electron-example
- *          tsx scripts/start-example-app.ts zubridge-tauri-example
+ * Example: tsx scripts/start-example-app.ts e2e-electron
+ *          tsx scripts/start-example-app.ts e2e-tauri
  *
  * For Electron apps, you can specify a mode:
- * Example: tsx scripts/start-example-app.ts zubridge-electron-example basic
- *          tsx scripts/start-example-app.ts zubridge-electron-example handlers
- *          tsx scripts/start-example-app.ts zubridge-electron-example reducers
+ * Example: tsx scripts/start-example-app.ts e2e-electron basic
+ *          tsx scripts/start-example-app.ts e2e-electron handlers
+ *          tsx scripts/start-example-app.ts e2e-electron reducers
  */
 
 import { execSync } from 'node:child_process';
@@ -27,9 +27,9 @@ const mode = process.argv[3] || 'basic'; // Default to basic if not specified
 if (!appName) {
   console.error('Error: App name is required.');
   console.error('Usage: tsx scripts/start-example-app.ts [app-name] [mode]');
-  console.error('Example: tsx scripts/start-example-app.ts zubridge-electron-example');
-  console.error('         tsx scripts/start-example-app.ts zubridge-electron-example basic');
-  console.error('         tsx scripts/start-example-app.ts zubridge-tauri-example');
+  console.error('Example: tsx scripts/start-example-app.ts e2e-electron');
+  console.error('         tsx scripts/start-example-app.ts e2e-electron basic');
+  console.error('         tsx scripts/start-example-app.ts e2e-tauri');
   process.exit(1);
 }
 
