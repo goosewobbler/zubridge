@@ -1,7 +1,8 @@
 {
   "name": "zubridge-electron-example",
-  "version": "1.0.0-next.1",
+  "version": "0.0.0",
   "description": "An application demonstrating all approaches of using zubridge with Electron",
+  "private": true,
   "main": "./out-basic/main/index.js",
   "type": "module",
   "author": "goosewobbler",

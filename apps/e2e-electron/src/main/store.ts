@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { create } from 'zustand';
-import { getZubridgeMode } from '../utils/mode.js';
+import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 import type { State } from '../types.js';
 import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
 import { debug } from '@zubridge/core';
@@ -17,19 +17,19 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
   debug('store', 'Creating store for mode:', mode);
 
   switch (mode) {
-    case 'basic':
-      const { getBasicStore } = await import('../modes/basic/store.js');
+    case ZubridgeMode.ZustandBasic:
+      const { getBasicStore } = await import('../modes/zustand-basic/store.js');
       return createZustandAdapter(getBasicStore());
 
-    case 'handlers':
-      const { getHandlersStore } = await import('../modes/handlers/store.js');
+    case ZubridgeMode.ZustandHandlers:
+      const { getHandlersStore } = await import('../modes/zustand-handlers/store.js');
       return createZustandAdapter(getHandlersStore());
 
-    case 'reducers':
-      const { getReducersStore } = await import('../modes/reducers/store.js');
+    case ZubridgeMode.ZustandReducers:
+      const { getReducersStore } = await import('../modes/zustand-reducers/store.js');
       return createZustandAdapter(getReducersStore());
 
-    case 'redux':
+    case ZubridgeMode.Redux:
       // For Redux mode, create a Redux store with a root reducer
       const { rootReducer } = await import('../modes/redux/features/index.js');
 
@@ -39,7 +39,7 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
       // Use our adapter instead of unsafe casting
       return createReduxAdapter(reduxStore) as UnifiedStore<State>;
 
-    case 'custom':
+    case ZubridgeMode.Custom:
       // For custom mode, get our EventEmitter-based store
       debug('store', '[Store] Custom mode detected - loading custom store');
       const { getCustomStore } = await import('../modes/custom/store.js');
@@ -51,8 +51,9 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
       return createCustomAdapter(customStore);
 
     default:
-      debug('store', 'Unknown mode, falling back to basic store');
-      return createZustandAdapter(create<State>()(() => initialState));
+      // Default to zustand-basic mode
+      const { getBasicStore: fallback } = await import('../modes/zustand-basic/store.js');
+      return createZustandAdapter(fallback());
   }
 }
 

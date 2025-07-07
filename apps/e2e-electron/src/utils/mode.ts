@@ -2,52 +2,52 @@
  * The available Zubridge implementation modes
  */
 export enum ZubridgeMode {
-  Basic = 'basic',
-  Handlers = 'handlers',
-  Reducers = 'reducers',
+  ZustandBasic = 'zustand-basic',
+  ZustandHandlers = 'zustand-handlers',
+  ZustandReducers = 'zustand-reducers',
   Redux = 'redux',
   Custom = 'custom',
 }
 
 /**
  * Gets the current Zubridge mode from the environment variable
- * Defaults to 'basic' if no mode is specified
+ * Defaults to 'zustand-basic' if no mode is specified
  */
 export const getZubridgeMode = (): ZubridgeMode => {
   const modeStr = process.env.ZUBRIDGE_MODE?.toLowerCase();
 
   // Validate that the mode is one of the supported types
   switch (modeStr) {
-    case ZubridgeMode.Basic:
-      return ZubridgeMode.Basic;
-    case ZubridgeMode.Handlers:
-      return ZubridgeMode.Handlers;
-    case ZubridgeMode.Reducers:
-      return ZubridgeMode.Reducers;
+    case ZubridgeMode.ZustandBasic:
+      return ZubridgeMode.ZustandBasic;
+    case ZubridgeMode.ZustandHandlers:
+      return ZubridgeMode.ZustandHandlers;
+    case ZubridgeMode.ZustandReducers:
+      return ZubridgeMode.ZustandReducers;
     case ZubridgeMode.Redux:
       return ZubridgeMode.Redux;
     case ZubridgeMode.Custom:
       return ZubridgeMode.Custom;
     default:
-      // Default to basic mode
-      return ZubridgeMode.Basic;
+      // Default to zustand-basic mode
+      return ZubridgeMode.ZustandBasic;
   }
 };
 
 /**
- * Returns true if the current mode is 'basic'
+ * Returns true if the current mode is 'zustand-basic'
  */
-export const isBasicMode = (): boolean => getZubridgeMode() === ZubridgeMode.Basic;
+export const isBasicMode = (): boolean => getZubridgeMode() === ZubridgeMode.ZustandBasic;
 
 /**
- * Returns true if the current mode is 'handlers'
+ * Returns true if the current mode is 'zustand-handlers'
  */
-export const isHandlersMode = (): boolean => getZubridgeMode() === ZubridgeMode.Handlers;
+export const isHandlersMode = (): boolean => getZubridgeMode() === ZubridgeMode.ZustandHandlers;
 
 /**
- * Returns true if the current mode is 'reducers'
+ * Returns true if the current mode is 'zustand-reducers'
  */
-export const isReducersMode = (): boolean => getZubridgeMode() === ZubridgeMode.Reducers;
+export const isReducersMode = (): boolean => getZubridgeMode() === ZubridgeMode.ZustandReducers;
 
 /**
  * Returns true if the current mode is 'redux'
