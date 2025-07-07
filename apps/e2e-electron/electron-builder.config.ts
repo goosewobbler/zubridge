@@ -18,7 +18,7 @@ const buildPlatforms = argPlatforms.length > 0 ? argPlatforms : ['mac', 'win', '
 console.log(`[DEBUG] Building for platforms: ${buildPlatforms.join(', ')}`);
 
 // Determine if we're running in e2e test environment
-const isE2eTest = process.cwd().includes('/e2e');
+const isE2eTest = process.cwd().includes('/e2e/');
 console.log(`[DEBUG] Running in e2e test environment: ${isE2eTest}`);
 
 // Base directory is different in e2e tests vs normal builds
