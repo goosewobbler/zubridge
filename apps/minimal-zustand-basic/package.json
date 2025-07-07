@@ -4,8 +4,10 @@
   "description": "Minimal Electron app demonstrating Zubridge with Zustand basic mode",
   "private": true,
   "type": "module",
-  "main": "dist/main/index.js",
+  "main": "out/main/index.js",
   "scripts": {
+    "clean": "pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
+    "clean:cache": "pnpm dlx shx rm -rf ./dist* ./out* .cache",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
@@ -13,24 +15,29 @@
     "dist:dir": "pnpm build && electron-builder --dir"
   },
   "dependencies": {
+    "@zubridge/core": "workspace:*",
     "@zubridge/electron": "workspace:*",
     "@zubridge/ui": "workspace:*",
-    "@zubridge/types": "workspace:*",
-    "electron": "^28.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "zustand": "^4.4.7"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.16",
-    "electron-builder": "^24.9.1",
-    "electron-vite": "^2.0.0",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "@tailwindcss/postcss": "^4.1.10",
+    "@tailwindcss/vite": "^4.1.10",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.0",
+    "@zubridge/types": "workspace:*",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "electron": "35.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^3.0.0",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.6"
   }
 }
