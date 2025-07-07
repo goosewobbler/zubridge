@@ -1,0 +1,34 @@
+{
+  "name": "minimal-custom",
+  "version": "0.0.0",
+  "description": "Minimal Electron app demonstrating Zubridge with custom state manager",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "pnpm build && electron-builder",
+    "dist:dir": "pnpm build && electron-builder --dir"
+  },
+  "dependencies": {
+    "@zubridge/electron": "workspace:*",
+    "@zubridge/ui": "workspace:*",
+    "@zubridge/types": "workspace:*",
+    "electron": "^28.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "electron-builder": "^24.9.1",
+    "electron-vite": "^2.0.0",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8"
+  }
+}
