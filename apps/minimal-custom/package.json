@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Minimal Electron app demonstrating Zubridge with custom state manager",
   "private": true,
+  "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
