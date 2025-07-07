@@ -93,7 +93,7 @@ function useDispatch<S extends AnyState = AnyState, TActions extends Record<stri
 export { useDispatch };
 
 // Export environment utilities
-export * from './utils/environment';
+export * from './utils/environment.js';
 
 // Export the validation utilities to be used by applications
 export {
