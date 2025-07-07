@@ -1,123 +1,123 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { createHandlersBridge } from '../bridge.js';
 import { getHandlersStore } from '../store.js';
 import type { State } from '../features/index.js';
 import type { StoreApi } from 'zustand';
 import { createTray } from './tray/index.js';
 
-// Extend BrowserWindow to include custom properties
-interface ZubridgeWindow extends BrowserWindow {
+const currentDir = dirname(fileURLToPath(import.meta.url));
+
+// Process should be terminated when all windows are closed
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
+type ZubridgeWindow = BrowserWindow & {
   windowId?: number;
   windowType?: string;
-}
+};
 
-let mainWindow: ZubridgeWindow | undefined;
-let secondWindow: ZubridgeWindow | undefined;
-let store: StoreApi<State>;
-let bridge: ReturnType<typeof createHandlersBridge>;
+// Create windows side by side
+const createWindows = (): BrowserWindow[] => {
+  const windowWidth = 900;
+  const windowHeight = 670;
 
-function createWindow() {
-  // Create the browser window
-  mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+  const mainWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x: 0,
+    y: 100,
+    show: false,
+    autoHideMenuBar: true,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: new URL('../preload/index.js', import.meta.url).pathname,
+      preload: join(currentDir, '../preload/index.cjs'),
+      sandbox: false,
     },
   }) as ZubridgeWindow;
 
-  // Create second window
-  secondWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    x: 800, // Position next to first window
+  const secondWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x: windowWidth,
+    y: 100,
+    show: false,
+    autoHideMenuBar: true,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: new URL('../preload/index.js', import.meta.url).pathname,
+      preload: join(currentDir, '../preload/index.cjs'),
+      sandbox: false,
     },
   }) as ZubridgeWindow;
 
-  // Load the index.html of the app
-  mainWindow.loadFile(new URL('../renderer/index.html', import.meta.url).pathname);
-  secondWindow.loadFile(new URL('../renderer/index.html', import.meta.url).pathname);
-
-  // Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
-    secondWindow.webContents.openDevTools();
-  }
-
-  // Set window properties for IPC
+  // Set custom properties to identify windows
   mainWindow.windowId = 1;
   mainWindow.windowType = 'main';
   secondWindow.windowId = 2;
-  secondWindow.windowType = 'second';
+  secondWindow.windowType = 'secondary';
 
-  // Handle window closed
-  mainWindow.on('closed', () => {
-    mainWindow = undefined;
+  // Show windows when ready
+  mainWindow.on('ready-to-show', () => {
+    mainWindow.show();
   });
 
-  secondWindow.on('closed', () => {
-    secondWindow = undefined;
+  secondWindow.on('ready-to-show', () => {
+    secondWindow.show();
   });
-}
 
-function initializeApp() {
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173');
+    secondWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
+    secondWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(join(currentDir, '../renderer/index.html'));
+    secondWindow.loadFile(join(currentDir, '../renderer/index.html'));
+  }
+
+  return [mainWindow, secondWindow];
+};
+
+const createAndSubscribeWindows = (bridge: ReturnType<typeof createHandlersBridge>) => {
+  const [mainWindow, secondWindow] = createWindows();
+  bridge.subscribe([mainWindow, secondWindow]);
+  return [mainWindow, secondWindow];
+};
+
+// Initialize the app
+app.whenReady().then(() => {
   console.log('[Main] Initializing handlers-minimal app');
 
   // Create the Zustand store
-  store = getHandlersStore();
+  const store = getHandlersStore();
 
   // Create the bridge with handlers mode
-  bridge = createHandlersBridge(store);
+  const bridge = createHandlersBridge(store);
 
-  // Subscribe the bridge to the windows
-  bridge.subscribe([mainWindow!, secondWindow!]);
+  // Handle window info requests
+  ipcMain.handle('get-window-info', (event) => {
+    const sender = event.sender;
+    const window = BrowserWindow.fromWebContents(sender) as ZubridgeWindow;
 
-  // Create and initialize the tray
-  const tray = createTray(store, [mainWindow!, secondWindow!]);
-
-  console.log('[Main] App initialized successfully');
-}
-
-// IPC handler for getting window info
-ipcMain.handle('get-window-info', (event) => {
-  const window = BrowserWindow.fromWebContents(event.sender) as ZubridgeWindow;
-  if (window) {
     return {
-      id: window.windowId,
-      type: window.windowType,
+      type: window?.windowType || 'main',
+      id: window?.windowId || 1,
     };
-  }
-  return { id: 0, type: 'unknown' };
-});
+  });
 
-// This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
-  createWindow();
-  initializeApp();
+  // Create both windows
+  const windows = createAndSubscribeWindows(bridge);
+
+  // Create and initialize tray
+  const tray = createTray(store, windows);
 
   app.on('activate', () => {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      const newWindows = createAndSubscribeWindows(bridge);
+      tray.init(store, newWindows);
     }
   });
-});
 
-// Quit when all windows are closed, except on macOS
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-// Handle app quit
-app.on('before-quit', () => {
-  console.log('[Main] App quitting');
+  console.log('[Main] App initialized successfully');
 });

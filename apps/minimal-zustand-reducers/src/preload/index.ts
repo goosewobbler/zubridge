@@ -1,26 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { createUseStore } from '@zubridge/electron';
+import { preloadBridge } from '@zubridge/electron/preload';
 import type { State } from '../features/index.js';
 
 console.log('[Preload] Script initializing');
 
-// Index signature to satisfy AnyState requirement
-interface AppState extends State {
-  [key: string]: unknown;
-}
+// Get handlers from the preload bridge
+const { handlers } = preloadBridge<State>();
 
-// Create the store hook for the renderer
-export const useStore = createUseStore<AppState>();
+// Expose Zubridge handlers directly without wrapping
+contextBridge.exposeInMainWorld('zubridge', handlers);
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  getWindowInfo: () => ipcRenderer.invoke('get-window-info'),
-});
-
-// Expose the store hook
-contextBridge.exposeInMainWorld('zubridge', {
-  useStore,
+  getWindowInfo: () => {
+    console.log('[Preload] Invoking get-window-info');
+    return ipcRenderer.invoke('get-window-info');
+  },
 });
 
 console.log('[Preload] Script initialized successfully');
