@@ -1,0 +1,32 @@
+{
+  "name": "e2e-tauri",
+  "version": "1.0.0",
+  "description": "End-to-end testing app for Zubridge Tauri",
+  "private": true,
+  "scripts": {
+    "build": "tauri build",
+    "dev": "tauri dev",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@zubridge/tauri": "workspace:*",
+    "@zubridge/ui": "workspace:*",
+    "@zubridge/types": "workspace:*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^1.5.3",
+    "@tauri-apps/cli": "^1.5.9",
+    "@tauri-apps/plugin-shell": "^1.0.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8"
+  }
+}
