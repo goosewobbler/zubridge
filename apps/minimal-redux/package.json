@@ -15,7 +15,6 @@
     "dist:dir": "pnpm build && electron-builder --dir"
   },
   "dependencies": {
-    "@zubridge/core": "workspace:*",
     "@zubridge/electron": "workspace:*",
     "@zubridge/ui": "workspace:*",
     "@reduxjs/toolkit": "^2.0.1",
