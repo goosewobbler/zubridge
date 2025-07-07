@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Get the current mode from environment variables, default to 'basic'
-const currentMode = process.env.ZUBRIDGE_MODE || 'basic';
+const currentMode = process.env.ZUBRIDGE_MODE || 'zustand-basic';
 console.log(`[DEBUG] Mode: ${currentMode}, OutDir: out-${currentMode}`);
 
 // Check for platform-specific flag in command line arguments
@@ -22,7 +22,7 @@ const isE2eTest = process.cwd().includes('/e2e');
 console.log(`[DEBUG] Running in e2e test environment: ${isE2eTest}`);
 
 // Base directory is different in e2e tests vs normal builds
-const appBaseDir = isE2eTest ? path.resolve(process.cwd(), '../apps/electron-example') : process.cwd();
+const appBaseDir = isE2eTest ? path.resolve(process.cwd(), '../apps/e2e-electron') : process.cwd();
 console.log(`[DEBUG] Application base directory: ${appBaseDir}`);
 
 // Calculate the electron cache directory based on the mode and ensure it's in the right location
@@ -69,10 +69,10 @@ if (!fs.existsSync(outputDir)) {
 
     // Create a fixed package.json for the app
     const packageJson = {
-      name: `zubridge-electron-example-${currentMode}`,
+      name: `e2e-electron-${currentMode}`,
       version: '1.0.0',
       main: 'main/index.js',
-      description: `Zubridge Electron Example (${currentMode} mode)`,
+      description: `Zubridge E2E Electron (${currentMode} mode)`,
       author: 'Zubridge Team',
     };
 
@@ -137,8 +137,8 @@ if (!fs.existsSync(outputDir)) {
 
 // Generate the configuration with platform-specific targets
 const config: Configuration = {
-  appId: `com.zubridge.example.${currentMode}`,
-  productName: `zubridge-electron-example-${currentMode}`,
+  appId: `com.zubridge.e2e-electron.${currentMode}`,
+  productName: `e2e-electron-${currentMode}`,
   directories: {
     // Use the appropriate base directory in the output path
     output: path.join(appBaseDir, `dist-${currentMode}`),
@@ -184,7 +184,7 @@ const config: Configuration = {
   ...(buildPlatforms.includes('linux') && {
     linux: {
       target: 'zip',
-      executableName: `zubridge-electron-example-${currentMode}`,
+      executableName: `e2e-electron-${currentMode}`,
     },
   }),
 };

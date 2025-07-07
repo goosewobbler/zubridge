@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "zubridge-tauri-example",
+  "productName": "e2e-tauri",
   "version": "0.1.0",
-  "identifier": "com.zubridge.tauri.example",
+  "identifier": "com.zubridge.e2e-tauri",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -23,7 +23,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Zubridge Tauri Example (Main)",
+        "title": "Zubridge E2E Tauri (Main)",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -31,7 +31,7 @@
       },
       {
         "label": "secondary",
-        "title": "Zubridge Tauri Example (Secondary)",
+        "title": "Zubridge E2E Tauri (Secondary)",
         "width": 700,
         "height": 500,
         "x": 100,

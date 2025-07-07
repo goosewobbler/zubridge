@@ -63,8 +63,8 @@
         "test:e2e:electron-handlers",
         "test:e2e:electron-redux",
         "test:e2e:electron-custom",
-        "test:e2e:tauri-basic",
-        "test:e2e:tauri-v1-basic"
+        "test:e2e:tauri",
+        "test:e2e:tauri-v1"
       ],
       "cache": false
     },
@@ -88,12 +88,12 @@
       "dependsOn": ["zubridge-electron-example#build:custom"],
       "cache": false
     },
-    "test:e2e:tauri-basic": {
-      "dependsOn": ["zubridge-tauri-example#build"],
+    "test:e2e:tauri": {
+      "dependsOn": ["e2e-tauri#build"],
       "cache": false
     },
-    "test:e2e:tauri-v1-basic": {
-      "dependsOn": ["zubridge-tauri-v1-example#build"],
+    "test:e2e:tauri-v1": {
+      "dependsOn": ["e2e-tauri-v1#build"],
       "cache": false
     },
     "@zubridge/middleware#build": {
@@ -185,7 +185,7 @@
       ],
       "cache": false
     },
-    "zubridge-tauri-example#build": {
+    "e2e-tauri#build": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -193,10 +193,10 @@
         "packages/apps-shared/dist/**",
         "packages/middleware/dist/**"
       ],
-      "outputs": ["apps/tauri-example/dist/**", "apps/tauri-example/src-tauri/target/**"],
+      "outputs": ["apps/e2e-tauri/dist/**", "apps/e2e-tauri/src-tauri/target/**"],
       "cache": false
     },
-    "zubridge-tauri-v1-example#build": {
+    "e2e-tauri-v1#build": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -204,7 +204,7 @@
         "packages/apps-shared/dist/**",
         "packages/middleware/dist/**"
       ],
-      "outputs": ["apps/tauri-v1-example/dist/**", "apps/tauri-v1-example/src-tauri/target/**"],
+      "outputs": ["apps/e2e-tauri-v1/dist/**", "apps/e2e-tauri-v1/src-tauri/target/**"],
       "cache": false
     },
     "@zubridge/core#build": {

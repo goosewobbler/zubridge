@@ -152,10 +152,10 @@ if (e2eAppType.startsWith('tauri')) {
           electronExampleAppPath,
           `dist-${mode}`,
           dir,
-          `zubridge-electron-example-${mode}.app`,
+          `e2e-electron-${mode}.app`,
           'Contents',
           'MacOS',
-          `zubridge-electron-example-${mode}`,
+          `e2e-electron-${mode}`,
         );
         if (fs.existsSync(binPath)) return binPath;
       }
@@ -169,10 +169,10 @@ if (e2eAppType.startsWith('tauri')) {
             const binPath = path.join(
               distDir,
               folder,
-              `zubridge-electron-example-${mode}.app`,
+              `e2e-electron-${mode}.app`,
               'Contents',
               'MacOS',
-              `zubridge-electron-example-${mode}`,
+              `e2e-electron-${mode}`,
             );
             if (fs.existsSync(binPath)) return binPath;
           }
@@ -186,21 +186,11 @@ if (e2eAppType.startsWith('tauri')) {
     const binaryFinders = {
       darwin: findMacBinary,
       win32: () => {
-        const binPath = path.join(
-          electronExampleAppPath,
-          `dist-${mode}`,
-          'win-unpacked',
-          `zubridge-electron-example-${mode}.exe`,
-        );
+        const binPath = path.join(electronExampleAppPath, `dist-${mode}`, 'win-unpacked', `e2e-electron-${mode}.exe`);
         return fs.existsSync(binPath) ? binPath : '';
       },
       linux: () => {
-        const binPath = path.join(
-          electronExampleAppPath,
-          `dist-${mode}`,
-          'linux-unpacked',
-          `zubridge-electron-example-${mode}`,
-        );
+        const binPath = path.join(electronExampleAppPath, `dist-${mode}`, 'linux-unpacked', `e2e-electron-${mode}`);
         return fs.existsSync(binPath) ? binPath : '';
       },
     };
@@ -235,7 +225,7 @@ if (e2eAppType.startsWith('tauri')) {
   if (
     currentPlatform === 'darwin' &&
     fs.existsSync(binaryPath) &&
-    binaryPath.endsWith('.app/Contents/MacOS/' + `zubridge-electron-example-${mode}`)
+    binaryPath.endsWith('.app/Contents/MacOS/' + `e2e-electron-${mode}`)
   ) {
     try {
       const stats = fs.statSync(binaryPath);

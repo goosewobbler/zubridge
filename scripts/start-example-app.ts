@@ -138,21 +138,12 @@ function startElectronApp(appName: string, platform: string, arch: string, distD
 function startTauriApp(appName: string, platform: string, arch: string, distDir: string): void {
   let appPath: string;
 
-  // Convert from zubridge-tauri-example to tauri-example (strip zubridge- prefix if it exists)
-  const normalizedAppName = appName.replace(/^zubridge-/, '');
-  // Further normalize by removing any version suffix (e.g., tauri-v1 -> tauri)
-  const simplifiedAppName = normalizedAppName.replace(/-v\d+$/, '');
-
   if (platform === 'darwin') {
     // macOS: .app package inside macos directory
     const appDir = path.join(distDir, 'macos');
 
-    // Try with different naming patterns
-    const possiblePaths = [
-      path.join(appDir, `${appName}.app`),
-      path.join(appDir, `${simplifiedAppName}.app`),
-      path.join(appDir, `${normalizedAppName}.app`),
-    ];
+    // Try with the actual app name
+    const possiblePaths = [path.join(appDir, `${appName}.app`)];
 
     appPath = possiblePaths.find((p) => fs.existsSync(p)) || '';
 

@@ -5,7 +5,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "zubridge-tauri-v1-example",
+    "productName": "e2e-tauri-v1",
     "version": "0.1.0"
   },
   "tauri": {
@@ -35,7 +35,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.zubridge.tauri.v1.example",
+      "identifier": "com.zubridge.e2e-tauri-v1",
       "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
     },
     "security": {
@@ -47,7 +47,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Zubridge Tauri v1 Example (Main)",
+        "title": "Zubridge E2E Tauri v1 (Main)",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -55,7 +55,7 @@
       },
       {
         "label": "secondary",
-        "title": "Zubridge Tauri v1 Example (Secondary)",
+        "title": "Zubridge E2E Tauri v1 (Secondary)",
         "width": 700,
         "height": 500,
         "x": 100,
