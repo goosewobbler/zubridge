@@ -1,5 +1,9 @@
-import { createUseStore } from '@zubridge/electron';
-import type { State } from '../../types.js';
+import type { State } from '../../features/index.js';
 
-// Create a shared store hook for the entire application
-export const useStore = createUseStore<State>();
+/**
+ * Hook to access the Zubridge store in the renderer process
+ */
+export const useStore = () => {
+  // Access the store through the window.zubridge object
+  return (window as any).zubridge?.useStore?.() as State | undefined;
+};

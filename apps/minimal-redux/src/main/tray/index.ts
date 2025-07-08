@@ -1,8 +1,7 @@
 import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
 import { BaseSystemTray } from './base.js';
-import type { State } from '../../types.js';
-import type { ZustandBridge } from '@zubridge/electron/main';
+import type { State } from '../../features/index.js';
 import type { Store } from 'redux';
 
 /**
@@ -14,7 +13,7 @@ export class ReduxSystemTray extends BaseSystemTray {
   private store: Store<any> | null = null;
   private storeUnsubscribe: (() => void) | null = null;
 
-  public init(bridge: ZustandBridge, store: Store, windows: BrowserWindow[]) {
+  public init(store: Store, windows: BrowserWindow[]) {
     this.windows = windows;
 
     // Use the shared store from the main process
@@ -68,11 +67,11 @@ export class ReduxSystemTray extends BaseSystemTray {
 /**
  * Creates a tray instance for the Redux minimal app
  */
-export function createTray(bridge: ZustandBridge, store: Store, windows: BrowserWindow[]) {
+export function createTray(store: Store, windows: BrowserWindow[]) {
   console.log('Creating tray for Redux minimal app');
 
   const tray = new ReduxSystemTray();
-  tray.init(bridge, store, windows);
+  tray.init(store, windows);
   return tray;
 }
 

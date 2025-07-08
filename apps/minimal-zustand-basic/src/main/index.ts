@@ -1,9 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { createZustandBridge, type ZustandBridge } from '@zubridge/electron/main';
-import { create } from 'zustand';
-import { State } from '../types.js';
+import { createStore } from './store.js';
+import { createBridge } from './bridge.js';
 import { createTray } from './tray/index.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -78,7 +77,7 @@ const createWindows = (): BrowserWindow[] => {
   return [mainWindow, secondWindow];
 };
 
-const createAndSubscribeWindows = (bridge: ZustandBridge) => {
+const createAndSubscribeWindows = (bridge: ReturnType<typeof createBridge>) => {
   const [mainWindow, secondWindow] = createWindows();
   bridge.subscribe([mainWindow, secondWindow]);
   return [mainWindow, secondWindow];
@@ -86,46 +85,11 @@ const createAndSubscribeWindows = (bridge: ZustandBridge) => {
 
 // Initialize the app
 app.whenReady().then(() => {
-  // Create initial state
-  const initialState: State = {
-    'counter': 0,
-    'theme': 'dark',
-    'COUNTER:INCREMENT': () => {},
-    'COUNTER:DECREMENT': () => {},
-    'THEME:TOGGLE': () => {},
-  };
-
   // Create Zustand store
-  const store = create<State>()(() => initialState);
-
-  // Attach action handlers to the store (basic mode pattern)
-  store.setState((state) => ({
-    ...state,
-    'COUNTER:INCREMENT': () => {
-      console.log('[Basic] Incrementing counter');
-      store.setState((state) => ({
-        ...state,
-        counter: state.counter + 1,
-      }));
-    },
-    'COUNTER:DECREMENT': () => {
-      console.log('[Basic] Decrementing counter');
-      store.setState((state) => ({
-        ...state,
-        counter: state.counter - 1,
-      }));
-    },
-    'THEME:TOGGLE': () => {
-      console.log('[Basic] Toggling theme');
-      store.setState((state) => ({
-        ...state,
-        theme: state.theme === 'dark' ? 'light' : 'dark',
-      }));
-    },
-  }));
+  const store = createStore();
 
   // Create bridge
-  const bridge = createZustandBridge(store);
+  const bridge = createBridge(store);
 
   // Handle window info requests
   ipcMain.handle('get-window-info', (event) => {

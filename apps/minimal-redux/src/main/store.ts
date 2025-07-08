@@ -1,32 +1,6 @@
-import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-
-// Counter slice
-const counterSlice = createSlice({
-  name: 'counter',
-  initialState: 0,
-  reducers: {
-    increment: (state) => {
-      console.log('[Redux Counter] Incrementing counter');
-      return state + 1;
-    },
-    decrement: (state) => {
-      console.log('[Redux Counter] Decrementing counter');
-      return state - 1;
-    },
-  },
-});
-
-// Theme slice
-const themeSlice = createSlice({
-  name: 'theme',
-  initialState: 'dark' as 'dark' | 'light',
-  reducers: {
-    toggleTheme: (state) => {
-      console.log('[Redux Theme] Toggling theme');
-      return state === 'dark' ? 'light' : 'dark';
-    },
-  },
-});
+import { configureStore } from '@reduxjs/toolkit';
+import { counterSlice } from '../features/counter/index.js';
+import { themeSlice } from '../features/theme/index.js';
 
 // Root reducer
 const rootReducer = {
@@ -37,7 +11,6 @@ const rootReducer = {
 // Create the Redux store
 export function createStore() {
   console.log('[Redux Store] Creating Redux store with Redux Toolkit');
-
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>

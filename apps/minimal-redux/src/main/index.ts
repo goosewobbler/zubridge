@@ -1,10 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { createReduxBridge, type ZustandBridge, type ZubridgeMiddleware } from '@zubridge/electron/main';
-import { State } from '../types.js';
 import { createTray } from './tray/index.js';
 import { createStore } from './store.js';
+import { createBridge } from './bridge.js';
 import type { Store } from 'redux';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -79,25 +78,7 @@ const createWindows = (): BrowserWindow[] => {
   return [mainWindow, secondWindow];
 };
 
-/**
- * Creates a bridge using a Redux store
- * In this approach, we use Redux with Redux Toolkit to manage state
- */
-const createReduxBridgeWithStore = (middleware?: ZubridgeMiddleware): { bridge: ZustandBridge; store: Store } => {
-  console.log('[Redux Mode] Creating bridge with Redux store');
-
-  // Create the Redux store
-  const store = createStore();
-
-  // Create bridge with Redux store and the createReduxBridge function from the library
-  const bridge = createReduxBridge(store, {
-    middleware,
-  });
-
-  return { bridge, store };
-};
-
-const createAndSubscribeWindows = (bridge: ZustandBridge) => {
+const createAndSubscribeWindows = (bridge: ReturnType<typeof createBridge>) => {
   const [mainWindow, secondWindow] = createWindows();
   bridge.subscribe([mainWindow, secondWindow]);
   return [mainWindow, secondWindow];
@@ -105,8 +86,11 @@ const createAndSubscribeWindows = (bridge: ZustandBridge) => {
 
 // Initialize the app
 app.whenReady().then(() => {
-  // Create Redux bridge and store
-  const { bridge, store } = createReduxBridgeWithStore();
+  // Create Redux store
+  const store = createStore();
+
+  // Create Redux bridge
+  const bridge = createBridge(store);
 
   // Handle window info requests
   ipcMain.handle('get-window-info', (event) => {
@@ -123,12 +107,12 @@ app.whenReady().then(() => {
   const windows = createAndSubscribeWindows(bridge);
 
   // Create and initialize tray with the shared store
-  const tray = createTray(bridge, store, windows);
+  const tray = createTray(store, windows);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const newWindows = createAndSubscribeWindows(bridge);
-      tray.init(bridge, store, newWindows);
+      tray.init(store, newWindows);
     }
   });
 });

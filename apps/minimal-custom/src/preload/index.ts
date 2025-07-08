@@ -1,21 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
+import type { State } from '../features/index.js';
 
 console.log('[Preload] Script initializing');
-
-// Simple state interface for basic mode
-interface State {
-  'counter': number;
-  'theme': 'light' | 'dark';
-
-  // Action handlers for basic mode
-  'COUNTER:INCREMENT': () => void;
-  'COUNTER:DECREMENT': () => void;
-  'THEME:TOGGLE': () => void;
-
-  // Index signature to satisfy AnyState requirement
-  [key: string]: any;
-}
 
 // Get handlers from the preload bridge
 const { handlers } = preloadBridge<State>();

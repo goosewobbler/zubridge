@@ -1,35 +1,6 @@
 import { EventEmitter } from 'events';
 import type { StateManager, Action, AnyState, ProcessResult } from '@zubridge/types';
-
-// Initial state
-const getInitialState = (): AnyState => ({
-  counter: 0,
-  theme: 'dark',
-});
-
-// Action handlers
-const handlers: Record<string, (stateOrPayload: AnyState | any) => Partial<AnyState>> = {
-  'COUNTER:INCREMENT': (state: AnyState) => {
-    console.log('[Custom Counter] Incrementing counter');
-    return {
-      counter: (state.counter as number) + 1,
-    };
-  },
-  'COUNTER:DECREMENT': (state: AnyState) => {
-    console.log('[Custom Counter] Decrementing counter');
-    return {
-      counter: (state.counter as number) - 1,
-    };
-  },
-  'THEME:TOGGLE': (state: AnyState) => {
-    const currentTheme = state.theme as 'light' | 'dark' | undefined;
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    console.log(`[Custom Theme] Toggling theme from ${currentTheme || 'unknown'} to ${newTheme}`);
-    return {
-      theme: newTheme,
-    };
-  },
-};
+import { handlers, initialState } from '../features/index.js';
 
 /**
  * Custom store using EventEmitter that directly implements StateManager
@@ -37,7 +8,7 @@ const handlers: Record<string, (stateOrPayload: AnyState | any) => Partial<AnySt
  */
 class CustomStore extends EventEmitter implements StateManager<AnyState> {
   // The current state
-  private state: AnyState = getInitialState();
+  private state: AnyState = initialState;
 
   /**
    * Get the current state
@@ -85,7 +56,7 @@ class CustomStore extends EventEmitter implements StateManager<AnyState> {
       return { isSync: true };
     }
 
-    // Handle different action types using the handlers
+    // Handle different action types using the handlers from features
     const handler = handlers[action.type];
 
     if (handler) {
@@ -107,10 +78,10 @@ class CustomStore extends EventEmitter implements StateManager<AnyState> {
 }
 
 /**
- * Gets a custom store instance
+ * Creates a custom store instance
  * Returns the raw CustomStore which implements StateManager interface
  */
-export function getCustomStore(): StateManager<AnyState> {
+export function createStore(): StateManager<AnyState> {
   console.log('[Custom Mode] Creating EventEmitter store');
   return new CustomStore();
 }

@@ -1,10 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { createHandlersBridge } from '../bridge.js';
-import { getHandlersStore } from '../store.js';
-import type { State } from '../features/index.js';
-import type { StoreApi } from 'zustand';
+import { createStore } from './store.js';
+import { createBridge } from './bridge.js';
 import { createTray } from './tray/index.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -79,7 +77,7 @@ const createWindows = (): BrowserWindow[] => {
   return [mainWindow, secondWindow];
 };
 
-const createAndSubscribeWindows = (bridge: ReturnType<typeof createHandlersBridge>) => {
+const createAndSubscribeWindows = (bridge: ReturnType<typeof createBridge>) => {
   const [mainWindow, secondWindow] = createWindows();
   bridge.subscribe([mainWindow, secondWindow]);
   return [mainWindow, secondWindow];
@@ -90,10 +88,10 @@ app.whenReady().then(() => {
   console.log('[Main] Initializing handlers-minimal app');
 
   // Create the Zustand store
-  const store = getHandlersStore();
+  const store = createStore();
 
   // Create the bridge with handlers mode
-  const bridge = createHandlersBridge(store);
+  const bridge = createBridge(store);
 
   // Handle window info requests
   ipcMain.handle('get-window-info', (event) => {

@@ -3,7 +3,7 @@ import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
 import type { State } from '../../features/index.js';
 import { BaseSystemTray } from './base.js';
-import { createHandlers } from '../../bridge.js';
+import { createHandlers } from '../bridge.js';
 
 /**
  * Handlers mode tray implementation

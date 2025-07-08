@@ -21,19 +21,3 @@ export const toggleTheme =
       };
     });
   };
-
-/**
- * Creates a theme set handler for the handlers mode
- * Allows setting the theme to a specific value (dark or light)
- */
-export const setTheme =
-  <S extends { theme?: 'light' | 'dark'; [key: string]: unknown }>(store: StoreApi<S>) =>
-  (isDark: boolean) => {
-    const theme = isDark ? 'dark' : 'light';
-    console.log(`[Handler] Setting theme to ${theme}`);
-
-    store.setState((state) => ({
-      ...state,
-      theme,
-    }));
-  };

@@ -1,15 +1,14 @@
 import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
 import { BaseSystemTray } from './base.js';
-import type { State } from '../../types.js';
-import type { ZustandBridge } from '@zubridge/electron/main';
+import type { State } from '../../features/index.js';
 import type { StateManager, AnyState } from '@zubridge/types';
 
 /**
  * Custom mode tray implementation
  */
 export class CustomSystemTray extends BaseSystemTray {
-  public init(bridge: ZustandBridge, store: StateManager<AnyState>, windows: BrowserWindow[]) {
+  public init(store: StateManager<AnyState>, windows: BrowserWindow[]) {
     this.windows = windows;
 
     console.log('[Custom Tray] Initializing with shared custom store');
@@ -31,11 +30,11 @@ export class CustomSystemTray extends BaseSystemTray {
 /**
  * Creates a tray instance for the custom minimal app
  */
-export function createTray(bridge: ZustandBridge, store: StateManager<AnyState>, windows: BrowserWindow[]) {
+export function createTray(store: StateManager<AnyState>, windows: BrowserWindow[]) {
   console.log('Creating tray for custom minimal app');
 
   const tray = new CustomSystemTray();
-  tray.init(bridge, store, windows);
+  tray.init(store, windows);
   return tray;
 }
 

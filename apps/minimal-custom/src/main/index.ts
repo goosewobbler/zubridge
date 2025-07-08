@@ -1,10 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { createCoreBridge, createDispatch, type ZustandBridge, type ZubridgeMiddleware } from '@zubridge/electron/main';
-import { State } from '../types.js';
 import { createTray } from './tray/index.js';
-import { getCustomStore } from './store.js';
+import { createStore } from './store.js';
+import { createBridge } from './bridge.js';
 import type { StateManager, AnyState } from '@zubridge/types';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -79,41 +78,7 @@ const createWindows = (): BrowserWindow[] => {
   return [mainWindow, secondWindow];
 };
 
-/**
- * Creates a bridge using the custom store approach
- * This demonstrates how to use createCoreBridge with a custom state manager
- */
-const createCustomBridge = (
-  middleware?: ZubridgeMiddleware,
-): { bridge: ZustandBridge; store: StateManager<AnyState> } => {
-  console.log('[Custom Mode] Creating bridge with custom state manager');
-
-  // Get a CustomStore instance from our implementation
-  const customStore = getCustomStore();
-
-  // Create the core bridge with our custom store
-  const coreBridge = createCoreBridge(customStore, { middleware });
-
-  // Create a dispatch function that works with our store
-  const dispatchFn = createDispatch(customStore);
-
-  // Log initial state for debugging
-  console.log('[Custom Mode] Initial state:', customStore.getState());
-
-  // Return the bridge interface that matches other bridge implementations
-  const bridge = {
-    subscribe: coreBridge.subscribe,
-    unsubscribe: coreBridge.unsubscribe,
-    getSubscribedWindows: coreBridge.getSubscribedWindows,
-    destroy: coreBridge.destroy,
-    dispatch: dispatchFn,
-    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
-  };
-
-  return { bridge, store: customStore };
-};
-
-const createAndSubscribeWindows = (bridge: ZustandBridge) => {
+const createAndSubscribeWindows = (bridge: ReturnType<typeof createBridge>) => {
   const [mainWindow, secondWindow] = createWindows();
   bridge.subscribe([mainWindow, secondWindow]);
   return [mainWindow, secondWindow];
@@ -121,8 +86,11 @@ const createAndSubscribeWindows = (bridge: ZustandBridge) => {
 
 // Initialize the app
 app.whenReady().then(() => {
-  // Create custom bridge and store
-  const { bridge, store } = createCustomBridge();
+  // Create custom store
+  const store = createStore();
+
+  // Create custom bridge
+  const bridge = createBridge(store);
 
   // Handle window info requests
   ipcMain.handle('get-window-info', (event) => {
@@ -139,12 +107,12 @@ app.whenReady().then(() => {
   const windows = createAndSubscribeWindows(bridge);
 
   // Create and initialize tray with the shared store
-  const tray = createTray(bridge, store, windows);
+  const tray = createTray(store, windows);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const newWindows = createAndSubscribeWindows(bridge);
-      tray.init(bridge, store, newWindows);
+      tray.init(store, newWindows);
     }
   });
 });

@@ -1,7 +1,7 @@
 import { type BrowserWindow } from 'electron';
 import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
-import type { State } from '../../types.js';
+import type { State } from '../../features/index.js';
 import { BaseSystemTray } from './base.js';
 
 /**
