@@ -13,6 +13,8 @@ export class BasicSystemTray extends BaseSystemTray {
   public init(store: StoreApi<State>, windows: BrowserWindow[]) {
     this.windows = windows;
 
+    console.log('[Basic Tray] Using shared Zustand store');
+
     // Create dispatch helper from the store
     this.dispatch = createDispatch(store);
 
@@ -20,7 +22,10 @@ export class BasicSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => this.update(state));
+    store.subscribe((state) => {
+      console.log(`[Basic Tray] State update:`, state);
+      this.update(state);
+    });
   }
 }
 

@@ -2,9 +2,7 @@ import { type BrowserWindow, Menu, Tray, app, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { isDev } from '@zubridge/electron';
-
-import type { StoreApi } from 'zustand';
-import type { Dispatch } from '@zubridge/types';
+import { createDispatch } from '@zubridge/electron/main';
 import type { State } from '../../features/index.js';
 
 // Get icon paths
@@ -50,102 +48,97 @@ const trayIcon = finalTrayIconPath
   : nativeImage.createEmpty().resize({ width: 18, height: 18 });
 
 /**
- * Base SystemTray class with common functionality.
+ * Base system tray implementation that can be extended by different modes
  */
-export class BaseSystemTray {
-  protected dispatch?: Dispatch<State>;
-  protected electronTray?: Tray;
-  protected windows?: BrowserWindow[];
+export abstract class BaseSystemTray {
+  protected electronTray: Tray | undefined;
+  protected windows: BrowserWindow[] = [];
+  protected dispatch: ReturnType<typeof createDispatch> | undefined;
 
-  protected update = (state: State) => {
-    if (!this.dispatch) {
-      return;
-    }
+  /**
+   * Updates the tray menu with current state
+   */
+  protected update(state: State) {
     if (!this.electronTray) {
       this.electronTray = new Tray(trayIcon);
     }
 
-    const dispatch = this.dispatch;
-    const showWindows = () => {
-      if (this.windows) {
-        this.windows.forEach((window) => {
-          if (window && !window.isDestroyed()) {
+    const template: Electron.MenuItemConstructorOptions[] = [
+      {
+        label: `Counter: ${state.counter}`,
+        enabled: false,
+      },
+      {
+        label: `Theme: ${state.theme}`,
+        enabled: false,
+      },
+      { type: 'separator' },
+      {
+        label: 'Increment Counter',
+        click: () => {
+          console.log('[Tray] Incrementing counter');
+          this.dispatch?.('COUNTER:INCREMENT');
+        },
+      },
+      {
+        label: 'Decrement Counter',
+        click: () => {
+          console.log('[Tray] Decrementing counter');
+          this.dispatch?.('COUNTER:DECREMENT');
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Toggle Theme',
+        click: () => {
+          console.log('[Tray] Toggling theme');
+          this.dispatch?.('THEME:TOGGLE');
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Show Windows',
+        click: () => {
+          this.windows.forEach((window) => {
+            if (window.isMinimized()) {
+              window.restore();
+            }
             window.show();
             window.focus();
-          }
-        });
-      }
-    };
-
-    // Display items
-    const counterText = `Counter: ${state.counter ?? 0}`;
-    const themeText = `Theme: ${state.theme === 'dark' ? 'Dark' : 'Light'}`;
-
-    const contextMenu = Menu.buildFromTemplate([
-      // Display items (non-clickable)
-      {
-        label: counterText,
-        enabled: false,
-      },
-      {
-        label: themeText,
-        enabled: false,
-      },
-      { type: 'separator' },
-
-      // Action items
-      {
-        label: 'Increment',
-        click: () => {
-          dispatch('COUNTER:INCREMENT');
-          showWindows();
+          });
         },
       },
       {
-        label: 'Decrement',
+        label: 'Hide Windows',
         click: () => {
-          dispatch('COUNTER:DECREMENT');
-          showWindows();
-        },
-      },
-      {
-        label: 'Switch Theme',
-        click: () => {
-          dispatch('THEME:TOGGLE');
-          showWindows();
+          this.windows.forEach((window) => {
+            window.hide();
+          });
         },
       },
       { type: 'separator' },
-
-      // App control
       {
         label: 'Quit',
         click: () => {
-          app.quit();
+          console.log('[Tray] Quitting app');
+          process.exit(0);
         },
       },
-    ]);
+    ];
 
+    const contextMenu = Menu.buildFromTemplate(template);
     this.electronTray.setContextMenu(contextMenu);
-    this.electronTray.setToolTip('Zubridge Handlers Minimal');
-
-    // Remove any existing click handlers
-    this.electronTray.removeAllListeners('click');
-
-    // Add click handler to show windows on left click
-    this.electronTray.on('click', showWindows);
-  };
-
-  public init(store: StoreApi<State>, windows: BrowserWindow[]) {
-    this.windows = windows;
-
-    // Initialize immediately with current state
-    this.update(store.getState());
-
-    // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => this.update(state));
+    this.electronTray.setToolTip('Zubridge Minimal App');
   }
 
+  /**
+   * Abstract method that must be implemented by subclasses
+   */
+  abstract init(...args: any[]): void;
+
+  /**
+   * Clean up resources when the tray is destroyed
+   */
   public destroy = () => {
     if (this.electronTray) {
       this.electronTray.destroy();

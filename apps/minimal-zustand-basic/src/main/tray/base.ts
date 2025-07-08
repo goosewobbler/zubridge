@@ -135,4 +135,14 @@ export abstract class BaseSystemTray {
    * Abstract method that must be implemented by subclasses
    */
   abstract init(...args: any[]): void;
+
+  /**
+   * Clean up resources when the tray is destroyed
+   */
+  public destroy = () => {
+    if (this.electronTray) {
+      this.electronTray.destroy();
+      this.electronTray = undefined;
+    }
+  };
 }

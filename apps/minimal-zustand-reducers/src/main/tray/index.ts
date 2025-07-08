@@ -14,6 +14,8 @@ export class ReducersSystemTray extends BaseSystemTray {
   public init(store: StoreApi<State>, windows: BrowserWindow[]) {
     this.windows = windows;
 
+    console.log('[Reducers Tray] Using shared Zustand store with reducers');
+
     // Create dispatch directly from the store with reducer option
     this.dispatch = createDispatch<State>(store, { reducer: rootReducer });
 
@@ -21,7 +23,10 @@ export class ReducersSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => this.update(state));
+    store.subscribe((state) => {
+      console.log(`[Reducers Tray] State update:`, state);
+      this.update(state);
+    });
   }
 }
 

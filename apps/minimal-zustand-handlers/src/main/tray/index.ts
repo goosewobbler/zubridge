@@ -14,6 +14,8 @@ export class HandlersSystemTray extends BaseSystemTray {
   public init(store: StoreApi<State>, windows: BrowserWindow[]) {
     this.windows = windows;
 
+    console.log('[Handlers Tray] Using shared Zustand store with handlers');
+
     // Get handlers from bridge
     const handlers = createHandlers(store);
 
@@ -25,7 +27,10 @@ export class HandlersSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => this.update(state));
+    store.subscribe((state) => {
+      console.log(`[Handlers Tray] State update:`, state);
+      this.update(state);
+    });
   }
 }
 
