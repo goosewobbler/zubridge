@@ -63,7 +63,7 @@ export abstract class BaseSystemTray {
    */
   protected update(state: State) {
     if (!this.electronTray) {
-      this.electronTray = new Tray(process.platform === 'darwin' ? '🖥️' : '🖥️');
+      this.electronTray = new Tray(trayIcon);
     }
 
     const template: Electron.MenuItemConstructorOptions[] = [
