@@ -43,8 +43,9 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@zubridge/electron': resolve(__dirname, '../../packages/electron/src'),
-        '@zubridge/types': resolve(__dirname, '../../packages/types/src'),
+        '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist'),
+        '@zubridge/types': resolve(__dirname, '../../packages/types/dist'),
+        '@zubridge/ui': resolve(__dirname, '../../packages/ui/dist'),
       },
       extensions: ['.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs'],
     },
@@ -54,7 +55,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
         },
-        external: ['@zubridge/electron', '@zubridge/types', 'electron', 'zustand'],
+        external: ['electron'],
       },
     },
   },
