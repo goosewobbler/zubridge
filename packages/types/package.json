@@ -32,7 +32,8 @@
     "build": "tsc",
     "clean": "shx rm -rf dist",
     "clean:cache": "shx rm -rf .turbo",
-    "test": "vitest run"
+    "test": "vitest run",
+    "package": "pnpm pack"
   },
   "peerDependencies": {
     "zustand": "^5.0.3",

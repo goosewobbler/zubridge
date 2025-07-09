@@ -15,6 +15,7 @@
     "clean:cache": "shx rm -rf .turbo",
     "prebuild": "pnpm clean:output",
     "build": "tsx ./scripts/build.ts",
+    "package": "pnpm pack",
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest --coverage --watch=false",
     "test:dev": "vitest --coverage",

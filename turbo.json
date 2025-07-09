@@ -48,6 +48,10 @@
     "release": {
       "dependsOn": ["build:packages", "@zubridge/electron#test:unit", "@zubridge/tauri#test:unit"]
     },
+    "package": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "test": {
       "dependsOn": ["test:unit", "test:e2e"]
     },

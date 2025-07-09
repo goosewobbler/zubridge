@@ -41,10 +41,11 @@
     "build:css": "pnpx @tailwindcss/cli -i ./src/styles/tailwind.css -o ./dist/styles.css --postcss",
     "build:lib": "tsup",
     "build": "pnpm run build:lib && pnpm run build:plugin && pnpm run build:css",
+    "clean": "shx rm -rf .turbo node_modules dist",
     "dev:css": "pnpm run build:css -- --watch",
     "dev:lib": "tsup --watch",
     "dev": "mkdir -p dist && pnpm run dev:lib && pnpm run dev:css",
-    "clean": "shx rm -rf .turbo node_modules dist"
+    "package": "pnpm pack"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.10",
