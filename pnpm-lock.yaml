@@ -303,9 +303,6 @@ importers:
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
-      read-package-up:
-        specifier: ^11.0.0
-        version: 11.0.0
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.11
@@ -400,9 +397,6 @@ importers:
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
-      read-package-up:
-        specifier: ^11.0.0
-        version: 11.0.0
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.11
@@ -491,9 +485,6 @@ importers:
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
-      read-package-up:
-        specifier: ^11.0.0
-        version: 11.0.0
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.11
@@ -582,9 +573,6 @@ importers:
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
-      read-package-up:
-        specifier: ^11.0.0
-        version: 11.0.0
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.11
@@ -673,9 +661,6 @@ importers:
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
-      read-package-up:
-        specifier: ^11.0.0
-        version: 11.0.0
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.11
