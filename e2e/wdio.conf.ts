@@ -1,366 +1,280 @@
 import url from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execSync, spawn, type ChildProcess } from 'node:child_process';
-import os from 'node:os';
 
 import type { NormalizedPackageJson } from 'read-package-up';
-// import type { Options } from '@wdio/types'; // Kept as any for now
-
-import { getElectronVersion } from '@wdio/electron-utils';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-
-// Determine app type and path from environment variables
-const e2eAppType = process.env.E2E_APP_TYPE || 'electron'; // Default to electron
-const appPathFromEnv = process.env.APP_PATH; // Provided by GH Actions for packaged apps
-
-const appDir = process.env.APP_DIR as string; // e.g., 'e2e-electron', 'e2e-tauri'
-const mode = process.env.MODE || 'zustand-basic';
-
-console.log(`[DEBUG] E2E_APP_TYPE: ${e2eAppType}`);
-console.log(`[DEBUG] APP_PATH (from env): ${appPathFromEnv}`);
-console.log(`[DEBUG] APP_DIR (for fallback/electron dev): ${appDir}`);
-console.log(`[DEBUG] MODE: ${mode}`);
-
-let binaryPath: string | undefined = appPathFromEnv; // Use APP_PATH directly if available
-let services: string[] = [];
-let capabilities: any[] = [];
-let beforeSessionHook: (() => void) | undefined = undefined;
-let afterSessionHook: (() => void) | undefined = undefined;
-let onPrepareHook: (() => void) | undefined = undefined;
-let framework: string | undefined = undefined;
-let reporters: string[] | undefined = undefined;
-
-// keep track of the `tauri-driver` child process
-let tauriDriver: ChildProcess | undefined;
+const appDir = process.env.APP_DIR as string; // This should be 'electron-example'
+const mode = process.env.MODE || 'basic'; // Default to basic mode if not specified
+const appPath = path.join(__dirname, '..', 'apps', appDir); // Path to 'apps/electron-example'
+const packageJsonPath = path.join(appPath, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf-8' })) as NormalizedPackageJson;
 
 const currentPlatform = process.platform;
 const currentArch = process.arch;
 
-// Define stabilityFlags early as they are used in Electron serviceOptions
-const stabilityFlags = [
-  '--disable-dev-shm-usage',
-  '--disable-gpu',
-  '--no-sandbox',
-  '--disable-extensions',
-  '--disable-popup-blocking',
-  '--remote-debugging-port=9222',
-];
+console.log(`[DEBUG] Running on platform: ${currentPlatform}`);
+console.log(`[DEBUG] APP_DIR: ${appDir}, MODE: ${mode}`);
+console.log(`[DEBUG] packageJsonPath: ${packageJsonPath}`);
+console.log(`[DEBUG] appPath (base for dist): ${appPath}`);
+console.log(`[DEBUG] Running on architecture: ${currentArch}`);
 
-if (e2eAppType.startsWith('tauri')) {
-  if (!binaryPath || !fs.existsSync(binaryPath)) {
-    console.error(`[ERROR] Tauri app type specified, but APP_PATH is not valid: ${binaryPath}`);
-    process.exit(1);
+// Find binary path for current platform
+let binaryPath = '';
+
+// Define possible binary locations with architecture-aware paths
+const findMacBinary = () => {
+  // Define possible mac directories to check in priority order
+  const macDirs =
+    currentArch === 'arm64'
+      ? ['mac-arm64', 'mac'] // Prefer arm64 on arm systems
+      : ['mac', 'mac-arm64']; // Prefer intel on intel systems
+
+  // Try each directory in order
+  for (const dir of macDirs) {
+    const binPath = path.join(
+      appPath,
+      `dist-${mode}`,
+      dir,
+      `zubridge-electron-example-${mode}.app`,
+      'Contents',
+      'MacOS',
+      `zubridge-electron-example-${mode}`,
+    );
+
+    if (fs.existsSync(binPath)) {
+      console.log(`[DEBUG] Found macOS binary in ${dir}`);
+      return binPath;
+    }
   }
-  console.log(`[DEBUG] Using Tauri binary from APP_PATH: ${binaryPath}`);
-  // Ensure executable for non-Windows
-  if (currentPlatform !== 'win32') {
+
+  // Last resort: look for any mac* directory in dist
+  const distDir = path.join(appPath, `dist-${mode}`);
+  if (fs.existsSync(distDir)) {
     try {
-      fs.chmodSync(binaryPath, '755');
-      console.log(`[DEBUG] Made Tauri binary executable: ${binaryPath}`);
-    } catch (err) {
-      console.error(`[ERROR] Failed to chmod Tauri binary: ${err}`);
-    }
-  }
+      const macFolders = fs
+        .readdirSync(distDir)
+        .filter((dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory());
 
-  capabilities = [
-    {
-      'maxInstances': 1,
-      'browserName': 'chrome', // Or wry, depending on what tauri-driver expects/reports
-      'tauri:options': {
-        application: binaryPath,
-      },
-    },
-  ];
-
-  framework = 'mocha';
-  reporters = ['spec'];
-
-  // ensure we are running `tauri-driver` before the session starts
-  beforeSessionHook = () => {
-    const driverPath = path.resolve(os.homedir(), '.cargo', 'bin', 'tauri-driver');
-    console.log(`[DEBUG] Attempting to spawn tauri-driver from: ${driverPath}`);
-    tauriDriver = spawn(driverPath, [], { stdio: [null, process.stdout, process.stderr] });
-    if (tauriDriver.pid) {
-      console.log(`[DEBUG] tauri-driver spawned successfully with PID: ${tauriDriver.pid}`);
-    } else {
-      console.error(
-        `[ERROR] Failed to spawn tauri-driver at ${driverPath}. Ensure it is installed and in PATH or ~/.cargo/bin.`,
-      );
-      // Attempt to find it in PATH if home dir fails
-      try {
-        const driverPathInPath = execSync('command -v tauri-driver').toString().trim();
-        console.log(`[DEBUG] Found tauri-driver in PATH: ${driverPathInPath}`);
-        tauriDriver = spawn(driverPathInPath, [], { stdio: [null, process.stdout, process.stderr] });
-        if (!tauriDriver.pid) throw new Error('Still failed to spawn from PATH');
-        console.log(`[DEBUG] tauri-driver spawned successfully from PATH with PID: ${tauriDriver.pid}`);
-      } catch (pathError) {
-        console.error(`[ERROR] tauri-driver not found in PATH either. Error: ${pathError}`);
-        process.exit(1); // Exit if driver can't be started
-      }
-    }
-  };
-
-  // clean up the `tauri-driver` process
-  afterSessionHook = () => {
-    if (tauriDriver) {
-      console.log(`[DEBUG] Killing tauri-driver process (PID: ${tauriDriver.pid})`);
-      tauriDriver.kill();
-    }
-  };
-
-  // For Tauri, the app is already built by CI, so onPrepare is mainly for macOS quarantine
-  onPrepareHook = () => {
-    if (currentPlatform === 'darwin' && binaryPath && fs.existsSync(binaryPath)) {
-      try {
-        console.log('[DEBUG] Removing quarantine attribute from macOS Tauri app/dmg');
-        execSync(`xattr -r -d com.apple.quarantine "${binaryPath}"`, { stdio: 'pipe' });
-      } catch (error) {
-        console.warn('[WARN] Error removing quarantine for Tauri app:', error);
-      }
-    }
-  };
-} else {
-  // Electron app
-  services = ['electron'];
-  framework = 'mocha'; // Set framework to mocha for Electron as well
-  // Reporters will remain undefined for Electron to use defaults
-
-  const electronExampleAppPath = path.join(__dirname, '..', 'apps', appDir || 'e2e-electron');
-  const packageJsonPath = path.join(electronExampleAppPath, 'package.json');
-  let electronAppVersion: string | undefined;
-
-  if (fs.existsSync(packageJsonPath)) {
-    const packageJsonFile = JSON.parse(
-      fs.readFileSync(packageJsonPath, { encoding: 'utf-8' }),
-    ) as NormalizedPackageJson;
-    const pkg = { packageJson: packageJsonFile, path: packageJsonPath };
-    electronAppVersion = await getElectronVersion(pkg);
-  } else {
-    console.warn(`[WARN] package.json not found at ${packageJsonPath} for Electron version retrieval.`);
-  }
-
-  // Find binary path for current platform (Electron specific logic)
-  // This part is only relevant if appPathFromEnv (binaryPath) was NOT provided or not valid for Electron dev
-  if (!binaryPath || !fs.existsSync(binaryPath)) {
-    console.log('[DEBUG] Electron: APP_PATH not valid or not provided, attempting to find local dev binary.');
-    const findMacBinary = () => {
-      const macDirs = currentArch === 'arm64' ? ['mac-arm64', 'mac'] : ['mac', 'mac-arm64'];
-      for (const dir of macDirs) {
+      for (const folder of macFolders) {
         const binPath = path.join(
-          electronExampleAppPath,
-          `dist-${mode}`,
-          dir,
-          `e2e-electron-${mode}.app`,
+          distDir,
+          folder,
+          `zubridge-electron-example-${mode}.app`,
           'Contents',
           'MacOS',
-          `e2e-electron-${mode}`,
+          `zubridge-electron-example-${mode}`,
         );
-        if (fs.existsSync(binPath)) return binPath;
-      }
-      const distDir = path.join(electronExampleAppPath, `dist-${mode}`);
-      if (fs.existsSync(distDir)) {
-        try {
-          const macFolders = fs
-            .readdirSync(distDir)
-            .filter((dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory());
-          for (const folder of macFolders) {
-            const binPath = path.join(
-              distDir,
-              folder,
-              `e2e-electron-${mode}.app`,
-              'Contents',
-              'MacOS',
-              `e2e-electron-${mode}`,
-            );
-            if (fs.existsSync(binPath)) return binPath;
-          }
-        } catch (err) {
-          /* ignore */
+
+        if (fs.existsSync(binPath)) {
+          return binPath;
         }
-      }
-      return '';
-    };
-
-    const binaryFinders = {
-      darwin: findMacBinary,
-      win32: () => {
-        const binPath = path.join(electronExampleAppPath, `dist-${mode}`, 'win-unpacked', `e2e-electron-${mode}.exe`);
-        return fs.existsSync(binPath) ? binPath : '';
-      },
-      linux: () => {
-        const binPath = path.join(electronExampleAppPath, `dist-${mode}`, 'linux-unpacked', `e2e-electron-${mode}`);
-        return fs.existsSync(binPath) ? binPath : '';
-      },
-    };
-
-    if (binaryFinders[currentPlatform]) {
-      binaryPath = binaryFinders[currentPlatform]();
-    }
-
-    if (!binaryPath) {
-      console.log('[DEBUG] Electron: Attempting fallback to direct Electron execution for dev');
-      const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
-      const appMain = path.join(electronExampleAppPath, `out-${mode}`, 'main', 'index.js');
-      if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
-        binaryPath = electronBin; // This is the electron executable itself
-        process.env.ELECTRON_APP_PATH = appMain; // The service will use this to load the app
-        console.log(`[DEBUG] Electron: Using electron binary ${binaryPath} with main script: ${appMain}`);
-      } else {
-        console.error(
-          `[ERROR] Electron: No suitable binary or main script found for dev execution on platform ${currentPlatform}`,
-        );
-        process.exit(1);
-      }
-    }
-  }
-
-  if (!binaryPath) {
-    console.error('[ERROR] Electron: binaryPath is still not set after all checks.');
-    process.exit(1);
-  }
-
-  console.log(`[DEBUG] Electron: Final binary/executable path: ${binaryPath}`);
-  if (
-    currentPlatform === 'darwin' &&
-    fs.existsSync(binaryPath) &&
-    binaryPath.endsWith('.app/Contents/MacOS/' + `e2e-electron-${mode}`)
-  ) {
-    try {
-      const stats = fs.statSync(binaryPath);
-      if (!((stats.mode & fs.constants.S_IXUSR) !== 0)) {
-        fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
       }
     } catch (err) {
-      /* ignore */
+      /* ignore errors during directory scan */
     }
-  } else if (currentPlatform === 'darwin' && binaryPath.endsWith('.app')) {
-    // If APP_PATH points to the .app bundle
-    // The service will handle the .app bundle directly.
-    // Quarantine removal for electron .app bundle is handled in onPrepare.
   }
 
-  console.log(`[DEBUG] Electron: DEBUG environment variable: ${process.env.DEBUG}`);
+  return '';
+};
 
-  const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...stabilityFlags] : stabilityFlags;
-
-  const electronServiceOptions: any = {
-    appBinaryPath: binaryPath, // Can be the app itself or the electron executable
-    appArgs,
-    chromeDriverArgs: ['--verbose'],
-    appEnv: {
-      ZUBRIDGE_MODE: mode,
-      ELECTRON_ENABLE_LOGGING: '1',
-      ELECTRON_ENABLE_STACK_DUMPING: '1',
-      NODE_ENV: 'test',
-      DEBUG: process.env.DEBUG || '', // Pass through DEBUG environment variable
-    },
-    browserVersion: electronAppVersion,
-    restoreMocks: true,
-  };
-
-  capabilities = [
-    {
-      'browserName': 'electron',
-      'wdio:electronServiceOptions': electronServiceOptions,
-    },
-  ];
-
-  onPrepareHook = () => {
-    // For Electron, if APP_PATH points to a .app bundle, remove quarantine.
-    // If binaryPath is the direct executable inside .app, this might not be needed here but doesn't hurt.
-    if (currentPlatform === 'darwin' && binaryPath && binaryPath.endsWith('.app') && fs.existsSync(binaryPath)) {
-      try {
-        console.log('[DEBUG] Removing quarantine attribute from macOS Electron app bundle');
-        execSync(`xattr -r -d com.apple.quarantine "${binaryPath}"`, { stdio: 'pipe' });
-      } catch (error) {
-        console.warn('[WARN] Error removing quarantine for Electron app bundle:', error);
-      }
-    }
-  };
-}
-
-// Function to clean up old user data directories
-function cleanupOldUserDataDirs() {
-  try {
-    const e2eDir = __dirname;
-    const dirEntries = fs.readdirSync(e2eDir);
-    // Adjust pattern if Tauri uses a different user data dir prefix
-    const userDataDirPattern = new RegExp(`^\.(electron|tauri)-user-data-${mode}-.*$`);
-
-    let cleanedCount = 0;
-    for (const entry of dirEntries) {
-      if (userDataDirPattern.test(entry)) {
-        const fullPath = path.join(e2eDir, entry);
-        try {
-          const stats = fs.statSync(fullPath);
-          const ageInHours = (Date.now() - stats.mtimeMs) / (1000 * 60 * 60);
-          if (ageInHours > 1) {
-            fs.rmSync(fullPath, { recursive: true, force: true });
-            cleanedCount++;
-          }
-        } catch (e) {
-          console.log(`[DEBUG] Error cleaning up directory ${fullPath}: ${e}`);
-        }
-      }
-    }
-    if (cleanedCount > 0) console.log(`[DEBUG] Cleaned up ${cleanedCount} old user data directories`);
-  } catch (e) {
-    console.error(`[ERROR] Failed to clean up old user data directories: ${e}`);
-  }
-}
-
-cleanupOldUserDataDirs();
-
-let specs: string[];
-const specificSpecFile = process.env.SPEC_FILE;
-if (specificSpecFile) {
-  specs = [path.resolve(__dirname, 'test', specificSpecFile)];
-} else {
-  const testDirPath = path.resolve(__dirname, 'test');
-  specs = [`${testDirPath}/**/*.spec.ts`];
-}
-
-const config: any = {
-  // Changed Options.Testrunner to any
-  services: services,
-  capabilities: capabilities,
-  framework: framework,
-  reporters: reporters,
-  maxInstances: 1,
-  waitforTimeout: 60000,
-  connectionRetryCount: 3,
-  connectionRetryTimeout: 60000,
-  logLevel: 'debug',
-  runner: 'local',
-  outputDir: `wdio-logs-${e2eAppType}-${mode}`,
-  specs,
-  baseUrl: `file://${__dirname}`,
-  mochaOpts: {
-    ui: 'bdd',
-    timeout: 600000,
-    bail: true,
+// Platform-specific binary finders
+const binaryFinders = {
+  darwin: findMacBinary,
+  win32: () => {
+    const binPath = path.join(appPath, `dist-${mode}`, 'win-unpacked', `zubridge-electron-example-${mode}.exe`);
+    return fs.existsSync(binPath) ? binPath : '';
   },
-  onPrepare: onPrepareHook,
-  beforeSession: beforeSessionHook,
-  afterSession: afterSessionHook,
-  beforeTest: function (test) {
-    console.log(`[TEST START] Starting test: "${test.title}" in ${test.file}`);
-  },
-  afterTest: function (test, _context, { error }) {
-    if (error) {
-      console.log('--------------- TEST FAILURE ---------------');
-      console.log(`Test: ${test.title}`);
-      console.log(`Error: ${error.message}`);
-      console.log(`Stack: ${error.stack}`);
-      console.log('-------------------------------------------');
-    }
+  linux: () => {
+    const binPath = path.join(appPath, `dist-${mode}`, 'linux-unpacked', `zubridge-electron-example-${mode}`);
+    return fs.existsSync(binPath) ? binPath : '';
   },
 };
 
-process.env.TEST = 'true';
+// Find binary for current platform
+if (binaryFinders[currentPlatform]) {
+  binaryPath = binaryFinders[currentPlatform]();
+  if (binaryPath) {
+    console.log(`[DEBUG] Using ${currentPlatform} binary: ${binaryPath}`);
+  } else {
+    console.log(`[DEBUG] No platform-specific binary found for ${currentPlatform}, will try fallback`);
+  }
+}
 
-console.log('[DEBUG] Final WebdriverIO Config:', JSON.stringify(config, null, 2));
+// Fallback to direct Electron execution if no binary found
+if (!binaryPath) {
+  console.log('[DEBUG] Attempting fallback to direct Electron execution');
+  const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
+  const appMain = path.join(appPath, `out-${mode}`, 'main', 'index.js');
+
+  if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
+    binaryPath = electronBin;
+    process.env.ELECTRON_APP_PATH = appMain;
+    console.log(`[DEBUG] Using electron binary with main script: ${appMain}`);
+  } else {
+    console.error(`[ERROR] No suitable binary found for platform ${currentPlatform}`);
+  }
+}
+
+// Fix for macOS: Ensure the binary is always executable before running tests
+if (currentPlatform === 'darwin' && binaryPath && fs.existsSync(binaryPath)) {
+  try {
+    const stats = fs.statSync(binaryPath);
+    const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
+    if (!isExecutable) {
+      console.log('[DEBUG] Making macOS binary executable...');
+      fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
+    }
+  } catch (err) {
+    console.error(`[ERROR] Failed to check/fix binary permissions: ${err}`);
+  }
+}
+
+// Generate a unique user data directory
+const userDataDir = path.join(__dirname, `.electron-user-data-${mode}-${Date.now()}`);
+try {
+  if (!fs.existsSync(userDataDir)) {
+    fs.mkdirSync(userDataDir, { recursive: true });
+  }
+  console.log(`[DEBUG] Using user data directory: ${userDataDir}`);
+} catch (e) {
+  console.error(`[ERROR] Failed to create user data directory ${userDataDir}:`, e);
+  // Fallback or rethrow if this is critical
+}
+
+const baseArgs = ['--no-sandbox', '--disable-gpu', `--user-data-dir=${userDataDir}`];
+const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
+
+// Determine which spec files to run based on the mode
+let specPattern;
+const specificSpecFile = process.env.SPEC_FILE;
+
+if (specificSpecFile) {
+  // If a specific spec file is provided, use absolute path
+  specPattern = path.resolve(__dirname, 'test', specificSpecFile);
+  console.log(`[DEBUG] Running specific spec file: ${specPattern}`);
+} else {
+  // Use the absolute path to the test directory directly
+  // This ensures WebdriverIO gets the correct absolute path on all platforms
+  const testDirPath = path.resolve(__dirname, 'test');
+
+  // For macOS and Linux, use a direct glob pattern for all test files
+  specPattern = `${testDirPath}/**/*.spec.ts`;
+
+  console.log(`[DEBUG] Using spec pattern: ${specPattern}`);
+}
+
+// Get the config that will be exported
+const config = {
+  services: ['electron'],
+  capabilities: [
+    {
+      'browserName': 'electron',
+      'wdio:electronServiceOptions': {
+        appBinaryPath: binaryPath,
+        appArgs,
+        chromeDriverArgs: ['--verbose'],
+        appEnv: { ZUBRIDGE_MODE: mode },
+        restoreMocks: true,
+      },
+    },
+  ],
+  maxInstances: 1,
+  waitforTimeout: 15000,
+  connectionRetryCount: 10,
+  connectionRetryTimeout: 30000,
+  logLevel: 'debug',
+  runner: 'local',
+  outputDir: `wdio-logs-${appDir}-${mode}`,
+  specs: [specPattern],
+  baseUrl: `file://${__dirname}`,
+  onPrepare: function (config, capabilities) {
+    console.log('[DEBUG] Starting test preparation with WebdriverIO');
+
+    // Log the spec files that will be executed
+    console.log('[DEBUG] Spec pattern to be executed:');
+    if (Array.isArray(config.specs)) {
+      config.specs.forEach((spec, index) => {
+        console.log(`[DEBUG] Spec[${index}]: ${spec}`);
+
+        // For specific files (not glob patterns), check if they exist
+        if (!spec.includes('*')) {
+          const exists = fs.existsSync(spec) ? 'EXISTS' : 'NOT_FOUND';
+          console.log(`[DEBUG] File ${spec} ${exists}`);
+
+          if (exists === 'EXISTS') {
+            try {
+              const stats = fs.statSync(spec);
+              console.log(`[DEBUG] Spec file permissions: ${stats.mode.toString(8)}`);
+            } catch (err) {
+              console.error(`[ERROR] Failed to check permissions for ${spec}:`, err);
+            }
+          }
+        } else {
+          console.log(`[DEBUG] Using glob pattern: ${spec}`);
+
+          // For glob patterns, try to list matching files for debugging
+          const baseDir = spec.split('*')[0]; // Get directory part before wildcard
+          if (fs.existsSync(baseDir)) {
+            try {
+              console.log(`[DEBUG] Base directory ${baseDir} exists. Contents:`);
+              const files = fs.readdirSync(baseDir);
+              files.forEach((file) => {
+                const fullPath = path.join(baseDir, file);
+                const stats = fs.statSync(fullPath);
+                console.log(`[DEBUG]   - ${file} (${stats.isDirectory() ? 'dir' : 'file'})`);
+              });
+            } catch (err) {
+              console.error(`[ERROR] Failed to list directory ${baseDir}:`, err);
+            }
+          } else {
+            console.error(`[ERROR] Base directory ${baseDir} does not exist`);
+          }
+        }
+      });
+    } else {
+      console.log(`[DEBUG] Spec: ${config.specs}`);
+    }
+
+    // Check app binary exists and has proper permissions
+    if (binaryPath && fs.existsSync(binaryPath)) {
+      try {
+        const stats = fs.statSync(binaryPath);
+        console.log(`[DEBUG] Binary file permissions: ${stats.mode.toString(8)}`);
+
+        // On Linux/Mac, check if binary is executable
+        if (currentPlatform !== 'win32') {
+          const isExecutable = (stats.mode & fs.constants.S_IXUSR) !== 0;
+          console.log(`[DEBUG] Binary is executable: ${isExecutable}`);
+
+          if (!isExecutable) {
+            console.log('[DEBUG] Making binary executable...');
+            try {
+              fs.chmodSync(binaryPath, stats.mode | fs.constants.S_IXUSR);
+              console.log('[DEBUG] Binary made executable');
+            } catch (err) {
+              console.error('[ERROR] Failed to make binary executable:', err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[ERROR] Failed to check binary permissions:`, err);
+      }
+    } else {
+      console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
+    }
+  },
+  tsConfigPath: path.join(__dirname, 'tsconfig.json'),
+  framework: 'mocha',
+  mochaOpts: {
+    ui: 'bdd',
+    timeout: 30000,
+  },
+};
+
+// Set up environment
+process.env.TEST = 'true'; // General flag for test environment
+globalThis.packageJson = packageJson; // Make package.json available if needed in tests
 
 export { config };
