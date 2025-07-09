@@ -46,8 +46,12 @@ jobs:
   # Package tests - test minimal apps with packaged dependencies
   package-tests:
     needs: build-shared-packages
-    name: Package Tests
-    runs-on: ubuntu-latest
+    name: Package Tests (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
