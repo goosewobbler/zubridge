@@ -167,8 +167,64 @@ function prepareApp(appPath: string): string {
     devDependencies: verifiedJson.devDependencies,
   });
 
-  // Install dependencies
+  // Install dependencies with explicit build settings
+  console.log(`[DEBUG] Installing dependencies with build configuration...`);
   runCommand('pnpm install', { cwd: tempAppPath, stdio: 'inherit' });
+
+  // Debug: Check if electron binary exists
+  const electronBinPath = path.join(tempAppPath, 'node_modules', '.bin', 'electron');
+  console.log(`[DEBUG] Checking electron binary at: ${electronBinPath}`);
+  console.log(`[DEBUG] Electron binary exists: ${fs.existsSync(electronBinPath)}`);
+
+  // Also check the actual electron executable
+  const electronExecPath = path.join(tempAppPath, 'node_modules', 'electron', 'dist', 'electron');
+  console.log(`[DEBUG] Checking electron executable at: ${electronExecPath}`);
+  console.log(`[DEBUG] Electron executable exists: ${fs.existsSync(electronExecPath)}`);
+
+  // If electron binary doesn't exist, try multiple approaches
+  if (!fs.existsSync(electronBinPath)) {
+    console.log(`[DEBUG] Electron binary missing, trying multiple approaches...`);
+
+    // Approach 1: Force rebuild with explicit configuration
+    try {
+      console.log(`[DEBUG] Approach 1: Rebuilding electron with explicit config...`);
+      runCommand('pnpm config set onlyBuiltDependencies "electron,esbuild"', { cwd: tempAppPath, stdio: 'inherit' });
+      runCommand('pnpm rebuild electron', { cwd: tempAppPath, stdio: 'inherit' });
+      console.log(`[DEBUG] Electron rebuild completed`);
+    } catch (error) {
+      console.warn(`[DEBUG] Electron rebuild failed:`, error);
+
+      // Approach 2: Remove and reinstall electron
+      try {
+        console.log(`[DEBUG] Approach 2: Removing and reinstalling electron...`);
+        runCommand('pnpm remove electron', { cwd: tempAppPath, stdio: 'inherit' });
+        runCommand('pnpm add electron@35.0.0 --save-dev', { cwd: tempAppPath, stdio: 'inherit' });
+        console.log(`[DEBUG] Electron reinstall completed`);
+      } catch (reinstallError) {
+        console.warn(`[DEBUG] Electron reinstall failed:`, reinstallError);
+
+        // Approach 3: Try with npm instead of pnpm
+        try {
+          console.log(`[DEBUG] Approach 3: Installing electron with npm...`);
+          runCommand('npm install electron@35.0.0 --save-dev', { cwd: tempAppPath, stdio: 'inherit' });
+          console.log(`[DEBUG] Electron npm install completed`);
+        } catch (npmError) {
+          console.warn(`[DEBUG] Electron npm install failed:`, npmError);
+        }
+      }
+    }
+  }
+
+  // Final comprehensive check
+  console.log(`[DEBUG] Final electron binary check: ${fs.existsSync(electronBinPath)}`);
+  console.log(`[DEBUG] Final electron executable check: ${fs.existsSync(electronExecPath)}`);
+
+  // List contents of node_modules/.bin to see what's actually there
+  const binDir = path.join(tempAppPath, 'node_modules', '.bin');
+  if (fs.existsSync(binDir)) {
+    const binContents = fs.readdirSync(binDir);
+    console.log(`[DEBUG] Contents of node_modules/.bin: ${binContents.join(', ')}`);
+  }
 
   return tempAppPath;
 }
