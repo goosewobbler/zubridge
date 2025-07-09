@@ -29,6 +29,7 @@
     "test:e2e:electron-custom": "cross-env DEBUG=zubridge:* turbo run test:e2e:electron-custom",
     "test:e2e:tauri-basic": "cross-env DEBUG=zubridge:* turbo run test:e2e:tauri",
     "test:e2e:tauri-v1-basic": "cross-env DEBUG=zubridge:* turbo run test:e2e:tauri-v1",
+    "test:package": "pnpx tsx ./scripts/run-package-e2e.ts --clean-logs",
     "clean": "turbo run clean && pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
     "clean:cache": "turbo run clean:cache && pnpm dlx shx rm -rf .turbo"
   },
