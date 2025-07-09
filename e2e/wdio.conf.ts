@@ -41,10 +41,10 @@ const findMacBinary = () => {
       appPath,
       `dist-${mode}`,
       dir,
-      `zubridge-electron-example-${mode}.app`,
+      `e2e-electron-${mode}.app`,
       'Contents',
       'MacOS',
-      `zubridge-electron-example-${mode}`,
+      `e2e-electron-${mode}`,
     );
 
     console.log(`[DEBUG] Checking macOS binary path: ${binPath}`);
@@ -76,10 +76,10 @@ const findMacBinary = () => {
         const binPath = path.join(
           distDir,
           folder,
-          `zubridge-electron-example-${mode}.app`,
+          `e2e-electron-${mode}.app`,
           'Contents',
           'MacOS',
-          `zubridge-electron-example-${mode}`,
+          `e2e-electron-${mode}`,
         );
 
         console.log(`[DEBUG] Checking fallback binary path: ${binPath}`);
@@ -102,14 +102,14 @@ const findMacBinary = () => {
 const binaryFinders = {
   darwin: findMacBinary,
   win32: () => {
-    const binPath = path.join(appPath, `dist-${mode}`, 'win-unpacked', `zubridge-electron-example-${mode}.exe`);
+    const binPath = path.join(appPath, `dist-${mode}`, 'win-unpacked', `e2e-electron-${mode}.exe`);
     console.log(`[DEBUG] Checking Windows binary path: ${binPath}`);
     const exists = fs.existsSync(binPath);
     console.log(`[DEBUG] Windows binary exists: ${exists}`);
     return exists ? binPath : '';
   },
   linux: () => {
-    const binPath = path.join(appPath, `dist-${mode}`, 'linux-unpacked', `zubridge-electron-example-${mode}`);
+    const binPath = path.join(appPath, `dist-${mode}`, 'linux-unpacked', `e2e-electron-${mode}`);
     console.log(`[DEBUG] Checking Linux binary path: ${binPath}`);
     const exists = fs.existsSync(binPath);
     console.log(`[DEBUG] Linux binary exists: ${exists}`);
