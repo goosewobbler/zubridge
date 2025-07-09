@@ -313,8 +313,8 @@ importers:
         specifier: ^6.2.6
         version: 6.3.5(@types/node@22.16.2)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
-        specifier: next
-        version: 9.0.0-next.2(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        specifier: 8.1.0
+        version: 8.1.0(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -407,8 +407,8 @@ importers:
         specifier: ^6.2.6
         version: 6.3.5(@types/node@22.16.2)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
-        specifier: next
-        version: 9.0.0-next.2(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        specifier: 8.1.0
+        version: 8.1.0(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -495,8 +495,8 @@ importers:
         specifier: ^6.2.6
         version: 6.3.5(@types/node@22.16.2)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
-        specifier: next
-        version: 9.0.0-next.2(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        specifier: 8.1.0
+        version: 8.1.0(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -583,8 +583,8 @@ importers:
         specifier: ^6.2.6
         version: 6.3.5(@types/node@22.16.2)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
-        specifier: next
-        version: 9.0.0-next.2(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        specifier: 8.1.0
+        version: 8.1.0(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -671,8 +671,8 @@ importers:
         specifier: ^6.2.6
         version: 6.3.5(@types/node@22.16.2)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
-        specifier: next
-        version: 9.0.0-next.2(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        specifier: 8.1.0
+        version: 8.1.0(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -2256,8 +2256,15 @@ packages:
     resolution: {integrity: sha512-JzFegviZdpzgvt8w8uwI0pyJguIuJzfzlkkyWz1WUoqtilH4yrf5IYKzObnm3peh7iQ/y2J1SSeAjKr0Hr5xTg==}
     engines: {node: '>=18.20.0'}
 
+  '@wdio/electron-types@8.1.0':
+    resolution: {integrity: sha512-C+UwGKRR1iezazsn8iKLOmko/gNYUlS/1Dig2JNNqzh6fB85ITaSW/g+XNeBFshekqsZhf8JByQvg/eBZ3z2Bg==}
+
   '@wdio/electron-types@9.0.0-next.2':
     resolution: {integrity: sha512-qhtqy7PdLVRR/h+EbrGu9QvyphPbKSqFjcAwA0Bb+mUYFNUl/4jTgljDD+d8Oqf5HuBNxNUWkPc5geT3Pg1I6w==}
+
+  '@wdio/electron-utils@8.1.0':
+    resolution: {integrity: sha512-pCHTP9xpSGjpguFZuuUmHPygpEkVpqco8UfbD5FX+DdXe8ZVMdeMzvoTsliDjjd+QmcVD9/PEKsJDFJZwYfN3g==}
+    engines: {node: '>=18 || >=20'}
 
   '@wdio/electron-utils@9.0.0-next.2':
     resolution: {integrity: sha512-cYaQAWPVfNmQGAc3qBsCbX/MAkt7lfxqB65Tzxpsy87/mBnAwDd8EUeDOlpp1parjr5WdzZn9QfMF1Z05+dvuQ==}
@@ -5508,6 +5515,16 @@ packages:
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
 
+  wdio-electron-service@8.1.0:
+    resolution: {integrity: sha512-lHwYNXr9RAk5/B4cPakupiZtKgey2oiD7mThSnsJ2rAZYaANbt6bLAAJ+oli5ai4Kig/g+ogAxF9gv22gp9KmQ==}
+    engines: {node: '>=18 || >=20'}
+    peerDependencies:
+      electron: '*'
+      webdriverio: '>9.0.0'
+    peerDependenciesMeta:
+      electron:
+        optional: true
+
   wdio-electron-service@9.0.0-next.2:
     resolution: {integrity: sha512-dd3/jAdFu6w4EvI6TX9nJkLLfr50eapse4+Ox+sRG4VmjPDlC64ic5C5zfhGDyz4+QcKEIflypd4JKg0DbMoLA==}
     engines: {node: '>=18 || >=20'}
@@ -7098,9 +7115,27 @@ snapshots:
       '@wdio/types': 9.16.2
       chalk: 5.4.1
 
+  '@wdio/electron-types@8.1.0':
+    dependencies:
+      '@vitest/spy': 3.2.4
+
   '@wdio/electron-types@9.0.0-next.2':
     dependencies:
       '@vitest/spy': 3.2.4
+
+  '@wdio/electron-utils@8.1.0':
+    dependencies:
+      '@electron/packager': 18.3.6
+      '@wdio/logger': 9.16.2
+      debug: 4.4.1(supports-color@8.1.1)
+      find-versions: 6.0.0
+      json5: 2.2.3
+      read-package-up: 11.0.0
+      smol-toml: 1.4.1
+      tsx: 4.20.3
+      yaml: 2.8.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@wdio/electron-utils@9.0.0-next.2':
     dependencies:
@@ -10608,6 +10643,30 @@ snapshots:
   wcwidth@1.0.1:
     dependencies:
       defaults: 1.0.4
+
+  wdio-electron-service@8.1.0(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0)):
+    dependencies:
+      '@vitest/spy': 3.2.4
+      '@wdio/electron-types': 8.1.0
+      '@wdio/electron-utils': 8.1.0
+      '@wdio/globals': 9.16.2(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+      '@wdio/logger': 9.16.2
+      compare-versions: 6.1.1
+      debug: 4.4.1(supports-color@8.1.1)
+      electron-to-chromium: 1.5.180
+      fast-copy: 3.0.2
+      puppeteer-core: 22.15.0
+      read-package-up: 11.0.0
+      tinyspy: 4.0.3
+      webdriverio: 9.16.2(puppeteer-core@22.15.0)
+    optionalDependencies:
+      electron: 35.0.0
+    transitivePeerDependencies:
+      - bare-buffer
+      - bufferutil
+      - expect-webdriverio
+      - supports-color
+      - utf-8-validate
 
   wdio-electron-service@9.0.0-next.2(electron@35.0.0)(expect-webdriverio@5.3.4)(webdriverio@9.16.2(puppeteer-core@22.15.0)):
     dependencies:
