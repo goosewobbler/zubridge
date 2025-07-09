@@ -25,11 +25,15 @@ let binaryPath = '';
 
 // Define possible binary locations with architecture-aware paths
 const findMacBinary = () => {
+  console.log(`[DEBUG] Looking for macOS binary for mode: ${mode}`);
+
   // Define possible mac directories to check in priority order
   const macDirs =
     currentArch === 'arm64'
       ? ['mac-arm64', 'mac'] // Prefer arm64 on arm systems
       : ['mac', 'mac-arm64']; // Prefer intel on intel systems
+
+  console.log(`[DEBUG] Will check macOS directories in order: ${macDirs.join(', ')}`);
 
   // Try each directory in order
   for (const dir of macDirs) {
@@ -43,19 +47,30 @@ const findMacBinary = () => {
       `zubridge-electron-example-${mode}`,
     );
 
+    console.log(`[DEBUG] Checking macOS binary path: ${binPath}`);
     if (fs.existsSync(binPath)) {
       console.log(`[DEBUG] Found macOS binary in ${dir}`);
       return binPath;
+    } else {
+      console.log(`[DEBUG] Binary not found at: ${binPath}`);
     }
   }
 
   // Last resort: look for any mac* directory in dist
   const distDir = path.join(appPath, `dist-${mode}`);
+  console.log(`[DEBUG] Fallback: scanning dist directory: ${distDir}`);
+
   if (fs.existsSync(distDir)) {
+    console.log(`[DEBUG] Dist directory exists, listing contents...`);
     try {
-      const macFolders = fs
-        .readdirSync(distDir)
-        .filter((dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory());
+      const allDirs = fs.readdirSync(distDir);
+      console.log(`[DEBUG] All directories in dist: ${allDirs.join(', ')}`);
+
+      const macFolders = allDirs.filter(
+        (dir) => dir.startsWith('mac') && fs.statSync(path.join(distDir, dir)).isDirectory(),
+      );
+
+      console.log(`[DEBUG] Found mac directories: ${macFolders.join(', ')}`);
 
       for (const folder of macFolders) {
         const binPath = path.join(
@@ -67,13 +82,17 @@ const findMacBinary = () => {
           `zubridge-electron-example-${mode}`,
         );
 
+        console.log(`[DEBUG] Checking fallback binary path: ${binPath}`);
         if (fs.existsSync(binPath)) {
+          console.log(`[DEBUG] Found binary via fallback in: ${folder}`);
           return binPath;
         }
       }
     } catch (err) {
-      /* ignore errors during directory scan */
+      console.log(`[DEBUG] Error scanning dist directory: ${err}`);
     }
+  } else {
+    console.log(`[DEBUG] Dist directory does not exist: ${distDir}`);
   }
 
   return '';
@@ -84,11 +103,17 @@ const binaryFinders = {
   darwin: findMacBinary,
   win32: () => {
     const binPath = path.join(appPath, `dist-${mode}`, 'win-unpacked', `zubridge-electron-example-${mode}.exe`);
-    return fs.existsSync(binPath) ? binPath : '';
+    console.log(`[DEBUG] Checking Windows binary path: ${binPath}`);
+    const exists = fs.existsSync(binPath);
+    console.log(`[DEBUG] Windows binary exists: ${exists}`);
+    return exists ? binPath : '';
   },
   linux: () => {
     const binPath = path.join(appPath, `dist-${mode}`, 'linux-unpacked', `zubridge-electron-example-${mode}`);
-    return fs.existsSync(binPath) ? binPath : '';
+    console.log(`[DEBUG] Checking Linux binary path: ${binPath}`);
+    const exists = fs.existsSync(binPath);
+    console.log(`[DEBUG] Linux binary exists: ${exists}`);
+    return exists ? binPath : '';
   },
 };
 
@@ -108,12 +133,37 @@ if (!binaryPath) {
   const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
   const appMain = path.join(appPath, `out-${mode}`, 'main', 'index.js');
 
+  console.log(`[DEBUG] Checking electron binary: ${electronBin}`);
+  console.log(`[DEBUG] Checking app main: ${appMain}`);
+  console.log(`[DEBUG] Electron binary exists: ${fs.existsSync(electronBin)}`);
+  console.log(`[DEBUG] App main exists: ${fs.existsSync(appMain)}`);
+
   if (fs.existsSync(electronBin) && fs.existsSync(appMain)) {
     binaryPath = electronBin;
     process.env.ELECTRON_APP_PATH = appMain;
     console.log(`[DEBUG] Using electron binary with main script: ${appMain}`);
   } else {
     console.error(`[ERROR] No suitable binary found for platform ${currentPlatform}`);
+
+    // Additional debugging: check what files actually exist
+    const outDir = path.join(appPath, `out-${mode}`);
+    console.log(`[DEBUG] Checking out directory: ${outDir}`);
+    if (fs.existsSync(outDir)) {
+      try {
+        const outContents = fs.readdirSync(outDir);
+        console.log(`[DEBUG] Contents of out-${mode}: ${outContents.join(', ')}`);
+
+        const mainDir = path.join(outDir, 'main');
+        if (fs.existsSync(mainDir)) {
+          const mainContents = fs.readdirSync(mainDir);
+          console.log(`[DEBUG] Contents of out-${mode}/main: ${mainContents.join(', ')}`);
+        }
+      } catch (err) {
+        console.log(`[DEBUG] Error listing out directory: ${err}`);
+      }
+    } else {
+      console.log(`[DEBUG] Out directory does not exist: ${outDir}`);
+    }
   }
 }
 
