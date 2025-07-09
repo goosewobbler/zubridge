@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import { preloadBridge } from '@zubridge/electron/preload';
-import 'wdio-electron-service/preload';
 
 import type { State } from '../types.js';
 import { AppIpcChannel } from '../constants.js';

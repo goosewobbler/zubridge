@@ -7,7 +7,6 @@ import { createDispatch, ReduxBridge } from '@zubridge/electron/main';
 import { debug } from '@zubridge/core';
 import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
 import type { WebContentsWrapper, WrapperOrWebContents, ZustandBridge } from '@zubridge/types';
-import 'wdio-electron-service/main';
 
 import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
