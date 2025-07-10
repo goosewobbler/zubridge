@@ -5,15 +5,15 @@ import fs from 'node:fs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
-// Get the app directory (one level up from test/)
-const appDir = path.resolve(__dirname, '..');
-const appName = 'minimal-redux';
+// App directory is current directory
+const appDir = __dirname;
+const appName = 'minimal-custom';
 
 console.log(`[DEBUG] Testing app: ${appName}`);
 console.log(`[DEBUG] App directory: ${appDir}`);
 
 // Test specs location
-const testSpecs = [path.join(__dirname, 'specs', '**/*.spec.ts')];
+const testSpecs = [path.join(__dirname, 'test', 'specs', '**/*.spec.ts')];
 
 console.log(`[DEBUG] Test specs pattern: ${testSpecs}`);
 
@@ -59,7 +59,7 @@ const config: any = {
   runner: 'local',
   outputDir: `wdio-logs-${appName}`,
   specs: testSpecs,
-  baseUrl: `file://${__dirname}`,
+  baseUrl: `file://${path.join(__dirname, 'test')}`,
   mochaOpts: {
     ui: 'bdd',
     timeout: 300000, // 5 minutes - shorter than main E2E tests

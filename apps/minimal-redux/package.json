@@ -14,7 +14,7 @@
     "dist": "pnpm build && electron-builder",
     "dist:dir": "pnpm build && electron-builder --dir",
     "test": "pnpm run test:package",
-    "test:package": "xvfb-maybe wdio run ./test/wdio.conf.ts",
+    "test:package": "xvfb-maybe wdio run ./wdio.conf.ts",
     "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
   },
   "dependencies": {
@@ -48,7 +48,7 @@
     "tailwindcss": "^4.1.10",
     "typescript": "^5.7.3",
     "vite": "^6.2.6",
-    "wdio-electron-service": "8.1.0",
+    "wdio-electron-service": "next",
     "xvfb-maybe": "^0.2.1"
   },
   "pnpm": {
