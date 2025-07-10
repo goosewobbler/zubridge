@@ -46,7 +46,7 @@ const config: any = {
       },
       'goog:chromeOptions': {
         binary: electronBinPath,
-        args: [`--user-data-dir=${uniqueUserDataDir}`, '--no-sandbox', '--disable-dev-shm-usage'],
+        args: [`--user-data-dir=${uniqueUserDataDir}`, '--no-sandbox'],
       },
     },
   ],
