@@ -28,7 +28,7 @@ env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   TURBO_API: ${{ secrets.TURBO_API }}
-  BUILD_ID: ${{ github.run_id }}-${{ github.run_number }}-${{ inputs.mode }}
+  BUILD_ID: ${{ github.run_id }}-${{ github.run_number }}
 
 jobs:
   # Build on Linux
@@ -651,6 +651,7 @@ jobs:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 
@@ -730,6 +731,7 @@ jobs:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
         if: inputs.app == 'electron' # Skip for non-electron on macos
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
@@ -814,6 +816,7 @@ jobs:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 

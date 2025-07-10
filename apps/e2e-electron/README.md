@@ -70,9 +70,9 @@ pnpm dev:custom
 pnpm build
 
 # Build specific mode
-pnpm build:basic
-pnpm build:handlers
-pnpm build:reducers
+pnpm build:zustand-basic
+pnpm build:zustand-handlers
+pnpm build:zustand-reducers
 pnpm build:redux
 pnpm build:custom
 ```

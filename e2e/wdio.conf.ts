@@ -6,7 +6,7 @@ import type { NormalizedPackageJson } from 'read-package-up';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const appDir = process.env.APP_DIR as string; // This should be 'electron-example'
-const mode = process.env.MODE || 'basic'; // Default to basic mode if not specified
+const mode = process.env.MODE || 'zustand-basic'; // Default to zustand-basic mode if not specified
 const appPath = path.join(__dirname, '..', 'apps', appDir); // Path to 'apps/electron-example'
 const packageJsonPath = path.join(appPath, 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf-8' })) as NormalizedPackageJson;

@@ -15,11 +15,11 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 debug('vite:config', 'ZUBRIDGE_MODE', process.env.ZUBRIDGE_MODE);
 
 // Get the current mode from environment variables
-const mode = process.env.ZUBRIDGE_MODE || 'basic'; // Default to basic if not specified
-const outDir = `out-${mode}`; // Create mode-specific output directory
+const mode = process.env.ZUBRIDGE_MODE || 'zustand-basic'; // Default to zustand-basic if not specified
+const outDirName = `out-${mode}`; // Create mode-specific output directory
 const shouldWatchUI = process.env.WATCH_UI === 'true';
 
-debug('vite:config', `Mode: ${mode}, OutDir: ${outDir}, Watch UI: ${shouldWatchUI}`);
+debug('vite:config', `Mode: ${mode}, OutDirName: ${outDirName}, Watch UI: ${shouldWatchUI}`);
 
 // Debug plugin to show output of main build
 const debugPlugin = () => ({
@@ -40,15 +40,15 @@ const debugPlugin = () => ({
   },
   closeBundle() {
     debug('vite:config', 'Main closeBundle called');
-    debug('vite:config', 'Checking output directory content');
+    debug('vite:config', 'Checking output directory content', outDirName);
     try {
-      const outputDir = resolve(__dirname, outDir);
+      const outputDir = resolve(__dirname, outDirName);
       if (fs.existsSync(outputDir)) {
-        debug('vite:config', `Files in ${outDir}:`);
+        debug('vite:config', `Files in ${outDirName}:`);
         const files = fs.readdirSync(outputDir);
         debug('vite:config', 'Output directory files:', files);
       } else {
-        debug('vite:config', `Output directory does not exist: ${outDir}`);
+        debug('vite:config', `Output directory does not exist: ${outDirName}`);
       }
     } catch (error) {
       debug('vite:config:error', 'Error checking output directory:', error);
@@ -140,7 +140,7 @@ export default defineConfig({
       debugPlugin(),
     ],
     build: {
-      outDir: join(outDir, 'main'),
+      outDir: join(outDirName, 'main'),
       rollupOptions: {
         output: {
           format: 'es',
@@ -154,7 +154,7 @@ export default defineConfig({
     // Don't use any plugins for the preload script
     // This ensures that electron and other Node.js modules are properly bundled
     build: {
-      outDir: join(outDir, 'preload'),
+      outDir: join(outDirName, 'preload'),
       minify: false,
       rollupOptions: {
         external: ['electron'],
@@ -182,7 +182,7 @@ export default defineConfig({
       postcss: resolve(__dirname, 'postcss.config.js'),
     },
     build: {
-      outDir: join(outDir, 'renderer'),
+      outDir: join(outDirName, 'renderer'),
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
