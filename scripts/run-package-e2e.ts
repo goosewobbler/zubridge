@@ -9,7 +9,11 @@
  * 4. Copies and modifies each minimal app to use the packaged versions
  * 5. Runs tests in each app
  *
- * Usage: tsx scripts/run-package-e2e.ts [--clean-logs]
+ * Usage: tsx scripts/run-package-e2e.ts [app-name] [--clean-logs]
+ *
+ * Arguments:
+ *   app-name        Optional. Name of specific app to test (e.g., zustand-basic, custom, redux, zustand-handlers, zustand-reducers)
+ *                   If not specified, runs all minimal apps
  *
  * Options:
  *   --clean-logs    Clean existing log directories before running tests
@@ -23,6 +27,25 @@ import os from 'node:os';
 // Parse command line arguments
 const args = process.argv.slice(2);
 const shouldCleanLogs = args.includes('--clean-logs');
+const specificApp = args.find((arg) => !arg.startsWith('--'));
+
+// Map short names to full app names
+const APP_NAME_MAP = {
+  'zustand-basic': 'minimal-zustand-basic',
+  'custom': 'minimal-custom',
+  'redux': 'minimal-redux',
+  'zustand-handlers': 'minimal-zustand-handlers',
+  'zustand-reducers': 'minimal-zustand-reducers',
+};
+
+// Get the full app name
+const targetApp = specificApp ? APP_NAME_MAP[specificApp] || `minimal-${specificApp}` : null;
+
+if (specificApp && !targetApp) {
+  console.error(`Unknown app: ${specificApp}`);
+  console.error('Available apps:', Object.keys(APP_NAME_MAP).join(', '));
+  process.exit(1);
+}
 
 // Constants
 const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -50,10 +73,21 @@ function runCommand(command: string, options: { cwd?: string; stdio?: 'inherit' 
 // Find all minimal apps in the apps directory
 function findMinimalApps(): string[] {
   const appsDir = path.join(process.cwd(), 'apps');
-  return fs
+  const allApps = fs
     .readdirSync(appsDir)
     .filter((dir) => dir.includes('minimal') && !dir.startsWith('.'))
     .map((dir) => path.join(appsDir, dir));
+
+  // Filter to specific app if requested
+  if (targetApp) {
+    const filtered = allApps.filter((app) => path.basename(app) === targetApp);
+    if (filtered.length === 0) {
+      throw new Error(`App ${targetApp} not found in apps directory`);
+    }
+    return filtered;
+  }
+
+  return allApps;
 }
 
 // Build packages using turborepo

@@ -28,9 +28,9 @@
       "dependsOn": [
         "@zubridge/electron#build",
         "@zubridge/ui#build",
-        "e2e-electron#build:basic",
-        "e2e-electron#build:handlers",
-        "e2e-electron#build:reducers",
+        "e2e-electron#build:zustand-basic",
+        "e2e-electron#build:zustand-handlers",
+        "e2e-electron#build:zustand-reducers",
         "e2e-electron#build:redux",
         "e2e-electron#build:custom"
       ],
@@ -62,9 +62,9 @@
     "test:e2e": {
       "dependsOn": [
         "build:electron-examples",
-        "test:e2e:electron-basic",
-        "test:e2e:electron-reducers",
-        "test:e2e:electron-handlers",
+        "test:e2e:electron-zustand-basic",
+        "test:e2e:electron-zustand-reducers",
+        "test:e2e:electron-zustand-handlers",
         "test:e2e:electron-redux",
         "test:e2e:electron-custom",
         "test:e2e:tauri",
@@ -72,16 +72,16 @@
       ],
       "cache": false
     },
-    "test:e2e:electron-reducers": {
-      "dependsOn": ["e2e-electron#build:reducers"],
+    "test:e2e:electron-zustand-reducers": {
+      "dependsOn": ["e2e-electron#build:zustand-reducers"],
       "cache": false
     },
-    "test:e2e:electron-handlers": {
-      "dependsOn": ["e2e-electron#build:handlers"],
+    "test:e2e:electron-zustand-handlers": {
+      "dependsOn": ["e2e-electron#build:zustand-handlers"],
       "cache": false
     },
-    "test:e2e:electron-basic": {
-      "dependsOn": ["e2e-electron#build:basic"],
+    "test:e2e:electron-zustand-basic": {
+      "dependsOn": ["e2e-electron#build:zustand-basic"],
       "cache": false
     },
     "test:e2e:electron-redux": {
@@ -139,7 +139,7 @@
       "dependsOn": ["^build"],
       "cache": false
     },
-    "e2e-electron#build:reducers": {
+    "e2e-electron#build:zustand-reducers": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -149,7 +149,7 @@
       ],
       "cache": false
     },
-    "e2e-electron#build:handlers": {
+    "e2e-electron#build:zustand-handlers": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -159,7 +159,7 @@
       ],
       "cache": false
     },
-    "e2e-electron#build:basic": {
+    "e2e-electron#build:zustand-basic": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",

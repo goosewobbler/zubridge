@@ -46,10 +46,11 @@ jobs:
   # Package tests - test minimal apps with packaged dependencies
   package-tests:
     needs: build-shared-packages
-    name: Package Tests (${{ matrix.os }})
+    name: Package:${{ matrix.app }} (${{ matrix.os }})
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        app: [zustand-basic, custom, redux, zustand-handlers, zustand-reducers]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -68,8 +69,8 @@ jobs:
         with:
           name: shared-packages
 
-      - name: 🧪 Run package tests
-        run: pnpm run test:package
+      - name: 🧪 Run package tests for ${{ matrix.app }}
+        run: pnpx tsx scripts/run-package-e2e.ts ${{ matrix.app }}
 
   # E2E tests - using matrix strategy
   e2e-tests:
@@ -78,22 +79,22 @@ jobs:
     strategy:
       matrix:
         app: [electron, tauri, tauri-v1]
-        mode: [basic, handlers, reducers, redux, custom]
+        mode: [zustand-basic, zustand-handlers, zustand-reducers, redux, custom]
         exclude:
           # Exclude non-basic modes for tauri
           - app: tauri
-            mode: handlers
+            mode: zustand-handlers
           - app: tauri
-            mode: reducers
+            mode: zustand-reducers
           - app: tauri
             mode: redux
           - app: tauri
             mode: custom
           # Exclude non-basic modes for tauri-v1
           - app: tauri-v1
-            mode: handlers
+            mode: zustand-handlers
           - app: tauri-v1
-            mode: reducers
+            mode: zustand-reducers
           - app: tauri-v1
             mode: redux
           - app: tauri-v1
