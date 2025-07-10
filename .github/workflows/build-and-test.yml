@@ -832,10 +832,85 @@ jobs:
           machineName: zubridge-e2e-windows-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
           timeout: '120000'
 
+  # Package tests for Linux - test minimal apps with packaged dependencies
+  linux-package-test:
+    name: Linux Package Test
+    needs: [linux-build]
+    if: inputs.app == 'electron' && contains(fromJSON('["zustand-basic", "custom", "redux", "zustand-handlers", "zustand-reducers"]'), inputs.mode)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20.x"
+
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+
+      - name: 🧪 Run package tests for ${{ inputs.mode }}
+        run: pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
+
+  # Package tests for macOS - test minimal apps with packaged dependencies
+  macos-package-test:
+    name: macOS Package Test
+    needs: [macos-build]
+    if: inputs.app == 'electron' && contains(fromJSON('["zustand-basic", "custom", "redux", "zustand-handlers", "zustand-reducers"]'), inputs.mode)
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20.x"
+
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+
+      - name: 🧪 Run package tests for ${{ inputs.mode }}
+        run: pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
+
+  # Package tests for Windows - test minimal apps with packaged dependencies
+  windows-package-test:
+    name: Windows Package Test
+    needs: [windows-build]
+    if: inputs.app == 'electron' && contains(fromJSON('["zustand-basic", "custom", "redux", "zustand-handlers", "zustand-reducers"]'), inputs.mode)
+    runs-on: windows-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20.x"
+
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+
+      - name: 🧪 Run package tests for ${{ inputs.mode }}
+        run: pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
+
   # Final status aggregation
   ci-status:
     name: Status
-    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test]
+    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test, linux-package-test, macos-package-test, windows-package-test]
     if: always()
     runs-on: ubuntu-latest
     outputs:
