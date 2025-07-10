@@ -46,7 +46,7 @@
     "tailwindcss": "^4.1.10",
     "typescript": "^5.7.3",
     "vite": "^7.0.4",
-    "wdio-electron-service": "8.1.0",
+    "wdio-electron-service": "next",
     "xvfb-maybe": "^0.2.1"
   },
   "pnpm": {
