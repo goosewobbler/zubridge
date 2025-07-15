@@ -294,6 +294,13 @@ function runTests(appPath: string): boolean {
   console.log(`\nRunning tests in ${appName}...`);
 
   try {
+    // Build the app first
+    console.log(`Building ${appName}...`);
+    runCommand('pnpm build', { cwd: appPath, stdio: 'inherit' });
+    console.log(`✅ Build completed for ${appName}`);
+
+    // Now run the tests
+    console.log(`Running tests for ${appName}...`);
     runCommand('pnpm test', { cwd: appPath, stdio: 'inherit' });
     console.log(`✅ Tests passed for ${appName}`);
     return true;
