@@ -6,13 +6,6 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
-    resolve: {
-      alias: {
-        '@zubridge/electron': resolve(__dirname, '../../packages/electron/src'),
-        '@zubridge/types': resolve(__dirname, '../../packages/types/src'),
-      },
-      extensions: ['.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs'],
-    },
     build: {
       outDir: 'out/main',
       rollupOptions: {
@@ -21,17 +14,10 @@ export default defineConfig({
     },
   },
   preload: {
-    resolve: {
-      alias: {
-        '@zubridge/electron': resolve(__dirname, '../../packages/electron/src'),
-        '@zubridge/types': resolve(__dirname, '../../packages/types/src'),
-      },
-      extensions: ['.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs'],
-    },
     build: {
       outDir: 'out/preload',
       rollupOptions: {
-        external: ['electron', '@zubridge/electron', '@zubridge/types', 'zustand'],
+        external: ['electron', '@zubridge/electron', '@zubridge/electron/preload', '@zubridge/types', 'zustand'],
         output: {
           format: 'cjs',
           entryFileNames: '[name].cjs',
@@ -41,21 +27,13 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist'),
-        '@zubridge/types': resolve(__dirname, '../../packages/types/dist'),
-        '@zubridge/ui': resolve(__dirname, '../../packages/ui/dist'),
-      },
-      extensions: ['.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs'],
-    },
     build: {
       outDir: 'out/renderer',
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
         },
-        external: ['electron'],
+        external: ['electron', '@zubridge/electron', '@zubridge/ui', '@zubridge/ui/styles.css'],
       },
     },
   },
