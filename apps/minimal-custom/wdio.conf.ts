@@ -54,7 +54,7 @@ const config: any = {
   maxInstances: 1,
   waitforTimeout: 30000,
   connectionRetryCount: 3,
-  connectionRetryTimeout: 30000,
+  connectionRetryTimeout: 120000,
   logLevel: 'info',
   runner: 'local',
   outputDir: `wdio-logs-${appName}`,
