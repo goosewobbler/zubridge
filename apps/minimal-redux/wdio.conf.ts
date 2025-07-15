@@ -1,6 +1,5 @@
 import url from 'node:url';
 import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
@@ -16,9 +15,6 @@ console.log(`[DEBUG] App directory: ${appDir}`);
 const testSpecs = [path.join(__dirname, 'test', 'specs', '**/*.spec.ts')];
 
 console.log(`[DEBUG] Test specs pattern: ${testSpecs}`);
-
-// Create unique user data directory for this test run
-const uniqueUserDataDir = path.join(os.tmpdir(), `electron-user-data-${appName}-${Date.now()}`);
 
 // Check for electron binary - it should be in the app's root node_modules
 const electronBinPath = path.join(appDir, 'node_modules', '.bin', 'electron');
@@ -43,10 +39,6 @@ const config: any = {
       'wdio:electronServiceOptions': {
         appEntryPoint: appEntryPoint,
         restoreMocks: true,
-      },
-      'goog:chromeOptions': {
-        binary: electronBinPath,
-        args: [`--user-data-dir=${uniqueUserDataDir}`, '--no-sandbox', '--headless=new'],
       },
     },
   ],
