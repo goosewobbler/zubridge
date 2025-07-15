@@ -21,10 +21,12 @@ const electronBinPath = path.join(appDir, 'node_modules', '.bin', 'electron');
 console.log(`[DEBUG] Checking electron binary at: ${electronBinPath}`);
 console.log(`[DEBUG] Electron binary exists: ${fs.existsSync(electronBinPath)}`);
 
-// Check app entry point
-const appEntryPoint = path.join(appDir, 'out', 'main', 'index.js');
-console.log(`[DEBUG] App entry point: ${appEntryPoint}`);
-console.log(`[DEBUG] App entry point exists: ${fs.existsSync(appEntryPoint)}`);
+// Check app entry point - using relative path
+const appEntryPoint = './out/main/index.js';
+const fullAppEntryPoint = path.join(appDir, appEntryPoint);
+console.log(`[DEBUG] App entry point (relative): ${appEntryPoint}`);
+console.log(`[DEBUG] App entry point (full): ${fullAppEntryPoint}`);
+console.log(`[DEBUG] App entry point exists: ${fs.existsSync(fullAppEntryPoint)}`);
 
 // Also check if electron executable exists
 const electronExecPath = path.join(appDir, 'node_modules', 'electron', 'dist', 'electron');
