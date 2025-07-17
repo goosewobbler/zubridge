@@ -131,6 +131,11 @@ function prepareApp(appPath: string): string {
   // Copy app to temp directory
   fs.cpSync(appPath, tempAppPath, { recursive: true });
 
+  // Create .pnpmrc to prevent hoisting and ensure proper resolution
+  const pnpmrcPath = path.join(tempAppPath, '.pnpmrc');
+  fs.writeFileSync(pnpmrcPath, 'hoist=false\nnode-linker=isolated\n');
+  console.log('[DEBUG] Created .pnpmrc with isolation settings');
+
   // Read package.json
   const packageJsonPath = path.join(tempAppPath, 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
@@ -140,80 +145,92 @@ function prepareApp(appPath: string): string {
     devDependencies: packageJson.devDependencies,
   });
 
-  // Initialize sections if they don't exist
-  packageJson.dependencies = packageJson.dependencies || {};
-  packageJson.devDependencies = packageJson.devDependencies || {};
-
-  // Process regular dependencies
-  for (const pkg of ZUBRIDGE_PACKAGES.dependencies) {
-    const pkgName = pkg.replace('@zubridge/', '');
-    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
-    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
-    console.log(`\nChecking ${pkg} in ${pkgDir}...`);
-    console.log('Found tarballs:', tarballs);
-
-    if (tarballs.length === 0) {
-      throw new Error(`No tarball found for ${pkg}`);
+  // Remove workspace dependencies before installing (they don't exist in isolated environment)
+  const allZubridgePackages = [...ZUBRIDGE_PACKAGES.dependencies, ...ZUBRIDGE_PACKAGES.devDependencies];
+  for (const pkg of allZubridgePackages) {
+    if (packageJson.dependencies?.[pkg]) {
+      console.log(`[DEBUG] Removing workspace dependency: ${pkg} from dependencies`);
+      delete packageJson.dependencies[pkg];
     }
-
-    const tarballPath = path.join(pkgDir, tarballs[0]);
-    console.log('Using tarball:', tarballPath);
-
-    // Always set as a regular dependency
-    packageJson.dependencies[pkg] = `file:${tarballPath}`;
-    // Remove from devDependencies if it exists there
-    delete packageJson.devDependencies[pkg];
+    if (packageJson.devDependencies?.[pkg]) {
+      console.log(`[DEBUG] Removing workspace dependency: ${pkg} from devDependencies`);
+      delete packageJson.devDependencies[pkg];
+    }
   }
 
-  // Process dev dependencies
-  for (const pkg of ZUBRIDGE_PACKAGES.devDependencies) {
-    const pkgName = pkg.replace('@zubridge/', '');
-    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
-    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
-    console.log(`\nChecking ${pkg} in ${pkgDir}...`);
-    console.log('Found tarballs:', tarballs);
+  // Write cleaned package.json
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
-    if (tarballs.length === 0) {
-      throw new Error(`No tarball found for ${pkg}`);
-    }
-
-    const tarballPath = path.join(pkgDir, tarballs[0]);
-    console.log('Using tarball:', tarballPath);
-
-    // Always set as a dev dependency
-    packageJson.devDependencies[pkg] = `file:${tarballPath}`;
-    // Remove from dependencies if it exists there
-    delete packageJson.dependencies[pkg];
-  }
-
-  console.log('\nModified package.json:', {
+  console.log('\nCleaned package.json for initial install:', {
     dependencies: packageJson.dependencies,
     devDependencies: packageJson.devDependencies,
   });
 
-  // Write updated package.json
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-
-  // Verify the changes were written
-  const verifiedJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  console.log('\nVerified package.json:', {
-    dependencies: verifiedJson.dependencies,
-    devDependencies: verifiedJson.devDependencies,
-  });
-
-  // Install dependencies with explicit build settings
-  console.log(`[DEBUG] Installing dependencies with build configuration...`);
+  // Step 1: Install original dependencies first (ensures electron postinstall runs)
+  console.log(`[DEBUG] Installing original dependencies first...`);
   runCommand('pnpm install', { cwd: tempAppPath, stdio: 'inherit' });
 
-  // Debug: Check if electron binary exists
+  // Step 2: Add local packages separately
+  console.log(`[DEBUG] Adding local Zubridge packages...`);
+  for (const pkg of ZUBRIDGE_PACKAGES.dependencies) {
+    const pkgName = pkg.replace('@zubridge/', '');
+    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
+    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
+
+    if (tarballs.length === 0) {
+      throw new Error(`No tarball found for ${pkg}`);
+    }
+
+    const tarballPath = path.join(pkgDir, tarballs[0]);
+    console.log(`[DEBUG] Adding ${pkg} from ${tarballPath}`);
+    runCommand(`pnpm add ${tarballPath}`, { cwd: tempAppPath, stdio: 'inherit' });
+  }
+
+  for (const pkg of ZUBRIDGE_PACKAGES.devDependencies) {
+    const pkgName = pkg.replace('@zubridge/', '');
+    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
+    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
+
+    if (tarballs.length === 0) {
+      throw new Error(`No tarball found for ${pkg}`);
+    }
+
+    const tarballPath = path.join(pkgDir, tarballs[0]);
+    console.log(`[DEBUG] Adding ${pkg} from ${tarballPath} as dev dependency`);
+    runCommand(`pnpm add ${tarballPath} --save-dev`, { cwd: tempAppPath, stdio: 'inherit' });
+  }
+
+  // Enhanced Electron debug logging
   const electronBinPath = path.join(tempAppPath, 'node_modules', '.bin', 'electron');
+  const electronDistPath = path.join(tempAppPath, 'node_modules', 'electron', 'dist');
+  const electronPackageJson = path.join(tempAppPath, 'node_modules', 'electron', 'package.json');
+
+  // Platform-specific executable paths
+  const electronExecPath =
+    process.platform === 'darwin'
+      ? path.join(electronDistPath, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+      : path.join(electronDistPath, 'electron');
+
   console.log(`[DEBUG] Checking electron binary at: ${electronBinPath}`);
   console.log(`[DEBUG] Electron binary exists: ${fs.existsSync(electronBinPath)}`);
-
-  // Also check the actual electron executable
-  const electronExecPath = path.join(tempAppPath, 'node_modules', 'electron', 'dist', 'electron');
   console.log(`[DEBUG] Checking electron executable at: ${electronExecPath}`);
   console.log(`[DEBUG] Electron executable exists: ${fs.existsSync(electronExecPath)}`);
+
+  // Debug electron installation details
+  console.log(`[DEBUG] Electron dist directory exists: ${fs.existsSync(electronDistPath)}`);
+  if (fs.existsSync(electronDistPath)) {
+    const distContents = fs.readdirSync(electronDistPath);
+    console.log(`[DEBUG] Electron dist contents: ${distContents.join(', ')}`);
+  }
+
+  // Check if postinstall actually ran
+  if (fs.existsSync(electronPackageJson)) {
+    const electronPkg = JSON.parse(fs.readFileSync(electronPackageJson, 'utf8'));
+    console.log(`[DEBUG] Electron package version: ${electronPkg.version}`);
+    console.log(`[DEBUG] Electron has postinstall: ${!!electronPkg.scripts?.postinstall}`);
+  } else {
+    console.log(`[DEBUG] Electron package.json not found at: ${electronPackageJson}`);
+  }
 
   // If electron binary doesn't exist, try multiple approaches
   if (!fs.existsSync(electronBinPath)) {
@@ -252,6 +269,10 @@ function prepareApp(appPath: string): string {
   // Final comprehensive check
   console.log(`[DEBUG] Final electron binary check: ${fs.existsSync(electronBinPath)}`);
   console.log(`[DEBUG] Final electron executable check: ${fs.existsSync(electronExecPath)}`);
+
+  if (process.platform === 'darwin') {
+    console.log(`[DEBUG] Platform is macOS - executable should be in Electron.app bundle`);
+  }
 
   // List contents of node_modules/.bin to see what's actually there
   const binDir = path.join(tempAppPath, 'node_modules', '.bin');
