@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createUseStore, useDispatch } from '@zubridge/electron';
-import '@zubridge/ui/styles.css';
 import './styles/index.css';
 
 // UI components
-import { Button } from '@zubridge/ui';
-import { ThemeToggle } from '@zubridge/ui';
-import { Header } from '@zubridge/ui';
+import { Button } from './components/Button';
+import { ThemeToggle } from './components/ThemeToggle';
+import { Header } from './components/Header';
 
 // Create the store hook
 const useStore = createUseStore();

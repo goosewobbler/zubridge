@@ -51,7 +51,7 @@ if (specificApp && !targetApp) {
 const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const TEMP_DIR = path.join(os.tmpdir(), 'zubridge-e2e-' + Date.now());
 const ZUBRIDGE_PACKAGES = {
-  dependencies: ['@zubridge/electron', '@zubridge/ui'],
+  dependencies: ['@zubridge/electron'],
   devDependencies: ['@zubridge/types'],
 };
 

@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import isCI from 'is-ci';
 
 export default defineConfig({
   main: {
@@ -9,7 +10,7 @@ export default defineConfig({
     build: {
       outDir: 'out/main',
       rollupOptions: {
-        external: ['@zubridge/electron', '@zubridge/types', 'zustand', 'electron'],
+        external: ['electron', '@zubridge/electron', '@zubridge/electron/main', '@zubridge/types', 'zustand'],
       },
     },
   },
@@ -33,7 +34,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
         },
-        external: ['electron', '@zubridge/electron', '@zubridge/ui', '@zubridge/ui/styles.css'],
+        external: isCI ? ['electron', '@zubridge/electron'] : ['electron'],
       },
     },
   },
