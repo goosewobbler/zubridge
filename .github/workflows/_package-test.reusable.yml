@@ -46,10 +46,71 @@ jobs:
         with:
           name: shared-packages
 
-      # Linux-specific kernel workaround for electron testing
-      - name: Apply Linux Kernel Workaround
+      # Linux-specific kernel workaround for electron testing (minimal approach like wdio-electron-service)
+      - name: 🔧 Apply Linux Kernel Workaround and Core Dump Setup
         if: inputs.os == 'linux'
-        run: sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
+        run: |
+          sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
+          
+          # Enable core dumps for debugging electron crashes
+          echo "Setting up core dump debugging..."
+          # Set core dumps globally
+          echo "* soft core unlimited" | sudo tee -a /etc/security/limits.conf
+          echo "* hard core unlimited" | sudo tee -a /etc/security/limits.conf
+          ulimit -c unlimited
+          echo "Core dump limit set to: $(ulimit -c)"
+          
+          # Create directory for crash dumps
+          sudo mkdir -p /tmp/electron-crashes
+          sudo chmod 777 /tmp/electron-crashes
+          
+          # Set core dump pattern to include electron crashes
+          echo '/tmp/electron-crashes/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+          echo "Core dump pattern set to: $(cat /proc/sys/kernel/core_pattern)"
+          
+          # Debug system dependencies that are available by default
+          echo "Checking default GLib and graphics libraries..."
+          dpkg -l | grep -E "(libglib|libgtk|libnss|libxss|libasound)" || echo "No relevant packages found"
+          echo "GLib version info:"
+          ldconfig -p | grep glib || echo "GLib not found in ldconfig"
+          echo "Graphics libraries:"
+          ldconfig -p | grep -E "(libGL|libX|libxcb)" || echo "No graphics libraries found"
+          
+          # Debug environment variables that GLib typically requires
+          echo "=== Environment Variables Debug ==="
+          echo "XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-MISSING}"
+          echo "XDG_SESSION_TYPE: ${XDG_SESSION_TYPE:-MISSING}"
+          echo "XDG_SESSION_ID: ${XDG_SESSION_ID:-MISSING}"
+          echo "XDG_CURRENT_DESKTOP: ${XDG_CURRENT_DESKTOP:-MISSING}"
+          echo "DISPLAY: ${DISPLAY:-MISSING}"
+          echo "WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-MISSING}"
+          echo "SESSION_MANAGER: ${SESSION_MANAGER:-MISSING}"
+          echo "DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS:-MISSING}"
+          
+          # Check for critical system directories
+          echo "=== System Directories Debug ==="
+          echo "Checking /tmp/.X11-unix:"
+          ls -la /tmp/.X11-unix 2>/dev/null || echo "Directory missing"
+          echo "Checking /run/user:"
+          ls -la /run/user 2>/dev/null || echo "Directory missing"
+          echo "Checking /dev/shm:"
+          ls -la /dev/shm 2>/dev/null || echo "Directory missing"
+          
+          # Check dbus availability
+          echo "=== D-Bus Debug ==="
+          echo "D-Bus system bus:"
+          dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetId 2>/dev/null || echo "System bus not available"
+          echo "D-Bus session bus:"
+          dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetId 2>/dev/null || echo "Session bus not available"
+          
+          # Check if we can create XDG_RUNTIME_DIR if missing
+          if [ -z "${XDG_RUNTIME_DIR}" ]; then
+            echo "Creating XDG_RUNTIME_DIR..."
+            export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
+            mkdir -p "$XDG_RUNTIME_DIR"
+            chmod 700 "$XDG_RUNTIME_DIR"
+            echo "Created XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR"
+          fi
 
       - name: 🧪 Run package tests for ${{ inputs.mode }}
         env:
@@ -96,6 +157,10 @@ jobs:
           echo "DISPLAY environment: $DISPLAY"
           echo "XVFB processes:"
           ps aux | grep -i xvfb | grep -v grep || echo "No XVFB processes found"
+          
+          # Set core dump limit for this session and child processes
+          ulimit -c unlimited
+          echo "Core dump limit before test: $(ulimit -c)"
           
           # Run package tests (keeping xvfb-maybe at the correct level - in package.json)
           pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
@@ -150,7 +215,7 @@ jobs:
             
             # 4. Check dmesg for kernel-level crash info
             echo "Checking dmesg for recent kernel messages:"
-            dmesg | tail -50 | grep -i "electron\|killed\|segfault\|signal\|oom" || echo "No relevant dmesg entries"
+            sudo dmesg | tail -50 | grep -i "electron\|killed\|segfault\|signal\|oom" || echo "No relevant dmesg entries"
             
             # 5. Check for electron process info in /proc
             echo "Checking for any remaining electron processes:"
@@ -172,6 +237,15 @@ jobs:
             df -h /tmp 2>/dev/null || echo "Could not get disk usage"
           fi
           exit $exit_code
+
+      # Upload core dumps as artifacts for analysis
+      - name: 📦 Upload core dumps
+        if: failure() && inputs.os == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-core-dumps-${{ inputs.mode }}-${{ github.run_number }}
+          path: /tmp/electron-crashes/
+          retention-days: 7
 
       - name: 🔍 Debug log locations after test
         if: always()
