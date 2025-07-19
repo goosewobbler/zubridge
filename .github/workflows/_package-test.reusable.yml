@@ -1,0 +1,230 @@
+name: Package Test
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "Operating system to run on"
+        required: true
+        type: string
+      mode:
+        description: "Test mode to run"
+        required: true
+        type: string
+    secrets:
+      TURBO_TOKEN:
+        required: false
+      TURBO_TEAM:
+        required: false
+      TURBO_API:
+        required: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
+
+jobs:
+  package-test:
+    name: ${{ inputs.os }} Package Test
+    if: contains(fromJSON('["zustand-basic", "custom", "redux", "zustand-handlers", "zustand-reducers"]'), inputs.mode)
+    runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20.x"
+
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+
+      # Linux-specific kernel workaround for electron testing
+      - name: Apply Linux Kernel Workaround
+        if: inputs.os == 'linux'
+        run: sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: 🧪 Run package tests for ${{ inputs.mode }}
+        env:
+          DEBUG: "zubridge:*,wdio-electron-service*,webdriverio*"
+          DISPLAY: ${{ inputs.os == 'linux' && ':99' || '' }}
+        run: |
+          echo "=== Before running package tests ==="
+          echo "Current directory: $(pwd)"
+          echo "Platform: $(uname -a)"
+          echo "Available memory: $(free -h 2>/dev/null || echo 'N/A')"
+          echo "Electron processes before test:"
+          ps aux | grep -i electron | grep -v grep || echo "No electron processes"
+          
+          echo "Available scripts:"
+          ls -la scripts/ || echo "No scripts directory"
+          echo "Checking package.json test scripts in apps/minimal-${{ inputs.mode }}:"
+          if [ -f "apps/minimal-${{ inputs.mode }}/package.json" ]; then
+            grep -A 5 '"scripts"' "apps/minimal-${{ inputs.mode }}/package.json" || echo "No scripts section found"
+          fi
+          
+          echo "=== Starting electron process monitoring ==="
+          # Start monitoring electron processes in background
+          (
+            while true; do
+              timestamp=$(date '+%H:%M:%S')
+              electron_count=$(ps aux | grep -i electron | grep -v grep | wc -l)
+              if [ $electron_count -gt 0 ]; then
+                echo "[$timestamp] Electron processes: $electron_count"
+                ps aux | grep -i electron | grep -v grep | awk '{print "  PID:"$2" CMD:"$11" "$12" "$13}' || true
+              fi
+              sleep 2
+            done
+          ) &
+          monitor_pid=$!
+          
+          echo "=== Running package tests ==="
+          set +e  # Don't exit on error
+          
+          # Trap to cleanup monitor on exit
+          trap "kill $monitor_pid 2>/dev/null || true" EXIT
+          
+          # Check XVFB setup before running tests
+          echo "=== XVFB Debug Info ==="
+          echo "DISPLAY environment: $DISPLAY"
+          echo "XVFB processes:"
+          ps aux | grep -i xvfb | grep -v grep || echo "No XVFB processes found"
+          
+          # Run package tests (keeping xvfb-maybe at the correct level - in package.json)
+          pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
+          exit_code=$?
+          
+          echo "=== Package test completed, stopping process monitor ==="
+          kill $monitor_pid 2>/dev/null || true
+          
+          echo "Package test script completed with exit code: $exit_code"
+          echo "Final electron processes:"
+          ps aux | grep -i electron | grep -v grep || echo "No electron processes"
+          
+          if [ $exit_code -ne 0 ]; then
+            echo "=== Test failed, checking for crash indicators ==="
+            echo "App directory contents after failure:"
+            ls -la "apps/minimal-${{ inputs.mode }}/" || echo "App directory not found"
+            
+            echo "=== NATIVE CRASH DEBUGGING ==="
+            
+            # 1. Check for electron crash dumps in our specified directory
+            echo "Checking for electron crash dumps in /tmp/electron-crashes:"
+            if [ -d "/tmp/electron-crashes" ]; then
+              ls -la /tmp/electron-crashes/ || echo "Crash dumps directory empty"
+              find /tmp/electron-crashes -name "*.dmp" -o -name "*.crash" 2>/dev/null | while read crashfile; do
+                echo "--- Crash dump found: $crashfile ---"
+                ls -la "$crashfile"
+                # Try to get basic info from crash dump
+                file "$crashfile" 2>/dev/null || echo "Could not analyze crash dump"
+              done
+            else
+              echo "Crash dumps directory not created"
+            fi
+            
+            # 2. Look for any crash-related files
+            echo "Looking for crash dumps and core files:"
+            find /tmp -name "*.dmp" -o -name "*crash*" -o -name "core.*" -o -name "*.crash" 2>/dev/null | head -10 || echo "No crash files found"
+            
+            # 3. Check system logs for electron crashes and segfaults
+            echo "Checking system logs for electron crashes:"
+            if command -v journalctl >/dev/null 2>&1; then
+              echo "--- Recent electron-related log entries ---"
+              journalctl --since "5 minutes ago" | grep -i electron | tail -20 || echo "No electron entries in logs"
+              
+              echo "--- Recent crash/segfault entries ---"
+              journalctl --since "5 minutes ago" | grep -i "segfault\|crash\|killed\|signal\|core dump\|fatal" | tail -20 || echo "No crash logs found"
+              
+              echo "--- Recent kernel messages ---"
+              journalctl -k --since "5 minutes ago" | grep -i "killed\|oom\|segfault\|signal" | tail -10 || echo "No relevant kernel messages"
+            else
+              echo "journalctl not available"
+            fi
+            
+            # 4. Check dmesg for kernel-level crash info
+            echo "Checking dmesg for recent kernel messages:"
+            dmesg | tail -50 | grep -i "electron\|killed\|segfault\|signal\|oom" || echo "No relevant dmesg entries"
+            
+            # 5. Check for electron process info in /proc
+            echo "Checking for any remaining electron processes:"
+            ps aux | grep -i electron | grep -v grep || echo "No electron processes"
+            
+            # 6. Look for core dumps in common locations
+            echo "Looking for core dumps in common locations:"
+            find /tmp -name "core.*" -o -name "*.core" 2>/dev/null | head -5 || echo "No core files in /tmp"
+            find . -name "core.*" -o -name "*.core" 2>/dev/null | head -5 || echo "No core files in current dir"
+            
+            # 7. Check ulimits and system resources
+            echo "System resource limits:"
+            ulimit -a 2>/dev/null || echo "Could not get ulimits"
+            
+            echo "Memory usage after failure:"
+            free -h 2>/dev/null || echo "Memory info not available"
+            
+            echo "Disk space:"
+            df -h /tmp 2>/dev/null || echo "Could not get disk usage"
+          fi
+          exit $exit_code
+
+      - name: 🔍 Debug log locations after test
+        if: always()
+        shell: bash
+        run: |
+          echo "=== Searching for logs system-wide ==="
+          find /tmp -name "*wdio*" -type f 2>/dev/null | head -20 || echo "No wdio files in /tmp"
+          find /tmp -name "*log*" -path "*minimal-${{ inputs.mode }}*" -type f 2>/dev/null | head -10 || echo "No log files for this mode in /tmp"
+          find . -name "*wdio*" -type f 2>/dev/null | head -10 || echo "No wdio files in current dir tree"
+
+      - name: 📜 Display logs
+        if: always()
+        shell: bash
+        run: |
+          echo "=== Debugging log locations ==="
+          echo "Current directory: $(pwd)"
+          echo "Contents of current directory:"
+          ls -la . || echo "ls failed"
+          
+          echo "=== Looking for logs in app directory ==="
+          if [ -d "./apps/minimal-${{ inputs.mode }}" ]; then
+            cd ./apps/minimal-${{ inputs.mode }}
+            echo "App directory contents:"
+            ls -la . || echo "ls in app dir failed"
+            
+            echo "=== Looking for any log files/directories ==="
+            find . -name "*log*" 2>/dev/null || echo "No *log* files/dirs found"
+            
+            echo "=== Displaying WDIO log files ==="
+            for log_dir in wdio-logs-*; do
+              if [ -d "$log_dir" ]; then
+                echo "Found log directory: $log_dir"
+                for log_file in "$log_dir"/*.log; do
+                  if [ -f "$log_file" ]; then
+                    echo "--- Log file: $log_file ---"
+                    cat "$log_file"
+                    echo "--- End of $log_file ---"
+                    echo ""
+                  fi
+                done
+              else
+                echo "No wdio-logs-* directories found"
+                break
+              fi
+            done
+          else
+            echo "App directory ./apps/minimal-${{ inputs.mode }} does not exist"
+          fi
+
+      # Provide an interactive debugging session on failure
+      # This allows manual investigation of the environment
+      - name: 🐛 Debug Build on Failure
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          timeout: '180000'

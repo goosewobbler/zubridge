@@ -24,12 +24,23 @@ function MinimalApp() {
   useEffect(() => {
     const initApp = async () => {
       try {
+        console.log('🔍 Starting app initialization...');
+        console.log('🔍 window.electronAPI available:', !!window.electronAPI);
+        console.log('🔍 window.electronAPI keys:', window.electronAPI ? Object.keys(window.electronAPI) : 'N/A');
+
         if (window.electronAPI) {
+          console.log('🔍 Calling getWindowInfo()...');
           const info = await window.electronAPI.getWindowInfo();
+          console.log('🔍 getWindowInfo() result:', info);
           setWindowInfo(info);
+        } else {
+          console.error('❌ window.electronAPI not available, setting fallback window info');
+          setWindowInfo({ type: 'main', id: 1 });
         }
       } catch (error) {
-        console.error('Error initializing app:', error);
+        console.error('❌ Error initializing app:', error);
+        console.error('❌ Setting fallback window info due to error');
+        setWindowInfo({ type: 'main', id: 1 });
       }
     };
     initApp();

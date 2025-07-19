@@ -1,22 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Script to run package E2E tests for minimal apps.
- * This script:
- * 1. Finds all minimal apps in the apps directory
- * 2. Creates a temporary directory for testing
- * 3. Packages up the electron and ui packages using turborepo
- * 4. Copies and modifies each minimal app to use the packaged versions
- * 5. Runs tests in each app
+ * Version of run-package-e2e.ts that removes xvfb-maybe from the test command
+ * since XVFB is handled at a higher level in the workflow.
  *
- * Usage: tsx scripts/run-package-e2e.ts [app-name] [--clean-logs]
- *
- * Arguments:
- *   app-name        Optional. Name of specific app to test (e.g., zustand-basic, custom, redux, zustand-handlers, zustand-reducers)
- *                   If not specified, runs all minimal apps
- *
- * Options:
- *   --clean-logs    Clean existing log directories before running tests
+ * This script modifies the test command to remove xvfb-maybe to prevent
+ * nested XVFB issues when called from GitHub Actions.
  */
 
 import { execSync } from 'node:child_process';
@@ -165,12 +154,27 @@ function prepareApp(appPath: string): string {
     }
   }
 
+  // CRITICAL: Modify test scripts to remove xvfb-maybe since it's handled at workflow level
+  if (packageJson.scripts?.test) {
+    const originalTest = packageJson.scripts.test;
+    packageJson.scripts.test = originalTest.replace('xvfb-maybe ', '');
+    console.log(`[DEBUG] Modified test script: "${originalTest}" -> "${packageJson.scripts.test}"`);
+  }
+  if (packageJson.scripts?.['test:package']) {
+    const originalTestPackage = packageJson.scripts['test:package'];
+    packageJson.scripts['test:package'] = originalTestPackage.replace('xvfb-maybe ', '');
+    console.log(
+      `[DEBUG] Modified test:package script: "${originalTestPackage}" -> "${packageJson.scripts['test:package']}"`,
+    );
+  }
+
   // Write cleaned package.json
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
   console.log('\nCleaned package.json for initial install:', {
     dependencies: packageJson.dependencies,
     devDependencies: packageJson.devDependencies,
+    scripts: packageJson.scripts,
   });
 
   // Step 1: Install original dependencies first (ensures electron postinstall runs)
@@ -207,7 +211,7 @@ function prepareApp(appPath: string): string {
     runCommand(`pnpm add ${tarballPath} --save-dev`, { cwd: tempAppPath, stdio: 'inherit' });
   }
 
-  // Enhanced Electron debug logging
+  // Enhanced Electron debug logging (same as original)
   const electronBinPath = path.join(tempAppPath, 'node_modules', '.bin', 'electron');
   const electronDistPath = path.join(tempAppPath, 'node_modules', 'electron', 'dist');
   const electronPackageJson = path.join(tempAppPath, 'node_modules', 'electron', 'package.json');
@@ -222,71 +226,6 @@ function prepareApp(appPath: string): string {
   console.log(`[DEBUG] Electron binary exists: ${fs.existsSync(electronBinPath)}`);
   console.log(`[DEBUG] Checking electron executable at: ${electronExecPath}`);
   console.log(`[DEBUG] Electron executable exists: ${fs.existsSync(electronExecPath)}`);
-
-  // Debug electron installation details
-  console.log(`[DEBUG] Electron dist directory exists: ${fs.existsSync(electronDistPath)}`);
-  if (fs.existsSync(electronDistPath)) {
-    const distContents = fs.readdirSync(electronDistPath);
-    console.log(`[DEBUG] Electron dist contents: ${distContents.join(', ')}`);
-  }
-
-  // Check if postinstall actually ran
-  if (fs.existsSync(electronPackageJson)) {
-    const electronPkg = JSON.parse(fs.readFileSync(electronPackageJson, 'utf8'));
-    console.log(`[DEBUG] Electron package version: ${electronPkg.version}`);
-    console.log(`[DEBUG] Electron has postinstall: ${!!electronPkg.scripts?.postinstall}`);
-  } else {
-    console.log(`[DEBUG] Electron package.json not found at: ${electronPackageJson}`);
-  }
-
-  // If electron binary doesn't exist, try multiple approaches
-  if (!fs.existsSync(electronBinPath)) {
-    console.log(`[DEBUG] Electron binary missing, trying multiple approaches...`);
-
-    // Approach 1: Force rebuild with explicit configuration
-    try {
-      console.log(`[DEBUG] Approach 1: Rebuilding electron with explicit config...`);
-      runCommand('pnpm config set onlyBuiltDependencies "electron,esbuild"', { cwd: tempAppPath, stdio: 'inherit' });
-      runCommand('pnpm rebuild electron', { cwd: tempAppPath, stdio: 'inherit' });
-      console.log(`[DEBUG] Electron rebuild completed`);
-    } catch (error) {
-      console.warn(`[DEBUG] Electron rebuild failed:`, error);
-
-      // Approach 2: Remove and reinstall electron
-      try {
-        console.log(`[DEBUG] Approach 2: Removing and reinstalling electron...`);
-        runCommand('pnpm remove electron', { cwd: tempAppPath, stdio: 'inherit' });
-        runCommand('pnpm add electron@35.0.0 --save-dev', { cwd: tempAppPath, stdio: 'inherit' });
-        console.log(`[DEBUG] Electron reinstall completed`);
-      } catch (reinstallError) {
-        console.warn(`[DEBUG] Electron reinstall failed:`, reinstallError);
-
-        // Approach 3: Try with npm instead of pnpm
-        try {
-          console.log(`[DEBUG] Approach 3: Installing electron with npm...`);
-          runCommand('npm install electron@35.0.0 --save-dev', { cwd: tempAppPath, stdio: 'inherit' });
-          console.log(`[DEBUG] Electron npm install completed`);
-        } catch (npmError) {
-          console.warn(`[DEBUG] Electron npm install failed:`, npmError);
-        }
-      }
-    }
-  }
-
-  // Final comprehensive check
-  console.log(`[DEBUG] Final electron binary check: ${fs.existsSync(electronBinPath)}`);
-  console.log(`[DEBUG] Final electron executable check: ${fs.existsSync(electronExecPath)}`);
-
-  if (process.platform === 'darwin') {
-    console.log(`[DEBUG] Platform is macOS - executable should be in Electron.app bundle`);
-  }
-
-  // List contents of node_modules/.bin to see what's actually there
-  const binDir = path.join(tempAppPath, 'node_modules', '.bin');
-  if (fs.existsSync(binDir)) {
-    const binContents = fs.readdirSync(binDir);
-    console.log(`[DEBUG] Contents of node_modules/.bin: ${binContents.join(', ')}`);
-  }
 
   return tempAppPath;
 }
@@ -327,8 +266,8 @@ function runTests(appPath: string): boolean {
     runCommand('pnpm build', { cwd: appPath, stdio: 'inherit' });
     console.log(`✅ Build completed for ${appName}`);
 
-    // Now run the tests
-    console.log(`Running tests for ${appName}...`);
+    // Now run the tests (without xvfb-maybe since it's already handled)
+    console.log(`Running tests for ${appName} (XVFB already managed at workflow level)...`);
     runCommand('pnpm test', { cwd: appPath, stdio: 'inherit' });
     console.log(`✅ Tests passed for ${appName}`);
     return true;
@@ -351,7 +290,7 @@ function runTests(appPath: string): boolean {
   }
 }
 
-// Main function
+// Main function (same as original)
 async function main() {
   let tempDirCreated = false;
   let hasError = false;

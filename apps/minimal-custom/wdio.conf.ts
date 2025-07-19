@@ -42,6 +42,21 @@ const config: any = {
         appEntryPoint: appEntryPoint,
         restoreMocks: true,
       },
+      'goog:loggingPrefs': {
+        browser: 'ALL',
+        driver: 'ALL',
+      },
+      'goog:chromeOptions': {
+        args: [
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--headless=new',
+          '--user-data-dir=/tmp/wdio-electron-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+        ],
+      },
     },
   ],
   framework: 'mocha',
