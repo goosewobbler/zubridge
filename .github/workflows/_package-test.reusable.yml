@@ -52,6 +52,11 @@ jobs:
         run: |
           sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
           
+          # Install XVFB and X11 utilities for display testing
+          echo "Installing XVFB and X11 utilities..."
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb x11-utils
+          
           # Enable core dumps for debugging electron crashes
           echo "Setting up core dump debugging..."
           # Set core dumps globally
@@ -126,6 +131,22 @@ jobs:
           export XDG_CURRENT_DESKTOP=ubuntu:GNOME
           echo "XDG_SESSION_TYPE set to: $XDG_SESSION_TYPE"
           echo "XDG_CURRENT_DESKTOP set to: $XDG_CURRENT_DESKTOP"
+          
+          # Start XVFB server to provide actual display backend for electron
+          echo "Starting XVFB server on display :99..."
+          Xvfb :99 -screen 0 1024x768x24 -ac -nolisten tcp -dpi 96 &
+          XVFB_PID=$!
+          echo "XVFB_PID=$XVFB_PID" >> $GITHUB_ENV
+          echo "XVFB started with PID: $XVFB_PID"
+          
+          # Wait for XVFB to be ready
+          sleep 2
+          echo "XVFB status check:"
+          ps aux | grep Xvfb | grep -v grep || echo "XVFB not found in process list"
+          
+          # Verify display is accessible
+          echo "Testing display accessibility:"
+          DISPLAY=:99 xdpyinfo || echo "Display :99 not accessible"
 
       - name: 🧪 Run package tests for ${{ inputs.mode }}
         env:
@@ -307,6 +328,19 @@ jobs:
             done
           else
             echo "App directory ./apps/minimal-${{ inputs.mode }} does not exist"
+          fi
+
+      # Cleanup XVFB process
+      - name: 🧹 Cleanup XVFB
+        if: always() && inputs.os == 'linux'
+        shell: bash
+        run: |
+          if [ ! -z "${XVFB_PID}" ]; then
+            echo "Cleaning up XVFB process (PID: $XVFB_PID)..."
+            kill $XVFB_PID 2>/dev/null || echo "XVFB process already terminated"
+          else
+            echo "No XVFB PID found, checking for any running Xvfb processes..."
+            pkill -f "Xvfb :99" || echo "No Xvfb processes found"
           fi
 
       # Provide an interactive debugging session on failure
