@@ -111,11 +111,25 @@ jobs:
             chmod 700 "$XDG_RUNTIME_DIR"
             echo "Created XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR"
           fi
+          
+          # Set DISPLAY for XVFB (critical for GLib)
+          echo "Setting DISPLAY=:99 for electron processes..."
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+          export DISPLAY=:99
+          echo "DISPLAY set to: $DISPLAY"
+          
+          # Set basic desktop environment variables that GLib expects
+          echo "Setting basic desktop environment variables..."
+          echo "XDG_SESSION_TYPE=x11" >> $GITHUB_ENV
+          echo "XDG_CURRENT_DESKTOP=ubuntu:GNOME" >> $GITHUB_ENV
+          export XDG_SESSION_TYPE=x11
+          export XDG_CURRENT_DESKTOP=ubuntu:GNOME
+          echo "XDG_SESSION_TYPE set to: $XDG_SESSION_TYPE"
+          echo "XDG_CURRENT_DESKTOP set to: $XDG_CURRENT_DESKTOP"
 
       - name: 🧪 Run package tests for ${{ inputs.mode }}
         env:
           DEBUG: "zubridge:*,wdio-electron-service*,webdriverio*"
-          DISPLAY: ${{ inputs.os == 'linux' && ':99' || '' }}
         run: |
           echo "=== Before running package tests ==="
           echo "Current directory: $(pwd)"
