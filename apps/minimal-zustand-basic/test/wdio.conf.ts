@@ -4,15 +4,15 @@ import fs from 'node:fs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
-// App directory is current directory
-const appDir = __dirname;
+// App directory is parent directory (since config is now in test/ subdirectory)
+const appDir = path.dirname(__dirname);
 const appName = 'minimal-zustand-basic';
 
 console.log(`[DEBUG] Testing app: ${appName}`);
 console.log(`[DEBUG] App directory: ${appDir}`);
 
 // Test specs location
-const testSpecs = [path.join(__dirname, 'test', 'specs', '**/*.spec.ts')];
+const testSpecs = [path.join(__dirname, 'specs', '**/*.spec.ts')];
 
 console.log(`[DEBUG] Test specs pattern: ${testSpecs}`);
 
