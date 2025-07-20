@@ -151,6 +151,7 @@ jobs:
       - name: 🧪 Run package tests for ${{ inputs.mode }}
         env:
           DEBUG: "zubridge:*,wdio-electron-service*,webdriverio*"
+        shell: bash
         run: |
           echo "=== Before running package tests ==="
           echo "Current directory: $(pwd)"
