@@ -13,8 +13,8 @@
     "preview": "electron-vite preview",
     "dist": "pnpm build && electron-builder",
     "dist:dir": "pnpm build && electron-builder --dir",
-    "test": "cross-env DEBUG=wdio-electron-service,webdriverio xvfb-maybe wdio run wdio.conf.ts",
-    "test:package": "cross-env DEBUG=wdio-electron-service,webdriverio xvfb-maybe wdio run wdio.conf.ts",
+    "test": "cross-env DEBUG=wdio-electron-service,webdriverio xvfb-maybe wdio run ./test/wdio.conf.ts",
+    "test:package": "cross-env DEBUG=wdio-electron-service,webdriverio xvfb-maybe wdio run ./test/wdio.conf.ts",
     "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
   },
   "dependencies": {
