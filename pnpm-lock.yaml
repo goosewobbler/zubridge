@@ -234,8 +234,8 @@ importers:
   apps/minimal-custom:
     dependencies:
       '@zubridge/electron':
-        specifier: workspace:*
-        version: link:../../packages/electron
+        specifier: next
+        version: 2.0.0-next.21(electron@37.1.0)(redux@5.0.1)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -271,20 +271,23 @@ importers:
         specifier: ^4.4.0
         version: 4.6.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       '@wdio/cli':
-        specifier: ^9.17.1
-        version: 9.18.0(@types/node@22.16.4)(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
       '@wdio/globals':
-        specifier: ^9.17.0
-        version: 9.17.0(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/local-runner':
-        specifier: ^9.17.0
-        version: 9.18.0(@wdio/globals@9.17.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/mocha-framework':
-        specifier: ^9.17.0
-        version: 9.18.0
+        specifier: 9.16.2
+        version: 9.16.2
+      '@wdio/spec-reporter':
+        specifier: 9.16.2
+        version: 9.16.2
       '@zubridge/types':
-        specifier: workspace:*
-        version: link:../../packages/types
+        specifier: next
+        version: 2.0.0-next.0(electron@37.1.0)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
@@ -298,8 +301,8 @@ importers:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
-        specifier: ^4.0.0
-        version: 4.0.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+        specifier: beta
+        version: 4.0.0-beta.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -328,8 +331,8 @@ importers:
         specifier: ^2.0.1
         version: 2.8.2(react@19.1.0)
       '@zubridge/electron':
-        specifier: workspace:*
-        version: link:../../packages/electron
+        specifier: next
+        version: 2.0.0-next.21(electron@37.1.0)(redux@5.0.1)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -368,20 +371,23 @@ importers:
         specifier: ^4.4.0
         version: 4.6.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       '@wdio/cli':
-        specifier: ^9.17.1
-        version: 9.18.0(@types/node@22.16.4)(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
       '@wdio/globals':
-        specifier: ^9.17.0
-        version: 9.17.0(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/local-runner':
-        specifier: ^9.17.0
-        version: 9.18.0(@wdio/globals@9.17.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/mocha-framework':
-        specifier: ^9.17.0
-        version: 9.18.0
+        specifier: 9.16.2
+        version: 9.16.2
+      '@wdio/spec-reporter':
+        specifier: 9.16.2
+        version: 9.16.2
       '@zubridge/types':
-        specifier: workspace:*
-        version: link:../../packages/types
+        specifier: next
+        version: 2.0.0-next.0(electron@37.1.0)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
@@ -395,8 +401,8 @@ importers:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
-        specifier: ^4.0.0
-        version: 4.0.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+        specifier: beta
+        version: 4.0.0-beta.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -516,8 +522,8 @@ importers:
   apps/minimal-zustand-handlers:
     dependencies:
       '@zubridge/electron':
-        specifier: workspace:*
-        version: link:../../packages/electron
+        specifier: next
+        version: 2.0.0-next.21(electron@37.1.0)(redux@5.0.1)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -553,20 +559,23 @@ importers:
         specifier: ^4.4.0
         version: 4.6.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       '@wdio/cli':
-        specifier: ^9.17.1
-        version: 9.18.0(@types/node@22.16.4)(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
       '@wdio/globals':
-        specifier: ^9.17.0
-        version: 9.17.0(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/local-runner':
-        specifier: ^9.17.0
-        version: 9.18.0(@wdio/globals@9.17.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/mocha-framework':
-        specifier: ^9.17.0
-        version: 9.18.0
+        specifier: 9.16.2
+        version: 9.16.2
+      '@wdio/spec-reporter':
+        specifier: 9.16.2
+        version: 9.16.2
       '@zubridge/types':
-        specifier: workspace:*
-        version: link:../../packages/types
+        specifier: next
+        version: 2.0.0-next.0(electron@37.1.0)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
@@ -580,8 +589,8 @@ importers:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
-        specifier: ^4.0.0
-        version: 4.0.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+        specifier: beta
+        version: 4.0.0-beta.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -607,8 +616,8 @@ importers:
   apps/minimal-zustand-reducers:
     dependencies:
       '@zubridge/electron':
-        specifier: workspace:*
-        version: link:../../packages/electron
+        specifier: next
+        version: 2.0.0-next.21(electron@37.1.0)(redux@5.0.1)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -644,20 +653,23 @@ importers:
         specifier: ^4.4.0
         version: 4.6.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       '@wdio/cli':
-        specifier: ^9.17.1
-        version: 9.18.0(@types/node@22.16.4)(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
       '@wdio/globals':
-        specifier: ^9.17.0
-        version: 9.17.0(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/local-runner':
-        specifier: ^9.17.0
-        version: 9.18.0(@wdio/globals@9.17.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        specifier: 9.16.2
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/mocha-framework':
-        specifier: ^9.17.0
-        version: 9.18.0
+        specifier: 9.16.2
+        version: 9.16.2
+      '@wdio/spec-reporter':
+        specifier: 9.16.2
+        version: 9.16.2
       '@zubridge/types':
-        specifier: workspace:*
-        version: link:../../packages/types
+        specifier: next
+        version: 2.0.0-next.0(electron@37.1.0)(zustand@5.0.6(@types/react@19.1.8)(immer@10.1.1)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
@@ -671,8 +683,8 @@ importers:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
-        specifier: ^4.0.0
-        version: 4.0.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+        specifier: beta
+        version: 4.0.0-beta.0(vite@7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -7646,6 +7658,11 @@ snapshots:
       expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       webdriverio: 9.16.2(puppeteer-core@22.15.0)
 
+  '@wdio/globals@9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))':
+    dependencies:
+      expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.18.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+      webdriverio: 9.18.0(puppeteer-core@22.15.0)
+
   '@wdio/globals@9.17.0(expect-webdriverio@5.4.0)(webdriverio@9.16.2(puppeteer-core@22.15.0))':
     dependencies:
       expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
@@ -7665,6 +7682,25 @@ snapshots:
       '@wdio/types': 9.16.2
       exit-hook: 4.0.0
       expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+      split2: 4.2.0
+      stream-buffers: 3.0.3
+    transitivePeerDependencies:
+      - '@wdio/globals'
+      - bare-buffer
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - webdriverio
+
+  '@wdio/local-runner@9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))':
+    dependencies:
+      '@types/node': 20.19.8
+      '@wdio/logger': 9.16.2
+      '@wdio/repl': 9.16.2
+      '@wdio/runner': 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+      '@wdio/types': 9.16.2
+      exit-hook: 4.0.0
+      expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       split2: 4.2.0
       stream-buffers: 3.0.3
     transitivePeerDependencies:
@@ -7768,6 +7804,25 @@ snapshots:
       expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       webdriver: 9.16.2
       webdriverio: 9.16.2(puppeteer-core@22.15.0)
+    transitivePeerDependencies:
+      - bare-buffer
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@wdio/runner@9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))':
+    dependencies:
+      '@types/node': 20.19.8
+      '@wdio/config': 9.16.2
+      '@wdio/dot-reporter': 9.16.2
+      '@wdio/globals': 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+      '@wdio/logger': 9.16.2
+      '@wdio/types': 9.16.2
+      '@wdio/utils': 9.16.2
+      deepmerge-ts: 7.1.5
+      expect-webdriverio: 5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.18.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+      webdriver: 9.16.2
+      webdriverio: 9.18.0(puppeteer-core@22.15.0)
     transitivePeerDependencies:
       - bare-buffer
       - bufferutil
@@ -8945,6 +9000,26 @@ snapshots:
       jest-matcher-utils: 30.0.4
       lodash.isequal: 4.5.0
       webdriverio: 9.16.2(puppeteer-core@22.15.0)
+
+  expect-webdriverio@5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0)):
+    dependencies:
+      '@vitest/snapshot': 3.2.4
+      '@wdio/globals': 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+      '@wdio/logger': 9.16.2
+      expect: 30.0.4
+      jest-matcher-utils: 30.0.4
+      lodash.isequal: 4.5.0
+      webdriverio: 9.18.0(puppeteer-core@22.15.0)
+
+  expect-webdriverio@5.4.0(@wdio/globals@9.16.2)(@wdio/logger@9.18.0)(webdriverio@9.18.0(puppeteer-core@22.15.0)):
+    dependencies:
+      '@vitest/snapshot': 3.2.4
+      '@wdio/globals': 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+      '@wdio/logger': 9.18.0
+      expect: 30.0.4
+      jest-matcher-utils: 30.0.4
+      lodash.isequal: 4.5.0
+      webdriverio: 9.18.0(puppeteer-core@22.15.0)
 
   expect-webdriverio@5.4.0(@wdio/globals@9.17.0)(@wdio/logger@9.18.0)(webdriverio@9.18.0(puppeteer-core@22.15.0)):
     dependencies:

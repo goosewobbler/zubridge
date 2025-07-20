@@ -34,7 +34,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
         },
-        external: isCI ? ['electron', '@zubridge/electron'] : ['electron'],
+        external: ['electron'],
       },
     },
   },

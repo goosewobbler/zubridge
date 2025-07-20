@@ -6,6 +6,57 @@ import { createStore } from './store.js';
 import { createBridge } from './bridge.js';
 import type { StateManager, AnyState } from '@zubridge/types';
 
+// Add comprehensive crash handling and native debugging
+console.log('[CRASH DEBUG] Setting up crash handlers and native debugging...');
+
+// 1. Add crash handlers
+process.on('uncaughtException', (error) => {
+  console.error('[CRASH DEBUG] Uncaught Exception:', error);
+  console.error('[CRASH DEBUG] Stack:', error.stack);
+  console.error('[CRASH DEBUG] Process will exit...');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[CRASH DEBUG] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// 2. Add Electron crash detection
+app.on('child-process-gone', (event, details) => {
+  console.error('[CRASH DEBUG] Child process gone:', details);
+});
+
+app.on('render-process-gone', (event, webContents, details) => {
+  console.error('[CRASH DEBUG] Render process gone:', details);
+});
+
+// 3. Log detailed process info
+console.log('[CRASH DEBUG] Process info:');
+console.log('[CRASH DEBUG] - Platform:', process.platform);
+console.log('[CRASH DEBUG] - Arch:', process.arch);
+console.log('[CRASH DEBUG] - Node version:', process.version);
+console.log('[CRASH DEBUG] - Electron version:', process.versions.electron);
+console.log('[CRASH DEBUG] - Chrome version:', process.versions.chrome);
+console.log('[CRASH DEBUG] - V8 version:', process.versions.v8);
+console.log('[CRASH DEBUG] - Process ID:', process.pid);
+console.log('[CRASH DEBUG] - Working directory:', process.cwd());
+console.log('[CRASH DEBUG] - Environment DISPLAY:', process.env.DISPLAY);
+console.log('[CRASH DEBUG] - Environment NODE_ENV:', process.env.NODE_ENV);
+
+// 4. Add app-level crash debugging
+app.on('before-quit', (event) => {
+  console.log('[CRASH DEBUG] App before-quit event fired');
+});
+
+app.on('will-quit', (event) => {
+  console.log('[CRASH DEBUG] App will-quit event fired');
+});
+
+app.on('ready', () => {
+  console.log('[CRASH DEBUG] App ready event fired successfully');
+});
+
+console.log('[CRASH DEBUG] Crash handlers set up successfully');
+
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 // Process should be terminated when all windows are closed
