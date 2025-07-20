@@ -837,6 +837,7 @@ jobs:
 
   # Package tests for Linux - test minimal apps with packaged dependencies
   linux-package-test:
+    name: Linux Package Test
     if: inputs.app == 'electron'
     uses: ./.github/workflows/_package-test.reusable.yml
     needs: [linux-build]
@@ -850,6 +851,7 @@ jobs:
 
   # Package tests for macOS - test minimal apps with packaged dependencies
   macos-package-test:
+    name: macOS Package Test
     if: inputs.app == 'electron'
     uses: ./.github/workflows/_package-test.reusable.yml
     needs: [macos-build]
@@ -863,6 +865,7 @@ jobs:
 
   # Package tests for Windows - test minimal apps with packaged dependencies
   windows-package-test:
+    name: Windows Package Test
     if: inputs.app == 'electron'
     uses: ./.github/workflows/_package-test.reusable.yml
     needs: [windows-build]
