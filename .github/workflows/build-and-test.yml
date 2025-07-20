@@ -542,298 +542,50 @@ jobs:
   # E2E Tests for Linux
   linux-test:
     name: Linux E2E
-    # Tauri E2E tests are disabled for now due to WDIO compatibility issues
-    # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
-    if: needs.linux-build.outputs.success == 'true' && inputs.app == 'electron'
+    if: needs.linux-build.outputs.success == 'true'
     needs: [linux-build]
-    runs-on: ubuntu-latest
-    env:
-      TURBO_TELEMETRY_DISABLED: 1
+    uses: ./.github/workflows/_e2e-test.reusable.yml
+    with:
+      app: ${{ inputs.app }}
+      mode: ${{ inputs.mode }}
+      os: linux
+      artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
+    secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
-    steps:
-      # Install Linux dependencies for Tauri apps before running E2E tests
-      - name: Install Linux dependencies for Tauri & E2E (including WebKitWebDriver)
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        shell: bash
-        run: |
-          sudo apt-get update
-          COMMON_DEPS="\
-          pkg-config \
-          libgtk-3-dev \
-          libappindicator3-dev \
-          librsvg2-dev \
-          patchelf \
-          libglib2.0-dev \
-          libsoup-2.4-1 \
-          libsoup2.4-dev \
-          xvfb"
-
-
-          TAURI_V1_DEPS=\
-          "libwebkit2gtk-4.0-dev \
-          libwebkit2gtk-driver \
-          webkitgtk-webdriver \
-          libjavascriptcoregtk-4.0-dev"
-
-
-          TAURI_V2_DEPS=\
-          "libwebkit2gtk-4.1-dev \
-          webkitgtk-webdriver \
-          libjavascriptcoregtk-4.1-dev"
-
-
-          if [[ "${{ inputs.app }}" == "tauri-v1" ]]; then
-            echo "Installing dependencies for Tauri v1"
-            # For Tauri v1 on Ubuntu 24.04, we expect libwebkit2gtk-4.0-dev and related to fail.
-            # We'll attempt to install them but allow failure, then install the 4.1 versions as a fallback.
-            # This is a temporary workaround pending official Tauri v1 support for Ubuntu 24.04's newer WebKit.
-            echo "Attempting to install Tauri v1 specific WebKit 4.0 packages (expected to fail on Ubuntu 24.04)..."
-            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V1_DEPS || echo "Known issue: Failed to install some Tauri v1 WebKit 4.0 packages on Ubuntu 24.04. Continuing with 4.1 as fallback."
-            echo "Installing WebKit 4.1 packages as a fallback for Tauri v1 on Ubuntu 24.04..."
-            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS # Use V2_DEPS as fallback for V1
-          elif [[ "${{ inputs.app }}" == "tauri" ]]; then
-            echo "Installing dependencies for Tauri v2 on Ubuntu 24.04 (Noble)"
-            echo "--- apt-cache show libwebkit2gtk-4.1-dev ---"
-            apt-cache show libwebkit2gtk-4.1-dev || echo "apt-cache show libwebkit2gtk-4.1-dev failed"
-            echo "--- apt-cache search libjavascriptcoregtk-4.1-dev ---"
-            apt-cache search libjavascriptcoregtk-4.1-dev || echo "apt-cache search libjavascriptcoregtk-4.1-dev failed"
-            echo "--- End diagnostic searches ---"
-            sudo apt-get install -y $COMMON_DEPS $TAURI_V2_DEPS
-          else
-            echo "::warning:: Unknown Tauri app type for dependency installation: ${{ inputs.app }}"
-            # As a fallback, attempt to install common and v2 deps, but this might fail or be incorrect
-            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
-          fi
-
-
-      - name: Install tauri-driver
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        shell: bash
-        run: |
-          echo "Installing tauri-driver..."
-          cargo install tauri-driver --locked
-          if ! command -v tauri-driver &> /dev/null; then
-          echo "::error::tauri-driver installation failed or not in PATH"
-          exit 1
-          fi
-          echo "tauri-driver installed successfully."
-
-
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Setup E2E Environment
-        id: setup_e2e
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        with:
-          os: ubuntu-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
-
-      - name: Execute E2E Tests
-        env:
-          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
-          DEBUG: "zubridge:*"
-          E2E_APP_TYPE: ${{ inputs.app }}
-          MODE: ${{ inputs.mode }}
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-        shell: bash
-
-      - name: Handle Test Failures
-        if: failure()
-        uses: ./.github/workflows/actions/handle-e2e-failures
-        with:
-          os: ubuntu-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-
-      - name: 🐛 Debug Build
-        uses: goosewobbler/vscode-server-action@v1.3.0
-        if: failure()
-        with:
-          machineName: zubridge-e2e-linux-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
-          timeout: '120000'
 
   # E2E Tests for macOS
   macos-test:
-    needs: macos-build
-    # Tauri E2E tests are disabled for now due to WDIO compatibility issues
-    # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
-    if: needs.macos-build.outputs.success == 'true' && inputs.app == 'electron' # Only run for successful electron builds
     name: macOS E2E
-    runs-on: macOS-latest
-    env:
-      TURBO_TELEMETRY_DISABLED: 1
+    if: needs.macos-build.outputs.success == 'true'
+    needs: [macos-build]
+    uses: ./.github/workflows/_e2e-test.reusable.yml
+    with:
+      app: ${{ inputs.app }}
+      mode: ${{ inputs.mode }}
+      os: macos
+      artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
+    secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Install tauri-driver
-        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1') && runner.os != 'macOS' # Don't install if tauri on macOS
-        shell: bash
-        run: |
-          echo "Installing tauri-driver..."
-          cargo install tauri-driver
-          echo "tauri-driver installation complete."
-          # Verify installation
-          if [ -f ~/.cargo/bin/tauri-driver ]; then
-            echo "tauri-driver found in ~/.cargo/bin"
-          else
-            echo "tauri-driver NOT found in ~/.cargo/bin after install attempt!"
-            command -v tauri-driver || echo "tauri-driver not in PATH"
-            exit 1 # Exit if not found, as it's critical
-          fi
-
-      - name: Setup E2E Environment
-        id: setup_e2e
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        if: inputs.app == 'electron' # Skip for non-electron on macos
-        with:
-          os: macOS-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
-
-      - name: Execute E2E Tests
-        env:
-          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
-          DEBUG: "zubridge:*"
-          E2E_APP_TYPE: ${{ inputs.app }}
-          MODE: ${{ inputs.mode }}
-        if: inputs.app == 'electron' # Skip for non-electron on macos
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-        shell: bash
-
-      - name: Handle Test Failures
-        if: failure() && inputs.app == 'electron' # Skip for non-electron on macos if previous steps were skipped
-        uses: ./.github/workflows/actions/handle-e2e-failures
-        with:
-          os: macOS-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-
-      - name: 🐛 Debug Build
-        uses: goosewobbler/vscode-server-action@v1.3.0
-        if: failure()
-        with:
-          machineName: zubridge-e2e-macos-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
-          timeout: '120000'
 
   # E2E Tests for Windows
   windows-test:
-    needs: windows-build
-    # Tauri E2E tests are disabled for now due to WDIO compatibility issues
-    # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
-    if: needs.windows-build.outputs.success == 'true' && inputs.app == 'electron'
     name: Windows E2E
-    runs-on: windows-latest
-    env:
-      TURBO_TELEMETRY_DISABLED: 1
+    if: needs.windows-build.outputs.success == 'true'
+    needs: [windows-build]
+    uses: ./.github/workflows/_e2e-test.reusable.yml
+    with:
+      app: ${{ inputs.app }}
+      mode: ${{ inputs.mode }}
+      os: windows
+      artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
+    secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_API: ${{ secrets.TURBO_API }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
-
-      - name: Download shared packages
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-packages
-          path: packages
-
-      - name: Install tauri-driver
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        shell: bash
-        run: |
-          echo "Installing tauri-driver..."
-          cargo install tauri-driver
-          echo "tauri-driver installation complete."
-          # Verify installation path for Windows
-          CARGO_HOME_BIN="$HOME/.cargo/bin/tauri-driver"
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            CARGO_HOME_BIN="$USERPROFILE/.cargo/bin/tauri-driver.exe"
-          fi
-
-          if [ -f "$CARGO_HOME_BIN" ]; then
-            echo "tauri-driver found in $CARGO_HOME_BIN"
-          else
-            echo "tauri-driver NOT found in $CARGO_HOME_BIN after install attempt!"
-            command -v tauri-driver || echo "tauri-driver not in PATH"
-            exit 1 # Exit if not found, as it's critical
-          fi
-
-      - name: Setup E2E Environment
-        id: setup_e2e
-        uses: ./.github/workflows/actions/setup-e2e-environment
-        with:
-          os: windows-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-          artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
-
-      - name: Execute E2E Tests
-        env:
-          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
-          DEBUG: "zubridge:*"
-          E2E_APP_TYPE: ${{ inputs.app }}
-          MODE: ${{ inputs.mode }}
-        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
-        shell: bash
-
-      - name: Handle Test Failures
-        if: failure()
-        uses: ./.github/workflows/actions/handle-e2e-failures
-        with:
-          os: windows-latest
-          app: ${{ inputs.app }}
-          mode: ${{ inputs.mode }}
-
-      - name: 🐛 Debug Build
-        uses: goosewobbler/vscode-server-action@v1.3.0
-        if: failure()
-        with:
-          machineName: zubridge-e2e-windows-${{ inputs.app }}-${{ inputs.mode }} # optional, default: GitHub workflow run ID
-          timeout: '120000'
 
   # Package tests for Linux - test minimal apps with packaged dependencies
   linux-package-test:
