@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/electron",
-  "version": "2.0.0-next.20",
+  "version": "2.0.0-next.21",
   "description": "A streamlined state management library for Electron applications using Zustand.",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/electron",
@@ -15,6 +15,7 @@
     "clean:cache": "shx rm -rf .turbo",
     "prebuild": "pnpm clean:output",
     "build": "tsx ./scripts/build.ts",
+    "package": "pnpm pack",
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest --coverage --watch=false",
     "test:dev": "vitest --coverage",

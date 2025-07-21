@@ -1,0 +1,92 @@
+@theme {
+  /* Colors - Core palette */
+  --color-primary-light: #a78bfa;
+  --color-primary: #8b5cf6;
+  --color-primary-dark: #7c3aed;
+  --color-primary-darker: #6d28d9;
+
+  /* Colors - UI elements */
+  --color-reset: #e6b800;
+  --color-reset-hover: #cc9900;
+  --color-reset-active: #b38600;
+
+  --color-create: #22c55e;
+  --color-create-hover: #16a34a;
+  --color-create-active: #15803d;
+
+  --color-close: #ef4444;
+  --color-close-hover: #dc2626;
+  --color-close-active: #b91c1c;
+
+  --color-status-ready: #10b981;
+  --color-status-error: #ef4444;
+
+  /* Colors - Themes */
+  --color-light-bg: #f3f0ff;
+  --color-light-text: #1e293b;
+  --color-light-runtime: #ede9fe;
+
+  --color-dark-bg: #1e1b4b;
+  --color-dark-text: #f1f5f9;
+
+  /* Sizes and spacing */
+  --button-height: 38px;
+  --button-width: 140px;
+  --container-width: 300px;
+}
+
+@import 'tailwindcss';
+
+@layer components {
+  /* Base theme styles */
+  body {
+    @apply transition-colors duration-300;
+  }
+
+  body.light-theme {
+    @apply bg-light-bg text-light-text;
+  }
+
+  body.dark-theme {
+    @apply bg-dark-bg text-dark-text;
+  }
+
+  /* Header Component */
+  .app-header,
+  .window-header {
+    @apply bg-black/80 text-white py-2 px-4 flex justify-between items-center z-10;
+  }
+
+  .status-indicator {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+
+  .status-ready .status-indicator {
+    @apply bg-status-ready;
+  }
+
+  .status-error .status-indicator {
+    @apply bg-status-error;
+  }
+
+  /* App container */
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Content area */
+  .content {
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  /* Ensure proper spacing between component sections */
+  .window-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px 0;
+  }
+}

@@ -35,17 +35,16 @@ runs:
         if [[ "${{ runner.os }}" == "Linux" ]]; then
           echo "platform=linux" >> $GITHUB_OUTPUT
           echo "app_ext=.AppImage" >> $GITHUB_OUTPUT
-          # Assuming AppImage is named like zubridge-tauri-example_0.1.0_amd64.AppImage or similar
-          # This might need adjustment based on actual bundle output name
-          echo "executable_name=zubridge-${{ inputs.app }}-example*.AppImage" >> $GITHUB_OUTPUT
+          # AppImage is named like e2e-tauri_0.1.0_amd64.AppImage or similar
+          echo "executable_name=e2e-${{ inputs.app }}*.AppImage" >> $GITHUB_OUTPUT
         elif [[ "${{ runner.os }}" == "macOS" ]]; then
           echo "platform=macos" >> $GITHUB_OUTPUT
           echo "app_ext=.dmg" >> $GITHUB_OUTPUT # Or .app if we extract from dmg
-          echo "executable_name=zubridge-${{ inputs.app }}-example.app" >> $GITHUB_OUTPUT # Path inside .app is Contents/MacOS/AppName
+          echo "executable_name=e2e-${{ inputs.app }}.app" >> $GITHUB_OUTPUT # Path inside .app is Contents/MacOS/AppName
         elif [[ "${{ runner.os }}" == "Windows" ]]; then
           echo "platform=windows" >> $GITHUB_OUTPUT
           echo "app_ext=.exe" >> $GITHUB_OUTPUT # Could be .msi too
-          echo "executable_name=zubridge-${{ inputs.app }}-example*.exe" >> $GITHUB_OUTPUT
+          echo "executable_name=e2e-${{ inputs.app }}*.exe" >> $GITHUB_OUTPUT
         fi
       shell: bash
 
@@ -54,11 +53,11 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.app }}" == "electron" ]; then
-          echo "download_path=./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT
-          echo "final_app_path=./apps/${{ inputs.app }}-example/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT # For electron, it's more complex
+          echo "download_path=./apps/e2e-${{ inputs.app }}/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT
+          echo "final_app_path=./apps/e2e-${{ inputs.app }}/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT # For electron, it's more complex
         else # Tauri apps
-          echo "download_path=./apps/${{ inputs.app }}-example/build_output" >> $GITHUB_OUTPUT
-          echo "final_app_path=./apps/${{ inputs.app }}-example/build_output" >> $GITHUB_OUTPUT # Will be refined based on OS below
+          echo "download_path=./apps/e2e-${{ inputs.app }}/build_output" >> $GITHUB_OUTPUT
+          echo "final_app_path=./apps/e2e-${{ inputs.app }}/build_output" >> $GITHUB_OUTPUT # Will be refined based on OS below
         fi
 
     - name: Download Build Artifacts

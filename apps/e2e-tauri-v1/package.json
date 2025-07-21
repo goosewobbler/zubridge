@@ -1,0 +1,37 @@
+{
+  "name": "e2e-tauri-v1",
+  "version": "1.0.0",
+  "description": "End-to-end testing app for Zubridge Tauri v1",
+  "private": true,
+  "scripts": {
+    "clean": "pnpm clean:output && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml ./dist ./src-tauri/target",
+    "clean:output": "pnpm dlx shx rm -rf ./dist* ./out* ./src-tauri/target",
+    "typecheck": "tsc --noEmit -p tsconfig.json --composite false",
+    "dev:vite": "vite",
+    "dev": "vite build && pnpm tauri dev",
+    "dev:ui": "cross-env WATCH_UI=true vite build && cross-env WATCH_UI=true pnpm tauri dev",
+    "build": "pnpm run typecheck && pnpm build:basic",
+    "build:basic": "cross-env ZUBRIDGE_MODE=basic vite build && cross-env ZUBRIDGE_MODE=basic pnpm tauri build -- --verbose"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.3",
+    "@zubridge/core": "workspace:*",
+    "@zubridge/tauri": "workspace:*",
+    "@zubridge/ui": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.6.3",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.0",
+    "@zubridge/types": "workspace:*",
+    "cross-env": "^7.0.3",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.7.3",
+    "vite": "^7.0.4"
+  }
+}

@@ -1,6 +1,6 @@
-import { deepGet } from '../utils/deepGet';
-import { dequal } from 'dequal';
 import { debug } from '@zubridge/core';
+import { dequal } from 'dequal';
+import { deepGet } from '../utils/deepGet.js';
 
 export type SubscriptionCallback<S> = (partialState: Partial<S>) => void;
 
