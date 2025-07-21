@@ -45,83 +45,21 @@ jobs:
         with:
           name: shared-packages
 
-      # Linux-specific kernel workaround for electron testing (minimal approach like wdio-electron-service)
-      - name: 🔧 Apply Linux Kernel Workaround and Core Dump Setup
+      # Linux-specific kernel workaround for electron testing
+      - name: 🔧 Apply Linux Kernel Workaround
         if: inputs.os == 'linux'
         run: |
           sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
-          
+
           # Install XVFB and X11 utilities for display testing
           echo "Installing XVFB and X11 utilities..."
           sudo apt-get update -qq
           sudo apt-get install -y xvfb x11-utils
-          
-          # Enable core dumps for debugging electron crashes
-          echo "Setting up core dump debugging..."
-          # Set core dumps globally
-          echo "* soft core unlimited" | sudo tee -a /etc/security/limits.conf
-          echo "* hard core unlimited" | sudo tee -a /etc/security/limits.conf
-          ulimit -c unlimited
-          echo "Core dump limit set to: $(ulimit -c)"
-          
-          # Create directory for crash dumps
-          sudo mkdir -p /tmp/electron-crashes
-          sudo chmod 777 /tmp/electron-crashes
-          
-          # Set core dump pattern to include electron crashes
-          echo '/tmp/electron-crashes/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
-          echo "Core dump pattern set to: $(cat /proc/sys/kernel/core_pattern)"
-          
-          # Debug system dependencies that are available by default
-          echo "Checking default GLib and graphics libraries..."
-          dpkg -l | grep -E "(libglib|libgtk|libnss|libxss|libasound)" || echo "No relevant packages found"
-          echo "GLib version info:"
-          ldconfig -p | grep glib || echo "GLib not found in ldconfig"
-          echo "Graphics libraries:"
-          ldconfig -p | grep -E "(libGL|libX|libxcb)" || echo "No graphics libraries found"
-          
-          # Debug environment variables that GLib typically requires
-          echo "=== Environment Variables Debug ==="
-          echo "XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-MISSING}"
-          echo "XDG_SESSION_TYPE: ${XDG_SESSION_TYPE:-MISSING}"
-          echo "XDG_SESSION_ID: ${XDG_SESSION_ID:-MISSING}"
-          echo "XDG_CURRENT_DESKTOP: ${XDG_CURRENT_DESKTOP:-MISSING}"
-          echo "DISPLAY: ${DISPLAY:-MISSING}"
-          echo "WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-MISSING}"
-          echo "SESSION_MANAGER: ${SESSION_MANAGER:-MISSING}"
-          echo "DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS:-MISSING}"
-          
-          # Check for critical system directories
-          echo "=== System Directories Debug ==="
-          echo "Checking /tmp/.X11-unix:"
-          ls -la /tmp/.X11-unix 2>/dev/null || echo "Directory missing"
-          echo "Checking /run/user:"
-          ls -la /run/user 2>/dev/null || echo "Directory missing"
-          echo "Checking /dev/shm:"
-          ls -la /dev/shm 2>/dev/null || echo "Directory missing"
-          
-          # Check dbus availability
-          echo "=== D-Bus Debug ==="
-          echo "D-Bus system bus:"
-          dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetId 2>/dev/null || echo "System bus not available"
-          echo "D-Bus session bus:"
-          dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetId 2>/dev/null || echo "Session bus not available"
-          
-          # Check if we can create XDG_RUNTIME_DIR if missing
-          if [ -z "${XDG_RUNTIME_DIR}" ]; then
-            echo "Creating XDG_RUNTIME_DIR..."
-            export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
-            mkdir -p "$XDG_RUNTIME_DIR"
-            chmod 700 "$XDG_RUNTIME_DIR"
-            echo "Created XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR"
-          fi
-          
-          # Set DISPLAY for XVFB (critical for GLib)
-          echo "Setting DISPLAY=:99 for electron processes..."
+
+          # Set DISPLAY for XVFB
           echo "DISPLAY=:99" >> $GITHUB_ENV
           export DISPLAY=:99
-          echo "DISPLAY set to: $DISPLAY"
-          
+
           # Set basic desktop environment variables that GLib expects
           echo "Setting basic desktop environment variables..."
           echo "XDG_SESSION_TYPE=x11" >> $GITHUB_ENV
@@ -130,19 +68,19 @@ jobs:
           export XDG_CURRENT_DESKTOP=ubuntu:GNOME
           echo "XDG_SESSION_TYPE set to: $XDG_SESSION_TYPE"
           echo "XDG_CURRENT_DESKTOP set to: $XDG_CURRENT_DESKTOP"
-          
+
           # Start XVFB server to provide actual display backend for electron
           echo "Starting XVFB server on display :99..."
           Xvfb :99 -screen 0 1024x768x24 -ac -nolisten tcp -dpi 96 &
           XVFB_PID=$!
           echo "XVFB_PID=$XVFB_PID" >> $GITHUB_ENV
           echo "XVFB started with PID: $XVFB_PID"
-          
+
           # Wait for XVFB to be ready
           sleep 2
           echo "XVFB status check:"
           ps aux | grep Xvfb | grep -v grep || echo "XVFB not found in process list"
-          
+
           # Verify display is accessible
           echo "Testing display accessibility:"
           DISPLAY=:99 xdpyinfo || echo "Display :99 not accessible"
@@ -152,182 +90,29 @@ jobs:
           DEBUG: "zubridge:*,wdio-electron-service*,webdriverio*"
         shell: bash
         run: |
-          echo "=== Before running package tests ==="
-          echo "Current directory: $(pwd)"
-          echo "Platform: $(uname -a)"
-          echo "Available memory: $(free -h 2>/dev/null || echo 'N/A')"
-          echo "Electron processes before test:"
-          ps aux | grep -i electron | grep -v grep || echo "No electron processes"
-          
-          echo "Available scripts:"
-          ls -la scripts/ || echo "No scripts directory"
-          echo "Checking package.json test scripts in apps/minimal-${{ inputs.mode }}:"
-          if [ -f "apps/minimal-${{ inputs.mode }}/package.json" ]; then
-            grep -A 5 '"scripts"' "apps/minimal-${{ inputs.mode }}/package.json" || echo "No scripts section found"
-          fi
-          
-          echo "=== Starting electron process monitoring ==="
-          # Start monitoring electron processes in background
-          (
-            while true; do
-              timestamp=$(date '+%H:%M:%S')
-              electron_count=$(ps aux | grep -i electron | grep -v grep | wc -l)
-              if [ $electron_count -gt 0 ]; then
-                echo "[$timestamp] Electron processes: $electron_count"
-                ps aux | grep -i electron | grep -v grep | awk '{print "  PID:"$2" CMD:"$11" "$12" "$13}' || true
-              fi
-              sleep 2
-            done
-          ) &
-          monitor_pid=$!
-          
           echo "=== Running package tests ==="
           set +e  # Don't exit on error
-          
-          # Trap to cleanup monitor on exit
-          trap "kill $monitor_pid 2>/dev/null || true" EXIT
-          
-          # Check XVFB setup before running tests
-          echo "=== XVFB Debug Info ==="
-          echo "DISPLAY environment: $DISPLAY"
-          echo "XVFB processes:"
-          ps aux | grep -i xvfb | grep -v grep || echo "No XVFB processes found"
-          
-          # Set core dump limit for this session and child processes
-          ulimit -c unlimited
-          echo "Core dump limit before test: $(ulimit -c)"
-          
+
+
           # Run package tests (keeping xvfb-maybe at the correct level - in package.json)
           pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
           exit_code=$?
-          
-          echo "=== Package test completed, stopping process monitor ==="
-          kill $monitor_pid 2>/dev/null || true
-          
-          echo "Package test script completed with exit code: $exit_code"
-          echo "Final electron processes:"
-          ps aux | grep -i electron | grep -v grep || echo "No electron processes"
-          
-          if [ $exit_code -ne 0 ]; then
-            echo "=== Test failed, checking for crash indicators ==="
-            echo "App directory contents after failure:"
-            ls -la "apps/minimal-${{ inputs.mode }}/" || echo "App directory not found"
-            
-            echo "=== NATIVE CRASH DEBUGGING ==="
-            
-            # 1. Check for electron crash dumps in our specified directory
-            echo "Checking for electron crash dumps in /tmp/electron-crashes:"
-            if [ -d "/tmp/electron-crashes" ]; then
-              ls -la /tmp/electron-crashes/ || echo "Crash dumps directory empty"
-              find /tmp/electron-crashes -name "*.dmp" -o -name "*.crash" 2>/dev/null | while read crashfile; do
-                echo "--- Crash dump found: $crashfile ---"
-                ls -la "$crashfile"
-                # Try to get basic info from crash dump
-                file "$crashfile" 2>/dev/null || echo "Could not analyze crash dump"
-              done
-            else
-              echo "Crash dumps directory not created"
-            fi
-            
-            # 2. Look for any crash-related files
-            echo "Looking for crash dumps and core files:"
-            find /tmp -name "*.dmp" -o -name "*crash*" -o -name "core.*" -o -name "*.crash" 2>/dev/null | head -10 || echo "No crash files found"
-            
-            # 3. Check system logs for electron crashes and segfaults
-            echo "Checking system logs for electron crashes:"
-            if command -v journalctl >/dev/null 2>&1; then
-              echo "--- Recent electron-related log entries ---"
-              journalctl --since "5 minutes ago" | grep -i electron | tail -20 || echo "No electron entries in logs"
-              
-              echo "--- Recent crash/segfault entries ---"
-              journalctl --since "5 minutes ago" | grep -i "segfault\|crash\|killed\|signal\|core dump\|fatal" | tail -20 || echo "No crash logs found"
-              
-              echo "--- Recent kernel messages ---"
-              journalctl -k --since "5 minutes ago" | grep -i "killed\|oom\|segfault\|signal" | tail -10 || echo "No relevant kernel messages"
-            else
-              echo "journalctl not available"
-            fi
-            
-            # 4. Check dmesg for kernel-level crash info
-            echo "Checking dmesg for recent kernel messages:"
-            sudo dmesg | tail -50 | grep -i "electron\|killed\|segfault\|signal\|oom" || echo "No relevant dmesg entries"
-            
-            # 5. Check for electron process info in /proc
-            echo "Checking for any remaining electron processes:"
-            ps aux | grep -i electron | grep -v grep || echo "No electron processes"
-            
-            # 6. Look for core dumps in common locations
-            echo "Looking for core dumps in common locations:"
-            find /tmp -name "core.*" -o -name "*.core" 2>/dev/null | head -5 || echo "No core files in /tmp"
-            find . -name "core.*" -o -name "*.core" 2>/dev/null | head -5 || echo "No core files in current dir"
-            
-            # 7. Check ulimits and system resources
-            echo "System resource limits:"
-            ulimit -a 2>/dev/null || echo "Could not get ulimits"
-            
-            echo "Memory usage after failure:"
-            free -h 2>/dev/null || echo "Memory info not available"
-            
-            echo "Disk space:"
-            df -h /tmp 2>/dev/null || echo "Could not get disk usage"
-          fi
+
+
           exit $exit_code
 
-      # Upload core dumps as artifacts for analysis
-      - name: 📦 Upload core dumps
-        if: failure() && inputs.os == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: electron-core-dumps-${{ inputs.mode }}-${{ github.run_number }}
-          path: /tmp/electron-crashes/
-          retention-days: 7
-
-      - name: 🔍 Debug log locations after test
-        if: always()
+      - name: 📜 Display logs on failure
+        if: failure()
         shell: bash
         run: |
-          echo "=== Searching for logs system-wide ==="
-          find /tmp -name "*wdio*" -type f 2>/dev/null | head -20 || echo "No wdio files in /tmp"
-          find /tmp -name "*log*" -path "*minimal-${{ inputs.mode }}*" -type f 2>/dev/null | head -10 || echo "No log files for this mode in /tmp"
-          find . -name "*wdio*" -type f 2>/dev/null | head -10 || echo "No wdio files in current dir tree"
-
-      - name: 📜 Display logs
-        if: always()
-        shell: bash
-        run: |
-          echo "=== Debugging log locations ==="
-          echo "Current directory: $(pwd)"
-          echo "Contents of current directory:"
-          ls -la . || echo "ls failed"
-          
-          echo "=== Looking for logs in app directory ==="
           if [ -d "./apps/minimal-${{ inputs.mode }}" ]; then
-            cd ./apps/minimal-${{ inputs.mode }}
-            echo "App directory contents:"
-            ls -la . || echo "ls in app dir failed"
-            
-            echo "=== Looking for any log files/directories ==="
-            find . -name "*log*" 2>/dev/null || echo "No *log* files/dirs found"
-            
-            echo "=== Displaying WDIO log files ==="
+            cd "./apps/minimal-${{ inputs.mode }}"
             for log_dir in wdio-logs-*; do
               if [ -d "$log_dir" ]; then
-                echo "Found log directory: $log_dir"
-                for log_file in "$log_dir"/*.log; do
-                  if [ -f "$log_file" ]; then
-                    echo "--- Log file: $log_file ---"
-                    cat "$log_file"
-                    echo "--- End of $log_file ---"
-                    echo ""
-                  fi
-                done
-              else
-                echo "No wdio-logs-* directories found"
-                break
+                echo "=== WDIO Logs from $log_dir ==="
+                find "$log_dir" -name "*.log" -exec cat {} \;
               fi
             done
-          else
-            echo "App directory ./apps/minimal-${{ inputs.mode }} does not exist"
           fi
 
       # Cleanup XVFB process
