@@ -27,6 +27,7 @@ env:
 
 jobs:
   package-test:
+    name: ${{ inputs.os == 'linux' && 'Linux' || inputs.os == 'macos' && 'macOS' || 'Windows' }} Package Test
     if: contains(fromJSON('["zustand-basic", "custom", "redux", "zustand-handlers", "zustand-reducers"]'), inputs.mode)
     runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
     steps:

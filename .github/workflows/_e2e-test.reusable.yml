@@ -35,6 +35,7 @@ env:
 
 jobs:
   e2e-test:
+    name: ${{ inputs.os == 'linux' && 'Linux' || inputs.os == 'macos' && 'macOS' || 'Windows' }} E2E Test
     runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
     # Tauri E2E tests are disabled for now due to WDIO compatibility issues
     # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
