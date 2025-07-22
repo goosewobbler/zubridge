@@ -32,8 +32,8 @@ debug('example-app:init', `Dev mode: ${isDevMode}`);
 const isTestMode = process.env.TEST === 'true';
 debug('example-app:init', `Test mode: ${isTestMode}`);
 
-// Disable GPU acceleration
-if (!isTestMode && process.platform === 'darwin') {
+// Disable GPU acceleration on MacOS
+if (!isTestMode && process.platform === 'darwin' && !app.isReady()) {
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch('disable-gpu');
 }
@@ -69,15 +69,15 @@ app
 
     // Initialize all windows
     debug('example-app:init', 'Initializing main window');
-    const initialMainWindow = windows.initMainWindow(isAppQuitting);
+    const initialMainWindow = await windows.initMainWindow(isAppQuitting);
     debug('example-app:init', `Main window created with ID: ${initialMainWindow.id}`);
 
     debug('example-app:init', 'Initializing direct WebContents window');
-    const initialDirectWebContentsWindow = windows.initDirectWebContentsWindow();
+    const initialDirectWebContentsWindow = await windows.initDirectWebContentsWindow();
     debug('example-app:init', `Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`);
 
     debug('example-app:init', 'Initializing BrowserView window');
-    const { window: initialBrowserViewWindow, browserView } = windows.initBrowserViewWindow();
+    const { window: initialBrowserViewWindow, browserView } = await windows.initBrowserViewWindow();
     if (initialBrowserViewWindow && browserView) {
       debug('example-app:init', `BrowserView window created with ID: ${initialBrowserViewWindow.id}`);
       debug('example-app:init', `BrowserView WebContents ID: ${browserView.webContents.id}`);
@@ -86,7 +86,7 @@ app
     }
 
     debug('example-app:init', 'Initializing WebContentsView window');
-    const { window: initialWebContentsViewWindow, webContentsView } = windows.initWebContentsViewWindow();
+    const { window: initialWebContentsViewWindow, webContentsView } = await windows.initWebContentsViewWindow();
     if (initialWebContentsViewWindow && webContentsView) {
       debug('example-app:init', `WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`);
       debug('example-app:init', `WebContentsView WebContents ID: ${webContentsView.webContents.id}`);
@@ -213,7 +213,7 @@ app
     debug('example-app:init', 'System tray created');
 
     // On macOS activate, ensure all primary windows are handled
-    app.on('activate', () => {
+    app.on('activate', async () => {
       debug('example-app:init', 'App activate event triggered');
       const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow } = windows.getWindowRefs();
 
@@ -232,7 +232,7 @@ app
 
       if (!hasMainWindow) {
         debug('example-app:init', 'Creating new main window on activate');
-        const newMainWindow = windows.initMainWindow(isAppQuitting);
+        const newMainWindow = await windows.initMainWindow(isAppQuitting);
         subscribe([newMainWindow]); // Subscribe new main window
         windowToFocus = newMainWindow;
       } else if (!mainWindow?.isVisible()) {
@@ -245,7 +245,7 @@ app
 
       if (!hasDirectWebContentsWindow) {
         debug('example-app:init', 'Creating new direct WebContents window on activate');
-        const newDirectWebContentsWindow = windows.initDirectWebContentsWindow();
+        const newDirectWebContentsWindow = await windows.initDirectWebContentsWindow();
         subscribe([newDirectWebContentsWindow]);
       } else if (!directWebContentsWindow?.isVisible()) {
         debug('example-app:init', 'Showing existing direct WebContents window');
@@ -256,7 +256,7 @@ app
       if (!isTestMode) {
         if (!hasBrowserViewWindow) {
           debug('example-app:init', 'Creating new BrowserView window on activate');
-          const { browserView } = windows.initBrowserViewWindow();
+          const { browserView } = await windows.initBrowserViewWindow();
           // Pass the browserView directly to subscribe
           if (browserView) {
             debug(
@@ -275,7 +275,7 @@ app
       if (!isTestMode) {
         if (!hasWebContentsViewWindow) {
           debug('example-app:init', 'Creating new WebContentsView window on activate');
-          const { webContentsView } = windows.initWebContentsViewWindow();
+          const { webContentsView } = await windows.initWebContentsViewWindow();
           // Pass the webContentsView directly to subscribe
           if (webContentsView) {
             debug(
