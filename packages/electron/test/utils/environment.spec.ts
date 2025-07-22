@@ -51,7 +51,7 @@ describe('environment utilities', () => {
     // Set app to packaged for this test
     mockElectron.app.isPackaged = true;
 
-    process.env.NODE_ENV = 'production';
+    process.env.NODE_ENV = 'development';
     process.env.ELECTRON_IS_DEV = '1';
 
     const result = await isDev();
@@ -84,14 +84,16 @@ describe('environment utilities', () => {
     expect(result).toBe(true);
   });
 
-  it('should use Vite-specific check in renderer process', async () => {
+  it('should use Vite-specific check in renderer process when no explicit production flags', async () => {
     // Override the global mock
     vi.doMock('electron', async () => {
       return rendererMock;
     });
 
-    process.env.NODE_ENV = 'production';
-    process.env.ELECTRON_IS_DEV = '0';
+    // Don't set NODE_ENV=production or ELECTRON_IS_DEV=0 for this test
+    // so we can test the Vite-specific fallback behavior
+    delete process.env.NODE_ENV;
+    delete process.env.ELECTRON_IS_DEV;
 
     // Need to re-import to get fresh module with new mock
     const { isDev: freshIsDev } = await import('../../src/utils/environment');
@@ -101,7 +103,31 @@ describe('environment utilities', () => {
     const result1 = await freshIsDev();
     expect(result1).toBe(true);
 
-    // Test with VITE_DEV_SERVER_URL (should be false in production)
+    // Test with VITE_DEV_SERVER_URL (should be false when server URL is set but not in dev mode)
+    process.env.VITE_DEV_SERVER_URL = 'http://localhost:3000';
+    const result2 = await freshIsDev();
+    expect(result2).toBe(false);
+  });
+
+  it('should respect production flags even in renderer process', async () => {
+    // Override the global mock
+    vi.doMock('electron', async () => {
+      return rendererMock;
+    });
+
+    // Set explicit production flags
+    process.env.NODE_ENV = 'production';
+    process.env.ELECTRON_IS_DEV = '0';
+
+    // Need to re-import to get fresh module with new mock
+    const { isDev: freshIsDev } = await import('../../src/utils/environment');
+
+    // Even without VITE_DEV_SERVER_URL, should return false due to production flags
+    delete process.env.VITE_DEV_SERVER_URL;
+    const result1 = await freshIsDev();
+    expect(result1).toBe(false);
+
+    // With VITE_DEV_SERVER_URL, should still be false due to production flags
     process.env.VITE_DEV_SERVER_URL = 'http://localhost:3000';
     const result2 = await freshIsDev();
     expect(result2).toBe(false);
