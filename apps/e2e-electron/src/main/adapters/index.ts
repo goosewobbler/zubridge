@@ -7,7 +7,7 @@ export interface UnifiedStore<T> {
   getInitialState: () => T;
   setState: (partial: Partial<T> | ((state: T) => Partial<T>), replace?: boolean) => void;
   subscribe: (listener: (state: T, prevState: T) => void) => () => void;
-  // Additional methods can be added as needed
+  destroy: () => void;
 }
 
 export { createReduxAdapter } from './redux.js';

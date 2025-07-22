@@ -1,12 +1,12 @@
-import type { UnifiedStore } from './index.js';
-import type { StateManager } from '@zubridge/types';
 import type { State } from '../../types.js';
+import type { UnifiedStore } from './index.js';
+import type { CustomStore } from '../../modes/custom/store.js';
 
 /**
  * Creates a custom store adapter that converts a StateManager to the UnifiedStore interface
  * Useful for EventEmitter-based stores and other custom implementations
  */
-export function createCustomAdapter<S>(customStore: StateManager<S>): UnifiedStore<State> {
+export function createCustomAdapter<S>(customStore: CustomStore): UnifiedStore<State> {
   return {
     getState: () => customStore.getState() as unknown as State,
     getInitialState: () => customStore.getState() as unknown as State,
@@ -31,6 +31,10 @@ export function createCustomAdapter<S>(customStore: StateManager<S>): UnifiedSto
     },
     subscribe: (listener) => {
       return customStore.subscribe((state) => listener(state as unknown as State, state as unknown as State));
+    },
+    destroy: () => {
+      customStore.removeAllListeners();
+      customStore = undefined as unknown as CustomStore;
     },
   };
 }

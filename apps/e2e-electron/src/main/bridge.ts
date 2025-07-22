@@ -1,10 +1,14 @@
 import type { StoreApi } from 'zustand';
-import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
+import type { ZubridgeMiddleware, ZustandBridge, ReduxBridge } from '@zubridge/electron/main';
 import type { Store as ReduxStore } from 'redux';
+import type { CustomBridge } from '@zubridge/types';
 import { debug } from '@zubridge/core';
 
 import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 import type { BaseState } from '../types.js';
+
+// Union type for all possible bridge return types
+export type AnyBridge = ZustandBridge | ReduxBridge | CustomBridge;
 
 /**
  * Creates the appropriate bridge implementation based on the selected mode
@@ -12,7 +16,7 @@ import type { BaseState } from '../types.js';
 export const createBridge = async <S extends BaseState, Store extends StoreApi<S>>(
   store: Store | ReduxStore,
   middleware?: ZubridgeMiddleware,
-): Promise<ZustandBridge> => {
+): Promise<AnyBridge> => {
   const mode = getZubridgeMode();
   debug('core', `[Main] Using Zubridge mode: ${mode}`);
 

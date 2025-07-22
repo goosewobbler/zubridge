@@ -3,14 +3,14 @@ import { BrowserWindow, app, ipcMain } from 'electron';
 import path from 'node:path';
 
 import { isDev } from '@zubridge/electron';
-import { createDispatch, ReduxBridge } from '@zubridge/electron/main';
+import { createDispatch } from '@zubridge/electron/main';
 import { debug } from '@zubridge/core';
 import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
-import type { WebContentsWrapper, WrapperOrWebContents, ZustandBridge } from '@zubridge/types';
+import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
 
 import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
-import { createBridge } from './bridge.js';
+import { createBridge, type AnyBridge } from './bridge.js';
 import { getModeName, getZubridgeMode } from '../utils/mode.js';
 import { getPreloadPath } from '../utils/path.js';
 import * as windows from './window.js';
@@ -48,6 +48,8 @@ debug('example-app:init', `Using preload path: ${preloadPath}`);
 
 // Flag to track when app is explicitly being quit
 let isAppQuitting = false;
+let bridge: AnyBridge;
+let subscribe: AnyBridge['subscribe'];
 
 app.on('window-all-closed', () => {
   debug('example-app:init', 'All windows closed event');
@@ -60,6 +62,16 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   debug('example-app:init', 'App before-quit event');
   isAppQuitting = true;
+
+  // Ensure cleanup happens even if quit event doesn't fire
+  if (bridge) {
+    try {
+      bridge.destroy();
+      debug('core', 'Bridge destroyed during app before-quit.');
+    } catch (error) {
+      debug('core', 'Error destroying bridge during before-quit:', error);
+    }
+  }
 });
 
 app
@@ -98,9 +110,6 @@ app
     debug('example-app:init', 'Initializing store');
     await initStore();
     debug('store', 'Store initialized');
-
-    let bridge: ZustandBridge | ReduxBridge; // Declare bridge outside try/catch
-    let subscribe: ZustandBridge['subscribe'] | ReduxBridge['subscribe']; // Declare subscribe outside try/catch
 
     debug('core', 'Attempting to createRequire...');
     const { createRequire } = await import('node:module');
@@ -361,12 +370,14 @@ app
         debug('example-app:init', 'Cleaning up resources on quit');
         clearInterval(windowTrackingInterval);
         trayInstance.destroy();
-        if (bridge && typeof bridge.unsubscribe === 'function') {
-          // Check if bridge and unsubscribe exist
-          bridge.unsubscribe();
-          debug('core', 'Bridge unsubscribed during app quit.');
-        } else {
-          debug('core', 'Bridge or unsubscribe function not available during app quit.');
+        if (bridge) {
+          bridge.destroy();
+          debug('core', 'Bridge destroyed during app quit.');
+        }
+
+        if (store) {
+          store.destroy();
+          debug('core', 'Store destroyed during app quit.');
         }
 
         // Clean up all windows

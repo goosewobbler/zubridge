@@ -32,5 +32,8 @@ export function createZustandAdapter<S>(zustandStore: StoreApi<S>): UnifiedStore
         previousState = currentState;
       });
     },
+    destroy: () => {
+      zustandStore = undefined as unknown as StoreApi<S>;
+    },
   };
 }

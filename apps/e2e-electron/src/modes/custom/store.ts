@@ -6,7 +6,7 @@ import { getInitialState, handlers } from './features/index.js';
  * Custom store using EventEmitter that directly implements StateManager
  * This demonstrates implementing a custom state manager without using Zustand or Redux
  */
-class CustomStore extends EventEmitter implements StateManager<AnyState> {
+export class CustomStore extends EventEmitter implements StateManager<AnyState> {
   // The current state
   private state: AnyState = getInitialState();
 
@@ -77,13 +77,20 @@ class CustomStore extends EventEmitter implements StateManager<AnyState> {
   };
 }
 
+// Singleton instance
+let customStoreInstance: CustomStore | null = null;
+
 /**
  * Gets a custom store instance
  * Returns the raw CustomStore which implements StateManager interface
  */
 export function getCustomStore(): StateManager<AnyState> {
-  console.log('[Custom Mode] Creating EventEmitter store');
+  if (!customStoreInstance) {
+    console.log('[Custom Mode] Creating EventEmitter store');
+    customStoreInstance = new CustomStore();
+  } else {
+    console.log('[Custom Mode] Returning existing EventEmitter store instance');
+  }
 
-  // Create and return a new CustomStore instance
-  return new CustomStore();
+  return customStoreInstance;
 }

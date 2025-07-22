@@ -22,5 +22,8 @@ export function createReduxAdapter<S>(reduxStore: Store<S>): UnifiedStore<S> {
       });
       return unsubscribe;
     },
+    destroy: () => {
+      reduxStore = undefined as unknown as Store<S>;
+    },
   };
 }

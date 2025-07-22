@@ -194,7 +194,7 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
   };
   unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
   destroy: () => void;
-  getWindowSubscriptions: (windowId: number) => string[];
+  getWindowSubscriptions: (windowId: WindowId) => string[];
   getSubscribedWindows: () => WindowId[];
 }
 
@@ -206,6 +206,14 @@ export enum ThunkState {
   EXECUTING = 'executing', // Currently executing
   COMPLETED = 'completed', // Successfully completed
   FAILED = 'failed', // Failed with an error
+}
+
+/**
+ * Interface for custom bridge that wraps BackendBridge functionality
+ * with additional dispatch capabilities for custom state management
+ */
+export interface CustomBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
+  dispatch: Dispatch<S>;
 }
 
 // Export the window interfaces from internal.d.ts and app.d.ts
