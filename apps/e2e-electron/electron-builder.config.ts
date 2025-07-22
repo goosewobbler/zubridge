@@ -71,6 +71,7 @@ if (!fs.existsSync(outputDir)) {
     const packageJson = {
       name: `e2e-electron-${currentMode}`,
       version: '1.0.0',
+      type: 'module',
       main: 'main/index.js',
       description: `Zubridge E2E Electron (${currentMode} mode)`,
       author: 'Zubridge Team',
