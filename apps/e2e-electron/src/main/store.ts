@@ -1,5 +1,4 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { create } from 'zustand';
 import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 import type { State } from '../types.js';
 import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
