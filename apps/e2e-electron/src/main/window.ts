@@ -1,6 +1,6 @@
 import path from 'node:path';
 import process from 'node:process';
-import { BrowserWindow, BrowserView, WebContentsView, shell } from 'electron';
+import { BrowserWindow, BrowserView, WebContentsView, shell, app } from 'electron';
 import { isDev } from '@zubridge/electron';
 import { getModeName } from '../utils/mode.js';
 import { getPreloadPath, getDirname } from '../utils/path.js';
@@ -32,12 +32,8 @@ const runtimeWindows: BrowserWindow[] = [];
 const modeName = getModeName();
 const preloadPath = getPreloadPath();
 
-// Initialize isDev status
-let isDevEnv = false;
-isDev().then((result) => {
-  isDevEnv = result;
-  debugWindow(`Development mode set to: ${isDevEnv}`);
-});
+// Initialize isDev status - we need to await this
+let isDevEnv: boolean | undefined;
 
 // Window sizes and positions for grid layout
 const windowWidth = 800;
@@ -96,8 +92,15 @@ function setupDevToolsShortcuts(window: BrowserWindow, windowName: string) {
 const getRendererPath = () => path.join(__dirname, '..', 'renderer', 'index.html');
 
 // Function to initialize the main window
-export function initMainWindow(isAppQuitting: boolean): BrowserWindow {
+export async function initMainWindow(isAppQuitting: boolean): Promise<BrowserWindow> {
   debugWindow('Initializing main window');
+
+  // Ensure we have the correct development mode status
+  debugWindow(
+    `Environment check: NODE_ENV=${process.env.NODE_ENV}, ELECTRON_IS_DEV=${process.env.ELECTRON_IS_DEV}, app.isPackaged=${app.isPackaged}`,
+  );
+  isDevEnv = await isDev();
+  debugWindow(`Development mode set to: ${isDevEnv}`);
   if (mainWindow && !mainWindow.isDestroyed()) {
     debugWindow('Reusing existing main window');
     mainWindow.show();
@@ -169,7 +172,12 @@ export function initMainWindow(isAppQuitting: boolean): BrowserWindow {
 }
 
 // Function to initialize the secondary window (registering webContents)
-export function initDirectWebContentsWindow(): BrowserWindow {
+export async function initDirectWebContentsWindow(): Promise<BrowserWindow> {
+  // Ensure we have the correct development mode status
+  if (isDevEnv === undefined) {
+    isDevEnv = await isDev();
+    debugWindow(`Development mode set to: ${isDevEnv}`);
+  }
   debugWindow('Initializing direct WebContents window');
   if (directWebContentsWindow && !directWebContentsWindow.isDestroyed()) {
     debugWindow('Reusing existing direct WebContents window');
@@ -234,7 +242,15 @@ export function initDirectWebContentsWindow(): BrowserWindow {
 }
 
 // Function to initialize a third window with BrowserView
-export function initBrowserViewWindow(): { window: BrowserWindow | null; browserView: BrowserView | null } {
+export async function initBrowserViewWindow(): Promise<{
+  window: BrowserWindow | null;
+  browserView: BrowserView | null;
+}> {
+  // Ensure we have the correct development mode status
+  if (isDevEnv === undefined) {
+    isDevEnv = await isDev();
+    debugWindow(`Development mode set to: ${isDevEnv}`);
+  }
   // Skip creation in test mode
   if (isTestMode) {
     debugWindow('Skipping BrowserView window creation in test mode');
@@ -439,7 +455,15 @@ export function initBrowserViewWindow(): { window: BrowserWindow | null; browser
 }
 
 // Function to initialize a fourth window with WebContentsView
-export function initWebContentsViewWindow(): { window: BrowserWindow | null; webContentsView: WebContentsView | null } {
+export async function initWebContentsViewWindow(): Promise<{
+  window: BrowserWindow | null;
+  webContentsView: WebContentsView | null;
+}> {
+  // Ensure we have the correct development mode status
+  if (isDevEnv === undefined) {
+    isDevEnv = await isDev();
+    debugWindow(`Development mode set to: ${isDevEnv}`);
+  }
   // Skip creation in test mode
   if (isTestMode) {
     debugWindow('Skipping WebContentsView window creation in test mode');
