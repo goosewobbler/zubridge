@@ -29,7 +29,6 @@ let webContentsView: WebContentsView | undefined = undefined;
 const runtimeWindows: BrowserWindow[] = [];
 
 // Configuration
-const modeName = getModeName();
 const preloadPath = getPreloadPath();
 
 // Initialize isDev status - we need to await this
@@ -107,12 +106,17 @@ export async function initMainWindow(isAppQuitting: boolean): Promise<BrowserWin
     return mainWindow;
   }
 
+  // Debug environment variable at window creation time
+  const windowCreationMode = getModeName();
+  debugWindow(`Creating main window with mode: ${windowCreationMode}`);
+  debugWindow(`ZUBRIDGE_MODE env var at window creation: ${process.env.ZUBRIDGE_MODE}`);
+
   mainWindow = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
     x: 0,
     y: 0,
-    title: `Zubridge Electron Example (${modeName}) - Main Window`,
+    title: `Zubridge Electron Example (${windowCreationMode}) - Main Window`,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
@@ -122,7 +126,7 @@ export async function initMainWindow(isAppQuitting: boolean): Promise<BrowserWin
   });
 
   debugWindow(`Main window created with ID: ${mainWindow.id}, using preload: ${preloadPath}`);
-  mainWindow.setTitle(`Zubridge Electron Example (${modeName}) - Main Window`);
+  mainWindow.setTitle(`Zubridge Electron Example (${windowCreationMode}) - Main Window`);
 
   if (isDevEnv) {
     debugWindow('Loading main window from dev server');
@@ -138,15 +142,25 @@ export async function initMainWindow(isAppQuitting: boolean): Promise<BrowserWin
 
   // Inject title update code
   mainWindow.webContents.once('did-finish-load', () => {
-    debugWindow('Injecting title update code into main window');
+    const currentMode = getModeName();
+    debugWindow(`Injecting title update code into main window with mode: ${currentMode}`);
+    debugWindow(`Environment variable at title update time: ${process.env.ZUBRIDGE_MODE}`);
+
     mainWindow?.webContents
       .executeJavaScript(
         `
-        document.title = 'Zubridge Electron Example (${modeName}) - Main Window';
-        console.log('Main window title updated to:', document.title);
+        const newTitle = 'Zubridge Electron Example (${currentMode}) - Main Window';
+        console.log('Updating document.title from:', document.title, 'to:', newTitle);
+        document.title = newTitle;
+        console.log('Main window title updated successfully to:', document.title);
       `,
       )
-      .catch((err) => debugWindow(`Failed to inject title code: ${err}`));
+      .then(() => {
+        debugWindow(`Title update JavaScript executed successfully for mode: ${currentMode}`);
+      })
+      .catch((err) => {
+        debugWindow(`Failed to inject title code: ${err}`);
+      });
   });
 
   mainWindow.on('ready-to-show', () => {
@@ -190,7 +204,7 @@ export async function initDirectWebContentsWindow(): Promise<BrowserWindow> {
     height: windowHeight,
     x: windowWidth + windowSpacing,
     y: 0,
-    title: `Zubridge Electron Example (${modeName}) - Direct WebContents Window`,
+    title: `Zubridge Electron Example (${getModeName()}) - Direct WebContents Window`,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
@@ -200,7 +214,7 @@ export async function initDirectWebContentsWindow(): Promise<BrowserWindow> {
   });
 
   debugWindow(`Direct WebContents window created with ID: ${directWebContentsWindow.id}`);
-  directWebContentsWindow.setTitle(`Zubridge Electron Example (${modeName}) - Direct WebContents Window`);
+  directWebContentsWindow.setTitle(`Zubridge Electron Example (${getModeName()}) - Direct WebContents Window`);
 
   if (isDevEnv) {
     debugWindow('Loading direct WebContents window from dev server');
@@ -220,7 +234,7 @@ export async function initDirectWebContentsWindow(): Promise<BrowserWindow> {
     directWebContentsWindow?.webContents
       .executeJavaScript(
         `
-        document.title = 'Zubridge Electron Example (${modeName}) - Direct WebContents Window';
+        document.title = 'Zubridge Electron Example (${getModeName()}) - Direct WebContents Window';
         console.log('Direct WebContents window loaded and executing JavaScript');
       `,
       )
@@ -269,7 +283,7 @@ export async function initBrowserViewWindow(): Promise<{
     height: windowHeight,
     x: 0,
     y: windowHeight + windowSpacing,
-    title: `Zubridge Electron Example (${modeName}) - BrowserView Window`,
+    title: `Zubridge Electron Example (${getModeName()}) - BrowserView Window`,
   });
 
   debugWindow(`BrowserView window created with ID: ${browserViewWindow.id}`);
@@ -392,7 +406,7 @@ export async function initBrowserViewWindow(): Promise<{
     browserView?.webContents
       .executeJavaScript(
         `
-        document.title = 'Zubridge Electron Example (${modeName}) - BrowserView Window';
+        document.title = 'Zubridge Electron Example (${getModeName()}) - BrowserView Window';
         console.log('BrowserView loaded and executing JavaScript');
 
         // Check if Zubridge is available
@@ -482,7 +496,7 @@ export async function initWebContentsViewWindow(): Promise<{
     height: windowHeight,
     x: windowWidth + windowSpacing,
     y: windowHeight + windowSpacing,
-    title: `Zubridge Electron Example (${modeName}) - WebContentsView Window`,
+    title: `Zubridge Electron Example (${getModeName()}) - WebContentsView Window`,
   });
 
   debugWindow(`WebContentsView window created with ID: ${webContentsViewWindow.id}`);
@@ -641,7 +655,7 @@ export function createRuntimeWindow(): BrowserWindow {
   const runtimeWindow = new BrowserWindow({
     width: 450,
     height: 465,
-    title: `Zubridge Electron Example (${modeName}) - Runtime Window`,
+    title: `Zubridge Electron Example (${getModeName()}) - Runtime Window`,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
