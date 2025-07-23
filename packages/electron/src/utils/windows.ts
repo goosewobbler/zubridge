@@ -219,7 +219,6 @@ export const createWebContentsTracker = (): WebContentsTracker => {
         webContentsById.delete(id);
       });
 
-      logTrackerState();
       return true;
     },
 
@@ -236,8 +235,6 @@ export const createWebContentsTracker = (): WebContentsTracker => {
       webContentsTracker.delete(webContents);
       activeIds.delete(id);
       webContentsById.delete(id);
-
-      logTrackerState();
     },
 
     untrackById: (id: number): void => {
@@ -250,8 +247,6 @@ export const createWebContentsTracker = (): WebContentsTracker => {
         webContentsTracker.delete(webContents);
       }
       webContentsById.delete(id);
-
-      logTrackerState();
     },
 
     isTracked: (webContents: WebContents): boolean => {
