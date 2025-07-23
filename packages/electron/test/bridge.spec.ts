@@ -22,6 +22,7 @@ vi.mock('electron', () => {
     ipcMain: {
       on: vi.fn(),
       removeListener: vi.fn(),
+      removeAllListeners: vi.fn(),
       handle: vi.fn(),
       removeHandler: vi.fn(),
     },
@@ -178,7 +179,7 @@ describe('bridge.ts', () => {
       if (dispatchHandler) {
         const action: Action = {
           type: 'INCREMENT',
-          id: 'test-id',
+          __id: 'test-id',
           payload: 42,
         };
 
@@ -204,7 +205,7 @@ describe('bridge.ts', () => {
           expect.objectContaining({
             type: 'INCREMENT',
             payload: 42,
-            id: 'test-id',
+            __id: 'test-id',
             __sourceWindowId: 123,
           }),
         );

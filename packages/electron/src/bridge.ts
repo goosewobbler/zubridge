@@ -24,7 +24,7 @@ import { actionQueue } from './main/actionQueue.js';
 import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 import { SubscriptionManager } from './lib/SubscriptionManager.js';
 import { Thunk as ThunkClass } from './lib/Thunk.js';
-import { thunkManager } from './lib/initThunkManager.js';
+import { thunkManager, actionScheduler } from './lib/initThunkManager.js';
 import { getPartialState } from './lib/SubscriptionManager.js';
 
 // Instantiate the thunk registration queue
@@ -568,9 +568,34 @@ export function createCoreBridge<State extends AnyState>(
   const destroy = async () => {
     debug('core', 'Destroying CoreBridge');
 
-    // Clean up the IPC handlers
+    // Clean up ALL IPC handlers to prevent hanging processes
+    debug('core', 'Removing all IPC handlers');
     ipcMain.removeHandler(IpcChannel.GET_WINDOW_ID);
     ipcMain.removeHandler(IpcChannel.GET_THUNK_STATE);
+    ipcMain.removeHandler(IpcChannel.GET_STATE);
+    ipcMain.removeHandler(IpcChannel.GET_WINDOW_SUBSCRIPTIONS);
+    ipcMain.removeAllListeners(IpcChannel.DISPATCH);
+    ipcMain.removeAllListeners(IpcChannel.TRACK_ACTION_DISPATCH);
+    ipcMain.removeAllListeners(IpcChannel.REGISTER_THUNK);
+    ipcMain.removeAllListeners(IpcChannel.COMPLETE_THUNK);
+
+    // Clean up global singletons to prevent memory leaks in Redux/Custom modes
+    debug('core', 'Cleaning up global singletons');
+    try {
+      // ThunkManager extends EventEmitter, so remove all listeners
+      if (thunkManager && typeof thunkManager.removeAllListeners === 'function') {
+        thunkManager.removeAllListeners();
+        debug('core', 'ThunkManager listeners cleaned up');
+      }
+
+      // ActionScheduler may have timers or listeners
+      if (actionScheduler && typeof actionScheduler.removeAllListeners === 'function') {
+        actionScheduler.removeAllListeners();
+        debug('core', 'ActionScheduler listeners cleaned up');
+      }
+    } catch (error) {
+      debug('core', 'Error cleaning up singletons:', error);
+    }
 
     // Apply bridge destroy hook if provided
     if (processedOptions?.onBridgeDestroy) {
