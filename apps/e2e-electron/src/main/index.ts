@@ -247,7 +247,7 @@ app
     debug('core', 'Middleware instance initialized successfully.');
 
     // Assign to the outer scope bridge
-    bridge = await createBridge(store, middleware);
+    bridge = await createBridge(middleware);
     debug('core', 'Bridge created successfully.');
 
     // Assign to the outer scope subscribe
@@ -670,13 +670,6 @@ app
       }
 
       try {
-        // Get current subscriptions before unsubscribing
-        const beforeSubs = bridge.getWindowSubscriptions(windowOrView.id);
-        debug(
-          'example-app:init',
-          `[IPC] Current subscriptions before unsubscribe: ${beforeSubs?.join(', ') || 'none'}`,
-        );
-
         // If no keys provided or empty array, unsubscribe from everything
         if (!keys || keys.length === 0 || keys.includes('*')) {
           debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from all state`);
@@ -693,7 +686,7 @@ app
           `[IPC] Current subscriptions after unsubscribe: ${currentSubscriptions?.join(', ') || 'none'}`,
         );
 
-        // Return the current subscriptions - if empty array, return it as is
+        // Return the current subscriptions
         return { success: true, subscriptions: currentSubscriptions || [] };
       } catch (error) {
         debug('example-app:init', `[IPC] Error unsubscribing window ${event.sender.id}:`, error);
@@ -710,10 +703,6 @@ app
       }
 
       try {
-        // Get current subscriptions before subscribing
-        const beforeSubs = bridge.getWindowSubscriptions(windowOrView.id);
-        debug('example-app:init', `[IPC] Current subscriptions before subscribe: ${beforeSubs?.join(', ') || 'none'}`);
-
         if (!keys || keys.length === 0 || keys.includes('*')) {
           debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to all state`);
           bridge.subscribe([windowOrView as WebContentsWrapper]);
@@ -723,14 +712,13 @@ app
         }
 
         // Get current subscriptions after subscribing
-        debug('example-app:init', `[IPC] Getting current subscriptions for window ${event.sender.id}`);
         const currentSubscriptions = bridge.getWindowSubscriptions(windowOrView.id);
         debug(
           'example-app:init',
           `[IPC] Current subscriptions after subscribe: ${currentSubscriptions?.join(', ') || 'none'}`,
         );
 
-        // Return the current subscriptions - if empty array, return it as is
+        // Return the current subscriptions
         return { success: true, subscriptions: currentSubscriptions || [] };
       } catch (error) {
         debug('example-app:init', `[IPC] Error subscribing window ${event.sender.id}:`, error);
