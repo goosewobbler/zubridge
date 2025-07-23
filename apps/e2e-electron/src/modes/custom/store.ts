@@ -84,7 +84,7 @@ let customStoreInstance: CustomStore | null = null;
  * Gets a custom store instance
  * Returns the raw CustomStore which implements StateManager interface
  */
-export function getCustomStore(): StateManager<AnyState> {
+export function getCustomStore(): CustomStore {
   if (!customStoreInstance) {
     console.log('[Custom Mode] Creating EventEmitter store');
     customStoreInstance = new CustomStore();

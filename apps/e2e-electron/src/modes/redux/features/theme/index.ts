@@ -1,7 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-// Initial state
-const initialState = 'dark'; // Will start with dark theme
+// Define the theme type to match BaseState
+type Theme = 'light' | 'dark';
+
+// Initial state with explicit typing
+const initialState = 'dark' satisfies Theme;
 
 /**
  * Theme slice using Redux Toolkit
@@ -15,7 +18,7 @@ export const themeSlice = createSlice({
       return state === 'dark' ? 'light' : 'dark';
     },
     setTheme: (_state, action: PayloadAction<boolean>) => {
-      const theme = action.payload ? 'dark' : 'light';
+      const theme: Theme = action.payload ? 'dark' : 'light';
       console.log(`[Redux Slice] Setting theme to ${theme}`);
       return theme;
     },
