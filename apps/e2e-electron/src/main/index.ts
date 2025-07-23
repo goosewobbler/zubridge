@@ -32,6 +32,28 @@ debug('example-app:init', `Dev mode: ${isDevMode}`);
 const isTestMode = process.env.TEST === 'true';
 debug('example-app:init', `Test mode: ${isTestMode}`);
 
+// For E2E tests, add more aggressive quit signal handling
+if (isTestMode) {
+  debug('example-app:init', 'Adding E2E test signal handlers');
+
+  // Handle process termination signals
+  process.on('SIGTERM', () => {
+    debug('example-app:init', 'Received SIGTERM, forcing quit');
+    process.exit(0);
+  });
+
+  process.on('SIGINT', () => {
+    debug('example-app:init', 'Received SIGINT, forcing quit');
+    process.exit(0);
+  });
+
+  // Handle uncaught exceptions gracefully in test mode
+  process.on('uncaughtException', (error) => {
+    debug('example-app:init', 'Uncaught exception in test mode:', error);
+    process.exit(1);
+  });
+}
+
 // Disable GPU acceleration on MacOS
 if (!isTestMode && process.platform === 'darwin' && !app.isReady()) {
   app.disableHardwareAcceleration();
@@ -50,6 +72,7 @@ debug('example-app:init', `Using preload path: ${preloadPath}`);
 let isAppQuitting = false;
 let bridge: AnyBridge;
 let subscribe: AnyBridge['subscribe'];
+let windowTrackingInterval: NodeJS.Timeout;
 
 app.on('window-all-closed', () => {
   debug('example-app:init', 'All windows closed event');
@@ -59,17 +82,66 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
   debug('example-app:init', 'App before-quit event');
   isAppQuitting = true;
 
-  // Ensure cleanup happens even if quit event doesn't fire
-  if (bridge) {
-    try {
-      bridge.destroy();
-      debug('core', 'Bridge destroyed during app before-quit.');
-    } catch (error) {
-      debug('core', 'Error destroying bridge during before-quit:', error);
+  // For E2E tests, give extra time for cleanup to prevent WebDriver timeouts
+  if (isTestMode) {
+    debug('example-app:init', 'Test mode detected - implementing graceful shutdown');
+    event.preventDefault();
+
+    // Perform cleanup with timeout - shorter timeout for E2E tests
+    const cleanupTimeout = setTimeout(() => {
+      debug('example-app:init', 'Cleanup timeout reached, forcing quit');
+      process.exit(0); // Force immediate exit
+    }, 1500); // 1.5 second timeout for cleanup in tests
+
+    Promise.resolve()
+      .then(() => {
+        // Cleanup bridge first
+        if (bridge) {
+          bridge.destroy();
+          debug('core', 'Bridge destroyed during graceful shutdown.');
+        }
+      })
+      .then(() => {
+        // Cleanup store if it has destroy method
+        if (store && typeof store.destroy === 'function') {
+          store.destroy();
+          debug('core', 'Store destroyed during graceful shutdown.');
+        }
+      })
+      .then(() => {
+        // CRITICAL: Clear the window tracking interval in test mode
+        if (typeof windowTrackingInterval !== 'undefined') {
+          clearInterval(windowTrackingInterval);
+          debug('core', 'Window tracking interval cleared during graceful shutdown.');
+        }
+      })
+      .then(() => {
+        // Small delay to ensure all cleanup operations complete
+        return new Promise((resolve) => setTimeout(resolve, 200)); // Reduced delay
+      })
+      .then(() => {
+        clearTimeout(cleanupTimeout);
+        debug('example-app:init', 'Graceful shutdown complete');
+        app.exit(0);
+      })
+      .catch((error) => {
+        debug('core', 'Error during graceful shutdown:', error);
+        clearTimeout(cleanupTimeout);
+        app.exit(1);
+      });
+  } else {
+    // Normal shutdown for non-test environments
+    if (bridge) {
+      try {
+        bridge.destroy();
+        debug('core', 'Bridge destroyed during app before-quit.');
+      } catch (error) {
+        debug('core', 'Error destroying bridge during before-quit:', error);
+      }
     }
   }
 });
@@ -361,11 +433,18 @@ app
 
     // Poll for new windows every second to catch any windows created by child windows
     debug('example-app:init', 'Setting up window tracking interval');
-    const windowTrackingInterval = setInterval(trackNewWindows, 1000);
+    windowTrackingInterval = setInterval(trackNewWindows, 1000);
 
     // Modify quit handler to clean up both windows if they exist
     app.on('quit', () => {
       debug('example-app:init', 'App quit event triggered');
+
+      // In test mode, cleanup should already be done in before-quit handler
+      if (isTestMode) {
+        debug('example-app:init', 'Test mode - cleanup already handled in before-quit');
+        return;
+      }
+
       try {
         debug('example-app:init', 'Cleaning up resources on quit');
         clearInterval(windowTrackingInterval);

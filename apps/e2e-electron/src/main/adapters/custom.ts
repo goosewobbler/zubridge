@@ -1,6 +1,7 @@
 import type { State } from '../../types.js';
 import type { UnifiedStore } from './index.js';
 import type { CustomStore } from '../../modes/custom/store.js';
+import { destroyCustomStore } from '../../modes/custom/store.js';
 
 /**
  * Creates a custom store adapter that converts a StateManager to the UnifiedStore interface
@@ -33,8 +34,8 @@ export function createCustomAdapter<S>(customStore: CustomStore): UnifiedStore<S
       return customStore.subscribe((state) => listener(state as unknown as State, state as unknown as State));
     },
     destroy: () => {
-      customStore.removeAllListeners();
-      customStore = undefined as unknown as CustomStore;
+      // Use the proper singleton cleanup function
+      destroyCustomStore();
     },
   };
 }

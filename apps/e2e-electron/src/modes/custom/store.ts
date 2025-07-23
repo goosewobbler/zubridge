@@ -94,3 +94,19 @@ export function getCustomStore(): StateManager<AnyState> {
 
   return customStoreInstance;
 }
+
+/**
+ * Destroys and resets the custom store singleton
+ * Critical for E2E test cleanup to prevent hanging references
+ */
+export function destroyCustomStore(): void {
+  if (customStoreInstance) {
+    console.log('[Custom Mode] Destroying and resetting singleton store instance');
+
+    // Clean up EventEmitter listeners
+    customStoreInstance.removeAllListeners();
+
+    // Reset the singleton reference to null
+    customStoreInstance = null;
+  }
+}
