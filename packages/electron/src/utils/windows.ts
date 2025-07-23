@@ -185,14 +185,6 @@ export const createWebContentsTracker = (): WebContentsTracker => {
   // This will be maintained alongside the WeakMap
   const webContentsById = new Map<number, WebContents>();
 
-  const logTrackerState = () => {
-    debug(
-      'windows',
-      `WebContentsTracker state: ${activeIds.size} active IDs, ${webContentsById.size} tracked WebContents`,
-    );
-    debug('windows', `Active IDs: ${[...activeIds].join(', ')}`);
-  };
-
   return {
     track: (webContents: WebContents): boolean => {
       if (!webContents) {
