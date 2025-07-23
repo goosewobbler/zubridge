@@ -256,8 +256,7 @@ export const getButtonInCurrentWindow = async (
       throw new Error(`Unknown button type: ${buttonType}`);
   }
 
-  // For macOS, add retries
-  const maxAttempts = process.platform === 'darwin' ? 3 : 1;
+  const maxAttempts = 3;
   let element;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
