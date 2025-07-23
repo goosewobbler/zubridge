@@ -35,7 +35,7 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
       const reduxStore = configureStore({
         reducer: rootReducer,
       });
-      // Use our adapter instead of unsafe casting
+      // Redux is using a nested state structure while other modes use a flat structure that matches BaseState
       return createReduxAdapter(reduxStore) as UnifiedStore<State>;
 
     case ZubridgeMode.Custom:
