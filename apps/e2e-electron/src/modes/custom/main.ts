@@ -1,19 +1,18 @@
 import { createCoreBridge, createDispatch } from '@zubridge/electron/main';
 import type { ZubridgeMiddleware } from '@zubridge/electron/main';
 import type { CustomBridge } from '@zubridge/types';
-import { getCustomStore } from './store.js';
 import type { BaseState } from '../../types.js';
+import type { CustomStore } from './store.js';
 
 /**
  * Creates a bridge using the custom store approach
  * This demonstrates how to use createCoreBridge with a custom state manager
  */
-export const createCustomBridge = (middleware?: ZubridgeMiddleware): CustomBridge<BaseState> => {
+export const createCustomBridge = (
+  customStore: CustomStore,
+  middleware?: ZubridgeMiddleware,
+): CustomBridge<BaseState> => {
   console.log('[Custom Mode] Creating bridge with custom state manager');
-
-  // Get a CustomStore instance from our implementation
-  // This is important because it already implements the StateManager interface
-  const customStore = getCustomStore();
 
   // Create the core bridge with our custom store
   const coreBridge = createCoreBridge(customStore, { middleware });
