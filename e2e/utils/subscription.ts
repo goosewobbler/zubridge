@@ -45,12 +45,39 @@ export async function unsubscribeFromState(keys: string): Promise<void> {
 export async function subscribeToAllState(): Promise<void> {
   console.log('Subscribing to all state');
 
-  // Click the Subscribe All button using the helper
-  const subscribeAllButton = await getButtonInCurrentWindow('subscribeAll');
-  await subscribeAllButton.click();
+  try {
+    // Click the Subscribe All button using the helper
+    const subscribeAllButton = await getButtonInCurrentWindow('subscribeAll');
+    await subscribeAllButton.click();
 
-  // Allow time for subscription to take effect
-  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+    // Allow time for subscription to take effect
+    await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+    console.log('Successfully subscribed to all state');
+  } catch (error) {
+    console.error('Failed to subscribe to all state:', error);
+
+    // Try a second attempt with extra wait time for stability
+    console.log('Retrying subscription after additional wait...');
+
+    // Linux-specific: Refresh handles if button not found (sign of corruption)
+    if (process.platform === 'linux') {
+      const { refreshWindowHandles } = await import('./window.js');
+      await refreshWindowHandles();
+    }
+
+    await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+    try {
+      const subscribeAllButton = await getButtonInCurrentWindow('subscribeAll');
+      await subscribeAllButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE * 2);
+      console.log('Successfully subscribed to all state on retry');
+    } catch (retryError) {
+      console.error('Retry also failed:', retryError);
+      throw retryError;
+    }
+  }
 }
 
 /**
@@ -59,12 +86,39 @@ export async function subscribeToAllState(): Promise<void> {
 export async function unsubscribeFromAllState(): Promise<void> {
   console.log('Unsubscribing from all state');
 
-  // Click the Unsubscribe All button using the helper
-  const unsubscribeAllButton = await getButtonInCurrentWindow('unsubscribeAll');
-  await unsubscribeAllButton.click();
+  try {
+    // Click the Unsubscribe All button using the helper
+    const unsubscribeAllButton = await getButtonInCurrentWindow('unsubscribeAll');
+    await unsubscribeAllButton.click();
 
-  // Allow time for unsubscription to take effect
-  await browser.pause(TIMING.STATE_SYNC_PAUSE);
+    // Allow time for unsubscription to take effect
+    await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+    console.log('Successfully unsubscribed from all state');
+  } catch (error) {
+    console.error('Failed to unsubscribe from all state:', error);
+
+    // Try a second attempt with extra wait time for stability
+    console.log('Retrying unsubscription after additional wait...');
+
+    // Linux-specific: Refresh handles if button not found (sign of corruption)
+    if (process.platform === 'linux') {
+      const { refreshWindowHandles } = await import('./window.js');
+      await refreshWindowHandles();
+    }
+
+    await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+    try {
+      const unsubscribeAllButton = await getButtonInCurrentWindow('unsubscribeAll');
+      await unsubscribeAllButton.click();
+      await browser.pause(TIMING.STATE_SYNC_PAUSE * 2);
+      console.log('Successfully unsubscribed from all state on retry');
+    } catch (retryError) {
+      console.error('Retry also failed:', retryError);
+      throw retryError;
+    }
+  }
 }
 
 /**

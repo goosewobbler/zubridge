@@ -49,6 +49,68 @@ export class DebugHelper {
   }
 
   /**
+   * Quick health check without any WebDriver calls - just logs timing
+   */
+  static logHealthCheckpoint(checkpoint: string, additionalInfo?: string) {
+    if (process.platform !== 'linux') {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const info = additionalInfo ? ` - ${additionalInfo}` : '';
+    console.log(`[HEALTH_CHECKPOINT] ${timestamp} - ${checkpoint}${info}`);
+  }
+
+  /**
+   * Track window operation sequences to identify corruption patterns
+   */
+  static logWindowOperation(operation: string, windowIndex?: number, result?: 'SUCCESS' | 'FAILED') {
+    if (process.platform !== 'linux') {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const window = windowIndex !== undefined ? ` window=${windowIndex}` : '';
+    const status = result ? ` result=${result}` : '';
+    console.log(`[WINDOW_OP] ${timestamp} - ${operation}${window}${status}`);
+  }
+
+  /**
+   * Non-intrusive corruption pattern detection
+   */
+  static async trackWindowHealth(operation: string, windowIndex?: number): Promise<boolean> {
+    if (process.platform !== 'linux') {
+      return false;
+    }
+
+    const timestamp = new Date().toISOString();
+
+    try {
+      const { browser } = await import('@wdio/globals');
+
+      // Minimal check - just get handles count and current title
+      const handles = await browser.getWindowHandles();
+      const title = await browser.getTitle();
+      const isEmpty = !title || title.trim() === '';
+
+      console.log(
+        `[WINDOW_HEALTH] ${timestamp} - ${operation}: handles=${handles.length}, title="${title}", corrupt=${isEmpty}${windowIndex !== undefined ? `, targetWindow=${windowIndex}` : ''}`,
+      );
+
+      if (isEmpty) {
+        DebugHelper.logWindowCorruption(`Corruption during ${operation}`, windowIndex);
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.log(`[WINDOW_HEALTH] ${timestamp} - ${operation}: FAILED to check - ${(err as Error).message}`);
+      DebugHelper.logWindowCorruption(`Health check failed during ${operation}`, windowIndex);
+      return true;
+    }
+  }
+
+  /**
    * Log environment info once at startup
    */
   static logEnvironment() {

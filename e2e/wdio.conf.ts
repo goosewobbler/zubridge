@@ -376,21 +376,14 @@ const config = {
   },
 
   beforeTest: async function (test, context) {
-    if (currentPlatform === 'linux') {
-      const { DebugHelper } = await import('./utils/debug-helper.js');
-      await DebugHelper.preTestCheck(test.fullTitle);
-    }
+    console.log(`[PRE_TEST] Starting: ${test.fullTitle}`);
   },
 
   afterTest: async function (test, context, { error, result, duration, passed, retries }) {
-    if (currentPlatform === 'linux') {
-      const { DebugHelper } = await import('./utils/debug-helper.js');
+    console.log(`[POST_TEST] Finished: ${test.fullTitle} - ${passed ? 'PASSED' : 'FAILED'}`);
 
-      if (!passed && error) {
-        DebugHelper.logTestFailure(test.fullTitle, error);
-      }
-
-      await DebugHelper.postTestCheck(test.fullTitle, passed);
+    if (!passed && error) {
+      console.error(`Test failed: ${test.fullTitle}`, error.message);
     }
   },
 

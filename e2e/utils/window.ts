@@ -2,7 +2,6 @@
 import { browser } from 'wdio-electron-service';
 import { TIMING } from '../constants.js';
 import { subscribeToAllState } from './subscription.js';
-import { DebugHelper } from './debug-helper.js';
 
 // Store windows by index rather than by title since all windows have the same title
 export const windowHandles: string[] = [];
@@ -13,11 +12,6 @@ export const windowHandles: string[] = [];
  */
 export const refreshWindowHandles = async () => {
   try {
-    // Add debugging for Linux
-    if (process.platform === 'linux') {
-      console.log('[DEBUG] Refreshing window handles on Linux...');
-    }
-
     // For macOS, add extra retries
     const maxRetries = process.platform === 'darwin' ? 3 : 1;
     let handles: string[] = [];
@@ -26,11 +20,6 @@ export const refreshWindowHandles = async () => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         handles = await browser.getWindowHandles();
-
-        // Extra debugging for Linux on each attempt
-        if (process.platform === 'linux') {
-          console.log(`[DEBUG] Attempt ${attempt + 1}: Found ${handles.length} handles: ${JSON.stringify(handles)}`);
-        }
 
         if (handles.length > 0) break;
 
@@ -106,12 +95,6 @@ export const waitUntilWindowsAvailable = async (desiredWindows: number) => {
 
 export const switchToWindow = async (index: number) => {
   try {
-    // Enhanced debugging for Linux
-    if (process.platform === 'linux') {
-      console.log(`[DEBUG] switchToWindow(${index}) starting on Linux`);
-      // Use lightweight corruption detection instead of heavy logging
-    }
-
     await refreshWindowHandles();
 
     if (index >= 0 && index < windowHandles.length) {
@@ -131,20 +114,18 @@ export const switchToWindow = async (index: number) => {
           const pageTitle = await browser.getTitle();
           console.log(`Window ${index} title: ${pageTitle}`);
 
-          // Enhanced verification for Linux
-          if (process.platform === 'linux') {
-            console.log(`[DEBUG] Linux window switch verification for window ${index}:`);
+          // Check for corruption only on Linux and handle the specific empty title case
+          if (process.platform === 'linux' && (!pageTitle || pageTitle.trim() === '')) {
+            console.log(`Window ${index} has empty title - WebDriver state corruption detected`);
 
-            // Check if title is actually meaningful (not empty)
-            if (!pageTitle || pageTitle.trim() === '') {
-              console.log(`[DEBUG] Window ${index} has empty title - possible corruption`);
-              // Skip heavy debugging to avoid performance issues
-
-              if (attempt < maxAttempts - 1) {
-                console.log(`[DEBUG] Retrying due to empty title...`);
-                await browser.pause(TIMING.WINDOW_SWITCH_PAUSE * 3);
-                continue;
-              }
+            if (attempt < maxAttempts - 1) {
+              console.log(`Retrying due to WebDriver state corruption...`);
+              // Linux-specific fix: Refresh handles to reset WebDriver state when corruption detected
+              await refreshWindowHandles();
+              await browser.pause(TIMING.WINDOW_SWITCH_PAUSE * 2);
+              continue;
+            } else {
+              console.warn(`Window ${index} title remains empty after ${maxAttempts} attempts - continuing anyway`);
             }
           }
 
@@ -153,24 +134,19 @@ export const switchToWindow = async (index: number) => {
         } catch (error) {
           console.error(`Error switching to window ${index} on attempt ${attempt + 1}: ${error}`);
 
-          // Enhanced error logging for Linux
-          if (process.platform === 'linux') {
-            console.log(`[DEBUG] Linux window switch error details:`);
-            DebugHelper.logWindowCorruption(`Error in switchToWindow(${index}) attempt ${attempt + 1}`, index);
-          }
-
           if (attempt < maxAttempts - 1) {
+            // Linux-specific: Also refresh handles on errors to help with state corruption
+            if (process.platform === 'linux') {
+              await refreshWindowHandles();
+            }
             await browser.pause(TIMING.WINDOW_SWITCH_PAUSE * 2);
           }
         }
       }
 
-      // Final verification for Linux
-      if (process.platform === 'linux') {
-        console.log(`[DEBUG] switchToWindow(${index}) completed with success: ${success}`);
-        if (success) {
-          // Success - no logging needed to avoid performance impact
-        }
+      // Linux-specific: Final handle refresh to ensure consistency after successful switch
+      if (success && process.platform === 'linux') {
+        await refreshWindowHandles();
       }
 
       return success;
@@ -181,9 +157,13 @@ export const switchToWindow = async (index: number) => {
   } catch (error) {
     console.error(`Top-level error in switchToWindow(${index}): ${error}`);
 
+    // Linux-specific: Try to recover from critical errors
     if (process.platform === 'linux') {
-      console.log(`[DEBUG] Top-level error in switchToWindow(${index}) on Linux`);
-      DebugHelper.logWindowCorruption(`Top-level error in switchToWindow(${index})`, index);
+      try {
+        await refreshWindowHandles();
+      } catch (refreshError) {
+        console.error(`Failed to refresh handles after error: ${refreshError}`);
+      }
     }
 
     return false;
