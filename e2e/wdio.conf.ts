@@ -258,13 +258,20 @@ const config = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: 'debug',
+  logLevel: process.env.WDIO_LOG_LEVEL || (currentPlatform === 'linux' ? 'debug' : 'info'),
   runner: 'local',
   outputDir: `wdio-logs-${appDir}-${mode}`,
   specs: [specPattern],
   baseUrl: `file://${__dirname}`,
-  onPrepare: function (config, capabilities) {
+  onPrepare: function (config, _capabilities) {
     console.log('[DEBUG] Starting test preparation with WebdriverIO');
+    console.log(`[DEBUG] Platform: ${currentPlatform}, Binary path: ${binaryPath}`);
+    console.log(`[DEBUG] App args: ${JSON.stringify(appArgs)}`);
+
+    // Environment logging for Linux
+    if (currentPlatform === 'linux') {
+      console.log(`[DEBUG] DISPLAY: ${process.env.DISPLAY || 'NOT_SET'}`);
+    }
 
     // Log the spec files that will be executed
     console.log('[DEBUG] Spec pattern to be executed:');
@@ -339,6 +346,54 @@ const config = {
       console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
     }
   },
+
+  // Add session start debugging
+  beforeSession: function (config, capabilities, specs) {
+    console.log('[DEBUG] WebDriverIO session starting...');
+    console.log(`[DEBUG] Capabilities: ${JSON.stringify(capabilities, null, 2)}`);
+  },
+
+  before: function (capabilities, specs) {
+    console.log('[DEBUG] Browser session started, about to begin tests');
+
+    // Add debugging for Linux specifically
+    if (currentPlatform === 'linux') {
+      console.log('[DEBUG] Performing Linux-specific session diagnostics...');
+
+      // Check if we can access the browser
+      try {
+        const globalBrowser = (global as any).browser;
+        if (globalBrowser) {
+          console.log(`[DEBUG] Browser capabilities: ${JSON.stringify(globalBrowser.capabilities, null, 2)}`);
+          console.log(`[DEBUG] Browser session ID: ${globalBrowser.sessionId}`);
+        } else {
+          console.log('[DEBUG] Browser not yet available in before hook');
+        }
+      } catch (err) {
+        console.log(`[DEBUG] Failed to get browser info: ${(err as Error).message}`);
+      }
+    }
+  },
+
+  beforeTest: async function (test, context) {
+    if (currentPlatform === 'linux') {
+      const { DebugHelper } = await import('./utils/debug-helper.js');
+      await DebugHelper.preTestCheck(test.fullTitle);
+    }
+  },
+
+  afterTest: async function (test, context, { error, result, duration, passed, retries }) {
+    if (currentPlatform === 'linux') {
+      const { DebugHelper } = await import('./utils/debug-helper.js');
+
+      if (!passed && error) {
+        DebugHelper.logTestFailure(test.fullTitle, error);
+      }
+
+      await DebugHelper.postTestCheck(test.fullTitle, passed);
+    }
+  },
+
   tsConfigPath: path.join(__dirname, 'tsconfig.json'),
   framework: 'mocha',
   mochaOpts: {
