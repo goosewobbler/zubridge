@@ -19,11 +19,17 @@ export async function waitForSpecificValue(
   console.log(
     `Waiting for counter to reach specific value ${expectedValue} with timeout ${timeout} and interval ${interval}`,
   );
+  let previousValue: number | undefined;
 
   return await browser.waitUntil(
     async () => {
       const currentValue = await getCounterValue();
-      console.log(`Counter value is now ${currentValue}, waiting for ${expectedValue}`);
+
+      // Only log if the counter has changed
+      if (typeof previousValue === 'number' && currentValue !== previousValue) {
+        console.log(`Counter changed from ${previousValue} to ${currentValue}, waiting for ${expectedValue}`);
+      }
+      previousValue = currentValue;
       return currentValue === expectedValue;
     },
     {
@@ -44,8 +50,10 @@ export async function waitForIncrement(
     async () => {
       const currentValue = await getCounterValue();
       const incrementedValue = previousValue + 1;
+      if (currentValue !== previousValue) {
+        console.log(`Counter changed from ${previousValue} to ${currentValue}, waiting for ${incrementedValue}`);
+      }
       previousValue = currentValue;
-      console.log(`Counter value is now ${currentValue}, waiting for ${incrementedValue}`);
       return currentValue === incrementedValue;
     },
     {
