@@ -11,7 +11,7 @@ import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
 import { store, initStore } from './store.js';
 import { tray } from './tray/index.js';
 import { createBridge, type AnyBridge } from './bridge.js';
-import { getModeName, getZubridgeMode } from '../utils/mode.js';
+import { getZubridgeMode } from '../utils/mode.js';
 import { getPreloadPath } from '../utils/path.js';
 import * as windows from './window.js';
 import { AppIpcChannel } from '../constants.js';
@@ -61,7 +61,7 @@ if (!isTestMode && process.platform === 'darwin' && !app.isReady()) {
 }
 
 const mode = getZubridgeMode();
-const modeName = getModeName();
+const modeName = getZubridgeMode();
 debug('example-app:init', `Using Zubridge mode: ${modeName}`);
 
 // Ensure we always use the absolute path for the preload script

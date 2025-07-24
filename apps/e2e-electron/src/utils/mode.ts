@@ -58,12 +58,3 @@ export const isReduxMode = (): boolean => getZubridgeMode() === ZubridgeMode.Red
  * Returns true if the current mode is 'custom'
  */
 export const isCustomMode = (): boolean => getZubridgeMode() === ZubridgeMode.Custom;
-
-/**
- * Returns the current mode as a human-readable string
- */
-export const getModeName = (): string => {
-  const mode = getZubridgeMode();
-  // The enum value is already a string, just capitalize the first letter
-  return mode.charAt(0).toUpperCase() + mode.slice(1);
-};

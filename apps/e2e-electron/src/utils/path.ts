@@ -39,7 +39,7 @@ export const getPreloadPath = (): string => {
   }
 
   // In development, use the local path
-  const mode = process.env.ZUBRIDGE_MODE || 'basic';
+  const mode = process.env.ZUBRIDGE_MODE || 'zustand-basic';
   const outDir = `out-${mode}`;
 
   // Get the directory path using our utility
