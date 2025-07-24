@@ -194,6 +194,30 @@ try {
 }
 
 const baseArgs = ['--no-sandbox', '--disable-gpu', `--user-data-dir=${userDataDir}`];
+
+// Platform-specific args for stability
+if (currentPlatform === 'linux') {
+  // Linux-specific flags to prevent shared memory issues in CI
+  baseArgs.push(
+    '--disable-dev-shm-usage', // Use tmp instead of /dev/shm
+    '--disable-extensions', // Reduce resource usage
+    '--disable-background-timer-throttling', // Prevent timing issues
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-features=TranslateUI', // Reduce memory usage
+    '--disable-ipc-flooding-protection', // Prevent IPC throttling
+    '--disable-background-networking', // Reduce background processes
+    '--disable-default-apps', // Don't load default apps
+    '--disable-sync', // Disable Chrome sync features
+    '--no-first-run', // Skip first run setup
+    '--no-default-browser-check', // Skip browser checks
+    '--disable-web-security', // For E2E testing
+    '--allow-running-insecure-content', // Allow mixed content for tests
+  );
+
+  console.log(`[DEBUG] Added Linux-specific flags for CI stability`);
+}
+
 const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
 
 // Determine which spec files to run based on the mode
