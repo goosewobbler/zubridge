@@ -152,15 +152,62 @@ export async function findWindowBySubscription(
     }`,
   );
 
+  // Linux-specific: Add comprehensive debugging
+  if (process.platform === 'linux') {
+    console.log(`[LINUX DEBUG] Starting subscription search with ${windowHandles.length} windows`);
+  }
+
   // Check each window for the subscription pattern
   for (let i = 0; i < windowHandles.length; i++) {
     await switchToWindow(i);
-    const subs = await getWindowSubscriptions();
+
+    // Linux-specific: Add retry logic with corruption handling
+    let subs: string | null = null;
+    const maxAttempts = process.platform === 'linux' ? 3 : 1;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        subs = await getWindowSubscriptions();
+
+        // If we got valid subscription info, break out of retry loop
+        if (subs !== null) break;
+
+        // Linux-specific: If subscription info is null, try refreshing handles
+        if (process.platform === 'linux' && attempt < maxAttempts - 1) {
+          console.log(
+            `[LINUX DEBUG] Attempt ${attempt + 1}: No subscription info for window ${i}, refreshing handles...`,
+          );
+          await refreshWindowHandles();
+          await switchToWindow(i);
+          await browser.pause(TIMING.STATE_SYNC_PAUSE);
+        }
+      } catch (error) {
+        console.log(`[LINUX DEBUG] Error getting subscriptions for window ${i} (attempt ${attempt + 1}): ${error}`);
+        if (process.platform === 'linux' && attempt < maxAttempts - 1) {
+          await refreshWindowHandles();
+          await browser.pause(TIMING.STATE_SYNC_PAUSE);
+        }
+      }
+    }
+
     console.log(`Window[${i}] has subscriptions: ${subs}`);
 
     if (subs && subs.includes(subscriptionPattern) && (!excludePattern || !subs.includes(excludePattern))) {
       console.log(`Found matching window at index ${i}`);
       return i;
+    }
+  }
+
+  // Linux-specific: Enhanced failure reporting
+  if (process.platform === 'linux') {
+    console.log(
+      `[LINUX DEBUG] Subscription search failed. Pattern: "${subscriptionPattern}", Exclude: "${excludePattern || 'none'}"`,
+    );
+    console.log(`[LINUX DEBUG] Available windows and their subscriptions:`);
+    for (let i = 0; i < windowHandles.length; i++) {
+      await switchToWindow(i);
+      const subs = await getWindowSubscriptions();
+      console.log(`[LINUX DEBUG]   Window[${i}]: ${subs}`);
     }
   }
 

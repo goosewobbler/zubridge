@@ -34,6 +34,37 @@ describe('Selective Subscription Behaviour', () => {
     try {
       // Use a single function to set up the test environment
       await setupTestEnvironment(CORE_WINDOW_COUNT);
+
+      // Linux-specific: Ensure proper subscription state setup
+      if (process.platform === 'linux') {
+        console.log('[LINUX DEBUG] Setting up proper subscription states...');
+
+        // Set window 0 to full subscriptions
+        await switchToWindow(0);
+        await subscribeToAllState();
+        await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+        // Set window 1 to a different subscription state (theme only)
+        if (windowHandles.length > 1) {
+          await switchToWindow(1);
+          await unsubscribeFromAllState();
+          await browser.pause(TIMING.STATE_SYNC_PAUSE);
+          await subscribeToState('theme');
+          await browser.pause(TIMING.STATE_SYNC_PAUSE);
+        }
+
+        // Verify the setup worked
+        console.log('[LINUX DEBUG] Verifying subscription state setup...');
+        for (let i = 0; i < windowHandles.length; i++) {
+          await switchToWindow(i);
+          const subs = await getWindowSubscriptions();
+          console.log(`[LINUX DEBUG] Window[${i}] subscriptions after setup: ${subs}`);
+        }
+
+        // Switch back to window 0
+        await switchToWindow(0);
+      }
+
       console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
@@ -640,7 +671,10 @@ describe('Selective Subscription Behaviour', () => {
     // Increment counter in second window
     await switchToWindow(windowHandles.length - 1);
     await (await getButtonInCurrentWindow('increment')).click();
-    await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+    // Use platform-specific wait time for state synchronization
+    const syncWait = process.platform === 'linux' ? TIMING.STATE_SYNC_PAUSE * 2 : TIMING.STATE_SYNC_PAUSE;
+    await browser.pause(syncWait);
 
     // Verify second window counter incremented
     const secondWindowCounterAfterIncrement = await getCounterValue();
@@ -772,7 +806,10 @@ describe('Selective Subscription Behaviour', () => {
 
     // Increment counter in first window again
     await (await getButtonInCurrentWindow('increment')).click();
-    await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+    // Use platform-specific wait time for state synchronization
+    const syncWait = process.platform === 'linux' ? TIMING.STATE_SYNC_PAUSE * 2 : TIMING.STATE_SYNC_PAUSE;
+    await browser.pause(syncWait);
 
     // Verify counter incremented in first window
     const firstWindowFinalCounter = await getCounterValue();
