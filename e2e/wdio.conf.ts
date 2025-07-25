@@ -391,7 +391,7 @@ const config = {
   framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
-    timeout: 30000,
+    timeout: process.platform === 'linux' ? 60000 : 30000, // Linux needs more time due to connection issues
   },
 };
 
