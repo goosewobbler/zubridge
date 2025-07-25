@@ -42,7 +42,7 @@ export const PLATFORM_TIMING: Record<string, TimingConfig> = {
     THUNK_START_PAUSE: 1000,
     UI_INTERACTION_PAUSE: 500,
     FAST_ACTION_MAX_TIME: 2000, // Maximum time a bypass action should take to complete (slower on Linux)
-    LONG_THUNK_WAIT_TIME: 30000, // Extended wait time for operations that might take longer (slower on Linux)
+    LONG_THUNK_WAIT_TIME: 20000, // Reduced from 30000 to prevent timeout issues
   },
 };
 
