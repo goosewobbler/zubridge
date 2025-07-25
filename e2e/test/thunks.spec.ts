@@ -111,7 +111,7 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('basic thunk execution', () => {
-    it.skip('should double the counter using a thunk', async () => {
+    it('should double the counter using a thunk', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -142,7 +142,7 @@ describe('Thunk Execution and Behavior', () => {
       expect(finalValue).toBe(4);
     });
 
-    it.skip('should double the counter using a main process thunk', async () => {
+    it('should double the counter using a main process thunk', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -627,6 +627,16 @@ describe('Thunk Execution and Behavior', () => {
       await switchToWindow(0);
       console.log('Switched back to main window');
 
+      // Linux: Add verification that subscription setup worked correctly
+      if (process.platform === 'linux') {
+        console.log(`[LINUX DEBUG] Verifying subscription setup...`);
+
+        // Give subscriptions time to fully initialize
+        await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+        console.log(`[LINUX DEBUG] Subscription setup complete, ready for thunk execution`);
+      }
+
       // Start a slow thunk in main window that affects counter
       console.log('Starting slow thunk in main window');
       const mainSlowThunkButton = await getButtonInCurrentWindow('doubleMainSlow');
@@ -684,72 +694,19 @@ describe('Thunk Execution and Behavior', () => {
           console.log(`[LINUX DEBUG] Zubridge methods:`, thunkState.result.availableMethods.join(', '));
         }
 
-        // Add a delay to see if the thunk eventually processes
-        console.log(`[LINUX DEBUG] Waiting 5 seconds to see if IPC eventually processes...`);
-        await browser.pause(5000);
-        const afterLongWait = await getCounterValue();
-        console.log(`[LINUX DEBUG] Counter after 5 second wait: ${afterLongWait}`);
+        // Linux: Simplified check - just wait for thunk to potentially complete
+        console.log(`[LINUX DEBUG] Waiting for main process thunk to complete (~2500ms + buffer)...`);
+        await browser.pause(4000);
 
-        if (afterLongWait !== afterStartValue) {
-          console.log(`[LINUX DEBUG] Counter changed during wait - IPC worked but was delayed`);
-          if (afterLongWait === 4) {
-            console.log(`[LINUX DEBUG] Counter reached expected value - test should pass`);
-            const finalValue = await getCounterValue();
-            console.log(`Final counter value: ${finalValue}`);
-            expect(finalValue).toBe(4);
-            return; // Skip the normal waitForSpecificValue
-          }
+        const afterWait = await getCounterValue();
+        console.log(`[LINUX DEBUG] Counter after 4 second wait: ${afterWait}`);
+
+        if (afterWait === 4) {
+          console.log(`[LINUX DEBUG] Thunk completed successfully during wait period`);
+          // Continue to the normal test flow - the thunk worked
         } else {
-          console.log(`[LINUX DEBUG] Counter unchanged after 5 seconds - IPC call likely failed completely`);
-        }
-
-        // Test direct IPC call to isolate if it's a button click vs IPC issue
-        console.log(`[LINUX DEBUG] Testing direct IPC call to main process...`);
-        const directIpcResult = await browser.execute(async () => {
-          try {
-            if (!window.counter?.executeMainThunkSlow) {
-              return { success: false, result: null, error: 'executeMainThunkSlow not available' };
-            }
-            const result = await window.counter.executeMainThunkSlow();
-            return { success: true, result, error: null };
-          } catch (error) {
-            return { success: false, result: null, error: String(error) };
-          }
-        });
-        console.log(`[LINUX DEBUG] Direct IPC call result:`, JSON.stringify(directIpcResult));
-
-        if (directIpcResult.success) {
-          console.log(`[LINUX DEBUG] Direct IPC call succeeded - waiting for counter to update...`);
-          await browser.pause(3000); // Wait for the 2500ms thunk
-          const afterDirectIpc = await getCounterValue();
-          console.log(`[LINUX DEBUG] Counter after direct IPC: ${afterDirectIpc}`);
-
-          if (afterDirectIpc === 4) {
-            console.log(`[LINUX DEBUG] Direct IPC worked! Button click IPC was the issue.`);
-            // Test passed with direct IPC, proceed normally
-            const finalValue = await getCounterValue();
-            console.log(`Final counter value: ${finalValue}`);
-            expect(finalValue).toBe(4);
-            return; // Skip the normal waitForSpecificValue
-          }
-        } else {
-          console.log(`[LINUX DEBUG] Direct IPC call failed: ${directIpcResult.error}`);
-        }
-
-        // The main process thunk should take ~2500ms to complete
-        // Check if there are any immediate effects vs waiting for full completion
-        console.log(`[LINUX DEBUG] Main process slow thunk should take ~2500ms to complete`);
-        console.log(`[LINUX DEBUG] Checking if thunk was dispatched successfully to main process`);
-
-        // Give thunk more time to initialize on Linux
-        await browser.pause(1000);
-
-        const afterExtraWait = await getCounterValue();
-        console.log(`[LINUX DEBUG] Counter value after extra wait: ${afterExtraWait}`);
-        if (afterExtraWait === afterStartValue) {
-          console.log(`[LINUX DEBUG] Counter unchanged - thunk may not have been dispatched to main process`);
-        } else {
-          console.log(`[LINUX DEBUG] Counter changed - thunk execution detected`);
+          console.log(`[LINUX DEBUG] Thunk did not complete as expected, current value: ${afterWait}`);
+          // Continue anyway - let the normal waitForSpecificValue handle it
         }
       }
 
@@ -773,11 +730,50 @@ describe('Thunk Execution and Behavior', () => {
       await switchToWindow(0);
       console.log('Switched back to main window to check counter value');
 
+      // Linux: Add additional debugging and more patient waiting
+      if (process.platform === 'linux') {
+        const currentValue = await getCounterValue();
+        console.log(`[LINUX DEBUG] About to wait for value 4, current value is ${currentValue}`);
+
+        if (currentValue === 2) {
+          console.log(`[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`);
+
+          // Wait additional time for main process slow thunk to complete
+          console.log(`[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`);
+          await browser.pause(3000);
+
+          const afterExtraWait = await getCounterValue();
+          console.log(`[LINUX DEBUG] Counter value after waiting 3000ms: ${afterExtraWait}`);
+
+          if (afterExtraWait === 4) {
+            console.log(`[LINUX DEBUG] Thunk completed during wait period! Final value: ${afterExtraWait}`);
+            const finalValue = await getCounterValue();
+            console.log(`Final counter value: ${finalValue}`);
+            expect(finalValue).toBe(4);
+            return; // Skip waitForSpecificValue since we already have the right value
+          } else if (afterExtraWait === 2) {
+            console.log(`[LINUX DEBUG] Thunk still not completed after 3000ms wait`);
+            // Continue to waitForSpecificValue which will likely timeout, but at least we've tried
+          } else {
+            console.log(`[LINUX DEBUG] Unexpected counter value ${afterExtraWait} after wait`);
+          }
+        }
+      }
+
       // Wait for thunk to complete and check final value
-      await waitForSpecificValue(4); // Final value after thunk completes
-      const finalValue = await getCounterValue();
-      console.log(`Final counter value: ${finalValue}`);
-      expect(finalValue).toBe(4);
+      try {
+        await waitForSpecificValue(4); // Final value after thunk completes
+        const finalValue = await getCounterValue();
+        console.log(`Final counter value: ${finalValue}`);
+        expect(finalValue).toBe(4);
+      } catch (error) {
+        if (process.platform === 'linux') {
+          console.log(`[LINUX DEBUG] waitForSpecificValue failed, checking current value...`);
+          const currentValue = await getCounterValue();
+          console.log(`[LINUX DEBUG] Current value after timeout: ${currentValue}`);
+        }
+        throw error;
+      }
     });
 
     it('should not defer actions with non-overlapping keys during thunk execution', async () => {
