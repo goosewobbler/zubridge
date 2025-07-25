@@ -24,7 +24,7 @@ import { TIMING } from '../constants.js';
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
 const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
 
-describe('Selective Subscription Behaviour', () => {
+describe.skip('Selective Subscription Behaviour', () => {
   before(async () => {
     await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
   });

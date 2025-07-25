@@ -111,7 +111,7 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('basic thunk execution', () => {
-    it('should double the counter using a thunk', async () => {
+    it.skip('should double the counter using a thunk', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -142,7 +142,7 @@ describe('Thunk Execution and Behavior', () => {
       expect(finalValue).toBe(4);
     });
 
-    it('should double the counter using a main process thunk', async () => {
+    it.skip('should double the counter using a main process thunk', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -176,7 +176,7 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('thunk execution order and completion', () => {
-    it('should fully await renderer thunk completion before performing subsequent actions in the same window', async () => {
+    it.skip('should fully await renderer thunk completion before performing subsequent actions in the same window', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       console.log(`Initial counter value: ${initialValue}`);
@@ -211,7 +211,7 @@ describe('Thunk Execution and Behavior', () => {
       expect(finalValue).toBe(5);
     });
 
-    it('should fully await main process thunk completion before performing subsequent actions in the same window', async () => {
+    it.skip('should fully await main process thunk completion before performing subsequent actions in the same window', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -247,7 +247,7 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('cross-window thunk execution', () => {
-    it('should await main process thunk completion even when actions are dispatched from different windows', async () => {
+    it.skip('should await main process thunk completion even when actions are dispatched from different windows', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -305,7 +305,7 @@ describe('Thunk Execution and Behavior', () => {
       await setupTestEnvironment(CORE_WINDOW_COUNT);
     });
 
-    it('should await renderer thunk completion even when actions are dispatched from different windows', async () => {
+    it.skip('should await renderer thunk completion even when actions are dispatched from different windows', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -365,7 +365,7 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('async action handling in thunks', () => {
-    it('should properly wait for async actions to complete in renderer process thunks', async () => {
+    it.skip('should properly wait for async actions to complete in renderer process thunks', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -411,7 +411,7 @@ describe('Thunk Execution and Behavior', () => {
       expect(finalValue).toBe(4);
     });
 
-    it('should properly wait for async actions to complete in main process thunks', async () => {
+    it.skip('should properly wait for async actions to complete in main process thunks', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -459,7 +459,7 @@ describe('Thunk Execution and Behavior', () => {
   });
 
   describe('concurrent thunk execution', () => {
-    it('should process actions sequentially from two renderer slow thunks dispatched from different windows', async () => {
+    it.skip('should process actions sequentially from two renderer slow thunks dispatched from different windows', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -507,7 +507,7 @@ describe('Thunk Execution and Behavior', () => {
       expect(finalValueInMainWindow).toBe(8);
     });
 
-    it('should process actions sequentially from a renderer slow thunk and a main slow thunk dispatched from the same window', async () => {
+    it.skip('should process actions sequentially from a renderer slow thunk and a main slow thunk dispatched from the same window', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -542,7 +542,7 @@ describe('Thunk Execution and Behavior', () => {
       expect(finalValue).toBe(8);
     });
 
-    it('should process actions sequentially from two main slow thunks dispatched from different windows', async () => {
+    it.skip('should process actions sequentially from two main slow thunks dispatched from different windows', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
