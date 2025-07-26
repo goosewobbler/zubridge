@@ -31,3 +31,10 @@ out-*
 # Ignore Tauri files
 .tauri/
 target
+*.node
+
+# Rust / Cargo specific for libraries
+/packages/middleware/Cargo.lock
+
+# Ignore package tarballs
+*.tgz

@@ -12,6 +12,11 @@ export const isDev = async (): Promise<boolean> => {
   // Ensure we have access to the app object (should be in the main process)
   const { app } = await import('electron');
 
+  // Handle the case where NODE_ENV is explicitly set to production or ELECTRON_IS_DEV is set to 0
+  if (process.env.NODE_ENV === 'production' || process.env.ELECTRON_IS_DEV === '0') {
+    return false;
+  }
+
   if (typeof app !== 'undefined') {
     return !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1';
   }

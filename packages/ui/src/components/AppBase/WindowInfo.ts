@@ -26,7 +26,7 @@ export interface WindowInfo {
 /**
  * Base handlers that must be implemented for each platform
  */
-export interface PlatformHandlers {
+export interface ActionHandlers {
   /**
    * Create a new window
    */
@@ -41,6 +41,31 @@ export interface PlatformHandlers {
    * Quit the application (optional - only for main windows)
    */
   quitApp?: () => Promise<{ success: boolean }>;
+
+  /**
+   * Double counter thunk implementation
+   */
+  doubleCounter?: (counter: number) => any;
+
+  /**
+   * Double counter slow thunk implementation
+   */
+  doubleCounterSlow?: (counter: number) => any;
+
+  /**
+   * Double counter thunk implementation with getState override (setting bypassAccessControl: true)
+   */
+  doubleCounterWithGetStateOverride?: (counter: number) => any;
+
+  /**
+   * Distinctive counter thunk implementation (multiply by 3, add 2, subtract 1)
+   */
+  distinctiveCounter?: (counter: number) => any;
+
+  /**
+   * Distinctive counter slow thunk implementation (multiply by 3, add 2, subtract 1)
+   */
+  distinctiveCounterSlow?: (counter: number) => any;
 }
 
 /**

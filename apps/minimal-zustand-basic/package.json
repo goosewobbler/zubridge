@@ -1,0 +1,61 @@
+{
+  "name": "minimal-zustand-basic",
+  "version": "0.0.0",
+  "description": "Minimal Electron app demonstrating Zubridge with Zustand basic mode",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "clean": "pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
+    "clean:cache": "pnpm dlx shx rm -rf ./dist* ./out* .cache",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "pnpm build && electron-builder",
+    "dist:dir": "pnpm build && electron-builder --dir",
+    "test": "cross-env DEBUG=wdio-electron-service,webdriverio xvfb-maybe wdio run ./test/wdio.conf.ts",
+    "test:package": "cross-env DEBUG=wdio-electron-service,webdriverio xvfb-maybe wdio run ./test/wdio.conf.ts",
+    "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
+  },
+  "dependencies": {
+    "@zubridge/electron": "next",
+    "clsx": "^2.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "@tailwindcss/vite": "^4.1.10",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.0",
+    "@wdio/cli": "9.16.2",
+    "@wdio/globals": "9.16.2",
+    "@wdio/local-runner": "9.16.2",
+    "@wdio/mocha-framework": "9.16.2",
+    "@wdio/spec-reporter": "9.16.2",
+    "@zubridge/types": "next",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "electron": "37.1.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "beta",
+    "is-ci": "^4.1.0",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.7.3",
+    "vite": "^7.0.4",
+    "wdio-electron-service": "next",
+    "xvfb-maybe": "^0.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-winstaller",
+      "esbuild"
+    ]
+  }
+}

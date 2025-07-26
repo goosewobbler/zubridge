@@ -1,6 +1,5 @@
 import React from 'react';
 import clsx from 'clsx';
-import { Header } from '../Header';
 
 interface WindowDisplayProps {
   windowId: number | string;
@@ -35,14 +34,6 @@ export const WindowDisplay: React.FC<WindowDisplayProps> = ({
 
   return (
     <div className={displayClasses}>
-      <Header
-        windowId={windowId}
-        windowTitle={windowTitle}
-        mode={mode}
-        bridgeStatus={bridgeStatus}
-        className="window-header"
-      />
-
       <div className="window-content">{children}</div>
     </div>
   );

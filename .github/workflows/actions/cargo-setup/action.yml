@@ -1,0 +1,15 @@
+name: 'Setup Cargo Configuration'
+description: 'Configures Rust/Cargo for better performance in CI environments'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Cargo Cache
+      shell: bash
+      run: |
+        mkdir -p ~/.cargo/{registry,git}
+        echo '[net]
+        git-fetch-with-cli = true
+        retry = 3
+        [build]
+        jobs = 2' > ~/.cargo/config.toml
