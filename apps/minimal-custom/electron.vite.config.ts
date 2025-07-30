@@ -44,8 +44,10 @@ export default defineConfig({
       resolve: {
         preserveSymlinks: true,
       },
-      optimizeDeps: {
-        include: ['@zubridge/core', '@zubridge/types'],
+      build: {
+        rollupOptions: {
+          external: ['electron', '@zubridge/core', 'scheduler'],
+        },
       },
     }),
   },
