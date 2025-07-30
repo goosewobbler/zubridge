@@ -11,16 +11,19 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
     "./internal": {
       "types": "./dist/internal.d.ts",
       "import": "./dist/internal.js",
+      "require": "./dist/internal.cjs",
       "default": "./dist/internal.js"
     },
     "./app": {
       "types": "./dist/app.d.ts",
       "import": "./dist/app.js",
+      "require": "./dist/app.cjs",
       "default": "./dist/app.js"
     }
   },
@@ -29,7 +32,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "clean": "shx rm -rf dist",
     "clean:cache": "shx rm -rf .turbo",
     "test": "vitest run",
@@ -41,6 +44,7 @@
   },
   "devDependencies": {
     "shx": "^0.4.0",
+    "tsup": "^8.0.0",
     "typescript": "^5.8.2",
     "zustand": "^5.0.3"
   },
