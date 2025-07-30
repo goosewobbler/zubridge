@@ -18,6 +18,7 @@
     "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
   },
   "dependencies": {
+    "@zubridge/core": "next",
     "@zubridge/electron": "next",
     "clsx": "^2.1.1",
     "react": "^19.0.0",
