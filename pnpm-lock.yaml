@@ -275,10 +275,10 @@ importers:
         version: 9.16.2(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.16.2
-        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       '@wdio/local-runner':
         specifier: 9.16.2
-        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       '@wdio/mocha-framework':
         specifier: 9.16.2
         version: 9.16.2
@@ -320,7 +320,7 @@ importers:
         version: 7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
         specifier: next
-        version: 9.0.0-next.3(electron@37.1.0)(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
+        version: 9.0.0-next.3(electron@37.1.0)(expect-webdriverio@5.4.0)(webdriverio@9.16.2(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -469,10 +469,10 @@ importers:
         version: 9.16.2(expect-webdriverio@5.4.0)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.16.2
-        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        version: 9.16.2(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/local-runner':
         specifier: 9.16.2
-        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       '@wdio/mocha-framework':
         specifier: 9.16.2
         version: 9.16.2
@@ -514,7 +514,7 @@ importers:
         version: 7.0.5(@types/node@22.16.4)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
       wdio-electron-service:
         specifier: next
-        version: 9.0.0-next.3(electron@37.1.0)(expect-webdriverio@5.4.0)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+        version: 9.0.0-next.3(electron@37.1.0)(expect-webdriverio@5.4.0)(webdriverio@9.18.0(puppeteer-core@22.15.0))
       xvfb-maybe:
         specifier: ^0.2.1
         version: 0.2.1
@@ -936,6 +936,9 @@ importers:
       shx:
         specifier: ^0.4.0
         version: 0.4.0
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.0(jiti@2.4.2)(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
       typescript:
         specifier: ^5.8.2
         version: 5.8.3
