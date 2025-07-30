@@ -17,6 +17,7 @@ const sharedConfig = {
 };
 
 export default [
+  // CJS builds
   {
     input: './dist/main.js',
     output: {
@@ -38,6 +39,31 @@ export default [
     output: {
       file: './dist/index.cjs',
       format: 'cjs',
+    },
+    ...sharedConfig,
+  },
+  // ESM builds with bundled dependencies
+  {
+    input: './dist/main.js',
+    output: {
+      file: './dist/main.js',
+      format: 'es',
+    },
+    ...sharedConfig,
+  },
+  {
+    input: './dist/preload.js',
+    output: {
+      file: './dist/preload.js',
+      format: 'es',
+    },
+    ...sharedConfig,
+  },
+  {
+    input: './dist/index.js',
+    output: {
+      file: './dist/index.js',
+      format: 'es',
     },
     ...sharedConfig,
   },
