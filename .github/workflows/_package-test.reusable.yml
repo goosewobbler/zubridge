@@ -106,15 +106,37 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          if [ -d "./apps/minimal-${{ inputs.mode }}" ]; then
-            cd "./apps/minimal-${{ inputs.mode }}"
-            for log_dir in wdio-logs-*; do
-              if [ -d "$log_dir" ]; then
-                echo "=== WDIO Logs from $log_dir ==="
-                find "$log_dir" -name "*.log" -exec cat {} \;
+          echo "=== Searching for log files ==="
+
+          # Look for logs in multiple possible locations
+          for search_path in "./apps/minimal-${{ inputs.mode }}" "./e2e" "."; do
+            if [ -d "$search_path" ]; then
+              echo "Checking $search_path for log files..."
+              cd "$search_path"
+
+              # Search for various log directory patterns
+              for log_pattern in "wdio-logs-*" "*wdio-logs*" "e2e-logs-*" "*logs*"; do
+                for log_dir in $log_pattern; do
+                  if [ -d "$log_dir" ]; then
+                    echo "=== WDIO Logs from $search_path/$log_dir ==="
+                    find "$log_dir" -name "*.log" -exec echo "--- {} ---" \; -exec cat {} \; -exec echo "" \;
+                  fi
+                done
+              done
+
+              # Also check for any .log files directly in the directory
+              if ls *.log 1> /dev/null 2>&1; then
+                echo "=== Direct log files in $search_path ==="
+                for log_file in *.log; do
+                  echo "--- $log_file ---"
+                  cat "$log_file"
+                  echo ""
+                done
               fi
-            done
-          fi
+
+              cd - > /dev/null
+            fi
+          done
 
       # Cleanup XVFB process
       - name: 🧹 Cleanup XVFB
