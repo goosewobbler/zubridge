@@ -90,9 +90,38 @@ export default defineConfig({
     ...(isWindows && {
       resolve: {
         preserveSymlinks: true,
-        alias: {
-          '@zubridge/core': resolve(__dirname, 'node_modules/@zubridge/core/dist/index.js'),
-        },
+        alias: (() => {
+          const electronPackagePath = resolve(__dirname, 'node_modules/@zubridge/electron');
+          console.log('  Electron package path:', electronPackagePath);
+          console.log('  Electron package exists:', existsSync(electronPackagePath));
+
+          if (existsSync(electronPackagePath)) {
+            console.log('  Contents of electron package:');
+            readdirSync(electronPackagePath).forEach((item) => console.log('    -', item));
+
+            const electronNodeModules = resolve(electronPackagePath, 'node_modules');
+            console.log('  Electron node_modules exists:', existsSync(electronNodeModules));
+
+            if (existsSync(electronNodeModules)) {
+              console.log('  Contents of electron node_modules:');
+              readdirSync(electronNodeModules).forEach((item) => console.log('    -', item));
+
+              const electronZubridge = resolve(electronNodeModules, '@zubridge');
+              if (existsSync(electronZubridge)) {
+                console.log('  Contents of electron @zubridge:');
+                readdirSync(electronZubridge).forEach((item) => console.log('    -', item));
+              }
+            }
+          }
+
+          // Since @zubridge/core is bundled into the electron package, point to the electron dist
+          const aliasPath = resolve(electronPackagePath, 'dist/index.js');
+          console.log('  Alias path for @zubridge/core (bundled):', aliasPath);
+          console.log('  Alias path exists:', existsSync(aliasPath));
+          return {
+            '@zubridge/core': aliasPath,
+          };
+        })(),
       },
     }),
   },
