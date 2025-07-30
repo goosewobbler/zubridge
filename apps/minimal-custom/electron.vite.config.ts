@@ -1,9 +1,56 @@
 import { resolve } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 const isWindows = process.platform === 'win32';
+
+// Check directory structure for Windows alias debugging
+if (isWindows) {
+  console.log('Windows detected - checking directory structure:');
+  console.log('  __dirname:', __dirname);
+
+  // Check local node_modules
+  const localNodeModules = resolve(__dirname, 'node_modules');
+  console.log('  Local node_modules:', localNodeModules);
+  console.log('  Local node_modules exists:', existsSync(localNodeModules));
+
+  if (existsSync(localNodeModules)) {
+    console.log('  Contents of local node_modules:');
+    readdirSync(localNodeModules).forEach((item) => console.log('    -', item));
+
+    // Check for @zubridge scope
+    const zubridgeScope = resolve(localNodeModules, '@zubridge');
+    console.log('  @zubridge scope exists:', existsSync(zubridgeScope));
+
+    if (existsSync(zubridgeScope)) {
+      console.log('  Contents of @zubridge:');
+      readdirSync(zubridgeScope).forEach((item) => console.log('    -', item));
+    }
+  }
+
+  // Check parent node_modules (monorepo)
+  const parentNodeModules = resolve(__dirname, '../../node_modules');
+  console.log('  Parent node_modules:', parentNodeModules);
+  console.log('  Parent node_modules exists:', existsSync(parentNodeModules));
+
+  if (existsSync(parentNodeModules)) {
+    const parentZubridge = resolve(parentNodeModules, '@zubridge');
+    console.log('  Parent @zubridge scope exists:', existsSync(parentZubridge));
+
+    if (existsSync(parentZubridge)) {
+      console.log('  Contents of parent @zubridge:');
+      readdirSync(parentZubridge).forEach((item) => console.log('    -', item));
+
+      const parentCore = resolve(parentZubridge, 'core');
+      if (existsSync(parentCore)) {
+        console.log('  Contents of parent @zubridge/core:');
+        readdirSync(parentCore).forEach((item) => console.log('    -', item));
+      }
+    }
+  }
+}
 
 export default defineConfig({
   main: {
@@ -43,10 +90,8 @@ export default defineConfig({
     ...(isWindows && {
       resolve: {
         preserveSymlinks: true,
-      },
-      build: {
-        rollupOptions: {
-          external: ['electron', '@zubridge/core', 'scheduler'],
+        alias: {
+          '@zubridge/core': resolve(__dirname, 'node_modules/@zubridge/core/dist/index.js'),
         },
       },
     }),
