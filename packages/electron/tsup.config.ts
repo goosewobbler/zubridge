@@ -14,6 +14,8 @@ export default defineConfig([
     splitting: false,
     sourcemap: false,
     treeshake: true,
+    platform: 'node',
+    target: 'node18',
     outExtension({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
@@ -34,6 +36,8 @@ export default defineConfig([
     splitting: false,
     sourcemap: false,
     treeshake: true,
+    platform: 'node',
+    target: 'node18',
     outExtension({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
@@ -54,6 +58,8 @@ export default defineConfig([
     splitting: false,
     sourcemap: false,
     treeshake: true,
+    platform: 'node',
+    target: 'node18',
     outExtension({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
