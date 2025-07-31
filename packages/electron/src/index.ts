@@ -1,17 +1,10 @@
-import type { AnyState, Handlers } from '@zubridge/types';
+import type { AnyState, DispatchFunc, DispatchOptions, Handlers } from '@zubridge/types';
 import { useStore, type StoreApi } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
-import type { Action, Thunk, ExtractState, ReadonlyStoreApi, DispatchFunc } from '@zubridge/types';
+import type { Action, Thunk, ExtractState, ReadonlyStoreApi } from '@zubridge/types';
 
 // Export types
 export type * from '@zubridge/types';
-
-// Add type declaration for window.zubridge
-declare global {
-  interface Window {
-    zubridge: Handlers<AnyState>;
-  }
-}
 
 // Store registry to implement singleton pattern
 // Maps handler objects to their corresponding stores
@@ -57,7 +50,7 @@ export const createHandlers = <S extends AnyState>(): Handlers<S> => {
 };
 
 /**
- * Creates a hook for accessing the store state in React components
+ * Creates a hook for accessing the store state in renderer components
  */
 export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>): UseBoundStore<StoreApi<S>> => {
   const handlers = customHandlers || createHandlers<S>();
@@ -71,67 +64,51 @@ export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>)
 };
 
 /**
- * Creates a dispatch function for sending actions to the main process
- *
- * @template S The state type
- * @template TActions A record of action types to payload types mapping (optional)
- * @param customHandlers Optional custom handlers to use instead of window.zubridge
- * @returns A typed dispatch function
- *
- * @example
- * // Basic usage
- * const dispatch = useDispatch();
- *
- * @example
- * // With typed actions
- * type CounterActions = {
- *   'COUNTER:INCREMENT': void;
- *   'COUNTER:DECREMENT': void;
- *   'COUNTER:SET': number;
- * };
- * const dispatch = useDispatch<State, CounterActions>();
- * dispatch({ type: 'COUNTER:SET', payload: 5 }); // Type-safe payload
- * dispatch({ type: 'UNKNOWN' }); // Type error
+ * Creates a dispatch function for use in renderer components
  */
-export const useDispatch = <S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
+function useDispatch<S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
   customHandlers?: Handlers<S>,
-): DispatchFunc<S, TActions> => {
+): DispatchFunc<S, TActions> {
   const handlers = customHandlers || createHandlers<S>();
 
-  // Ensure we have a store for these handlers
-  const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
-
-  // Create a dispatch function that will handle both generic and typed actions
-  const dispatch = ((
-    action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
-    payload?: unknown,
-  ): unknown => {
-    if (typeof action === 'function') {
-      // Handle thunks - execute them with the store's getState and our dispatch function
-      return (action as Thunk<S>)(store.getState, dispatch);
-    }
-
-    // Handle string action type with payload
+  // Create a dispatch function that delegates directly to handlers.dispatch
+  const dispatch: DispatchFunc<S, TActions> = (
+    action: string | Action | Thunk<S>,
+    payloadOrOptions?: unknown | DispatchOptions,
+    maybeOptions?: DispatchOptions,
+  ): Promise<any> => {
+    // Delegate based on the action type
     if (typeof action === 'string') {
-      // Only pass the payload parameter if it's not undefined, and handle promise return value
-      return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
+      return handlers.dispatch(action, payloadOrOptions, maybeOptions);
+    } else if (typeof action === 'function') {
+      return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
+    } else {
+      return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
     }
-
-    // For action objects, normalize to standard Action format
-    if (typeof action.type !== 'string') {
-      throw new Error(`Invalid action type: ${action.type}. Expected a string.`);
-    }
-    const normalizedAction: Action = {
-      type: action.type,
-      payload: action.payload,
-    };
-
-    // Return the promise from dispatch
-    return handlers.dispatch(normalizedAction);
-  }) as DispatchFunc<S, TActions>;
+  };
 
   return dispatch;
-};
+}
+
+export { useDispatch };
 
 // Export environment utilities
-export * from './utils/environment';
+export * from './utils/environment.js';
+
+// Export the validation utilities to be used by applications
+export {
+  validateStateAccess,
+  validateStateAccessWithExistence,
+  stateKeyExists,
+  isSubscribedToKey,
+  getWindowSubscriptions,
+} from './renderer/subscriptionValidator.js';
+
+// Export action validation utilities
+export {
+  registerActionMapping,
+  registerActionMappings,
+  getAffectedStateKeys,
+  canDispatchAction,
+  validateActionDispatch,
+} from './renderer/actionValidator.js';

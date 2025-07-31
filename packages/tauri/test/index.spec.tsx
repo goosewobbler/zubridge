@@ -715,8 +715,8 @@ describe('@zubridge/tauri', () => {
       });
 
       // Create a thunk that accesses state and calls dispatch
-      const thunkMock = vi.fn((getState, dispatch) => {
-        const state = getState();
+      const thunkMock = vi.fn(async (getState, dispatch) => {
+        const state = await getState();
         expect(state.counter).toBe(42);
 
         // Dispatch an action from within the thunk
