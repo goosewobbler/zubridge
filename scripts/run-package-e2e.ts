@@ -292,7 +292,7 @@ function prepareApp(appPath: string): string {
 }
 
 // Copy log files from temp directory back to repo directory
-function copyLogFiles(): void {
+function copyLogFiles(hasFailedTests: boolean = false): void {
   console.log('\nCopying log files back to repo directory...');
 
   const minimalApps = findMinimalApps();
@@ -305,6 +305,18 @@ function copyLogFiles(): void {
 
     // Check if logs exist in temp directory
     if (fs.existsSync(tempLogsDir)) {
+      // Only output logs to console if tests failed
+      if (hasFailedTests) {
+        console.log(`\n=== WebdriverIO Logs for ${appName} ===`);
+        const logFiles = fs.readdirSync(tempLogsDir);
+        for (const logFile of logFiles) {
+          console.log(`\n--- ${logFile} ---`);
+          const logContent = fs.readFileSync(path.join(tempLogsDir, logFile), 'utf8');
+          console.log(logContent);
+        }
+        console.log(`\n=== End of logs for ${appName} ===`);
+      }
+
       try {
         // Copy logs from temp to repo with timestamp
         fs.cpSync(tempLogsDir, repoLogsDir, { recursive: true });
@@ -409,7 +421,7 @@ async function main() {
     if (tempDirCreated) {
       // Copy log files back to repo directory before cleanup
       try {
-        copyLogFiles();
+        copyLogFiles(hasError);
       } catch (error) {
         console.warn('Failed to copy log files:', error);
       }
