@@ -1,34 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig([
-  // Main entry point - full functionality (for main/preload)
-  {
-    entry: ['src/index.ts'],
-    format: ['esm', 'cjs'],
-    dts: true,
-    external: ['electron', 'zustand', 'zustand/vanilla'],
-    noExternal: ['@zubridge/core', 'weald', '@wdio/logger'],
-    outDir: 'dist',
-    clean: true,
-    bundle: true,
-    splitting: false,
-    sourcemap: false,
-    treeshake: true,
-    platform: 'node',
-    target: 'node18',
-    esbuildOptions(options) {
-      options.banner = {
-        js: '// Full build with logging dependencies',
-      };
-    },
-    outExtension({ format }) {
-      return {
-        js: format === 'cjs' ? '.cjs' : '.js',
-        dts: format === 'cjs' ? '.d.cts' : '.d.ts',
-      };
-    },
-  },
-  // Renderer-safe entry point
+  // Renderer-safe entry point (default)
   {
     entry: ['src/renderer.ts'],
     format: ['esm', 'cjs'],
@@ -36,7 +9,7 @@ export default defineConfig([
     external: ['electron', 'zustand', 'zustand/vanilla'],
     noExternal: ['@zubridge/core', 'weald', '@wdio/logger'],
     outDir: 'dist',
-    clean: false,
+    clean: true,
     bundle: true,
     splitting: false,
     sourcemap: false,

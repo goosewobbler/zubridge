@@ -1,7 +1,7 @@
 import { type BrowserWindow, Menu, Tray, app, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { isDev } from '@zubridge/electron';
+import { isDev } from '@zubridge/electron/main';
 import { createDispatch } from '@zubridge/electron/main';
 
 import type { State } from '../../features/index.js';
