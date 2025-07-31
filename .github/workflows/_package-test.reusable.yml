@@ -94,49 +94,12 @@ jobs:
           echo "=== Running package tests ==="
           set +e  # Don't exit on error
 
-
           # Run package tests (keeping xvfb-maybe at the correct level - in package.json)
           pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
           exit_code=$?
 
-
           exit $exit_code
 
-      - name: 📜 Display logs on failure
-        if: failure()
-        shell: bash
-        run: |
-          echo "=== Searching for log files ==="
-
-          # Look for logs in multiple possible locations
-          for search_path in "./apps/minimal-${{ inputs.mode }}" "./e2e" "."; do
-            if [ -d "$search_path" ]; then
-              echo "Checking $search_path for log files..."
-              cd "$search_path"
-
-              # Search for various log directory patterns
-              for log_pattern in "wdio-logs-*" "*wdio-logs*" "e2e-logs-*" "*logs*"; do
-                for log_dir in $log_pattern; do
-                  if [ -d "$log_dir" ]; then
-                    echo "=== WDIO Logs from $search_path/$log_dir ==="
-                    find "$log_dir" -name "*.log" -exec echo "--- {} ---" \; -exec cat {} \; -exec echo "" \;
-                  fi
-                done
-              done
-
-              # Also check for any .log files directly in the directory
-              if ls *.log 1> /dev/null 2>&1; then
-                echo "=== Direct log files in $search_path ==="
-                for log_file in *.log; do
-                  echo "--- $log_file ---"
-                  cat "$log_file"
-                  echo ""
-                done
-              fi
-
-              cd - > /dev/null
-            fi
-          done
 
       # Cleanup XVFB process
       - name: 🧹 Cleanup XVFB

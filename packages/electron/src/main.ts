@@ -15,6 +15,9 @@ export { createBridgeFromStore } from './bridge.js';
 export { createDispatch } from './main/dispatch.js';
 export { createMiddlewareOptions } from './middleware.js';
 
+// Export environment utilities (main process only)
+export { isDev } from './utils/environment.js';
+
 // Export validation functions with proper parameter types
 export {
   validateStateAccess,

@@ -1,11 +1,9 @@
 import path from 'node:path';
 import process from 'node:process';
 import { BrowserWindow, BrowserView, WebContentsView, shell, app } from 'electron';
-import { isDev } from '@zubridge/electron';
+import { isDev } from '@zubridge/electron/main';
 import { getZubridgeMode } from '../utils/mode.js';
-import { getPreloadPath, getDirname } from '../utils/path.js';
-
-const __dirname = getDirname();
+import { getPreloadPath } from '../utils/path.js';
 
 // Debug logger with timestamp
 function debugWindow(message: string) {

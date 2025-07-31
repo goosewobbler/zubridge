@@ -5,6 +5,6 @@
   "synced": false,
   "commitMessage": "chore: release ${packageName}@${version} [skip-ci]",
   "tagTemplate": "${packageName}@${prefix}${version}",
-  "skip": ["@zubridge/apps-shared", "e2e-electron", "e2e-tauri", "e2e-tauri-v1", "zubridge-e2e"],
+  "skip": ["@zubridge/apps-shared", "e2e-*", "minimal-*", "zubridge-e2e"],
   "prereleaseIdentifier": "next"
 }

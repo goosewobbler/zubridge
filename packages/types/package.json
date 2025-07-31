@@ -9,22 +9,34 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./internal": {
-      "types": "./dist/internal.d.ts",
-      "import": "./dist/internal.js",
-      "require": "./dist/internal.cjs",
-      "default": "./dist/internal.js"
+      "import": {
+        "types": "./dist/internal.d.ts",
+        "default": "./dist/internal.js"
+      },
+      "require": {
+        "types": "./dist/internal.d.cts",
+        "default": "./dist/internal.cjs"
+      }
     },
     "./app": {
-      "types": "./dist/app.d.ts",
-      "import": "./dist/app.js",
-      "require": "./dist/app.cjs",
-      "default": "./dist/app.js"
+      "import": {
+        "types": "./dist/app.d.ts",
+        "default": "./dist/app.js"
+      },
+      "require": {
+        "types": "./dist/app.d.cts",
+        "default": "./dist/app.cjs"
+      }
     }
   },
   "files": [

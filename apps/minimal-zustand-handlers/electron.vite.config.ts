@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import isCI from 'is-ci';
+
+const isWindows = process.platform === 'win32';
 
 export default defineConfig({
   main: {
@@ -37,10 +38,12 @@ export default defineConfig({
         external: ['electron'],
       },
     },
-    resolve: {
-      // workaround for windows path issue
-      // see https://github.com/alex8088/electron-vite/issues/802
-      preserveSymlinks: true,
-    },
+    // workaround for windows path issue
+    // see https://github.com/alex8088/electron-vite/issues/802
+    ...(isWindows && {
+      resolve: {
+        preserveSymlinks: true,
+      },
+    }),
   },
 });

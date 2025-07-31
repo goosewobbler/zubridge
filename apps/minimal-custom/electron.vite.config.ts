@@ -1,5 +1,4 @@
 import { resolve } from 'node:path';
-import { existsSync, readdirSync } from 'node:fs';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';

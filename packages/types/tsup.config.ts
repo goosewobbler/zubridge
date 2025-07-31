@@ -13,4 +13,10 @@ export default defineConfig({
   sourcemap: false,
   minify: false,
   external: ['zustand', 'electron'],
+  outExtension({ format }) {
+    return {
+      js: format === 'cjs' ? '.cjs' : '.js',
+      dts: format === 'cjs' ? '.d.cts' : '.d.ts',
+    };
+  },
 });

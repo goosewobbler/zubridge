@@ -1,21 +1,34 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig([
-  // Main entry point - dual ESM/CJS
+  // Renderer-safe entry point (default)
   {
-    entry: ['src/index.ts'],
+    entry: ['src/renderer.ts'],
     format: ['esm', 'cjs'],
     dts: true,
     external: ['electron', 'zustand', 'zustand/vanilla'],
-    noExternal: ['@zubridge/core'],
+    noExternal: ['@zubridge/core', 'weald', '@wdio/logger'],
     outDir: 'dist',
     clean: true,
     bundle: true,
     splitting: false,
     sourcemap: false,
     treeshake: true,
-    platform: 'node',
-    target: 'node18',
+    platform: 'neutral',
+    target: 'es2020',
+    esbuildOptions(options) {
+      options.banner = {
+        js: '// Renderer-safe build with polyfilled Node.js modules',
+      };
+      // Use esbuild's built-in Node.js polyfills for browser compatibility
+      options.define = {
+        ...options.define,
+        global: 'global',
+      };
+      // Enable Node.js polyfills
+      options.platform = 'browser';
+      options.mainFields = ['browser', 'module', 'main'];
+    },
     outExtension({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
@@ -29,7 +42,7 @@ export default defineConfig([
     format: ['esm', 'cjs'],
     dts: true,
     external: ['electron', 'zustand', 'zustand/vanilla'],
-    noExternal: ['@zubridge/core'],
+    noExternal: ['@zubridge/core', 'weald', '@wdio/logger', 'tty', 'util', 'fs', 'os', 'process'],
     outDir: 'dist',
     clean: false,
     bundle: true,
@@ -38,6 +51,11 @@ export default defineConfig([
     treeshake: true,
     platform: 'node',
     target: 'node18',
+    esbuildOptions(options) {
+      options.banner = {
+        js: '// Node.js build with bundled dependencies',
+      };
+    },
     outExtension({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
@@ -51,7 +69,7 @@ export default defineConfig([
     format: ['esm', 'cjs'],
     dts: true,
     external: ['electron', 'zustand', 'zustand/vanilla'],
-    noExternal: ['@zubridge/core'],
+    noExternal: ['@zubridge/core', 'weald', '@wdio/logger', 'tty', 'util', 'fs', 'os', 'process'],
     outDir: 'dist',
     clean: false,
     bundle: true,
@@ -60,6 +78,11 @@ export default defineConfig([
     treeshake: true,
     platform: 'node',
     target: 'node18',
+    esbuildOptions(options) {
+      options.banner = {
+        js: '// Node.js build with bundled dependencies',
+      };
+    },
     outExtension({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
