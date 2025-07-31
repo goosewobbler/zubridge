@@ -24,6 +24,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redux": "^5.0.1",
+    "scheduler": "^0.26.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

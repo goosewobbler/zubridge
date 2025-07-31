@@ -248,106 +248,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.1(react@19.1.1)
-      zustand:
-        specifier: ^5.0.3
-        version: 5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
-    devDependencies:
-      '@tailwindcss/postcss':
-        specifier: ^4.1.10
-        version: 4.1.11
-      '@tailwindcss/vite':
-        specifier: ^4.1.10
-        version: 4.1.11(vite@7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
-      '@types/mocha':
-        specifier: ^10.0.10
-        version: 10.0.10
-      '@types/node':
-        specifier: ^22.14.0
-        version: 22.17.0
-      '@types/react':
-        specifier: ^19.1.8
-        version: 19.1.9
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.1.7(@types/react@19.1.9)
-      '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
-      '@wdio/cli':
-        specifier: 9.16.2
-        version: 9.16.2(expect-webdriverio@5.4.1)(puppeteer-core@22.15.0)
-      '@wdio/globals':
-        specifier: 9.16.2
-        version: 9.16.2(expect-webdriverio@5.4.1)(webdriverio@9.16.2(puppeteer-core@22.15.0))
-      '@wdio/local-runner':
-        specifier: 9.16.2
-        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
-      '@wdio/mocha-framework':
-        specifier: 9.16.2
-        version: 9.16.2
-      '@wdio/spec-reporter':
-        specifier: 9.16.2
-        version: 9.16.2
-      '@zubridge/types':
-        specifier: next
-        version: 2.0.0-next.0(electron@37.1.0)(zustand@5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
-      autoprefixer:
-        specifier: ^10.4.21
-        version: 10.4.21(postcss@8.5.6)
-      cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
-      electron:
-        specifier: 37.1.0
-        version: 37.1.0
-      electron-builder:
-        specifier: ^26.0.12
-        version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
-      electron-vite:
-        specifier: beta
-        version: 4.0.0-beta.0(vite@7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
-      is-ci:
-        specifier: ^4.1.0
-        version: 4.1.0
-      postcss:
-        specifier: ^8.5.5
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^4.1.10
-        version: 4.1.11
-      typescript:
-        specifier: ^5.7.3
-        version: 5.8.3
-      vite:
-        specifier: ^7.0.4
-        version: 7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
-      wdio-electron-service:
-        specifier: next
-        version: 9.0.0-next.4(electron@37.1.0)(expect-webdriverio@5.4.1)(webdriverio@9.16.2(puppeteer-core@22.15.0))
-      xvfb-maybe:
-        specifier: ^0.2.1
-        version: 0.2.1
-
-  apps/minimal-redux:
-    dependencies:
-      '@reduxjs/toolkit':
-        specifier: ^2.0.1
-        version: 2.8.2(react@19.1.1)
-      '@zubridge/electron':
-        specifier: next
-        version: 2.0.0-next.21(electron@37.1.0)(redux@5.0.1)(zustand@5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      react:
-        specifier: ^19.0.0
-        version: 19.1.1
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.1.1(react@19.1.1)
-      redux:
-        specifier: ^5.0.1
-        version: 5.0.1
+      scheduler:
+        specifier: ^0.26.0
+        version: 0.26.0
       zustand:
         specifier: ^5.0.3
         version: 5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
@@ -428,6 +331,109 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1
 
+  apps/minimal-redux:
+    dependencies:
+      '@reduxjs/toolkit':
+        specifier: ^2.0.1
+        version: 2.8.2(react@19.1.1)
+      '@zubridge/electron':
+        specifier: next
+        version: 2.0.0-next.21(electron@37.1.0)(redux@5.0.1)(zustand@5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      react:
+        specifier: ^19.0.0
+        version: 19.1.1
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.1.1(react@19.1.1)
+      redux:
+        specifier: ^5.0.1
+        version: 5.0.1
+      scheduler:
+        specifier: ^0.26.0
+        version: 0.26.0
+      zustand:
+        specifier: ^5.0.3
+        version: 5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.10
+        version: 4.1.11
+      '@tailwindcss/vite':
+        specifier: ^4.1.10
+        version: 4.1.11(vite@7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+      '@types/mocha':
+        specifier: ^10.0.10
+        version: 10.0.10
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.17.0
+      '@types/react':
+        specifier: ^19.1.8
+        version: 19.1.9
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.1.7(@types/react@19.1.9)
+      '@vitejs/plugin-react':
+        specifier: ^4.4.0
+        version: 4.7.0(vite@7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+      '@wdio/cli':
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.1)(puppeteer-core@22.15.0)
+      '@wdio/globals':
+        specifier: 9.16.2
+        version: 9.16.2(expect-webdriverio@5.4.1)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+      '@wdio/local-runner':
+        specifier: 9.16.2
+        version: 9.16.2(@wdio/globals@9.16.2)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+      '@wdio/mocha-framework':
+        specifier: 9.16.2
+        version: 9.16.2
+      '@wdio/spec-reporter':
+        specifier: 9.16.2
+        version: 9.16.2
+      '@zubridge/types':
+        specifier: next
+        version: 2.0.0-next.0(electron@37.1.0)(zustand@5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+      autoprefixer:
+        specifier: ^10.4.21
+        version: 10.4.21(postcss@8.5.6)
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
+      electron:
+        specifier: 37.1.0
+        version: 37.1.0
+      electron-builder:
+        specifier: ^26.0.12
+        version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
+      electron-vite:
+        specifier: beta
+        version: 4.0.0-beta.0(vite@7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0))
+      is-ci:
+        specifier: ^4.1.0
+        version: 4.1.0
+      postcss:
+        specifier: ^8.5.5
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^4.1.10
+        version: 4.1.11
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      vite:
+        specifier: ^7.0.4
+        version: 7.0.6(@types/node@22.17.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.0)
+      wdio-electron-service:
+        specifier: next
+        version: 9.0.0-next.4(electron@37.1.0)(expect-webdriverio@5.4.1)(webdriverio@9.16.2(puppeteer-core@22.15.0))
+      xvfb-maybe:
+        specifier: ^0.2.1
+        version: 0.2.1
+
   apps/minimal-zustand-basic:
     dependencies:
       '@zubridge/electron':
@@ -442,6 +448,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.1(react@19.1.1)
+      scheduler:
+        specifier: ^0.26.0
+        version: 0.26.0
       zustand:
         specifier: ^5.0.3
         version: 5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
@@ -536,6 +545,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.1(react@19.1.1)
+      scheduler:
+        specifier: ^0.26.0
+        version: 0.26.0
       zustand:
         specifier: ^5.0.3
         version: 5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
@@ -630,6 +642,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.1(react@19.1.1)
+      scheduler:
+        specifier: ^0.26.0
+        version: 0.26.0
       zustand:
         specifier: ^5.0.3
         version: 5.0.7(@types/react@19.1.9)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
