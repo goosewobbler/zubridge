@@ -172,7 +172,7 @@ export default defineConfig({
         '@': resolve('src/renderer'),
         // Add aliases of core packages to use browser-safe versions
         '@zubridge/core': resolve(__dirname, '../../packages/core/dist/index.js'),
-        '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/index.js'),
+        '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/renderer.js'),
         '@zubridge/middleware': resolve(__dirname, '../../packages/middleware/dist/index.js'),
         '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
       },
