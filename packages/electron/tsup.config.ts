@@ -50,7 +50,7 @@ export default defineConfig([
       // Use esbuild's built-in Node.js polyfills for browser compatibility
       options.define = {
         ...options.define,
-        global: 'globalThis',
+        global: 'global',
       };
       // Enable Node.js polyfills
       options.platform = 'browser';

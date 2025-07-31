@@ -2,7 +2,7 @@ import process from 'node:process';
 import { BrowserWindow, app, ipcMain } from 'electron';
 import path from 'node:path';
 
-import { isDev } from '@zubridge/electron';
+import { isDev } from '@zubridge/electron/main';
 import { createDispatch } from '@zubridge/electron/main';
 import { debug } from '@zubridge/core';
 import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
