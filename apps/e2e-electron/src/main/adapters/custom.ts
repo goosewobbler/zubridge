@@ -1,13 +1,12 @@
 import type { State } from '../../types.js';
 import type { UnifiedStore } from './index.js';
 import type { CustomStore } from '../../modes/custom/store.js';
-import { destroyCustomStore } from '../../modes/custom/store.js';
 
 /**
  * Creates a custom store adapter that converts a StateManager to the UnifiedStore interface
  * Useful for EventEmitter-based stores and other custom implementations
  */
-export function createCustomAdapter<S>(customStore: CustomStore): UnifiedStore<State> {
+export function createCustomAdapter(customStore: CustomStore): UnifiedStore<State> {
   let isDestroyed = false;
   let storeSubscriptions: (() => void)[] = []; // Track subscriptions for cleanup
 
