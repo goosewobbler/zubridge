@@ -76,6 +76,9 @@
     "onlyBuiltDependencies": [
       "electron",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "@types/node": "22.18.0"
+    }
   }
 }
