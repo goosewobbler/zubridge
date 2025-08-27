@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/middleware",
-  "version": "0.1.0",
+  "version": "0.1.1-next.0",
   "description": "Middleware framework for Zubridge state management",
   "main": "index.js",
   "types": "index.d.ts",
