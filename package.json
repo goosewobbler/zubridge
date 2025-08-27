@@ -78,7 +78,9 @@
       "esbuild"
     ],
     "overrides": {
-      "@types/node": "22.18.0"
+      "@types/node": "22.18.0",
+      "@zubridge/electron": "workspace:*",
+      "@zubridge/core": "workspace:*"
     }
   }
 }
