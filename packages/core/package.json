@@ -19,11 +19,11 @@
   },
   "dependencies": {
     "@wdio/logger": "^9.4.4",
-    "weald": "^1.0.4"
+    "weald": "^1.0.6"
   },
   "devDependencies": {
     "shx": "^0.4.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.9.2"
   },
   "repository": {
     "type": "git",

@@ -82,7 +82,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.1",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.14.0",
     "@types/shelljs": "^0.8.15",
@@ -92,12 +92,12 @@
     "jsdom": "^26.0.0",
     "react": "^19.0.0",
     "redux": "^5.0.1",
-    "rollup": "^4.43.0",
+    "rollup": "^4.49.0",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
     "tsup": "^8.5.0",
-    "tsx": "^4.20.3",
-    "typescript": "^5.7.3",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
     "vitest": "^3.0.5",
     "zustand": "^5.0.3"
   },
@@ -112,6 +112,6 @@
     "@zubridge/core": "workspace:*",
     "dequal": "^2.0.3",
     "uuid": "^11.1.0",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.8"
   }
 }

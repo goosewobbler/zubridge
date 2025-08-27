@@ -51,14 +51,14 @@
     "package": "pnpm pack"
   },
   "peerDependencies": {
-    "zustand": "^5.0.3",
-    "electron": "35.0.0"
+    "electron": "35.0.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "shx": "^0.4.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.8.2",
-    "zustand": "^5.0.3"
+    "typescript": "^5.9.2",
+    "zustand": "^5.0.8"
   },
   "repository": {
     "type": "git",

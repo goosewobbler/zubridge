@@ -20,7 +20,7 @@
   "license": "MIT",
   "devDependencies": {
     "@napi-rs/cli": "^2.16.5",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">= 14.0.0"

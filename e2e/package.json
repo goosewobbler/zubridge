@@ -23,21 +23,21 @@
   },
   "dependencies": {
     "cross-env": "^7.0.3",
-    "electron": "37.1.0"
+    "electron": "37.3.1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.14.0",
     "@types/ws": "^8.18.1",
-    "@wdio/cli": "^9.17.1",
+    "@wdio/cli": "^9.19.2",
     "@wdio/globals": "^9.17.0",
-    "@wdio/local-runner": "^9.17.0",
-    "@wdio/mocha-framework": "^9.17.0",
+    "@wdio/local-runner": "^9.19.2",
+    "@wdio/mocha-framework": "^9.19.2",
     "@zubridge/types": "workspace:*",
     "read-package-up": "^11.0.0",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
-    "wdio-electron-service": "next",
+    "typescript": "^5.9.2",
+    "wdio-electron-service": "^9.1.1",
     "ws": "^8.18.2",
     "xvfb-maybe": "^0.2.1"
   }

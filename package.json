@@ -54,13 +54,13 @@
     "@types/shelljs": "^0.8.15",
     "cross-env": "^7.0.3",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
-    "package-versioner": "^0.8.1",
+    "lint-staged": "^16.1.5",
+    "package-versioner": "^0.9.1",
     "prettier": "^3.5.0",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "tsx": "^4.20.3",
-    "turbo": "^2.4.1"
+    "tsx": "^4.20.5",
+    "turbo": "^2.5.6"
   },
   "lint-staged": {
     "**/*.{yml,json,md,ts,tsx,js}": [
