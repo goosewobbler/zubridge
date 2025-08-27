@@ -2,7 +2,7 @@
   "versionPrefix": "v",
   "preset": "angular",
   "baseBranch": "main",
-  "synced": false,
+  "sync": false,
   "commitMessage": "chore: release ${packageName}@${version} [skip-ci]",
   "tagTemplate": "${packageName}@${prefix}${version}",
   "skip": ["@zubridge/apps-shared", "e2e-*", "minimal-*", "zubridge-e2e"],
