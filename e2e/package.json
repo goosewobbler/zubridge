@@ -37,7 +37,7 @@
     "read-package-up": "^11.0.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.2",
-    "wdio-electron-service": "^9.1.1",
+    "wdio-electron-service": "^9.1.2",
     "webdriverio": "^9.19.2",
     "ws": "^8.18.2",
     "xvfb-maybe": "^0.2.1"
