@@ -14,7 +14,7 @@
     "build:basic": "cross-env ZUBRIDGE_MODE=basic vite build && cross-env ZUBRIDGE_MODE=basic pnpm tauri build -- --verbose"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/api": "^1.5.3",
     "@zubridge/core": "workspace:*",
     "@zubridge/tauri": "workspace:*",
     "@zubridge/ui": "workspace:*",
