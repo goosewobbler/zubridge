@@ -38,3 +38,6 @@ target
 
 # Ignore package tarballs
 *.tgz
+
+# Ignore Electron user data
+.electron-user-data*
