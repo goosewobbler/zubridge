@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
 import { debug } from '@zubridge/core';
 import type { Action, StateManager, AnyState, BackendBridge, WrapperOrWebContents } from '@zubridge/types';
+import { v4 as uuidv4 } from 'uuid';
 
 import { IpcChannel } from './constants.js';
 import { initActionQueue } from './main/actionQueue.js';
@@ -371,6 +372,29 @@ export function createCoreBridge<State extends AnyState>(
     }
   });
 
+  // Handle state update acknowledgments from renderers
+  ipcMain.on(IpcChannel.STATE_UPDATE_ACK, (event: IpcMainEvent, data: any) => {
+    try {
+      const { updateId, thunkId } = data || {};
+      debug('thunk', `Received state update acknowledgment for ${updateId} from renderer ${event.sender.id}`);
+
+      if (!updateId) {
+        debug('thunk:warn', 'Missing updateId in state update acknowledgment');
+        return;
+      }
+
+      // Mark this renderer as having acknowledged the update
+      const allAcknowledged = thunkManager.acknowledgeStateUpdate(updateId, event.sender.id);
+
+      if (allAcknowledged && thunkId) {
+        debug('thunk', `All renderers acknowledged update ${updateId} for thunk ${thunkId}`);
+        // The thunk completion will be checked by MainThunkProcessor polling
+      }
+    } catch (error) {
+      debug('core:error', 'Error handling state update acknowledgment:', error);
+    }
+  });
+
   // Subscribe to state manager changes and selectively notify windows
   let prevState: State | undefined = undefined;
   const stateManagerUnsubscribe = stateManager.subscribe((state: State) => {
@@ -445,14 +469,46 @@ export function createCoreBridge<State extends AnyState>(
         (state) => {
           debug('core', `Sending state update to window ${webContents.id}`);
           const sanitizedState = sanitizeState(state);
-          safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, sanitizedState);
+
+          // Generate update ID and check for active thunk
+          const updateId = uuidv4();
+          const activeThunkId = thunkManager.getCurrentActiveThunkId();
+
+          // Track this update for thunk completion if there's an active thunk
+          if (activeThunkId) {
+            thunkManager.trackStateUpdateForThunk(activeThunkId, updateId, [webContents.id]);
+            debug('core', `Tracking state update ${updateId} for active thunk ${activeThunkId}`);
+          }
+
+          // Send enhanced state update with tracking information
+          safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+            updateId,
+            state: sanitizedState,
+            thunkId: activeThunkId,
+          });
         },
         webContents.id,
       );
       unsubs.push(unsubscribe);
       if (tracked) {
         const initialState = sanitizeState(stateManager.getState());
-        safelySendToWindow(webContents, IpcChannel.SUBSCRIBE, initialState);
+
+        // Generate update ID and check for active thunk for initial state
+        const updateId = uuidv4();
+        const activeThunkId = thunkManager.getCurrentActiveThunkId();
+
+        // Track this update for thunk completion if there's an active thunk
+        if (activeThunkId) {
+          thunkManager.trackStateUpdateForThunk(activeThunkId, updateId, [webContents.id]);
+          debug('core', `Tracking initial state update ${updateId} for active thunk ${activeThunkId}`);
+        }
+
+        // Send initial state with tracking information
+        safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+          updateId,
+          state: initialState,
+          thunkId: activeThunkId,
+        });
       }
     }
     return {

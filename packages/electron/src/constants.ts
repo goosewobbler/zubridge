@@ -24,6 +24,16 @@ export enum IpcChannel {
   SUBSCRIBE = 'zubridge:subscribe',
 
   /**
+   * Used by main process to send state updates to renderer with tracking
+   */
+  STATE_UPDATE = 'zubridge:state-update',
+
+  /**
+   * Used by renderer to acknowledge receipt of state update
+   */
+  STATE_UPDATE_ACK = 'zubridge:state-update-ack',
+
+  /**
    * Used by renderer to register a thunk with main process
    */
   REGISTER_THUNK = 'zubridge:register-thunk',

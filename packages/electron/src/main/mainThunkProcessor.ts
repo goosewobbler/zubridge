@@ -129,7 +129,44 @@ export class MainThunkProcessor {
           const result = await thunk(getState, dispatch);
           debug('core', '[MAIN_THUNK] Thunk executed successfully, result:', result);
 
-          return result;
+          // wait for all state updates to be acknowledged before returning
+          debug('core', '[MAIN_THUNK] Waiting for state propagation to complete');
+          return new Promise((resolve, reject) => {
+            const checkCompletion = () => {
+              if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
+                debug('core', `[MAIN_THUNK] Thunk ${thunkObj.id} fully complete (execution + state propagation)`);
+                resolve(result);
+              } else {
+                // Check again in a short interval
+                setTimeout(checkCompletion, 50);
+              }
+            };
+
+            // Set up timeout for state propagation
+            const timeout = setTimeout(() => {
+              debug('core:error', `[MAIN_THUNK] Timeout waiting for state propagation for thunk ${thunkObj.id}`);
+              reject(
+                new Error(
+                  `Thunk completion timeout: state propagation not acknowledged within ${this.actionCompletionTimeoutMs}ms`,
+                ),
+              );
+            }, this.actionCompletionTimeoutMs);
+
+            // Start checking completion
+            checkCompletion();
+
+            // Ensure timeout is cleared when resolved
+            const originalResolve = resolve;
+            const originalReject = reject;
+            resolve = (value: any) => {
+              clearTimeout(timeout);
+              originalResolve(value);
+            };
+            reject = (error: any) => {
+              clearTimeout(timeout);
+              originalReject(error);
+            };
+          });
         } catch (error) {
           debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
           thunkManager.markThunkFailed(thunkObj.id, error instanceof Error ? error : new Error(String(error)));

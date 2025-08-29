@@ -60,15 +60,31 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
       // Set up subscription IPC channel if not already done
       if (listeners.size === 1) {
-        debug('ipc', 'First subscriber - setting up subscription listener');
-        ipcRenderer.on(IpcChannel.SUBSCRIBE, (_event, state) => {
-          debug('ipc', 'Received state update, notifying subscribers');
+        debug('ipc', 'First subscriber - setting up state update listener');
+
+        // Set up state update tracking listener (now handles ALL state updates)
+        ipcRenderer.on(IpcChannel.STATE_UPDATE, async (_event, payload) => {
+          const { updateId, state, thunkId } = payload;
+          debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
+
+          // Notify all subscribers of the state change
           listeners.forEach((fn) => fn(state));
+
+          // Send acknowledgment back to main process
+          debug('ipc', `Sending acknowledgment for state update ${updateId}`);
+          try {
+            const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+            ipcRenderer.send(IpcChannel.STATE_UPDATE_ACK, {
+              updateId,
+              windowId,
+              thunkId,
+            });
+          } catch (error) {
+            debug('ipc:error', `Error sending state update acknowledgment: ${error}`);
+          }
         });
 
-        // Setup initial subscription
-        debug('ipc', 'Sending initial subscription request');
-        ipcRenderer.send(IpcChannel.SUBSCRIBE, { keys: ['*'] });
+        // Initial state will be sent via STATE_UPDATE channel when bridge processes subscriptions
       }
 
       // Return unsubscribe function

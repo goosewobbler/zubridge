@@ -38,6 +38,17 @@ export interface ThunkHandle {
 }
 
 /**
+ * Tracks state updates pending acknowledgment from renderer processes
+ */
+interface PendingStateUpdate {
+  updateId: string;
+  thunkId: string;
+  subscribedRenderers: Set<number>; // window IDs
+  acknowledgedBy: Set<number>; // window IDs that sent ACK
+  timestamp: number;
+}
+
+/**
  * Manager for thunk registration and execution
  */
 export class ThunkManager extends EventEmitter {
@@ -75,6 +86,16 @@ export class ThunkManager extends EventEmitter {
    * Thunk errors by ID
    */
   private thunkErrors = new Map<string, Error>();
+
+  /**
+   * Tracks state updates pending acknowledgment from renderers
+   */
+  private pendingStateUpdates = new Map<string, PendingStateUpdate>();
+
+  /**
+   * Maps thunk ID to set of pending update IDs for that thunk
+   */
+  private thunkPendingUpdates = new Map<string, Set<string>>();
 
   private stateManager?: { processAction: (action: Action) => any };
 
@@ -466,6 +487,145 @@ export class ThunkManager extends EventEmitter {
    */
   getScheduler(): ThunkScheduler {
     return this.scheduler;
+  }
+
+  /**
+   * Track a state update for thunk completion
+   * The thunk will not be considered complete until all renderers acknowledge this update
+   */
+  trackStateUpdateForThunk(thunkId: string, updateId: string, subscribedRenderers: number[]): void {
+    debug(
+      'thunk',
+      `Tracking state update ${updateId} for thunk ${thunkId}, renderers: [${subscribedRenderers.join(', ')}]`,
+    );
+
+    // Create pending update record
+    this.pendingStateUpdates.set(updateId, {
+      updateId,
+      thunkId,
+      subscribedRenderers: new Set(subscribedRenderers),
+      acknowledgedBy: new Set(),
+      timestamp: Date.now(),
+    });
+
+    // Track this update for the thunk
+    if (!this.thunkPendingUpdates.has(thunkId)) {
+      this.thunkPendingUpdates.set(thunkId, new Set());
+    }
+    this.thunkPendingUpdates.get(thunkId)!.add(updateId);
+  }
+
+  /**
+   * Mark a renderer as having acknowledged a state update
+   * Returns true if all renderers have now acknowledged this update
+   */
+  acknowledgeStateUpdate(updateId: string, rendererId: number): boolean {
+    const update = this.pendingStateUpdates.get(updateId);
+    if (!update) {
+      debug('thunk:warn', `Received acknowledgment for unknown update ${updateId} from renderer ${rendererId}`);
+      return false;
+    }
+
+    // Mark this renderer as acknowledged
+    update.acknowledgedBy.add(rendererId);
+
+    debug(
+      'thunk',
+      `Renderer ${rendererId} acknowledged update ${updateId} for thunk ${update.thunkId} (${update.acknowledgedBy.size}/${update.subscribedRenderers.size})`,
+    );
+
+    // Check if all renderers have acknowledged
+    const allAcknowledged =
+      update.subscribedRenderers.size === update.acknowledgedBy.size &&
+      Array.from(update.subscribedRenderers).every((id) => update.acknowledgedBy.has(id));
+
+    if (allAcknowledged) {
+      debug('thunk', `All renderers acknowledged update ${updateId} for thunk ${update.thunkId}`);
+
+      // Clean up this update
+      this.pendingStateUpdates.delete(updateId);
+
+      // Remove from thunk's pending updates
+      const thunkUpdates = this.thunkPendingUpdates.get(update.thunkId);
+      if (thunkUpdates) {
+        thunkUpdates.delete(updateId);
+        if (thunkUpdates.size === 0) {
+          this.thunkPendingUpdates.delete(update.thunkId);
+        }
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a thunk is fully complete (including all state updates acknowledged)
+   */
+  isThunkFullyComplete(thunkId: string): boolean {
+    const thunk = this.thunks.get(thunkId);
+    if (!thunk) {
+      return false;
+    }
+
+    // Must be in completed state from execution perspective
+    if (thunk.state !== ThunkState.COMPLETED) {
+      return false;
+    }
+
+    // Must have no pending state updates
+    const pendingUpdates = this.thunkPendingUpdates.get(thunkId);
+    const hasPendingUpdates = pendingUpdates && pendingUpdates.size > 0;
+
+    if (hasPendingUpdates) {
+      debug(
+        'thunk',
+        `Thunk ${thunkId} execution complete but waiting for ${pendingUpdates!.size} state update acknowledgments`,
+      );
+      return false;
+    }
+
+    debug('thunk', `Thunk ${thunkId} fully complete (execution + state propagation)`);
+    return true;
+  }
+
+  /**
+   * Get current active root thunk ID for state update tracking
+   */
+  getCurrentActiveThunkId(): string | undefined {
+    return this.rootThunkId;
+  }
+
+  /**
+   * Clean up expired pending state updates (prevent memory leaks)
+   */
+  cleanupExpiredStateUpdates(maxAgeMs: number = 30000): void {
+    const now = Date.now();
+    const expiredUpdates: string[] = [];
+
+    for (const [updateId, update] of this.pendingStateUpdates) {
+      if (now - update.timestamp > maxAgeMs) {
+        expiredUpdates.push(updateId);
+      }
+    }
+
+    for (const updateId of expiredUpdates) {
+      const update = this.pendingStateUpdates.get(updateId);
+      if (update) {
+        debug('thunk:warn', `Cleaning up expired state update ${updateId} for thunk ${update.thunkId}`);
+        this.pendingStateUpdates.delete(updateId);
+
+        // Remove from thunk tracking
+        const thunkUpdates = this.thunkPendingUpdates.get(update.thunkId);
+        if (thunkUpdates) {
+          thunkUpdates.delete(updateId);
+          if (thunkUpdates.size === 0) {
+            this.thunkPendingUpdates.delete(update.thunkId);
+          }
+        }
+      }
+    }
   }
 }
 
