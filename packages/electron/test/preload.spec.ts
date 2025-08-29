@@ -63,16 +63,16 @@ describe('preloadBridge', () => {
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
       let ipcCallback: (event: any, data: any) => void = () => {};
       mockedIpcRenderer.on.mockImplementation((channel, cb) => {
-        if (channel === IpcChannel.SUBSCRIBE) {
+        if (channel === IpcChannel.STATE_UPDATE) {
           ipcCallback = cb;
         }
         return mockedIpcRenderer;
       });
       const bridge = preloadBridge();
       bridge.handlers.subscribe(callback);
-      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(IpcChannel.SUBSCRIBE, expect.any(Function));
-      expect(mockedIpcRenderer.send).toHaveBeenCalledWith(IpcChannel.SUBSCRIBE, { keys: ['*'] });
-      ipcCallback({} as any, { counter: 42 });
+      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(IpcChannel.STATE_UPDATE, expect.any(Function));
+      // No longer sends to old SUBSCRIBE channel
+      ipcCallback({} as any, { updateId: 'test-id', state: { counter: 42 }, thunkId: null });
       expect(callback).toHaveBeenCalledWith({ counter: 42 });
     });
 
@@ -85,10 +85,10 @@ describe('preloadBridge', () => {
       bridge.handlers.subscribe(callback2);
       const ipcCallbacks = vi
         .mocked(electron.ipcRenderer.on)
-        .mock.calls.filter(([channel]) => channel === IpcChannel.SUBSCRIBE)
+        .mock.calls.filter(([channel]) => channel === IpcChannel.STATE_UPDATE)
         .map(([, cb]) => cb);
       if (ipcCallbacks.length > 0) {
-        ipcCallbacks[0]({} as any, { counter: 42 });
+        ipcCallbacks[0]({} as any, { updateId: 'test-id', state: { counter: 42 }, thunkId: null });
       }
       expect(callback).not.toHaveBeenCalled();
       expect(callback2).toHaveBeenCalledWith({ counter: 42 });

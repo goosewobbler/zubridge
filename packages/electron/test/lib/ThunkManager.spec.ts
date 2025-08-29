@@ -344,4 +344,100 @@ describe('ThunkManager', () => {
     thunkManager.completeThunk(thunkId);
     expect(thunkManager.isThunkActive(thunkId)).toBe(false);
   });
+
+  describe('state update acknowledgment tracking', () => {
+    it('should track state updates for thunk completion', () => {
+      const thunkId = 'test-thunk';
+      const updateId = 'update-1';
+      const renderers = [1, 2];
+
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, renderers);
+
+      // Thunk should not be considered fully complete until all state updates are acknowledged
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+    });
+
+    it('should acknowledge state updates from renderers', () => {
+      const thunkId = 'test-thunk';
+      const updateId = 'update-1';
+      const renderers = [1, 2];
+
+      // Register and complete the thunk execution
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.markThunkExecuting(thunkId);
+      thunkManager.completeThunk(thunkId);
+
+      // Track state update
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, renderers);
+
+      // Should not be fully complete yet
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // First renderer acknowledges
+      const firstAck = thunkManager.acknowledgeStateUpdate(updateId, 1);
+      expect(firstAck).toBe(false); // Not all acknowledged yet
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Second renderer acknowledges
+      const secondAck = thunkManager.acknowledgeStateUpdate(updateId, 2);
+      expect(secondAck).toBe(true); // All acknowledged now
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(true);
+    });
+
+    it('should handle acknowledgment of unknown update ID', () => {
+      const result = thunkManager.acknowledgeStateUpdate('unknown-update', 1);
+      expect(result).toBe(false);
+    });
+
+    it('should return current active thunk ID', () => {
+      expect(thunkManager.getCurrentActiveThunkId()).toBeUndefined();
+
+      const thunkId = 'active-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.markThunkExecuting(thunkId);
+
+      expect(thunkManager.getCurrentActiveThunkId()).toBe(thunkId);
+    });
+
+    it('should determine thunk is fully complete only after execution and acknowledgments', () => {
+      const thunkId = 'completion-test-thunk';
+      const thunk = new MockThunk(thunkId);
+
+      // Register thunk
+      thunkManager.registerThunk(thunkId, thunk as any);
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Start executing
+      thunkManager.markThunkExecuting(thunkId);
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Complete execution but add pending state update
+      thunkManager.completeThunk(thunkId);
+      thunkManager.trackStateUpdateForThunk(thunkId, 'update-1', [1]);
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Acknowledge state update
+      thunkManager.acknowledgeStateUpdate('update-1', 1);
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(true);
+    });
+
+    it('should clean up expired state updates', async () => {
+      const thunkId = 'cleanup-test-thunk';
+      const updateId = 'expired-update';
+
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, [1]);
+
+      // Wait a small amount of time to ensure timestamp difference
+      await new Promise((resolve) => setTimeout(resolve, 1));
+
+      // Clean up with very short max age (0ms)
+      thunkManager.cleanupExpiredStateUpdates(0);
+
+      // The acknowledgment should now return false since update was cleaned up
+      const result = thunkManager.acknowledgeStateUpdate(updateId, 1);
+      expect(result).toBe(false);
+    });
+  });
 });
