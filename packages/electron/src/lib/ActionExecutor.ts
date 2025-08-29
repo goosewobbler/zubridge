@@ -1,5 +1,6 @@
 import { debug } from '@zubridge/core';
 import type { Action, StateManager, AnyState } from '@zubridge/types';
+import { thunkManager } from './initThunkManager.js';
 
 /**
  * Responsible for executing actions through state managers
@@ -16,6 +17,15 @@ export class ActionExecutor<S extends AnyState = AnyState> {
    */
   public async executeAction(action: Action): Promise<any> {
     debug('executor', `Executing action ${action.type} (ID: ${action.__id || 'unknown'})`);
+
+    // Set thunk context if this action is from a thunk
+    const isThunkAction = !!(action as any).__thunkParentId;
+    const thunkId = (action as any).__thunkParentId;
+
+    if (isThunkAction) {
+      debug('executor', `Setting thunk context for action ${action.type} (thunk: ${thunkId})`);
+      thunkManager.setCurrentThunkAction(thunkId);
+    }
 
     try {
       // Process action through state manager
@@ -49,6 +59,12 @@ export class ActionExecutor<S extends AnyState = AnyState> {
       debug('executor:error', `Error details: ${error instanceof Error ? error.message : String(error)}`);
       debug('executor:error', `Error stack: ${error instanceof Error ? error.stack : 'No stack available'}`);
       throw error;
+    } finally {
+      // Clear thunk context after action processing
+      if (isThunkAction) {
+        debug('executor', `Clearing thunk context for action ${action.type}`);
+        thunkManager.setCurrentThunkAction(undefined);
+      }
     }
   }
 }

@@ -97,6 +97,11 @@ export class ThunkManager extends EventEmitter {
    */
   private thunkPendingUpdates = new Map<string, Set<string>>();
 
+  /**
+   * Currently processing thunk action ID (for state update tracking)
+   */
+  private currentThunkActionId?: string;
+
   private stateManager?: { processAction: (action: Action) => any };
 
   constructor(scheduler: ThunkScheduler) {
@@ -561,6 +566,45 @@ export class ThunkManager extends EventEmitter {
   }
 
   /**
+   * Remove a dead renderer from all pending state updates
+   * This should be called when a window is destroyed to prevent hanging acknowledgments
+   */
+  cleanupDeadRenderer(rendererId: number): void {
+    debug('thunk', `Cleaning up dead renderer ${rendererId} from pending state updates`);
+
+    const updatesToCheck = Array.from(this.pendingStateUpdates.values());
+    for (const update of updatesToCheck) {
+      if (update.subscribedRenderers.has(rendererId)) {
+        debug('thunk', `Removing dead renderer ${rendererId} from update ${update.updateId}`);
+
+        // Remove the dead renderer from subscribers
+        update.subscribedRenderers.delete(rendererId);
+
+        // If this was the last renderer we were waiting for, mark as complete
+        const allAcknowledged =
+          update.subscribedRenderers.size === update.acknowledgedBy.size &&
+          Array.from(update.subscribedRenderers).every((id) => update.acknowledgedBy.has(id));
+
+        if (allAcknowledged) {
+          debug('thunk', `All remaining renderers acknowledged update ${update.updateId} after cleanup`);
+
+          // Clean up this update
+          this.pendingStateUpdates.delete(update.updateId);
+
+          // Remove from thunk's pending updates
+          const thunkUpdates = this.thunkPendingUpdates.get(update.thunkId);
+          if (thunkUpdates) {
+            thunkUpdates.delete(update.updateId);
+            if (thunkUpdates.size === 0) {
+              this.thunkPendingUpdates.delete(update.thunkId);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Check if a thunk is fully complete (including all state updates acknowledged)
    */
   isThunkFullyComplete(thunkId: string): boolean {
@@ -595,6 +639,20 @@ export class ThunkManager extends EventEmitter {
    */
   getCurrentActiveThunkId(): string | undefined {
     return this.rootThunkId;
+  }
+
+  /**
+   * Set the currently processing thunk action ID
+   */
+  setCurrentThunkAction(thunkId: string | undefined): void {
+    this.currentThunkActionId = thunkId;
+  }
+
+  /**
+   * Get the currently processing thunk action ID
+   */
+  getCurrentThunkActionId(): string | undefined {
+    return this.currentThunkActionId;
   }
 
   /**

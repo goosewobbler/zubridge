@@ -458,8 +458,11 @@ export function createCoreBridge<State extends AnyState>(
       // Set up a destroy listener to clean up subscriptions when the window is closed
       if (!destroyListenerSet.has(webContents.id)) {
         setupDestroyListener(webContents, () => {
+          debug('thunk', `Window ${webContents.id} destroyed, cleaning up subscriptions and pending state updates`);
           subscriptionManagers.delete(webContents.id);
           destroyListenerSet.delete(webContents.id);
+          // Clean up dead renderer from pending state updates to prevent hanging acknowledgments
+          thunkManager.cleanupDeadRenderer(webContents.id);
         });
         destroyListenerSet.add(webContents.id);
       }
@@ -470,21 +473,23 @@ export function createCoreBridge<State extends AnyState>(
           debug('core', `Sending state update to window ${webContents.id}`);
           const sanitizedState = sanitizeState(state);
 
-          // Generate update ID and check for active thunk
+          // Generate update ID and check if this state update is from a thunk action
           const updateId = uuidv4();
-          const activeThunkId = thunkManager.getCurrentActiveThunkId();
+          const currentThunkId = thunkManager.getCurrentThunkActionId();
 
-          // Track this update for thunk completion if there's an active thunk
-          if (activeThunkId) {
-            thunkManager.trackStateUpdateForThunk(activeThunkId, updateId, [webContents.id]);
-            debug('core', `Tracking state update ${updateId} for active thunk ${activeThunkId}`);
+          // Only track state updates caused by thunk actions, not all updates while thunk is active
+          if (currentThunkId) {
+            thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [webContents.id]);
+            debug('core', `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`);
+          } else {
+            debug('core', `State update ${updateId} not tracked (not from thunk action)`);
           }
 
           // Send enhanced state update with tracking information
           safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
             updateId,
             state: sanitizedState,
-            thunkId: activeThunkId,
+            thunkId: currentThunkId,
           });
         },
         webContents.id,
@@ -493,21 +498,17 @@ export function createCoreBridge<State extends AnyState>(
       if (tracked) {
         const initialState = sanitizeState(stateManager.getState());
 
-        // Generate update ID and check for active thunk for initial state
+        // Generate update ID for initial state
         const updateId = uuidv4();
-        const activeThunkId = thunkManager.getCurrentActiveThunkId();
 
-        // Track this update for thunk completion if there's an active thunk
-        if (activeThunkId) {
-          thunkManager.trackStateUpdateForThunk(activeThunkId, updateId, [webContents.id]);
-          debug('core', `Tracking initial state update ${updateId} for active thunk ${activeThunkId}`);
-        }
+        // Initial state is never from a thunk action, so don't track it
+        debug('core', `Sending initial state update ${updateId} (not tracked - initial state)`);
 
         // Send initial state with tracking information
         safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
           updateId,
           state: initialState,
-          thunkId: activeThunkId,
+          thunkId: undefined, // Initial state is never from a thunk
         });
       }
     }

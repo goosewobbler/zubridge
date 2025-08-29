@@ -100,7 +100,8 @@ export class MainThunkProcessor {
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
     debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
 
-    return this.mainThunkRegistrationQueue.registerThunk(
+    // Execute the thunk through the registration queue and then wait for state propagation
+    const thunkExecutionPromise = this.mainThunkRegistrationQueue.registerThunk(
       thunkObj,
       async () => {
         try {
@@ -129,44 +130,8 @@ export class MainThunkProcessor {
           const result = await thunk(getState, dispatch);
           debug('core', '[MAIN_THUNK] Thunk executed successfully, result:', result);
 
-          // wait for all state updates to be acknowledged before returning
-          debug('core', '[MAIN_THUNK] Waiting for state propagation to complete');
-          return new Promise((resolve, reject) => {
-            const checkCompletion = () => {
-              if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
-                debug('core', `[MAIN_THUNK] Thunk ${thunkObj.id} fully complete (execution + state propagation)`);
-                resolve(result);
-              } else {
-                // Check again in a short interval
-                setTimeout(checkCompletion, 50);
-              }
-            };
-
-            // Set up timeout for state propagation
-            const timeout = setTimeout(() => {
-              debug('core:error', `[MAIN_THUNK] Timeout waiting for state propagation for thunk ${thunkObj.id}`);
-              reject(
-                new Error(
-                  `Thunk completion timeout: state propagation not acknowledged within ${this.actionCompletionTimeoutMs}ms`,
-                ),
-              );
-            }, this.actionCompletionTimeoutMs);
-
-            // Start checking completion
-            checkCompletion();
-
-            // Ensure timeout is cleared when resolved
-            const originalResolve = resolve;
-            const originalReject = reject;
-            resolve = (value: any) => {
-              clearTimeout(timeout);
-              originalResolve(value);
-            };
-            reject = (error: any) => {
-              clearTimeout(timeout);
-              originalReject(error);
-            };
-          });
+          // Return the result immediately - the ThunkRegistrationQueue will call completeThunk()
+          return result;
         } catch (error) {
           debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
           thunkManager.markThunkFailed(thunkObj.id, error instanceof Error ? error : new Error(String(error)));
@@ -175,6 +140,66 @@ export class MainThunkProcessor {
       },
       undefined, // rendererCallback
     );
+
+    // Wait for the thunk execution to complete, then wait for state propagation
+    const result = await thunkExecutionPromise;
+
+    // Now wait for all state updates to be acknowledged before returning
+    debug('core', '[MAIN_THUNK] Thunk execution complete, waiting for state propagation');
+
+    // Clean up expired state updates before checking completion
+    thunkManager.cleanupExpiredStateUpdates(30000); // 30 second max age
+
+    // Check immediate completion first (in case there were no state changes)
+    if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
+      debug('core', `[MAIN_THUNK] Thunk ${thunkObj.id} already fully complete (no pending state updates)`);
+      return result;
+    }
+
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const checkCompletion = () => {
+        // Clean up expired updates on each check
+        thunkManager.cleanupExpiredStateUpdates(30000);
+
+        if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
+          const elapsed = Date.now() - startTime;
+          debug(
+            'core',
+            `[MAIN_THUNK] Thunk ${thunkObj.id} fully complete after ${elapsed}ms (execution + state propagation)`,
+          );
+          resolve(result);
+        } else {
+          // Check again in a short interval
+          setTimeout(checkCompletion, 100);
+        }
+      };
+
+      // Set up timeout for state propagation
+      const timeout = setTimeout(() => {
+        debug('core:error', `[MAIN_THUNK] Timeout waiting for state propagation for thunk ${thunkObj.id}`);
+        reject(
+          new Error(
+            `Thunk completion timeout: state propagation not acknowledged within ${this.actionCompletionTimeoutMs}ms`,
+          ),
+        );
+      }, this.actionCompletionTimeoutMs);
+
+      // Start checking completion
+      checkCompletion();
+
+      // Ensure timeout is cleared when resolved
+      const originalResolve = resolve;
+      const originalReject = reject;
+      resolve = (value: any) => {
+        clearTimeout(timeout);
+        originalResolve(value);
+      };
+      reject = (error: any) => {
+        clearTimeout(timeout);
+        originalReject(error);
+      };
+    });
   }
 
   /**

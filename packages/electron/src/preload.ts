@@ -215,11 +215,16 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         }, timeoutMs);
 
         // Make sure to clear the timeout when the promise settles
-        const clearTimeoutFn = () => {
+        const originalResolve = resolve;
+        const originalReject = reject;
+        resolve = (value: any) => {
           clearTimeout(timeoutId);
+          originalResolve(value);
         };
-        resolve = Object.assign(resolve, { toString: clearTimeoutFn });
-        reject = Object.assign(reject, { toString: clearTimeoutFn });
+        reject = (error: any) => {
+          clearTimeout(timeoutId);
+          originalReject(error);
+        };
       });
     },
   };
