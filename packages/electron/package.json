@@ -11,7 +11,7 @@
   "types": "./dist/renderer.d.ts",
   "scripts": {
     "clean": "pnpm clean:output && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
-    "clean:output": "pnpm dlx shx rm -rf ./dist",
+    "clean:output": "pnpm dlx shx rm -rf ./dist && pnpm run clean:cache",
     "clean:cache": "shx rm -rf .turbo",
     "prebuild": "pnpm clean:output",
     "build": "tsup",

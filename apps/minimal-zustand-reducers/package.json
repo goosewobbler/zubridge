@@ -7,7 +7,8 @@
   "main": "out/main/index.js",
   "scripts": {
     "clean": "pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
-    "clean:cache": "pnpm dlx shx rm -rf ./dist* ./out* .cache",
+    "clean:cache": "pnpm dlx shx rm -rf .cache",
+    "clean:output": "pnpm dlx shx rm -rf ./dist* ./out* && pnpm run clean:cache",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",

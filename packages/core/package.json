@@ -13,8 +13,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "pnpm clean:cache && shx rm -rf dist node_modules",
+    "clean": "pnpm clean:cache && pnpm clean:output && shx rm -rf node_modules",
     "clean:cache": "shx rm -rf .turbo",
+    "clean:output": "shx rm -rf dist && pnpm run clean:cache",
     "test": "vitest run"
   },
   "dependencies": {
