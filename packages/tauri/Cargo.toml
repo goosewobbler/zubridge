@@ -1,6 +1,6 @@
 [package]
 name = "zubridge-tauri"
-version = "1.1.1-next.0"
+version = "1.1.1-next.1"
 edition = "2021"
 
 [dependencies]

@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/tauri",
-  "version": "1.1.1-next.0",
+  "version": "1.1.1-next.1",
   "description": "A streamlined state management library for Tauri applications using Zustand.",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/tauri",

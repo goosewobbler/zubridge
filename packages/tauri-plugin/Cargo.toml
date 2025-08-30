@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-zubridge"
-version = "0.1.1-next.0"
+version = "0.1.1-next.1"
 description = "A Tauri plugin for state management between frontend and backend"
 authors = [ "Sam Maister" ]
 license = "MIT OR Apache-2.0"
