@@ -634,6 +634,10 @@ describe('Thunk Execution and Behavior', () => {
         // Give subscriptions time to fully initialize
         await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
+        // Wait for initial state sync to ensure the subscription is active
+        // This prevents the race condition where thunk executes before subscription is established
+        await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
         console.log(`[LINUX DEBUG] Subscription setup complete, ready for thunk execution`);
       }
 
@@ -811,6 +815,20 @@ describe('Thunk Execution and Behavior', () => {
       // Switch back to main window
       await switchToWindow(0);
       console.log('Switched back to main window');
+
+      // Linux: Add verification that subscription setup worked correctly
+      if (process.platform === 'linux') {
+        console.log(`[LINUX DEBUG] Verifying subscription setup...`);
+
+        // Give subscriptions time to fully initialize
+        await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+        // Wait for initial state sync to ensure the subscription is active
+        // This prevents the race condition where thunk executes before subscription is established
+        await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
+        console.log(`[LINUX DEBUG] Subscription setup complete, ready for thunk execution`);
+      }
 
       // Start a slow thunk in main window that affects counter
       console.log('Starting slow thunk in main window');
