@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@types/node': 22.18.0
+  '@types/node': 24.3.0
   '@zubridge/electron': workspace:*
   '@zubridge/core': workspace:*
 
@@ -17,8 +17,8 @@ importers:
         specifier: ^0.8.15
         version: 0.8.17
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -26,8 +26,8 @@ importers:
         specifier: ^16.1.5
         version: 16.1.5
       package-versioner:
-        specifier: ^0.9.1
-        version: 0.9.1(conventional-commits-parser@6.2.0)
+        specifier: ^0.9.2
+        version: 0.9.2(conventional-commits-parser@6.2.0)
       prettier:
         specifier: ^3.5.0
         version: 3.6.2
@@ -78,26 +78,26 @@ importers:
         version: 0.26.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.1.12
       '@tailwindcss/vite':
         specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@zubridge/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -105,17 +105,17 @@ importers:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
@@ -127,10 +127,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
 
   apps/e2e-tauri:
     dependencies:
@@ -157,23 +157,23 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@zubridge/types':
         specifier: workspace:*
         version: link:../../packages/types
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       tailwindcss:
         specifier: ^4.1.12
         version: 4.1.12
@@ -182,7 +182,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
   apps/e2e-tauri-v1:
     dependencies:
@@ -206,29 +206,29 @@ importers:
         version: 19.1.1(react@19.1.1)
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^1.6.3
         version: 1.6.3
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@zubridge/types':
         specifier: workspace:*
         version: link:../../packages/types
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       tailwindcss:
         specifier: ^4.1.12
         version: 4.1.12
@@ -237,7 +237,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
   apps/minimal-custom:
     dependencies:
@@ -258,32 +258,32 @@ importers:
         version: 0.26.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.1.12
       '@tailwindcss/vite':
         specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@wdio/cli':
         specifier: 9.19.2
-        version: 9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
+        version: 9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.17.0
         version: 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -298,22 +298,22 @@ importers:
         version: 9.19.2
       '@zubridge/types':
         specifier: next
-        version: 2.0.0-next.0(electron@37.3.1)(zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+        version: 2.0.0-next.0(electron@37.4.0)(zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -328,10 +328,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.19.2
         version: 9.19.2(puppeteer-core@22.15.0)
@@ -364,32 +364,32 @@ importers:
         version: 0.26.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.1.12
       '@tailwindcss/vite':
         specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@wdio/cli':
         specifier: 9.19.2
-        version: 9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
+        version: 9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.17.0
         version: 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -404,22 +404,22 @@ importers:
         version: 9.19.2
       '@zubridge/types':
         specifier: next
-        version: 2.0.0-next.0(electron@37.3.1)(zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+        version: 2.0.0-next.0(electron@37.4.0)(zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -434,10 +434,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.19.2
         version: 9.19.2(puppeteer-core@22.15.0)
@@ -464,32 +464,32 @@ importers:
         version: 0.26.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.1.12
       '@tailwindcss/vite':
         specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@wdio/cli':
         specifier: 9.19.2
-        version: 9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
+        version: 9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.17.0
         version: 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -504,22 +504,22 @@ importers:
         version: 9.19.2
       '@zubridge/types':
         specifier: next
-        version: 2.0.0-next.0(electron@37.3.1)(zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+        version: 2.0.0-next.0(electron@37.4.0)(zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -534,10 +534,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.19.2
         version: 9.19.2(puppeteer-core@22.15.0)
@@ -564,32 +564,32 @@ importers:
         version: 0.26.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.1.12
       '@tailwindcss/vite':
         specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@wdio/cli':
         specifier: 9.19.2
-        version: 9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
+        version: 9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.17.0
         version: 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -604,22 +604,22 @@ importers:
         version: 9.19.2
       '@zubridge/types':
         specifier: next
-        version: 2.0.0-next.0(electron@37.3.1)(zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+        version: 2.0.0-next.0(electron@37.4.0)(zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -634,10 +634,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.19.2
         version: 9.19.2(puppeteer-core@22.15.0)
@@ -664,32 +664,32 @@ importers:
         version: 0.26.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.1.12
       '@tailwindcss/vite':
         specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@vitejs/plugin-react':
-        specifier: ^4.4.0
-        version: 4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        specifier: ^5.0.2
+        version: 5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@wdio/cli':
         specifier: 9.19.2
-        version: 9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
+        version: 9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: 9.17.0
         version: 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -704,22 +704,22 @@ importers:
         version: 9.19.2
       '@zubridge/types':
         specifier: next
-        version: 2.0.0-next.0(electron@37.3.1)(zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
+        version: 2.0.0-next.0(electron@37.4.0)(zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
@@ -734,10 +734,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.19.2
         version: 9.19.2(puppeteer-core@22.15.0)
@@ -748,24 +748,24 @@ importers:
   e2e:
     dependencies:
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       electron:
-        specifier: 37.3.1
-        version: 37.3.1
+        specifier: 37.4.0
+        version: 37.4.0
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
       '@wdio/cli':
         specifier: ^9.19.2
-        version: 9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
+        version: 9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)
       '@wdio/globals':
         specifier: ^9.17.0
         version: 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -789,7 +789,7 @@ importers:
         version: 5.9.2
       wdio-electron-service:
         specifier: ^9.1.2
-        version: 9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
+        version: 9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       webdriverio:
         specifier: ^9.19.2
         version: 9.19.2(puppeteer-core@22.15.0)
@@ -807,7 +807,7 @@ importers:
         version: link:../core
       zustand:
         specifier: ^4.3.0
-        version: 4.5.7(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)
+        version: 4.5.7(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)
     devDependencies:
       '@zubridge/types':
         specifier: workspace:*
@@ -851,7 +851,7 @@ importers:
         version: 11.1.0
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@rollup/plugin-commonjs':
         specifier: ^28.0.6
@@ -864,10 +864,10 @@ importers:
         version: 6.8.0
       '@testing-library/react':
         specifier: ^16.3.0
-        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.8(@types/react@19.1.11))(@types/react@19.1.11)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@types/node':
-        specifier: 22.18.0
-        version: 22.18.0
+        specifier: 24.3.0
+        version: 24.3.0
       '@types/shelljs':
         specifier: ^0.8.15
         version: 0.8.17
@@ -876,7 +876,7 @@ importers:
         version: 10.0.0
       '@vitest/coverage-v8':
         specifier: ^3.0.5
-        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types
@@ -909,7 +909,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^3.0.5
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
   packages/middleware/node:
     devDependencies:
@@ -930,7 +930,7 @@ importers:
         version: link:../types
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
     devDependencies:
       '@tauri-apps/api':
         specifier: ^2.8.0
@@ -940,16 +940,16 @@ importers:
         version: 6.8.0
       '@testing-library/react':
         specifier: ^16.3.0
-        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.8(@types/react@19.1.11))(@types/react@19.1.11)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/shelljs':
         specifier: ^0.8.15
         version: 0.8.17
       '@vitest/coverage-v8':
         specifier: ^3.0.9
-        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       react:
         specifier: ^19.0.0
         version: 19.1.1
@@ -967,7 +967,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^3.0.9
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
   packages/tauri-plugin: {}
 
@@ -988,7 +988,7 @@ importers:
         version: 5.9.2
       zustand:
         specifier: ^5.0.8
-        version: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+        version: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
 
   packages/ui:
     dependencies:
@@ -1013,10 +1013,10 @@ importers:
         version: 2.8.0
       '@types/react':
         specifier: ^19.1.11
-        version: 19.1.11
+        version: 19.1.12
       '@types/react-dom':
         specifier: ^19.1.8
-        version: 19.1.8(@types/react@19.1.11)
+        version: 19.1.9(@types/react@19.1.12)
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../electron
@@ -1043,7 +1043,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^7.1.3
-        version: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+        version: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
 packages:
 
@@ -1254,8 +1254,13 @@ packages:
     engines: {node: '>=12.0.0'}
     hasBin: true
 
-  '@electron/packager@18.4.2':
-    resolution: {integrity: sha512-5wr/6YoOhBlQoAloquKksY21Pa/2Eg4kq4y/+jOX+9smAFS4fcM3kG3KyhU/zEuwitxRjquq9/KxDNNhJbhc+w==}
+  '@electron/osx-sign@1.3.3':
+    resolution: {integrity: sha512-KZ8mhXvWv2rIEgMbWZ4y33bDHyUKMXnx4M0sTyPNK/vcB81ImdeY9Ggdqy0SWbMDgmbqyQ+phgejh6V3R2QuSg==}
+    engines: {node: '>=12.0.0'}
+    hasBin: true
+
+  '@electron/packager@18.4.4':
+    resolution: {integrity: sha512-fTUCmgL25WXTcFpM1M72VmFP8w3E4d+KNzWxmTDRpvwkfn/S206MAtM2cy0GF78KS9AwASMOUmlOIzCHeNxcGQ==}
     engines: {node: '>= 16.13.0'}
     hasBin: true
 
@@ -1268,10 +1273,17 @@ packages:
     resolution: {integrity: sha512-fKpv9kg4SPmt+hY7SVBnIYULE9QJl8L3sCfcBsnqbJwwBwAeTLokJ9TRt9y7bK0JAzIW2y78TVVjvnQEms/yyA==}
     engines: {node: '>=16.4'}
 
+  '@electron/universal@2.0.3':
+    resolution: {integrity: sha512-Wn9sPYIVFRFl5HmwMJkARCCf7rqK/EurkfQ/rJZ14mHP3iYTjZSIOSVonEAnhWeAXwtw7zOekGRlc6yTtZ0t+g==}
+    engines: {node: '>=16.4'}
+
   '@electron/windows-sign@1.2.2':
     resolution: {integrity: sha512-dfZeox66AvdPtb2lD8OsIIQh12Tp0GNCRUDfBHIKGpbmopZto2/A8nSpYYLoedPIHpqkeblZ/k8OV0Gy7PYuyQ==}
     engines: {node: '>=14.14'}
     hasBin: true
+
+  '@epic-web/invariant@1.0.0':
+    resolution: {integrity: sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA==}
 
   '@esbuild/aix-ppc64@0.25.9':
     resolution: {integrity: sha512-OaGtL73Jck6pBKjNIe24BnFE6agGl+6KxDtTfHhy1HmhthfKouEcOhqpSL64K4/0WCtbKFLOdzD/44cJ4k9opA==}
@@ -1436,7 +1448,7 @@ packages:
     resolution: {integrity: sha512-E+KExNurKcUJJdxmjglTl141EwxWyAHplvsYJQgSwXf8qiNWkTxTuCCqmhFEmbIXd4zLaGMfQFJ6WrZ7fSeV3g==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1445,7 +1457,7 @@ packages:
     resolution: {integrity: sha512-j1a5VstaK5KQy8Mu8cHmuQvN1Zc62TbLhjJxwHvKPPKEoowSF6h/0UdOpA9DNdWZ+9Inq73+puRq1df6OJ8Sag==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1454,7 +1466,7 @@ packages:
     resolution: {integrity: sha512-NyDSjPqhSvpZEMZrLCYUquWNl+XC/moEcVFqS55IEYIYsY0a1cUCevSqk7ctOlnm/RaSBU5psFryNlxcmGrjaA==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1463,7 +1475,7 @@ packages:
     resolution: {integrity: sha512-yeQN3AXjCm7+Hmq5L6Dm2wEDeBRdAZuyZ4I7tWSSanbxDzqM0KqzoDbKM7p4ebllAYdoQuPJS6N71/3L281i6w==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1472,7 +1484,7 @@ packages:
     resolution: {integrity: sha512-xUjteYtavH7HwDMzq4Cn2X4Qsh5NozoDHCJTdoXg9HfZ4w3R6mxV1B9tL7DGJX2eq/zqtsFjhm0/RJIMGlh3ag==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1481,7 +1493,7 @@ packages:
     resolution: {integrity: sha512-Oau4yL24d2B5IL4ma4UpbQigkVhzPDXLoqy1ggK4gnHg/stmkffJE4oOXHXF3uz0UEpywG68KcyXsyYpA1Re/Q==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1494,7 +1506,7 @@ packages:
     resolution: {integrity: sha512-hqOvBZj/MhQCpHUuD3MVq18SSoDNHy7wEnQ8mtvs71K8OPZVXJinOzcvQna33dNYLYE4LkA9BlhAhK6MJcsVbw==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1503,7 +1515,7 @@ packages:
     resolution: {integrity: sha512-7exgBm52WXZRczsydCVftozFTrrwbG5ySE0GqUd2zLNSBXyIucs2Wnm7ZKLe/aUu6NUg9dg7Q80QIHCdZJiY4A==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1512,7 +1524,7 @@ packages:
     resolution: {integrity: sha512-zXvzAGxPQTNk/SbT3carAD4Iqi6A2JS2qtcqQjsL22uvD+JfQzUrDEtPjLL7PLn8zlSNyPdY02IiQjzoL9TStA==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1521,7 +1533,7 @@ packages:
     resolution: {integrity: sha512-MuxVZ1en1g5oGamXV3DWP89GEkdD54alcfhHd7InUW5BifAdKQEK9SLFa/5hlWbvuhMPlobF0WAx7Okq988Jxg==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1530,7 +1542,7 @@ packages:
     resolution: {integrity: sha512-KOZqa3QNr3f0pMnufzL7K+nweFFCCBs6LCXZzXDrVGTyssjLeudn5ySktZYv1XiSqobyHRYYK0c6QsOxJEhXKA==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1539,7 +1551,7 @@ packages:
     resolution: {integrity: sha512-TkMUY+A2p2EYVY3GCTItYGvqT6LiLzHBnqsU1rJbrpXUijFfM6zvUx0R4civofVwFCmJZcKqOVwwWAjplKkhxA==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1548,7 +1560,7 @@ packages:
     resolution: {integrity: sha512-nwous24r31M+WyDEHV+qckXkepvihxhnyIaod2MG7eCE6G0Zm/HUF6jgN8GXgf4U7AU6SLseKdanY195cwvU6w==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1557,7 +1569,7 @@ packages:
     resolution: {integrity: sha512-lg9Whz8onIHRthWaN1Q9EGLa/0LFJjyM8mEUbL1eTi6yMGvBf8gvyDLtxSXztQsxMvhxxNpJYrwa1YHdq+w4Jw==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -1586,8 +1598,8 @@ packages:
     resolution: {integrity: sha512-n5H8QLDJ47QqbCNn5SuFjCRDrOLEZ0h8vAHCK5RL9Ls7Xa8AQLa/YxAc9UjFqoEDM48muwtBGjtMY5cr0PLDCw==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
-  '@jest/expect-utils@30.1.0':
-    resolution: {integrity: sha512-3anLWpBieOCIvDYkEoHTK3351znRkmtAiOyURPRwn3IIT2TLlwqkgl6P7wk5mxwW04MZvHHx/gw1qGb3VPDmLA==}
+  '@jest/expect-utils@30.1.1':
+    resolution: {integrity: sha512-5YUHr27fpJ64dnvtu+tt11ewATynrHkGYD+uSFgRr8V2eFJis/vEXgToyLwccIwqBihVfz9jwio+Zr1ab1Zihw==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
   '@jest/get-type@30.1.0':
@@ -1757,8 +1769,8 @@ packages:
   '@promptbook/utils@0.69.5':
     resolution: {integrity: sha512-xm5Ti/Hp3o4xHrsK9Yy3MS6KbDxYbq485hDsFvxqaNA7equHLPdo8H8faTitTeb14QCDfLW4iwCxdVYu5sn6YQ==}
 
-  '@puppeteer/browsers@2.10.7':
-    resolution: {integrity: sha512-wHWLkQWBjHtajZeqCB74nsa/X70KheyOhySYBRmVQDJiNj0zjZR/naPCvdWjMhcG1LmjaMV/9WtTo5mpe8qWLw==}
+  '@puppeteer/browsers@2.10.8':
+    resolution: {integrity: sha512-f02QYEnBDE0p8cteNoPYHHjbDuwyfbe4cCIVlNi8/MRicIxFW4w4CfgU0LNgWEID6s06P+hRJ1qjpBLMhPRCiQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -1778,8 +1790,8 @@ packages:
       react-redux:
         optional: true
 
-  '@rolldown/pluginutils@1.0.0-beta.27':
-    resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
+  '@rolldown/pluginutils@1.0.0-beta.34':
+    resolution: {integrity: sha512-LyAREkZHP5pMom7c24meKmJCdhf2hEyvam2q0unr3or9ydwDL+DJ8chTF6Av/RFPb3rH8UFBdMzO5MxTZW97oA==}
 
   '@rollup/plugin-commonjs@28.0.6':
     resolution: {integrity: sha512-XSQB1K7FUU5QP+3lOQmVCE3I0FcbbNvmNT4VJSj93iUjayaARrTQeoRdiYQoftAJBLrR9t2agwAd3ekaTgHNlw==}
@@ -2270,8 +2282,8 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@22.18.0':
-    resolution: {integrity: sha512-m5ObIqwsUp6BZzyiy4RdZpzWGub9bqLJMvZDD0QMXhxjqMHMENlj+SqF5QxoUwaQNFe+8kz8XM8ZQhqkQPTgMQ==}
+  '@types/node@24.3.0':
+    resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -2279,13 +2291,13 @@ packages:
   '@types/plist@3.0.5':
     resolution: {integrity: sha512-E6OCaRmAe4WDmWNsL/9RMqdkkzDCY1etutkflWk4c+AcjDU07Pcz1fQwTX0TQz+Pxqn9i4L1TU3UFpjnrcDgxA==}
 
-  '@types/react-dom@19.1.8':
-    resolution: {integrity: sha512-xG7xaBMJCpcK0RpN8jDbAACQo54ycO6h4dSSmgv8+fu6ZIAdANkx/WsawASUjVXYfy+J9AbUpRMNNEsXCDfDBQ==}
+  '@types/react-dom@19.1.9':
+    resolution: {integrity: sha512-qXRuZaOsAdXKFyOhRBg6Lqqc0yay13vN7KrIg4L7N4aaHN68ma9OK3NE1BoDFgFOTfM7zg+3/8+2n8rLUH3OKQ==}
     peerDependencies:
       '@types/react': ^19.0.0
 
-  '@types/react@19.1.11':
-    resolution: {integrity: sha512-lr3jdBw/BGj49Eps7EvqlUaoeA0xpj3pc0RoJkHpYaCHkVK7i28dKyImLQb3JVlqs3aYSXf7qYuWOW/fgZnTXQ==}
+  '@types/react@19.1.12':
+    resolution: {integrity: sha512-cMoR+FoAf/Jyq6+Df2/Z41jISvGZZ2eTlnsaJRptmZ76Caldwy1odD4xTr/gNV9VLj0AWgg/nmkevIyUfIIq5w==}
 
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
@@ -2326,9 +2338,9 @@ packages:
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
 
-  '@vitejs/plugin-react@4.7.0':
-    resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
-    engines: {node: ^14.18.0 || >=16.0.0}
+  '@vitejs/plugin-react@5.0.2':
+    resolution: {integrity: sha512-tmyFgixPZCx2+e6VO9TNITWcCQl8+Nl/E8YbAyPVv85QCc7/A3JrdfG2A8gIzvVhWuzMOVrFW1aReaNxrI6tbw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
@@ -2588,8 +2600,8 @@ packages:
     resolution: {integrity: sha512-6t10qk83GOG8p0vKmaCr8eiilZwO171AvbROMtvvNiwrTly62t+7XkA8RdIIVbpMhCASAsxgAzdRSwh6nw/5Dg==}
     engines: {node: '>=4'}
 
-  ast-v8-to-istanbul@0.3.4:
-    resolution: {integrity: sha512-cxrAnZNLBnQwBPByK4CeDaw5sWZtMilJE/Q3iDA0aamgaIVNDF9T6K2/8DfYDZEejZ2jNnDrG9m8MY72HFd0KA==}
+  ast-v8-to-istanbul@0.3.5:
+    resolution: {integrity: sha512-9SdXjNheSiE8bALAQCQQuT6fgQaoxJh7IRYrRGZ8/9nv8WhJeC1aXAwN8TbaOssGOukUvyvnkgD9+Yuykvl1aA==}
 
   astral-regex@2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
@@ -2693,8 +2705,8 @@ packages:
   browser-stdout@1.3.1:
     resolution: {integrity: sha512-qhAVI1+Av2X7qelOfAIYwXONood6XlZE/fXaBSmW/T5SzLAmCgzi+eiWE7fUvbHaeNBQH13UftjpXxsfLkMpgw==}
 
-  browserslist@4.25.3:
-    resolution: {integrity: sha512-cDGv1kkDI4/0e5yON9yM5G/0A5u8sf5TnmdX5C9qHzI9PPu++sQ9zjm1k9NiOrf3riY4OkK0zSGqfvJyJsgCBQ==}
+  browserslist@4.25.4:
+    resolution: {integrity: sha512-4jYpcjabC606xJ3kw2QwGEZKX0Aw7sgQdZCvIK9dhVSPh76BKo+C+btT1RRofH7B+8iNpEbgGNVWiLki5q93yg==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
@@ -2977,9 +2989,9 @@ packages:
   cross-dirname@0.1.0:
     resolution: {integrity: sha512-+R08/oI0nl3vfPcqftZRpytksBXDzOUveBq/NBVx0sUp1axwzPQrKinNx5yd5sxPu8j1wIy8AfnVQ+5eFdha6Q==}
 
-  cross-env@7.0.3:
-    resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
-    engines: {node: '>=10.14', npm: '>=6', yarn: '>=1'}
+  cross-env@10.0.0:
+    resolution: {integrity: sha512-aU8qlEK/nHYtVuN4p7UQgAwVljzMg8hB4YK5ThRqD2l/ziSnryncPNn7bMLt5cFYsKVKBh8HqLqyCoTupEUu7Q==}
+    engines: {node: '>=20'}
     hasBin: true
 
   cross-spawn@6.0.6:
@@ -3201,8 +3213,8 @@ packages:
   electron-publish@26.0.11:
     resolution: {integrity: sha512-a8QRH0rAPIWH9WyyS5LbNvW9Ark6qe63/LqDB7vu2JXYpi0Gma5Q60Dh4tmTqhOBQt0xsrzD8qE7C+D7j+B24A==}
 
-  electron-to-chromium@1.5.209:
-    resolution: {integrity: sha512-Xoz0uMrim9ZETCQt8UgM5FxQF9+imA7PBpokoGcZloA1uw2LeHzTlip5cb5KOAsXZLjh/moN2vReN3ZjJmjI9A==}
+  electron-to-chromium@1.5.211:
+    resolution: {integrity: sha512-IGBvimJkotaLzFnwIVgW9/UD/AOJ2tByUmeOrtqBfACSbAw5b1G0XpvdaieKyc7ULmbwXVx+4e4Be8pOPBrYkw==}
 
   electron-vite@4.0.0:
     resolution: {integrity: sha512-U3d7GlKjl4BPs1sxYTHn1N8YlMmPvlx1t62UVQ1zouWoBxZs5Hd5yrJcQ+rmMnko/ASbIcx/KFOTXh8YcqLv7w==}
@@ -3229,8 +3241,13 @@ packages:
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
-  emoji-regex@10.4.0:
-    resolution: {integrity: sha512-EC+0oUMY1Rqm4O6LLrgjtYDvcVYTy7chDnM4Q7030tP4Kwj3u/pR6gP9ygnp2CJMK5Gq+9Q2oqmrFJAz01DXjw==}
+  electron@37.4.0:
+    resolution: {integrity: sha512-HhsSdWowE5ODOeWNc/323Ug2C52mq/TqNBG+4uMeOA3G2dMXNc/nfyi0RYu1rJEgiaJLEjtHveeZZaYRYFsFCQ==}
+    engines: {node: '>= 12.20.55'}
+    hasBin: true
+
+  emoji-regex@10.5.0:
+    resolution: {integrity: sha512-lb49vf1Xzfx080OKA0o6l8DQQpV+6Vg95zyCJX9VB/BqKYlhG7N4wgROUUHRA+ZPUefLnteQOad7z1kT2bV7bg==}
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -3379,8 +3396,8 @@ packages:
       '@wdio/logger': ^9.0.0
       webdriverio: ^9.0.0
 
-  expect@30.1.0:
-    resolution: {integrity: sha512-BjTOhEHlQVAXJqkgmxRt33ZbA8H+NLKpZ+Ff0qsFEOhPMNNcdJ160TocOSyiQS8ZNEUHXozg2ykBDboySPTSKQ==}
+  expect@30.1.1:
+    resolution: {integrity: sha512-OKe7cdic4qbfWd/CcgwJvvCrNX2KWfuMZee9AfJHL1gTYmvqjBjZG1a2NwfhspBzxzlXwsN75WWpKTYfsJpBxg==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
   exponential-backoff@3.1.2:
@@ -3792,7 +3809,7 @@ packages:
     resolution: {integrity: sha512-5bV3LOgLtMAiJq1QpaUddfRrvaX59wiMYppS7z2jNRSQ64acI0yqx7WMxWhgymenSXOyD657g9tlsTjqGYM8sg==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -3903,8 +3920,8 @@ packages:
     resolution: {integrity: sha512-iHrqe5shvBUcFbmZq9zOQHBoeOhZJu6RQGrDpBgenUm/Am+F3JM2MgQj+rK3Z601fzrL5gLZWtAPH2OBaSVcyw==}
     engines: {node: '>= 8.0.0'}
 
-  isbinaryfile@5.0.4:
-    resolution: {integrity: sha512-YKBKVkKhty7s8rxddb40oOkuP0NbaeXrQvLin6QMHL7Ypiy2RW9LwOVrVgZRyOrhQlayMd9t+D8yDy8MKFTSDQ==}
+  isbinaryfile@5.0.6:
+    resolution: {integrity: sha512-I+NmIfBHUl+r2wcDd6JwE9yWje/PIVY/R5/CmV8dXLZd5K+L9X2klAOwfAHNnondLXkbHyTAleQAWonpTJBTtw==}
     engines: {node: '>= 18.0.0'}
 
   isexe@2.0.0:
@@ -3942,12 +3959,12 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  jest-diff@30.1.0:
-    resolution: {integrity: sha512-DHkvlHONjXknCIzYqFCIqH9uT0G6ZMN0U9Brb64BbQnCmVNcILa3FLTHh21h+E1oNRpaTvupTQTCiOhz2hx7hw==}
+  jest-diff@30.1.1:
+    resolution: {integrity: sha512-LUU2Gx8EhYxpdzTR6BmjL1ifgOAQJQELTHOiPv9KITaKjZvJ9Jmgigx01tuZ49id37LorpGc9dPBPlXTboXScw==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
-  jest-matcher-utils@30.1.0:
-    resolution: {integrity: sha512-A0/O5+WzSmeBrsm1PMOLyKkKUekbCbAtgyViRvJagjMnOsuKQbukiHJy7y+7cTST9pvoi81NyHXz5Fc96UoKUQ==}
+  jest-matcher-utils@30.1.1:
+    resolution: {integrity: sha512-SuH2QVemK48BNTqReti6FtjsMPFsSOD/ZzRxU1TttR7RiRsRSe78d03bb4Cx6D4bQC/80Q8U4VnaaAH9FlbZ9w==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
   jest-message-util@30.1.0:
@@ -4564,8 +4581,8 @@ packages:
   package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
 
-  package-versioner@0.9.1:
-    resolution: {integrity: sha512-umrs7fYOlCiHMdKDAF64DZSnRItxT23Rot8oG5JZFngJkip/kXRuoWH+RbW+i2lXDr9npYU7/XEWZbN2683/Jg==}
+  package-versioner@0.9.2:
+    resolution: {integrity: sha512-t2fU79J4ESEzkPbZ+9MoxzEO8jQO7RRStpZH8r/C+ENoMHTRZ0CEdzqYLl/GaazqF3HQTQGaWhssv5uwrVCkAg==}
     hasBin: true
 
   pako@1.0.11:
@@ -5509,8 +5526,8 @@ packages:
   unbzip2-stream@1.4.3:
     resolution: {integrity: sha512-mlExGW4w71ebDJviH16lQLtZS32VKqsSfk80GCfUlwT/4/hNRFsoscrF/c++9xinkMzECL1uL9DDwXqFWkruPg==}
 
-  undici-types@6.21.0:
-    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+  undici-types@7.10.0:
+    resolution: {integrity: sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag==}
 
   undici@6.21.3:
     resolution: {integrity: sha512-gBLkYIlEnSp8pFbT64yFgGE6UIB9tAkhukC23PmMDCe5Nd+cRqKxSjw5y54MK2AZMgZfJWMaNE4nYUHgi1XEOw==}
@@ -5595,7 +5612,7 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       jiti: '>=1.21.0'
       less: ^4.0.0
       lightningcss: ^1.21.0
@@ -5637,7 +5654,7 @@ packages:
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@types/debug': ^4.1.12
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@vitest/browser': 3.2.4
       '@vitest/ui': 3.2.4
       happy-dom: '*'
@@ -5949,7 +5966,7 @@ snapshots:
     dependencies:
       '@babel/compat-data': 7.28.0
       '@babel/helper-validator-option': 7.27.1
-      browserslist: 4.25.3
+      browserslist: 4.25.4
       lru-cache: 5.1.1
       semver: 6.3.1
 
@@ -6153,13 +6170,24 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/packager@18.4.2':
+  '@electron/osx-sign@1.3.3':
+    dependencies:
+      compare-version: 0.1.2
+      debug: 4.4.1(supports-color@8.1.1)
+      fs-extra: 10.1.0
+      isbinaryfile: 4.0.10
+      minimist: 1.2.8
+      plist: 3.1.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@electron/packager@18.4.4':
     dependencies:
       '@electron/asar': 3.4.1
       '@electron/get': 3.1.0
       '@electron/notarize': 2.5.0
-      '@electron/osx-sign': 1.3.1
-      '@electron/universal': 2.0.1
+      '@electron/osx-sign': 1.3.3
+      '@electron/universal': 2.0.3
       '@electron/windows-sign': 1.2.2
       '@malept/cross-spawn-promise': 2.0.0
       debug: 4.4.1(supports-color@8.1.1)
@@ -6211,6 +6239,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@electron/universal@2.0.3':
+    dependencies:
+      '@electron/asar': 3.4.1
+      '@malept/cross-spawn-promise': 2.0.0
+      debug: 4.4.1(supports-color@8.1.1)
+      dir-compare: 4.2.0
+      fs-extra: 11.3.1
+      minimatch: 9.0.5
+      plist: 3.1.0
+    transitivePeerDependencies:
+      - supports-color
+
   '@electron/windows-sign@1.2.2':
     dependencies:
       cross-dirname: 0.1.0
@@ -6220,6 +6260,8 @@ snapshots:
       postject: 1.0.0-alpha.6
     transitivePeerDependencies:
       - supports-color
+
+  '@epic-web/invariant@1.0.0': {}
 
   '@esbuild/aix-ppc64@0.25.9':
     optional: true
@@ -6301,27 +6343,27 @@ snapshots:
 
   '@gar/promisify@1.1.3': {}
 
-  '@inquirer/checkbox@4.2.2(@types/node@22.18.0)':
+  '@inquirer/checkbox@4.2.2(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
       '@inquirer/figures': 1.0.13
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       ansi-escapes: 4.3.2
       yoctocolors-cjs: 2.1.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/confirm@5.1.16(@types/node@22.18.0)':
+  '@inquirer/confirm@5.1.16(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/core@10.2.0(@types/node@22.18.0)':
+  '@inquirer/core@10.2.0(@types/node@24.3.0)':
     dependencies:
       '@inquirer/figures': 1.0.13
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       ansi-escapes: 4.3.2
       cli-width: 4.1.0
       mute-stream: 2.0.0
@@ -6329,100 +6371,100 @@ snapshots:
       wrap-ansi: 6.2.0
       yoctocolors-cjs: 2.1.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/editor@4.2.18(@types/node@22.18.0)':
+  '@inquirer/editor@4.2.18(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/external-editor': 1.0.1(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/external-editor': 1.0.1(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/expand@4.0.18(@types/node@22.18.0)':
+  '@inquirer/expand@4.0.18(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       yoctocolors-cjs: 2.1.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/external-editor@1.0.1(@types/node@22.18.0)':
+  '@inquirer/external-editor@1.0.1(@types/node@24.3.0)':
     dependencies:
       chardet: 2.1.0
       iconv-lite: 0.6.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@inquirer/figures@1.0.13': {}
 
-  '@inquirer/input@4.2.2(@types/node@22.18.0)':
+  '@inquirer/input@4.2.2(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/number@3.0.18(@types/node@22.18.0)':
+  '@inquirer/number@3.0.18(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/password@4.0.18(@types/node@22.18.0)':
+  '@inquirer/password@4.0.18(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       ansi-escapes: 4.3.2
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/prompts@7.8.4(@types/node@22.18.0)':
+  '@inquirer/prompts@7.8.4(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/checkbox': 4.2.2(@types/node@22.18.0)
-      '@inquirer/confirm': 5.1.16(@types/node@22.18.0)
-      '@inquirer/editor': 4.2.18(@types/node@22.18.0)
-      '@inquirer/expand': 4.0.18(@types/node@22.18.0)
-      '@inquirer/input': 4.2.2(@types/node@22.18.0)
-      '@inquirer/number': 3.0.18(@types/node@22.18.0)
-      '@inquirer/password': 4.0.18(@types/node@22.18.0)
-      '@inquirer/rawlist': 4.1.6(@types/node@22.18.0)
-      '@inquirer/search': 3.1.1(@types/node@22.18.0)
-      '@inquirer/select': 4.3.2(@types/node@22.18.0)
+      '@inquirer/checkbox': 4.2.2(@types/node@24.3.0)
+      '@inquirer/confirm': 5.1.16(@types/node@24.3.0)
+      '@inquirer/editor': 4.2.18(@types/node@24.3.0)
+      '@inquirer/expand': 4.0.18(@types/node@24.3.0)
+      '@inquirer/input': 4.2.2(@types/node@24.3.0)
+      '@inquirer/number': 3.0.18(@types/node@24.3.0)
+      '@inquirer/password': 4.0.18(@types/node@24.3.0)
+      '@inquirer/rawlist': 4.1.6(@types/node@24.3.0)
+      '@inquirer/search': 3.1.1(@types/node@24.3.0)
+      '@inquirer/select': 4.3.2(@types/node@24.3.0)
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/rawlist@4.1.6(@types/node@22.18.0)':
+  '@inquirer/rawlist@4.1.6(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       yoctocolors-cjs: 2.1.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/search@3.1.1(@types/node@22.18.0)':
+  '@inquirer/search@3.1.1(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
       '@inquirer/figures': 1.0.13
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       yoctocolors-cjs: 2.1.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/select@4.3.2(@types/node@22.18.0)':
+  '@inquirer/select@4.3.2(@types/node@24.3.0)':
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
       '@inquirer/figures': 1.0.13
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       ansi-escapes: 4.3.2
       yoctocolors-cjs: 2.1.3
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
-  '@inquirer/type@3.0.8(@types/node@22.18.0)':
+  '@inquirer/type@3.0.8(@types/node@24.3.0)':
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@isaacs/balanced-match@4.0.1': {}
 
@@ -6447,7 +6489,7 @@ snapshots:
 
   '@jest/diff-sequences@30.0.1': {}
 
-  '@jest/expect-utils@30.1.0':
+  '@jest/expect-utils@30.1.1':
     dependencies:
       '@jest/get-type': 30.1.0
 
@@ -6455,7 +6497,7 @@ snapshots:
 
   '@jest/pattern@30.0.1':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       jest-regex-util: 30.0.1
 
   '@jest/schemas@30.0.5':
@@ -6468,7 +6510,7 @@ snapshots:
       '@jest/schemas': 30.0.5
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
@@ -6610,7 +6652,7 @@ snapshots:
     dependencies:
       spacetrim: 0.11.59
 
-  '@puppeteer/browsers@2.10.7':
+  '@puppeteer/browsers@2.10.8':
     dependencies:
       debug: 4.4.1(supports-color@8.1.1)
       extract-zip: 2.0.1
@@ -6648,7 +6690,7 @@ snapshots:
     optionalDependencies:
       react: 19.1.1
 
-  '@rolldown/pluginutils@1.0.0-beta.27': {}
+  '@rolldown/pluginutils@1.0.0-beta.34': {}
 
   '@rollup/plugin-commonjs@28.0.6(rollup@4.49.0)':
     dependencies:
@@ -6745,11 +6787,11 @@ snapshots:
   '@simple-libs/child-process-utils@1.0.1':
     dependencies:
       '@simple-libs/stream-utils': 1.1.0
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@simple-libs/stream-utils@1.1.0':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@sinclair/typebox@0.34.40': {}
 
@@ -6847,12 +6889,12 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.1.12
 
-  '@tailwindcss/vite@4.1.12(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
+  '@tailwindcss/vite@4.1.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
     dependencies:
       '@tailwindcss/node': 4.1.12
       '@tailwindcss/oxide': 4.1.12
       tailwindcss: 4.1.12
-      vite: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
   '@tauri-apps/api@1.6.0': {}
 
@@ -6970,15 +7012,15 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.8(@types/react@19.1.11))(@types/react@19.1.11)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@testing-library/react@16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@babel/runtime': 7.28.3
       '@testing-library/dom': 10.4.1
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
     optionalDependencies:
-      '@types/react': 19.1.11
-      '@types/react-dom': 19.1.8(@types/react@19.1.11)
+      '@types/react': 19.1.12
+      '@types/react-dom': 19.1.9(@types/react@19.1.12)
 
   '@tootallnate/once@2.0.0': {}
 
@@ -7013,7 +7055,7 @@ snapshots:
     dependencies:
       '@types/http-cache-semantics': 4.0.4
       '@types/keyv': 3.1.4
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@types/responselike': 1.0.3
 
   '@types/chai@5.2.2':
@@ -7030,7 +7072,7 @@ snapshots:
 
   '@types/fs-extra@9.0.13':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@types/http-cache-semantics@4.0.4': {}
 
@@ -7046,7 +7088,7 @@ snapshots:
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@types/micromatch@4.0.9':
     dependencies:
@@ -7056,23 +7098,23 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@22.18.0':
+  '@types/node@24.3.0':
     dependencies:
-      undici-types: 6.21.0
+      undici-types: 7.10.0
 
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/plist@3.0.5':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       xmlbuilder: 15.1.1
     optional: true
 
-  '@types/react-dom@19.1.8(@types/react@19.1.11)':
+  '@types/react-dom@19.1.9(@types/react@19.1.12)':
     dependencies:
-      '@types/react': 19.1.11
+      '@types/react': 19.1.12
 
-  '@types/react@19.1.11':
+  '@types/react@19.1.12':
     dependencies:
       csstype: 3.1.3
 
@@ -7080,13 +7122,13 @@ snapshots:
 
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@types/semver@7.7.0': {}
 
   '@types/shelljs@0.8.17':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       glob: 11.0.3
 
   '@types/sinonjs__fake-timers@8.1.5': {}
@@ -7102,7 +7144,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -7112,26 +7154,26 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
     optional: true
 
-  '@vitejs/plugin-react@4.7.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
+  '@vitejs/plugin-react@5.0.2(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
     dependencies:
       '@babel/core': 7.28.3
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.28.3)
       '@babel/plugin-transform-react-jsx-source': 7.27.1(@babel/core@7.28.3)
-      '@rolldown/pluginutils': 1.0.0-beta.27
+      '@rolldown/pluginutils': 1.0.0-beta.34
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
+  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
-      ast-v8-to-istanbul: 0.3.4
+      ast-v8-to-istanbul: 0.3.5
       debug: 4.4.1(supports-color@8.1.1)
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
@@ -7142,7 +7184,7 @@ snapshots:
       std-env: 3.9.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -7154,13 +7196,13 @@ snapshots:
       chai: 5.3.3
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.2.4(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
+  '@vitest/mocker@3.2.4(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))':
     dependencies:
       '@vitest/spy': 3.2.4
       estree-walker: 3.0.3
       magic-string: 0.30.18
     optionalDependencies:
-      vite: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -7208,7 +7250,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@wdio/cli@9.19.2(@types/node@22.18.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)':
+  '@wdio/cli@9.19.2(@types/node@24.3.0)(expect-webdriverio@5.4.2)(puppeteer-core@22.15.0)':
     dependencies:
       '@vitest/snapshot': 2.1.9
       '@wdio/config': 9.19.2
@@ -7220,7 +7262,7 @@ snapshots:
       async-exit-hook: 2.0.1
       chalk: 5.6.0
       chokidar: 4.0.3
-      create-wdio: 9.18.2(@types/node@22.18.0)
+      create-wdio: 9.18.2(@types/node@24.3.0)
       dotenv: 17.2.1
       import-meta-resolve: 4.1.0
       lodash.flattendeep: 4.4.0
@@ -7263,7 +7305,7 @@ snapshots:
 
   '@wdio/electron-utils@9.1.2':
     dependencies:
-      '@electron/packager': 18.4.2
+      '@electron/packager': 18.4.4
       '@wdio/logger': 9.18.0
       debug: 4.4.1(supports-color@8.1.1)
       esbuild: 0.25.9
@@ -7283,7 +7325,7 @@ snapshots:
 
   '@wdio/local-runner@9.19.2(@wdio/globals@9.17.0)(webdriverio@9.19.2(puppeteer-core@22.15.0))':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@wdio/logger': 9.18.0
       '@wdio/repl': 9.16.2
       '@wdio/runner': 9.19.2(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -7312,7 +7354,7 @@ snapshots:
   '@wdio/mocha-framework@9.19.2':
     dependencies:
       '@types/mocha': 10.0.10
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@wdio/logger': 9.18.0
       '@wdio/types': 9.19.2
       '@wdio/utils': 9.19.2
@@ -7325,11 +7367,11 @@ snapshots:
 
   '@wdio/repl@9.16.2':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@wdio/reporter@9.19.2':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@wdio/logger': 9.18.0
       '@wdio/types': 9.19.2
       diff: 8.0.2
@@ -7337,7 +7379,7 @@ snapshots:
 
   '@wdio/runner@9.19.2(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@wdio/config': 9.19.2
       '@wdio/dot-reporter': 9.19.2
       '@wdio/globals': 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
@@ -7364,11 +7406,11 @@ snapshots:
 
   '@wdio/types@9.19.2':
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   '@wdio/utils@9.19.2':
     dependencies:
-      '@puppeteer/browsers': 2.10.7
+      '@puppeteer/browsers': 2.10.8
       '@wdio/logger': 9.18.0
       '@wdio/types': 9.19.2
       decamelize: 6.0.1
@@ -7394,10 +7436,10 @@ snapshots:
 
   '@zip.js/zip.js@2.7.72': {}
 
-  '@zubridge/types@2.0.0-next.0(electron@37.3.1)(zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))':
+  '@zubridge/types@2.0.0-next.0(electron@37.4.0)(zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)))':
     dependencies:
-      electron: 37.3.1
-      zustand: 5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+      electron: 37.4.0
+      zustand: 5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
 
   abbrev@1.1.1: {}
 
@@ -7492,7 +7534,7 @@ snapshots:
       fs-extra: 10.1.0
       hosted-git-info: 4.1.0
       is-ci: 3.0.1
-      isbinaryfile: 5.0.4
+      isbinaryfile: 5.0.6
       js-yaml: 4.1.0
       json5: 2.2.3
       lazy-val: 1.0.5
@@ -7550,7 +7592,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  ast-v8-to-istanbul@0.3.4:
+  ast-v8-to-istanbul@0.3.5:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.30
       estree-walker: 3.0.3
@@ -7571,7 +7613,7 @@ snapshots:
 
   autoprefixer@10.4.21(postcss@8.5.6):
     dependencies:
-      browserslist: 4.25.3
+      browserslist: 4.25.4
       caniuse-lite: 1.0.30001737
       fraction.js: 4.3.7
       normalize-range: 0.1.2
@@ -7642,12 +7684,12 @@ snapshots:
 
   browser-stdout@1.3.1: {}
 
-  browserslist@4.25.3:
+  browserslist@4.25.4:
     dependencies:
       caniuse-lite: 1.0.30001737
-      electron-to-chromium: 1.5.209
+      electron-to-chromium: 1.5.211
       node-releases: 2.0.19
-      update-browserslist-db: 1.1.3(browserslist@4.25.3)
+      update-browserslist-db: 1.1.3(browserslist@4.25.4)
 
   buffer-crc32@0.2.13: {}
 
@@ -7960,7 +8002,7 @@ snapshots:
       buffer: 5.7.1
     optional: true
 
-  create-wdio@9.18.2(@types/node@22.18.0):
+  create-wdio@9.18.2(@types/node@24.3.0):
     dependencies:
       chalk: 5.6.0
       commander: 14.0.0
@@ -7968,7 +8010,7 @@ snapshots:
       ejs: 3.1.10
       execa: 9.6.0
       import-meta-resolve: 4.1.0
-      inquirer: 12.9.4(@types/node@22.18.0)
+      inquirer: 12.9.4(@types/node@24.3.0)
       normalize-package-data: 7.0.1
       read-pkg-up: 10.1.0
       recursive-readdir: 2.2.3
@@ -7980,8 +8022,9 @@ snapshots:
 
   cross-dirname@0.1.0: {}
 
-  cross-env@7.0.3:
+  cross-env@10.0.0:
     dependencies:
+      '@epic-web/invariant': 1.0.0
       cross-spawn: 7.0.6
 
   cross-spawn@6.0.6:
@@ -8242,9 +8285,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron-to-chromium@1.5.209: {}
+  electron-to-chromium@1.5.211: {}
 
-  electron-vite@4.0.0(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)):
+  electron-vite@4.0.0(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)):
     dependencies:
       '@babel/core': 7.28.3
       '@babel/plugin-transform-arrow-functions': 7.27.1(@babel/core@7.28.3)
@@ -8252,7 +8295,7 @@ snapshots:
       esbuild: 0.25.9
       magic-string: 0.30.18
       picocolors: 1.1.1
-      vite: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -8271,7 +8314,7 @@ snapshots:
   electron@35.0.0:
     dependencies:
       '@electron/get': 2.0.3
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       extract-zip: 2.0.1
     transitivePeerDependencies:
       - supports-color
@@ -8279,12 +8322,20 @@ snapshots:
   electron@37.3.1:
     dependencies:
       '@electron/get': 2.0.3
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       extract-zip: 2.0.1
     transitivePeerDependencies:
       - supports-color
 
-  emoji-regex@10.4.0: {}
+  electron@37.4.0:
+    dependencies:
+      '@electron/get': 2.0.3
+      '@types/node': 24.3.0
+      extract-zip: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  emoji-regex@10.5.0: {}
 
   emoji-regex@8.0.0: {}
 
@@ -8453,15 +8504,15 @@ snapshots:
       '@wdio/globals': 9.17.0(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0))
       '@wdio/logger': 9.18.0
       deep-eql: 5.0.2
-      expect: 30.1.0
-      jest-matcher-utils: 30.1.0
+      expect: 30.1.1
+      jest-matcher-utils: 30.1.1
       webdriverio: 9.19.2(puppeteer-core@22.15.0)
 
-  expect@30.1.0:
+  expect@30.1.1:
     dependencies:
-      '@jest/expect-utils': 30.1.0
+      '@jest/expect-utils': 30.1.1
       '@jest/get-type': 30.1.0
-      jest-matcher-utils: 30.1.0
+      jest-matcher-utils: 30.1.1
       jest-message-util: 30.1.0
       jest-mock: 30.0.5
       jest-util: 30.0.5
@@ -8935,17 +8986,17 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  inquirer@12.9.4(@types/node@22.18.0):
+  inquirer@12.9.4(@types/node@24.3.0):
     dependencies:
-      '@inquirer/core': 10.2.0(@types/node@22.18.0)
-      '@inquirer/prompts': 7.8.4(@types/node@22.18.0)
-      '@inquirer/type': 3.0.8(@types/node@22.18.0)
+      '@inquirer/core': 10.2.0(@types/node@24.3.0)
+      '@inquirer/prompts': 7.8.4(@types/node@24.3.0)
+      '@inquirer/type': 3.0.8(@types/node@24.3.0)
       ansi-escapes: 4.3.2
       mute-stream: 2.0.0
       run-async: 4.0.6
       rxjs: 7.8.2
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
 
   interpret@1.4.0: {}
 
@@ -9017,7 +9068,7 @@ snapshots:
 
   isbinaryfile@4.0.10: {}
 
-  isbinaryfile@5.0.4: {}
+  isbinaryfile@5.0.6: {}
 
   isexe@2.0.0: {}
 
@@ -9060,18 +9111,18 @@ snapshots:
       filelist: 1.0.4
       picocolors: 1.1.1
 
-  jest-diff@30.1.0:
+  jest-diff@30.1.1:
     dependencies:
       '@jest/diff-sequences': 30.0.1
       '@jest/get-type': 30.1.0
       chalk: 4.1.2
       pretty-format: 30.0.5
 
-  jest-matcher-utils@30.1.0:
+  jest-matcher-utils@30.1.1:
     dependencies:
       '@jest/get-type': 30.1.0
       chalk: 4.1.2
-      jest-diff: 30.1.0
+      jest-diff: 30.1.1
       pretty-format: 30.0.5
 
   jest-message-util@30.1.0:
@@ -9089,7 +9140,7 @@ snapshots:
   jest-mock@30.0.5:
     dependencies:
       '@jest/types': 30.0.5
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       jest-util: 30.0.5
 
   jest-regex-util@30.0.1: {}
@@ -9097,7 +9148,7 @@ snapshots:
   jest-util@30.0.5:
     dependencies:
       '@jest/types': 30.0.5
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       chalk: 4.1.2
       ci-info: 4.3.0
       graceful-fs: 4.2.11
@@ -9699,7 +9750,7 @@ snapshots:
 
   package-json-from-dist@1.0.1: {}
 
-  package-versioner@0.9.1(conventional-commits-parser@6.2.0):
+  package-versioner@0.9.2(conventional-commits-parser@6.2.0):
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@types/micromatch': 4.0.9
@@ -10354,7 +10405,7 @@ snapshots:
 
   string-width@7.2.0:
     dependencies:
-      emoji-regex: 10.4.0
+      emoji-regex: 10.5.0
       get-east-asian-width: 1.3.0
       strip-ansi: 7.1.0
 
@@ -10658,7 +10709,7 @@ snapshots:
       buffer: 5.7.1
       through: 2.3.8
 
-  undici-types@6.21.0: {}
+  undici-types@7.10.0: {}
 
   undici@6.21.3: {}
 
@@ -10680,9 +10731,9 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  update-browserslist-db@1.1.3(browserslist@4.25.3):
+  update-browserslist-db@1.1.3(browserslist@4.25.4):
     dependencies:
-      browserslist: 4.25.3
+      browserslist: 4.25.4
       escalade: 3.2.0
       picocolors: 1.1.1
 
@@ -10718,13 +10769,13 @@ snapshots:
       extsprintf: 1.4.1
     optional: true
 
-  vite-node@3.2.4(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1):
+  vite-node@3.2.4(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1):
     dependencies:
       cac: 6.7.14
       debug: 4.4.1(supports-color@8.1.1)
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -10739,7 +10790,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1):
+  vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1):
     dependencies:
       esbuild: 0.25.9
       fdir: 6.5.0(picomatch@4.0.3)
@@ -10748,18 +10799,18 @@ snapshots:
       rollup: 4.49.0
       tinyglobby: 0.2.14
     optionalDependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       fsevents: 2.3.3
       jiti: 2.5.1
       lightningcss: 1.30.1
       tsx: 4.20.5
       yaml: 2.8.1
 
-  vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.18.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1):
+  vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
+      '@vitest/mocker': 3.2.4(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
@@ -10777,12 +10828,12 @@ snapshots:
       tinyglobby: 0.2.14
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
-      vite: 7.1.3(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
-      vite-node: 3.2.4(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
+      vite-node: 3.2.4(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5)(yaml@2.8.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/debug': 4.1.12
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       jsdom: 26.1.0
     transitivePeerDependencies:
       - jiti
@@ -10814,7 +10865,7 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
-  wdio-electron-service@9.1.2(electron@37.3.1)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0)):
+  wdio-electron-service@9.1.2(electron@37.4.0)(expect-webdriverio@5.4.2)(webdriverio@9.19.2(puppeteer-core@22.15.0)):
     dependencies:
       '@babel/parser': 7.28.3
       '@vitest/spy': 3.2.4
@@ -10825,7 +10876,7 @@ snapshots:
       '@wdio/logger': 9.18.0
       compare-versions: 6.1.1
       debug: 4.4.1(supports-color@8.1.1)
-      electron-to-chromium: 1.5.209
+      electron-to-chromium: 1.5.211
       fast-copy: 3.0.2
       get-port: 7.1.0
       puppeteer-core: 22.15.0
@@ -10834,7 +10885,7 @@ snapshots:
       tinyspy: 4.0.3
       webdriverio: 9.19.2(puppeteer-core@22.15.0)
     optionalDependencies:
-      electron: 37.3.1
+      electron: 37.4.0
     transitivePeerDependencies:
       - bare-buffer
       - bufferutil
@@ -10851,7 +10902,7 @@ snapshots:
 
   webdriver@9.19.2:
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@types/ws': 8.18.1
       '@wdio/config': 9.19.2
       '@wdio/logger': 9.18.0
@@ -10870,7 +10921,7 @@ snapshots:
 
   webdriverio@9.19.2(puppeteer-core@22.15.0):
     dependencies:
-      '@types/node': 22.18.0
+      '@types/node': 24.3.0
       '@types/sinonjs__fake-timers': 8.1.5
       '@wdio/config': 9.19.2
       '@wdio/logger': 9.18.0
@@ -11046,17 +11097,17 @@ snapshots:
 
   zod@3.23.8: {}
 
-  zustand@4.5.7(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1):
+  zustand@4.5.7(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1):
     dependencies:
       use-sync-external-store: 1.5.0(react@19.1.1)
     optionalDependencies:
-      '@types/react': 19.1.11
+      '@types/react': 19.1.12
       immer: 10.1.1
       react: 19.1.1
 
-  zustand@5.0.8(@types/react@19.1.11)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)):
+  zustand@5.0.8(@types/react@19.1.12)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1)):
     optionalDependencies:
-      '@types/react': 19.1.11
+      '@types/react': 19.1.12
       immer: 10.1.1
       react: 19.1.1
       use-sync-external-store: 1.5.0(react@19.1.1)
