@@ -10,6 +10,7 @@ import {
   getButtonInCurrentWindow,
 } from '../utils/window.js';
 import { waitForSpecificValue, getCounterValue, resetCounter } from '../utils/counter.js';
+import { validateAndFixWindowSubscription } from '../utils/window-subscription.js';
 import { TIMING } from '../constants.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
@@ -734,80 +735,8 @@ describe('Thunk Execution and Behavior', () => {
       await switchToWindow(0);
       console.log('Switched back to main window to check counter value');
 
-      // Linux: Add debugging to verify we're on the correct window
-      if (process.platform === 'linux') {
-        console.log(`[LINUX DEBUG] Verifying window context after switch...`);
-        const currentWindowHandle = await browser.getWindowHandle();
-        const allWindowHandles = await browser.getWindowHandles();
-        const windowIndex = allWindowHandles.indexOf(currentWindowHandle);
-        console.log(`[LINUX DEBUG] After switchToWindow(0), actual window index: ${windowIndex}`);
-        console.log(`[LINUX DEBUG] Current handle: ${currentWindowHandle}`);
-
-        // Check what this window is subscribed to
-        const subscriptions = await browser.execute(() => {
-          try {
-            // @ts-ignore
-            return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
-              ? // @ts-ignore
-                window.__zubridge_subscriptionValidator.getWindowSubscriptions()
-              : 'subscription validator not available';
-          } catch (error) {
-            return `Error: ${error}`;
-          }
-        });
-        console.log(`[LINUX DEBUG] Current window subscriptions:`, subscriptions);
-
-        // If we're not subscribed to counter, try to switch to the correct window
-        if (subscriptions && Array.isArray(subscriptions) && !subscriptions.includes('counter')) {
-          console.log(`[LINUX DEBUG] Current window not subscribed to counter, looking for counter subscription...`);
-
-          let foundCounterWindow = false;
-          // Check all windows to find one subscribed to counter
-          for (let i = 0; i < allWindowHandles.length; i++) {
-            console.log(`[LINUX DEBUG] Checking window ${i} (handle: ${allWindowHandles[i].substring(0, 8)}...)`);
-            try {
-              await browser.switchToWindow(allWindowHandles[i]);
-              const windowSubs = await browser.execute(() => {
-                try {
-                  // @ts-ignore
-                  return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
-                    ? // @ts-ignore
-                      window.__zubridge_subscriptionValidator.getWindowSubscriptions()
-                    : [];
-                } catch (error) {
-                  return [];
-                }
-              });
-
-              console.log(`[LINUX DEBUG] Window ${i} subscriptions:`, windowSubs);
-
-              if (Array.isArray(windowSubs) && windowSubs.includes('counter')) {
-                console.log(`[LINUX DEBUG] Found window ${i} subscribed to counter, using this window`);
-                foundCounterWindow = true;
-                break;
-              }
-            } catch (error) {
-              console.log(`[LINUX DEBUG] Error checking window ${i}:`, error);
-            }
-          }
-
-          if (!foundCounterWindow) {
-            console.log(`[LINUX DEBUG] No window found subscribed to counter! This is the root cause.`);
-            console.log(`[LINUX DEBUG] The test setup may have failed to properly subscribe window 0 to counter.`);
-            // Let's try to manually resubscribe the original window 0 to counter
-            console.log(`[LINUX DEBUG] Attempting to re-establish counter subscription on window 0...`);
-            try {
-              await browser.switchToWindow(allWindowHandles[0]);
-              await unsubscribeFromAll();
-              await subscribeToKeys('counter');
-              console.log(`[LINUX DEBUG] Re-subscribed window 0 to counter, waiting for sync...`);
-              await browser.pause(TIMING.STATE_SYNC_PAUSE);
-            } catch (resubError) {
-              console.log(`[LINUX DEBUG] Failed to re-subscribe:`, resubError);
-            }
-          }
-        }
-      }
+      // Linux: Validate and fix window subscription if needed
+      await validateAndFixWindowSubscription('counter', unsubscribeFromAll, subscribeToKeys);
 
       // Linux: Add additional debugging and more patient waiting
       if (process.platform === 'linux') {
@@ -976,80 +905,8 @@ describe('Thunk Execution and Behavior', () => {
       await switchToWindow(0);
       console.log('Switched back to main window to check counter value');
 
-      // Linux: Add debugging to verify we're on the correct window
-      if (process.platform === 'linux') {
-        console.log(`[LINUX DEBUG] Verifying window context after switch...`);
-        const currentWindowHandle = await browser.getWindowHandle();
-        const allWindowHandles = await browser.getWindowHandles();
-        const windowIndex = allWindowHandles.indexOf(currentWindowHandle);
-        console.log(`[LINUX DEBUG] After switchToWindow(0), actual window index: ${windowIndex}`);
-        console.log(`[LINUX DEBUG] Current handle: ${currentWindowHandle}`);
-
-        // Check what this window is subscribed to
-        const subscriptions = await browser.execute(() => {
-          try {
-            // @ts-ignore
-            return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
-              ? // @ts-ignore
-                window.__zubridge_subscriptionValidator.getWindowSubscriptions()
-              : 'subscription validator not available';
-          } catch (error) {
-            return `Error: ${error}`;
-          }
-        });
-        console.log(`[LINUX DEBUG] Current window subscriptions:`, subscriptions);
-
-        // If we're not subscribed to counter, try to switch to the correct window
-        if (subscriptions && Array.isArray(subscriptions) && !subscriptions.includes('counter')) {
-          console.log(`[LINUX DEBUG] Current window not subscribed to counter, looking for counter subscription...`);
-
-          let foundCounterWindow = false;
-          // Check all windows to find one subscribed to counter
-          for (let i = 0; i < allWindowHandles.length; i++) {
-            console.log(`[LINUX DEBUG] Checking window ${i} (handle: ${allWindowHandles[i].substring(0, 8)}...)`);
-            try {
-              await browser.switchToWindow(allWindowHandles[i]);
-              const windowSubs = await browser.execute(() => {
-                try {
-                  // @ts-ignore
-                  return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
-                    ? // @ts-ignore
-                      window.__zubridge_subscriptionValidator.getWindowSubscriptions()
-                    : [];
-                } catch (error) {
-                  return [];
-                }
-              });
-
-              console.log(`[LINUX DEBUG] Window ${i} subscriptions:`, windowSubs);
-
-              if (Array.isArray(windowSubs) && windowSubs.includes('counter')) {
-                console.log(`[LINUX DEBUG] Found window ${i} subscribed to counter, using this window`);
-                foundCounterWindow = true;
-                break;
-              }
-            } catch (error) {
-              console.log(`[LINUX DEBUG] Error checking window ${i}:`, error);
-            }
-          }
-
-          if (!foundCounterWindow) {
-            console.log(`[LINUX DEBUG] No window found subscribed to counter! This is the root cause.`);
-            console.log(`[LINUX DEBUG] The test setup may have failed to properly subscribe window 0 to counter.`);
-            // Let's try to manually resubscribe the original window 0 to counter
-            console.log(`[LINUX DEBUG] Attempting to re-establish counter subscription on window 0...`);
-            try {
-              await browser.switchToWindow(allWindowHandles[0]);
-              await unsubscribeFromAll();
-              await subscribeToKeys('counter');
-              console.log(`[LINUX DEBUG] Re-subscribed window 0 to counter, waiting for sync...`);
-              await browser.pause(TIMING.STATE_SYNC_PAUSE);
-            } catch (resubError) {
-              console.log(`[LINUX DEBUG] Failed to re-subscribe:`, resubError);
-            }
-          }
-        }
-      }
+      // Linux: Validate and fix window subscription if needed
+      await validateAndFixWindowSubscription('counter', unsubscribeFromAll, subscribeToKeys);
 
       // Check current counter value
       const currentValue = await getCounterValue();
