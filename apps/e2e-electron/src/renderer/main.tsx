@@ -60,13 +60,13 @@ function AppWrapper() {
   }, []);
 
   const modeMap = {
-    basic: 'Zustand Basic',
-    handlers: 'Zustand Handlers',
-    reducers: 'Zustand Reducers',
-    redux: 'Redux',
-    custom: 'Custom',
+    'zustand-basic': 'Zustand Basic',
+    'zustand-handlers': 'Zustand Handlers',
+    'zustand-reducers': 'Zustand Reducers',
+    'redux': 'Redux',
+    'custom': 'Custom',
   };
-  const modeTitle = modeMap[modeName];
+  const modeTitle = modeMap[modeName] || `Unknown Mode (${modeName})`;
 
   // Create thunk context
   const thunkContext: ThunkContext = {
@@ -120,7 +120,7 @@ function AppWrapper() {
     doubleCounter: (counter: number) => createDoubleCounterThunk(counter, thunkContext),
     doubleCounterSlow: (counter: number) => {
       // Use sync handlers thunk creators for redux and reducers modes
-      if (modeName === 'redux' || modeName === 'reducers') {
+      if (modeName === 'redux' || modeName === 'zustand-reducers') {
         return createDoubleCounterSlowThunkForSyncHandlers(counter, thunkContext);
       }
       return createDoubleCounterSlowThunk(counter, thunkContext);
@@ -128,7 +128,7 @@ function AppWrapper() {
     distinctiveCounter: (counter: number) => createDistinctiveCounterThunk(counter, thunkContext),
     distinctiveCounterSlow: (counter: number) => {
       // Use sync handlers thunk creators for redux and reducers modes
-      if (modeName === 'redux' || modeName === 'reducers') {
+      if (modeName === 'redux' || modeName === 'zustand-reducers') {
         return createDistinctiveCounterSlowThunkForSyncHandlers(counter, thunkContext);
       }
       return createDistinctiveCounterSlowThunk(counter, thunkContext);

@@ -6,7 +6,7 @@ export interface ElectronAPI {
   closeCurrentWindow: () => Promise<void>;
   quitApp: () => Promise<void>;
   getWindowInfo: () => Promise<{ id: number; type: string; subscriptions: string[] }>;
-  getMode: () => Promise<{ modeName?: string; name?: string }>;
+  getMode: () => Promise<{ mode?: string; modeName?: string }>;
   minimizeWindow?: () => void;
   maximizeWindow?: () => void;
   openDevTools?: () => void;
