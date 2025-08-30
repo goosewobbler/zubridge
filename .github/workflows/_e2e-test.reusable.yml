@@ -141,9 +141,9 @@ jobs:
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 
-      - name: Handle Test Failures
-        if: failure()
-        uses: ./.github/workflows/actions/handle-e2e-failures
+      - name: Handle E2E Test Logs
+        if: always()
+        uses: ./.github/workflows/actions/handle-logs
         with:
           os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
           app: ${{ inputs.app }}

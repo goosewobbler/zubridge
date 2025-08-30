@@ -1,0 +1,62 @@
+name: 'Handle Logs'
+description: 'Displays and uploads logs'
+inputs:
+  os:
+    description: 'Operating system of the runner'
+    required: true
+  app:
+    description: 'Type of application (electron, tauri, tauri-v1) or package-test'
+    required: true
+  mode:
+    description: 'Application mode (basic, handlers, etc.)'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Show E2E Test Logs
+      if: inputs.app == 'electron'
+      run: |
+        echo "=== E2E Test Logs for ${{ inputs.app }}-${{ inputs.mode }} ==="
+        cat ./e2e/wdio-logs-e2e-${{ inputs.app }}-${{ inputs.mode }}/wdio.log || echo "No log files found"
+        echo "=== End of E2E Test Logs ==="
+      shell: bash
+
+    - name: Show Package Test Logs
+      if: inputs.app == 'package-test'
+      run: |
+        echo "=== Package Test Logs for ${{ inputs.mode }} ==="
+
+        # Find all wdio-logs directories in apps
+        find apps -name "wdio-logs-*" -type d | while read -r log_dir; do
+          app_name=$(basename "$log_dir" | sed 's/wdio-logs-//')
+          echo "--- Logs for $app_name ---"
+
+          # Find and display all log files in the directory
+          find "$log_dir" -name "*.log" -type f | while read -r log_file; do
+            echo "=== $(basename "$log_file") ==="
+            cat "$log_file" || echo "Could not read log file: $log_file"
+            echo ""
+          done
+        done
+
+        echo "=== End of Package Test Logs ==="
+      shell: bash
+
+    - name: Upload E2E Test Logs
+      uses: actions/upload-artifact@v4
+      if: inputs.app == 'electron'
+      with:
+        name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
+        path: e2e/wdio-logs-e2e-${{ inputs.app }}-${{ inputs.mode }}/*.log
+        retention-days: 30
+        if-no-files-found: warn
+
+    - name: Upload Package Test Logs
+      uses: actions/upload-artifact@v4
+      if: inputs.app == 'package-test'
+      with:
+        name: package-test-logs-${{ inputs.os }}-${{ inputs.mode }}
+        path: apps/*/wdio-logs-*
+        retention-days: 30
+        if-no-files-found: warn

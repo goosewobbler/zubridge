@@ -100,6 +100,14 @@ jobs:
 
           exit $exit_code
 
+      - name: Handle Package Test Logs
+        if: always()
+        uses: ./.github/workflows/actions/handle-logs
+        with:
+          os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
+          app: package-test
+          mode: ${{ inputs.mode }}
+
 
       # Cleanup XVFB process
       - name: 🧹 Cleanup XVFB

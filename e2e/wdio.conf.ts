@@ -258,7 +258,7 @@ const config = {
   waitforTimeout: 60000,
   connectionRetryCount: 3,
   connectionRetryTimeout: 60000,
-  logLevel: process.env.WDIO_LOG_LEVEL || (currentPlatform === 'linux' ? 'debug' : 'info'),
+  logLevel: process.env.WDIO_LOG_LEVEL || 'debug',
   runner: 'local',
   outputDir: `wdio-logs-${appDir}-${mode}`,
   specs: [specPattern],
