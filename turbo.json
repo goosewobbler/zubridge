@@ -5,7 +5,7 @@
   "globalPassThroughEnv": ["DEBUG"],
   "tasks": {
     "//#format:check": {
-      "inputs": ["**/*.{yml,json,md,ts,tsx,js}"]
+      "inputs": ["**/*.{yml,yaml,json,jsonc,md,ts,tsx,js,jsx}"]
     },
     "//#ci": {},
     "build": {
