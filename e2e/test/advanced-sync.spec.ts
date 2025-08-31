@@ -28,7 +28,9 @@ describe('Advanced State Synchronization', () => {
     try {
       // Use a single function to set up the test environment
       await setupTestEnvironment(CORE_WINDOW_COUNT);
-      console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
+      console.log(
+        `beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`,
+      );
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
       // If setup fails, try to recover or throw to stop tests
@@ -148,7 +150,9 @@ describe('Advanced State Synchronization', () => {
         if (windowCount >= 3) {
           break;
         }
-        console.log(`Attempt ${attempt + 1}: Window count is ${windowCount}, waiting for 3 windows...`);
+        console.log(
+          `Attempt ${attempt + 1}: Window count is ${windowCount}, waiting for 3 windows...`,
+        );
         attempt++;
       }
 
@@ -171,7 +175,9 @@ describe('Advanced State Synchronization', () => {
         if (windowCount >= 4) {
           break;
         }
-        console.log(`Attempt ${attempt + 1}: Window count is ${windowCount}, waiting for 4 windows...`);
+        console.log(
+          `Attempt ${attempt + 1}: Window count is ${windowCount}, waiting for 4 windows...`,
+        );
         attempt++;
       }
 
@@ -324,7 +330,9 @@ describe('Advanced State Synchronization', () => {
           const currentWindows = await browser.electron.execute((electron) => {
             return electron.BrowserWindow.getAllWindows().map((w) => w.id);
           });
-          console.log(`Waiting for window ${windowToCloseId} to close. Current IDs: ${JSON.stringify(currentWindows)}`);
+          console.log(
+            `Waiting for window ${windowToCloseId} to close. Current IDs: ${JSON.stringify(currentWindows)}`,
+          );
           return !currentWindows.includes(windowToCloseId);
         },
         {
@@ -426,11 +434,17 @@ describe('Advanced State Synchronization', () => {
         expect(newSourceValue).toBe(currentValue + 1);
 
         // Check all other windows reflect the change
-        for (let targetWindowIndex = 0; targetWindowIndex < CORE_WINDOW_COUNT; targetWindowIndex++) {
+        for (
+          let targetWindowIndex = 0;
+          targetWindowIndex < CORE_WINDOW_COUNT;
+          targetWindowIndex++
+        ) {
           if (targetWindowIndex === sourceWindowIndex) continue;
 
           await switchToWindow(targetWindowIndex);
-          console.log(`Verifying sync in ${CORE_WINDOW_NAMES[targetWindowIndex]} window (index ${targetWindowIndex})`);
+          console.log(
+            `Verifying sync in ${CORE_WINDOW_NAMES[targetWindowIndex]} window (index ${targetWindowIndex})`,
+          );
 
           // Allow time for sync to complete
           await browser.pause(TIMING.STATE_SYNC_PAUSE);
@@ -508,7 +522,9 @@ describe('Advanced State Synchronization', () => {
         console.log(`New runtime window created at index ${newWindowIndex}`);
 
         // Verify sync works from source to runtime window
-        console.log(`Testing sync from ${CORE_WINDOW_NAMES[sourceWindowIndex]} to new runtime window`);
+        console.log(
+          `Testing sync from ${CORE_WINDOW_NAMES[sourceWindowIndex]} to new runtime window`,
+        );
 
         // Reset counter
         await resetCounter();

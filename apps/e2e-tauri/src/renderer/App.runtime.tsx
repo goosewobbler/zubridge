@@ -62,7 +62,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
     dispatch(async (getState) => {
       const state = (await getState()) as AppState;
       const currentValue = (state.counter as number) || 0;
-      console.log(`[${windowLabel}] Thunk: Doubling counter from ${currentValue} to ${currentValue * 2}`);
+      console.log(
+        `[${windowLabel}] Thunk: Doubling counter from ${currentValue} to ${currentValue * 2}`,
+      );
 
       // Dispatch a special action to set the counter to double its current value
       dispatch({ type: 'COUNTER:SET', payload: currentValue * 2 });
@@ -72,7 +74,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
   const doubleCounterAction = () => {
     // Use the counter from the store hook
     const currentValue = counter || 0;
-    console.log(`[${windowLabel}] Action Object: Doubling counter from ${currentValue} to ${currentValue * 2}`);
+    console.log(
+      `[${windowLabel}] Action Object: Doubling counter from ${currentValue} to ${currentValue * 2}`,
+    );
 
     // Dispatch an action object directly (no thunk)
     dispatch({
@@ -96,7 +100,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
       height: 485,
     });
     webview.once('tauri://created', () => console.log(`Window ${uniqueLabel} created`));
-    webview.once('tauri://error', (e) => console.error(`Failed to create window ${uniqueLabel}:`, e));
+    webview.once('tauri://error', (e) =>
+      console.error(`Failed to create window ${uniqueLabel}:`, e),
+    );
   };
 
   // Use WebviewWindow.getByLabel to get the current window instance
@@ -109,7 +115,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
         console.log(`[App.runtime] Found window, calling close()...`);
         await currentWindow.close();
       } else {
-        console.warn(`[App.runtime] WebviewWindow.getByLabel returned null for label: ${windowLabel}`);
+        console.warn(
+          `[App.runtime] WebviewWindow.getByLabel returned null for label: ${windowLabel}`,
+        );
       }
     } catch (error) {
       console.error('[App.runtime] Error closing window:', error);
@@ -134,7 +142,11 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
       <div className="theme-section">
         <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={toggleTheme} />
 
-        <WindowActions onCreateWindow={createWindow} onCloseWindow={closeWindow} isMainWindow={false} />
+        <WindowActions
+          onCreateWindow={createWindow}
+          onCloseWindow={closeWindow}
+          isMainWindow={false}
+        />
       </div>
     </WindowDisplay>
   );

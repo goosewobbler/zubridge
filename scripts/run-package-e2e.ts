@@ -32,8 +32,8 @@ const specificApp = args.find((arg) => !arg.startsWith('--'));
 // Map short names to full app names
 const APP_NAME_MAP = {
   'zustand-basic': 'minimal-zustand-basic',
-  'custom': 'minimal-custom',
-  'redux': 'minimal-redux',
+  custom: 'minimal-custom',
+  redux: 'minimal-redux',
   'zustand-handlers': 'minimal-zustand-handlers',
   'zustand-reducers': 'minimal-zustand-reducers',
 };
@@ -56,7 +56,10 @@ const ZUBRIDGE_PACKAGES = {
 };
 
 // Utility function to run a command and return its output
-function runCommand(command: string, options: { cwd?: string; stdio?: 'inherit' | 'pipe' } = {}): string | void {
+function runCommand(
+  command: string,
+  options: { cwd?: string; stdio?: 'inherit' | 'pipe' } = {},
+): string | void {
   try {
     const result = execSync(command, {
       encoding: 'utf-8',
@@ -153,7 +156,10 @@ function prepareApp(appPath: string): string {
   });
 
   // Remove workspace dependencies before installing (they don't exist in isolated environment)
-  const allZubridgePackages = [...ZUBRIDGE_PACKAGES.dependencies, ...ZUBRIDGE_PACKAGES.devDependencies];
+  const allZubridgePackages = [
+    ...ZUBRIDGE_PACKAGES.dependencies,
+    ...ZUBRIDGE_PACKAGES.devDependencies,
+  ];
   for (const pkg of allZubridgePackages) {
     if (packageJson.dependencies?.[pkg]) {
       console.log(`[DEBUG] Removing workspace dependency: ${pkg} from dependencies`);
@@ -246,7 +252,10 @@ function prepareApp(appPath: string): string {
     // Approach 1: Force rebuild with explicit configuration
     try {
       console.log(`[DEBUG] Approach 1: Rebuilding electron with explicit config...`);
-      runCommand('pnpm config set onlyBuiltDependencies "electron,esbuild"', { cwd: tempAppPath, stdio: 'inherit' });
+      runCommand('pnpm config set onlyBuiltDependencies "electron,esbuild"', {
+        cwd: tempAppPath,
+        stdio: 'inherit',
+      });
       runCommand('pnpm rebuild electron', { cwd: tempAppPath, stdio: 'inherit' });
       console.log(`[DEBUG] Electron rebuild completed`);
     } catch (error) {
@@ -264,7 +273,10 @@ function prepareApp(appPath: string): string {
         // Approach 3: Try with npm instead of pnpm
         try {
           console.log(`[DEBUG] Approach 3: Installing electron with npm...`);
-          runCommand('npm install electron@35.0.0 --save-dev', { cwd: tempAppPath, stdio: 'inherit' });
+          runCommand('npm install electron@35.0.0 --save-dev', {
+            cwd: tempAppPath,
+            stdio: 'inherit',
+          });
           console.log(`[DEBUG] Electron npm install completed`);
         } catch (npmError) {
           console.warn(`[DEBUG] Electron npm install failed:`, npmError);
@@ -384,7 +396,9 @@ async function main() {
     if (minimalApps.length === 0) {
       throw new Error('No minimal apps found in apps directory');
     }
-    console.log(`\nFound ${minimalApps.length} minimal apps: ${minimalApps.map((p) => path.basename(p)).join(', ')}`);
+    console.log(
+      `\nFound ${minimalApps.length} minimal apps: ${minimalApps.map((p) => path.basename(p)).join(', ')}`,
+    );
 
     // Process each app
     for (const appPath of minimalApps) {
@@ -406,7 +420,9 @@ async function main() {
     console.log('='.repeat(50));
     console.log(`Total apps: ${minimalApps.length}`);
     console.log(`Passed: ${passedApps.length} (${passedApps.join(', ')})`);
-    console.log(`Failed: ${failedApps.length} ${failedApps.length > 0 ? `(${failedApps.join(', ')})` : ''}`);
+    console.log(
+      `Failed: ${failedApps.length} ${failedApps.length > 0 ? `(${failedApps.join(', ')})` : ''}`,
+    );
 
     if (failedApps.length === 0) {
       console.log('\n✅ All tests completed successfully!');

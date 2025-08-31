@@ -5,7 +5,11 @@ import path from 'node:path';
 import { isDev } from '@zubridge/electron/main';
 import { createDispatch } from '@zubridge/electron/main';
 import { debug } from '@zubridge/core';
-import { createDoubleCounterThunk, createDoubleCounterSlowThunk, type ThunkContext } from '@zubridge/apps-shared';
+import {
+  createDoubleCounterThunk,
+  createDoubleCounterSlowThunk,
+  type ThunkContext,
+} from '@zubridge/apps-shared';
 import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
 
 import { store, initStore } from './store.js';
@@ -158,22 +162,35 @@ app
 
     debug('example-app:init', 'Initializing direct WebContents window');
     const initialDirectWebContentsWindow = await windows.initDirectWebContentsWindow();
-    debug('example-app:init', `Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`);
+    debug(
+      'example-app:init',
+      `Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`,
+    );
 
     debug('example-app:init', 'Initializing BrowserView window');
     const { window: initialBrowserViewWindow, browserView } = await windows.initBrowserViewWindow();
     if (initialBrowserViewWindow && browserView) {
-      debug('example-app:init', `BrowserView window created with ID: ${initialBrowserViewWindow.id}`);
+      debug(
+        'example-app:init',
+        `BrowserView window created with ID: ${initialBrowserViewWindow.id}`,
+      );
       debug('example-app:init', `BrowserView WebContents ID: ${browserView.webContents.id}`);
     } else {
       debug('example-app:init', 'BrowserView window skipped (disabled in test mode)');
     }
 
     debug('example-app:init', 'Initializing WebContentsView window');
-    const { window: initialWebContentsViewWindow, webContentsView } = await windows.initWebContentsViewWindow();
+    const { window: initialWebContentsViewWindow, webContentsView } =
+      await windows.initWebContentsViewWindow();
     if (initialWebContentsViewWindow && webContentsView) {
-      debug('example-app:init', `WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`);
-      debug('example-app:init', `WebContentsView WebContents ID: ${webContentsView.webContents.id}`);
+      debug(
+        'example-app:init',
+        `WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`,
+      );
+      debug(
+        'example-app:init',
+        `WebContentsView WebContents ID: ${webContentsView.webContents.id}`,
+      );
     } else {
       debug('example-app:init', 'WebContentsView window skipped (disabled in test mode)');
     }
@@ -189,7 +206,11 @@ app
     debug('core', 'customRequire created. Attempting to require "@zubridge/middleware"...');
 
     const middlewareModule = customRequire('@zubridge/middleware');
-    debug('core', '"@zubridge/middleware" required successfully. Module keys:', Object.keys(middlewareModule));
+    debug(
+      'core',
+      '"@zubridge/middleware" required successfully. Module keys:',
+      Object.keys(middlewareModule),
+    );
 
     // Get the initialization function
     const { initZubridgeMiddleware } = middlewareModule;
@@ -238,9 +259,21 @@ app
     };
 
     // Log the configuration for debugging
-    debug('core:middleware', 'Initializing middleware with config:', JSON.stringify(middlewareConfig, null, 2));
-    debug('core:middleware', 'Performance measurement enabled:', middlewareConfig.telemetry.measurePerformance);
-    debug('core:middleware', 'Performance config:', JSON.stringify(middlewareConfig.telemetry.performance, null, 2));
+    debug(
+      'core:middleware',
+      'Initializing middleware with config:',
+      JSON.stringify(middlewareConfig, null, 2),
+    );
+    debug(
+      'core:middleware',
+      'Performance measurement enabled:',
+      middlewareConfig.telemetry.measurePerformance,
+    );
+    debug(
+      'core:middleware',
+      'Performance config:',
+      JSON.stringify(middlewareConfig.telemetry.performance, null, 2),
+    );
 
     // Initialize the middleware using the provided init function
     const middleware = initZubridgeMiddleware(middlewareConfig);
@@ -268,17 +301,26 @@ app
     }
 
     if (initialDirectWebContentsWindow) {
-      debug('example-app:init', `Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`);
+      debug(
+        'example-app:init',
+        `Adding direct WebContents window ID: ${initialDirectWebContentsWindow.id}`,
+      );
       windowsAndViews.push(initialDirectWebContentsWindow);
     }
 
     if (browserView) {
-      debug('example-app:init', `Adding browserView directly, WebContents ID: ${browserView.webContents.id}`);
+      debug(
+        'example-app:init',
+        `Adding browserView directly, WebContents ID: ${browserView.webContents.id}`,
+      );
       windowsAndViews.push(browserView);
     }
 
     if (webContentsView) {
-      debug('example-app:init', `Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`);
+      debug(
+        'example-app:init',
+        `Adding webContentsView directly, WebContents ID: ${webContentsView.webContents.id}`,
+      );
       windowsAndViews.push(webContentsView);
     }
 
@@ -296,11 +338,13 @@ app
     // On macOS activate, ensure all primary windows are handled
     app.on('activate', async () => {
       debug('example-app:init', 'App activate event triggered');
-      const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow } = windows.getWindowRefs();
+      const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow } =
+        windows.getWindowRefs();
 
       // Use optional chaining and null checks
       const hasMainWindow = mainWindow && !mainWindow.isDestroyed();
-      const hasDirectWebContentsWindow = directWebContentsWindow && !directWebContentsWindow.isDestroyed();
+      const hasDirectWebContentsWindow =
+        directWebContentsWindow && !directWebContentsWindow.isDestroyed();
       const hasBrowserViewWindow = browserViewWindow && !browserViewWindow.isDestroyed();
       const hasWebContentsViewWindow = webContentsViewWindow && !webContentsViewWindow.isVisible();
 
@@ -380,8 +424,13 @@ app
     const trackNewWindows = () => {
       try {
         // debug('Tracking new windows');
-        const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow, runtimeWindows } =
-          windows.getWindowRefs();
+        const {
+          mainWindow,
+          directWebContentsWindow,
+          browserViewWindow,
+          webContentsViewWindow,
+          runtimeWindows,
+        } = windows.getWindowRefs();
         const allWindows = BrowserWindow.getAllWindows();
 
         // debug(`Found ${allWindows.length} total windows, ${runtimeWindows.length} runtime windows`);
@@ -418,7 +467,10 @@ app
         for (let i = runtimeWindows.length - 1; i >= 0; i--) {
           if (runtimeWindows[i]?.isDestroyed()) {
             // Optional chaining for safety
-            debug('example-app:init', `Removing destroyed window from runtimeWindows array at index ${i}`);
+            debug(
+              'example-app:init',
+              `Removing destroyed window from runtimeWindows array at index ${i}`,
+            );
             runtimeWindows.splice(i, 1);
           }
         }
@@ -481,7 +533,10 @@ app
 
     // Set up handler for closing the current window
     ipcMain.handle(AppIpcChannel.CLOSE_CURRENT_WINDOW, async (event) => {
-      debug('example-app:init', `CloseCurrentWindow request received from window ID: ${event.sender.id}`);
+      debug(
+        'example-app:init',
+        `CloseCurrentWindow request received from window ID: ${event.sender.id}`,
+      );
       try {
         // Get the window that sent this message
         const window = BrowserWindow.fromWebContents(event.sender);
@@ -524,7 +579,10 @@ app
       const { mainWindow } = windows.getWindowRefs();
       // Check if this is the main window
       const isMainWindow = window === mainWindow;
-      debug('example-app:init', `is-main-window check for window ${event.sender.id}: ${isMainWindow}`);
+      debug(
+        'example-app:init',
+        `is-main-window check for window ${event.sender.id}: ${isMainWindow}`,
+      );
       return isMainWindow;
     });
 
@@ -544,9 +602,11 @@ app
         return null;
       }
 
-      const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow } = windows.getWindowRefs();
+      const { mainWindow, directWebContentsWindow, browserViewWindow, webContentsViewWindow } =
+        windows.getWindowRefs();
       const windowId = window.id;
-      let windowType: 'main' | 'directWebContents' | 'browserView' | 'webContentsView' | 'runtime' = 'runtime'; // Default to runtime
+      let windowType: 'main' | 'directWebContents' | 'browserView' | 'webContentsView' | 'runtime' =
+        'runtime'; // Default to runtime
 
       if (window === mainWindow) {
         windowType = 'main';
@@ -556,13 +616,19 @@ app
         windowType = 'browserView';
       } else if (window === webContentsViewWindow) {
         windowType = 'webContentsView';
-      } else if (browserViewWindow && browserView && event.sender.id === browserView.webContents.id) {
+      } else if (
+        browserViewWindow &&
+        browserView &&
+        event.sender.id === browserView.webContents.id
+      ) {
         // Special case for BrowserView - it has its own WebContents that's different from the window
         windowType = 'browserView';
       }
 
       // Get the subscriptions for this window - default to '*' if function not available
-      const subscriptions = bridge.getWindowSubscriptions ? bridge.getWindowSubscriptions(event.sender.id) : '*';
+      const subscriptions = bridge.getWindowSubscriptions
+        ? bridge.getWindowSubscriptions(event.sender.id)
+        : '*';
 
       debug(
         'example-app:init',
@@ -577,7 +643,10 @@ app
       debug('ipc', `Received request to create runtime window from sender ${event.sender.id}`);
       const newWindow = windows.createRuntimeWindow();
       // Subscribe the new window immediately
-      debug('example-app:init', `Runtime window created with ID: ${newWindow.id}, subscribing to bridge`);
+      debug(
+        'example-app:init',
+        `Runtime window created with ID: ${newWindow.id}, subscribing to bridge`,
+      );
       subscribe([newWindow]);
       return { success: true, windowId: newWindow.id };
     });
@@ -675,7 +744,10 @@ app
           debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from all state`);
           bridge.unsubscribe([windowOrView as WebContentsWrapper]);
         } else {
-          debug('example-app:init', `[IPC] Unsubscribing window ${event.sender.id} from keys: ${keys.join(', ')}`);
+          debug(
+            'example-app:init',
+            `[IPC] Unsubscribing window ${event.sender.id} from keys: ${keys.join(', ')}`,
+          );
           bridge.unsubscribe([windowOrView as WebContentsWrapper], keys);
         }
 
@@ -695,7 +767,10 @@ app
     });
 
     ipcMain.handle(AppIpcChannel.SUBSCRIBE, (event, keys: string[]) => {
-      debug('example-app:init', `[IPC] Subscribe request from window ${event.sender.id}, keys: ${keys.join(', ')}`);
+      debug(
+        'example-app:init',
+        `[IPC] Subscribe request from window ${event.sender.id}, keys: ${keys.join(', ')}`,
+      );
       const windowOrView = BrowserWindow.fromWebContents(event.sender);
       if (!windowOrView) {
         debug('example-app:init', `[IPC] No window found for sender ${event.sender.id}`);
@@ -707,7 +782,10 @@ app
           debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to all state`);
           bridge.subscribe([windowOrView as WebContentsWrapper]);
         } else {
-          debug('example-app:init', `[IPC] Subscribing window ${event.sender.id} to keys: ${keys.join(', ')}`);
+          debug(
+            'example-app:init',
+            `[IPC] Subscribing window ${event.sender.id} to keys: ${keys.join(', ')}`,
+          );
           bridge.subscribe([windowOrView as WebContentsWrapper], keys);
         }
 

@@ -26,7 +26,10 @@ function MinimalApp() {
       try {
         console.log('🔍 Starting app initialization...');
         console.log('🔍 window.electronAPI available:', !!window.electronAPI);
-        console.log('🔍 window.electronAPI keys:', window.electronAPI ? Object.keys(window.electronAPI) : 'N/A');
+        console.log(
+          '🔍 window.electronAPI keys:',
+          window.electronAPI ? Object.keys(window.electronAPI) : 'N/A',
+        );
 
         if (window.electronAPI) {
           console.log('🔍 Calling getWindowInfo()...');

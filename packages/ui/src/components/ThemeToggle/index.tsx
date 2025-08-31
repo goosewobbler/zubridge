@@ -28,7 +28,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onToggle, class
   const icon = theme === 'light' ? '🌙' : '☀️';
 
   // Dynamic styles based on theme
-  const buttonStyles = clsx('w-full', theme === 'light' ? 'bg-light-bg text-dark-bg' : 'bg-dark-bg text-light-bg');
+  const buttonStyles = clsx(
+    'w-full',
+    theme === 'light' ? 'bg-light-bg text-dark-bg' : 'bg-dark-bg text-light-bg',
+  );
 
   return (
     <div className={containerClass}>

@@ -93,7 +93,10 @@ export interface WebContentsWrapper {
 
 // The object returned by mainZustandBridge
 export interface ZustandBridge extends BaseBridge<number> {
-  subscribe: (wrappers: [WebContentsWrapper, ...WebContentsWrapper[]], keys?: string[]) => { unsubscribe: () => void };
+  subscribe: (
+    wrappers: [WebContentsWrapper, ...WebContentsWrapper[]],
+    keys?: string[],
+  ) => { unsubscribe: () => void };
   getWindowSubscriptions: (windowId: number) => string[];
 }
 

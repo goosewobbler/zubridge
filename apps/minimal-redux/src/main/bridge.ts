@@ -1,4 +1,8 @@
-import { createReduxBridge, type ZustandBridge, type ZubridgeMiddleware } from '@zubridge/electron/main';
+import {
+  createReduxBridge,
+  type ZustandBridge,
+  type ZubridgeMiddleware,
+} from '@zubridge/electron/main';
 import type { Store } from 'redux';
 import { actions } from './store.js';
 

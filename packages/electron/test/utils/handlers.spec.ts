@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../../src/utils/handlers.js';
+import {
+  findCaseInsensitiveMatch,
+  findNestedHandler,
+  resolveHandler,
+} from '../../src/utils/handlers.js';
 import type { Handler } from '@zubridge/types';
 
 describe('Handler Utilities', () => {

@@ -55,8 +55,14 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
     this.processQueue();
 
     // Log the updated queue state
-    debug('scheduler-debug', `Queue state after enqueueing task ${task.id}: ${JSON.stringify(this.getQueueStatus())}`);
-    debug('scheduler-debug', `Queue items: ${this.queue.length}, Running tasks: ${this.runningTasks.size}`);
+    debug(
+      'scheduler-debug',
+      `Queue state after enqueueing task ${task.id}: ${JSON.stringify(this.getQueueStatus())}`,
+    );
+    debug(
+      'scheduler-debug',
+      `Queue items: ${this.queue.length}, Running tasks: ${this.runningTasks.size}`,
+    );
   }
 
   /**
@@ -142,12 +148,18 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
       }
 
       debug('scheduler-debug', `Queue processing complete, started ${tasksStarted} tasks`);
-      debug('scheduler-debug', `Queue state after processing: ${JSON.stringify(this.getQueueStatus())}`);
+      debug(
+        'scheduler-debug',
+        `Queue state after processing: ${JSON.stringify(this.getQueueStatus())}`,
+      );
 
       if (tasksStarted > 0) {
         debug('scheduler-debug', 'Running tasks:');
         for (const [id, task] of this.runningTasks.entries()) {
-          debug('scheduler-debug', `  ${id}: thunk=${task.thunkId}, canRunConcurrently=${task.canRunConcurrently}`);
+          debug(
+            'scheduler-debug',
+            `  ${id}: thunk=${task.thunkId}, canRunConcurrently=${task.canRunConcurrently}`,
+          );
         }
       }
     } finally {
@@ -162,7 +174,10 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
    * affects the same keys
    */
   hasConflicts(task: ThunkTask): boolean {
-    debug('scheduler-debug', `Checking conflicts for task ${task.id} (canRunConcurrently: ${task.canRunConcurrently})`);
+    debug(
+      'scheduler-debug',
+      `Checking conflicts for task ${task.id} (canRunConcurrently: ${task.canRunConcurrently})`,
+    );
     debug(
       'scheduler-debug',
       `Currently running tasks: [${Array.from(this.runningTasks.values())
@@ -188,10 +203,16 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
         continue;
       }
 
-      debug('scheduler-debug', `Checking for conflicts between task ${task.id} and running task ${runningTask.id}`);
+      debug(
+        'scheduler-debug',
+        `Checking for conflicts between task ${task.id} and running task ${runningTask.id}`,
+      );
 
       // Always consider non-concurrent tasks to conflict (simplified approach)
-      debug('scheduler-debug', `Conflict: task ${task.id} cannot run concurrently with task ${runningTask.id}`);
+      debug(
+        'scheduler-debug',
+        `Conflict: task ${task.id} cannot run concurrently with task ${runningTask.id}`,
+      );
       return true;
     }
 
@@ -243,7 +264,10 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
         // Process queue again in case any waiting tasks can now be executed
         this.processQueue();
 
-        debug('scheduler-debug', `Queue state after task ${task.id} failed: ${JSON.stringify(this.getQueueStatus())}`);
+        debug(
+          'scheduler-debug',
+          `Queue state after task ${task.id} failed: ${JSON.stringify(this.getQueueStatus())}`,
+        );
       });
   }
 

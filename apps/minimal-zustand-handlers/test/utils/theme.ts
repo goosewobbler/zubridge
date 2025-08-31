@@ -30,7 +30,10 @@ export const getCurrentTheme = async (): Promise<'dark' | 'light'> => {
 /**
  * Wait for the theme to change to a specific value
  */
-export const waitForTheme = async (expectedTheme: 'dark' | 'light', timeoutMs = 10000): Promise<void> => {
+export const waitForTheme = async (
+  expectedTheme: 'dark' | 'light',
+  timeoutMs = 10000,
+): Promise<void> => {
   console.log(`Waiting for theme to change to: ${expectedTheme}`);
 
   const startTime = Date.now();

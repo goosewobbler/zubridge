@@ -70,7 +70,10 @@ describe('preloadBridge', () => {
       });
       const bridge = preloadBridge();
       bridge.handlers.subscribe(callback);
-      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(IpcChannel.STATE_UPDATE, expect.any(Function));
+      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(
+        IpcChannel.STATE_UPDATE,
+        expect.any(Function),
+      );
       // No longer sends to old SUBSCRIBE channel
       ipcCallback({} as any, { updateId: 'test-id', state: { counter: 42 }, thunkId: null });
       expect(callback).toHaveBeenCalledWith({ counter: 42 });
@@ -104,7 +107,9 @@ describe('preloadBridge', () => {
     it('should get state with bypassAccessControl option', async () => {
       const bridge = preloadBridge<AnyState>();
       await bridge.handlers.getState({ bypassAccessControl: true });
-      expect(electron.ipcRenderer.invoke).toHaveBeenCalledWith(IpcChannel.GET_STATE, { bypassAccessControl: true });
+      expect(electron.ipcRenderer.invoke).toHaveBeenCalledWith(IpcChannel.GET_STATE, {
+        bypassAccessControl: true,
+      });
     });
   });
 
@@ -128,7 +133,11 @@ describe('preloadBridge', () => {
       expect(mockedIpcRenderer.send).toHaveBeenCalledWith(
         IpcChannel.DISPATCH,
         expect.objectContaining({
-          action: expect.objectContaining({ type: 'INCREMENT', payload: 5, __id: expect.any(String) }),
+          action: expect.objectContaining({
+            type: 'INCREMENT',
+            payload: 5,
+            __id: expect.any(String),
+          }),
         }),
       );
 
@@ -146,7 +155,9 @@ describe('preloadBridge', () => {
       const result = await dispatchPromise;
 
       // Verify the result
-      expect(result).toEqual(expect.objectContaining({ type: 'INCREMENT', payload: 5, __id: expect.any(String) }));
+      expect(result).toEqual(
+        expect.objectContaining({ type: 'INCREMENT', payload: 5, __id: expect.any(String) }),
+      );
     });
 
     it('should dispatch action objects correctly', async () => {
@@ -169,7 +180,11 @@ describe('preloadBridge', () => {
       expect(mockedIpcRenderer.send).toHaveBeenCalledWith(
         IpcChannel.DISPATCH,
         expect.objectContaining({
-          action: expect.objectContaining({ type: 'INCREMENT', payload: 5, __id: expect.any(String) }),
+          action: expect.objectContaining({
+            type: 'INCREMENT',
+            payload: 5,
+            __id: expect.any(String),
+          }),
         }),
       );
 
@@ -187,7 +202,9 @@ describe('preloadBridge', () => {
       const result = await dispatchPromise;
 
       // Verify the result
-      expect(result).toEqual(expect.objectContaining({ type: 'INCREMENT', payload: 5, __id: expect.any(String) }));
+      expect(result).toEqual(
+        expect.objectContaining({ type: 'INCREMENT', payload: 5, __id: expect.any(String) }),
+      );
     });
   });
 
@@ -195,8 +212,14 @@ describe('preloadBridge', () => {
     it('should set up IPC listeners during initialization', () => {
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
       preloadBridge();
-      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(IpcChannel.DISPATCH_ACK, expect.any(Function));
-      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK_ACK, expect.any(Function));
+      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(
+        IpcChannel.DISPATCH_ACK,
+        expect.any(Function),
+      );
+      expect(mockedIpcRenderer.on).toHaveBeenCalledWith(
+        IpcChannel.REGISTER_THUNK_ACK,
+        expect.any(Function),
+      );
     });
   });
 });

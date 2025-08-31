@@ -194,7 +194,10 @@ describe('Redux Adapter', () => {
         });
 
         // Test deeply nested path resolution
-        adapterWithDeepHandlers.processAction({ type: 'ui.settings.theme.update', payload: 'light' });
+        adapterWithDeepHandlers.processAction({
+          type: 'ui.settings.theme.update',
+          payload: 'light',
+        });
         expect(updateHandler).toHaveBeenCalledWith('light');
         expect(store.dispatch).not.toHaveBeenCalled();
       });

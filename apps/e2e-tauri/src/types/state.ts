@@ -18,7 +18,10 @@ export function isBaseState(state: unknown): state is BaseState {
 
   const s = state as any;
   return (
-    typeof s.counter === 'number' && s.window && typeof s.window === 'object' && typeof s.window.isOpen === 'boolean'
+    typeof s.counter === 'number' &&
+    s.window &&
+    typeof s.window === 'object' &&
+    typeof s.window.isOpen === 'boolean'
   );
 }
 

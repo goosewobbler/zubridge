@@ -95,7 +95,9 @@ describe('Thunk Execution and Behavior', () => {
     try {
       // Use a single function to set up the test environment
       await setupTestEnvironment(CORE_WINDOW_COUNT);
-      console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
+      console.log(
+        `beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`,
+      );
       // reset counter to 0
       await resetCounter();
       // increment to a known value
@@ -392,7 +394,8 @@ describe('Thunk Execution and Behavior', () => {
       await waitForSpecificValue(8);
       const timeAfterSecondChange = new Date();
 
-      const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
+      const secondChangeDuration =
+        timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
       console.log(`[ASYNC TEST] Second value change: 8 at ${timeAfterSecondChange.toISOString()}`);
       console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
 
@@ -438,7 +441,8 @@ describe('Thunk Execution and Behavior', () => {
       await waitForSpecificValue(8);
       const timeAfterSecondChange = new Date();
 
-      const secondChangeDuration = timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
+      const secondChangeDuration =
+        timeAfterSecondChange.getTime() - timeBeforeSecondChange.getTime();
       console.log(`[ASYNC TEST] Second value change: 8 at ${timeAfterSecondChange.toISOString()}`);
       console.log(`[ASYNC TEST] Second change took ${secondChangeDuration}ms`);
 
@@ -668,7 +672,9 @@ describe('Thunk Execution and Behavior', () => {
 
       // Capture button click and potential IPC response
       if (process.platform === 'linux') {
-        console.log(`[LINUX DEBUG] About to click button - this should trigger IPC call to main process`);
+        console.log(
+          `[LINUX DEBUG] About to click button - this should trigger IPC call to main process`,
+        );
       }
 
       await mainSlowThunkButton.click();
@@ -696,11 +702,16 @@ describe('Thunk Execution and Behavior', () => {
         console.log(`[LINUX DEBUG] Available zubridge methods:`, JSON.stringify(thunkState));
 
         if (thunkState.success && thunkState.result && thunkState.result.availableMethods) {
-          console.log(`[LINUX DEBUG] Zubridge methods:`, thunkState.result.availableMethods.join(', '));
+          console.log(
+            `[LINUX DEBUG] Zubridge methods:`,
+            thunkState.result.availableMethods.join(', '),
+          );
         }
 
         // Linux: Simplified check - just wait for thunk to potentially complete
-        console.log(`[LINUX DEBUG] Waiting for main process thunk to complete (~2500ms + buffer)...`);
+        console.log(
+          `[LINUX DEBUG] Waiting for main process thunk to complete (~2500ms + buffer)...`,
+        );
         await browser.pause(4000);
 
         const afterWait = await getCounterValue();
@@ -710,7 +721,9 @@ describe('Thunk Execution and Behavior', () => {
           console.log(`[LINUX DEBUG] Thunk completed successfully during wait period`);
           // Continue to the normal test flow - the thunk worked
         } else {
-          console.log(`[LINUX DEBUG] Thunk did not complete as expected, current value: ${afterWait}`);
+          console.log(
+            `[LINUX DEBUG] Thunk did not complete as expected, current value: ${afterWait}`,
+          );
           // Continue anyway - let the normal waitForSpecificValue handle it
         }
       }
@@ -744,17 +757,23 @@ describe('Thunk Execution and Behavior', () => {
         console.log(`[LINUX DEBUG] About to wait for value 4, current value is ${currentValue}`);
 
         if (currentValue === 2) {
-          console.log(`[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`);
+          console.log(
+            `[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`,
+          );
 
           // Wait additional time for main process slow thunk to complete
-          console.log(`[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`);
+          console.log(
+            `[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`,
+          );
           await browser.pause(3000);
 
           const afterExtraWait = await getCounterValue();
           console.log(`[LINUX DEBUG] Counter value after waiting 3000ms: ${afterExtraWait}`);
 
           if (afterExtraWait === 4) {
-            console.log(`[LINUX DEBUG] Thunk completed during wait period! Final value: ${afterExtraWait}`);
+            console.log(
+              `[LINUX DEBUG] Thunk completed during wait period! Final value: ${afterExtraWait}`,
+            );
             const finalValue = await getCounterValue();
             console.log(`Final counter value: ${finalValue}`);
             expect(finalValue).toBe(4);
@@ -916,20 +935,28 @@ describe('Thunk Execution and Behavior', () => {
       if (process.platform === 'linux') {
         console.log(`[LINUX DEBUG] About to wait for value 4, current value is ${currentValue}`);
         if (currentValue === 2) {
-          console.log(`[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`);
+          console.log(
+            `[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`,
+          );
 
           // Since this is a main process slow thunk (~2500ms), let's wait strategically
-          console.log(`[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`);
+          console.log(
+            `[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`,
+          );
           await browser.pause(3000); // Wait longer than the 2500ms thunk duration
 
           const afterLongWait = await getCounterValue();
           console.log(`[LINUX DEBUG] Counter value after waiting 3000ms: ${afterLongWait}`);
 
           if (afterLongWait !== 2) {
-            console.log(`[LINUX DEBUG] Thunk completed during wait period! Final value: ${afterLongWait}`);
+            console.log(
+              `[LINUX DEBUG] Thunk completed during wait period! Final value: ${afterLongWait}`,
+            );
             // Update currentValue so the test can proceed with correct expectation
             if (afterLongWait === 4) {
-              console.log(`[LINUX DEBUG] Thunk completed successfully, skipping waitForSpecificValue`);
+              console.log(
+                `[LINUX DEBUG] Thunk completed successfully, skipping waitForSpecificValue`,
+              );
               const finalValue = await getCounterValue();
               console.log(`Final counter value: ${finalValue}`);
               expect(finalValue).toBe(4);

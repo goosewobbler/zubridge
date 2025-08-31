@@ -12,7 +12,10 @@ import type { State } from '../features/index.js';
  * Creates a bridge using the reducers approach
  * In this approach, we provide a Redux-style reducer function
  */
-export function createBridge(store: StoreApi<State>, middleware?: ZubridgeMiddleware): ZustandBridge {
+export function createBridge(
+  store: StoreApi<State>,
+  middleware?: ZubridgeMiddleware,
+): ZustandBridge {
   console.log('[Reducers Mode] Creating bridge with root reducer');
 
   // Add debugging wrapper around reducer

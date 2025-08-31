@@ -63,8 +63,8 @@ function AppWrapper() {
     'zustand-basic': 'Zustand Basic',
     'zustand-handlers': 'Zustand Handlers',
     'zustand-reducers': 'Zustand Reducers',
-    'redux': 'Redux',
-    'custom': 'Custom',
+    redux: 'Redux',
+    custom: 'Custom',
   };
   const modeTitle = modeMap[modeName] || `Unknown Mode (${modeName})`;
 

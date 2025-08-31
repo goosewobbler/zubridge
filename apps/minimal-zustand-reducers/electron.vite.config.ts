@@ -11,7 +11,13 @@ export default defineConfig({
     build: {
       outDir: 'out/main',
       rollupOptions: {
-        external: ['electron', '@zubridge/electron', '@zubridge/electron/main', '@zubridge/types', 'zustand'],
+        external: [
+          'electron',
+          '@zubridge/electron',
+          '@zubridge/electron/main',
+          '@zubridge/types',
+          'zustand',
+        ],
       },
     },
   },
@@ -19,7 +25,13 @@ export default defineConfig({
     build: {
       outDir: 'out/preload',
       rollupOptions: {
-        external: ['electron', '@zubridge/electron', '@zubridge/electron/preload', '@zubridge/types', 'zustand'],
+        external: [
+          'electron',
+          '@zubridge/electron',
+          '@zubridge/electron/preload',
+          '@zubridge/types',
+          'zustand',
+        ],
         output: {
           format: 'cjs',
           entryFileNames: '[name].cjs',

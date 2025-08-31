@@ -7,7 +7,12 @@ import {
   switchToWindow,
   getButtonInCurrentWindow,
 } from '../utils/window.js';
-import { waitForSpecificValue, getCounterValue, resetCounter, waitForIncrement } from '../utils/counter.js';
+import {
+  waitForSpecificValue,
+  getCounterValue,
+  resetCounter,
+  waitForIncrement,
+} from '../utils/counter.js';
 import { TIMING } from '../constants.js';
 import type {} from '@zubridge/types/app';
 
@@ -101,7 +106,9 @@ describe('BypassThunkLock Flag Functionality', () => {
 
       // Record the time before sending our bypassing action
       const beforeBypass = Date.now();
-      console.log(`[${new Date().toISOString()}] Before dispatching increment action with bypass flag`);
+      console.log(
+        `[${new Date().toISOString()}] Before dispatching increment action with bypass flag`,
+      );
 
       await incrementButton.click();
       console.log(`[${new Date().toISOString()}] Increment action dispatched`);
@@ -121,12 +128,18 @@ describe('BypassThunkLock Flag Functionality', () => {
       console.log(`Action bypass test passed with adjusted expectation (< 3000ms)`);
 
       // Now wait for the thunk to complete its remaining operations
-      console.log(`[${new Date().toISOString()}] Waiting for thunk to complete remaining operations`);
+      console.log(
+        `[${new Date().toISOString()}] Waiting for thunk to complete remaining operations`,
+      );
       // The sequence should be: 2 -> 4 (thunk) -> 5 (bypass) -> 10 (thunk) -> 5 (thunk)
       await waitForSpecificValue(10);
-      console.log(`[${new Date().toISOString()}] Counter value 10 reached (second step of slow thunk)`);
+      console.log(
+        `[${new Date().toISOString()}] Counter value 10 reached (second step of slow thunk)`,
+      );
       await waitForSpecificValue(5, 10000);
-      console.log(`[${new Date().toISOString()}] Counter value 5 reached (third step of slow thunk)`);
+      console.log(
+        `[${new Date().toISOString()}] Counter value 5 reached (third step of slow thunk)`,
+      );
 
       // Check the final counter value
       const finalValue = await getCounterValue();
@@ -220,7 +233,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       const bypassStartTime = Date.now();
       await waitForSpecificValue(12, TIMING.THUNK_WAIT_TIME);
       const bypassExecutionTime = Date.now() - bypassStartTime;
-      console.log(`Distinctive thunk first stage completed in ${bypassExecutionTime}ms, counter = 12`);
+      console.log(
+        `Distinctive thunk first stage completed in ${bypassExecutionTime}ms, counter = 12`,
+      );
 
       // The bypass should have executed quickly, not waiting for the slow thunk
       expect(bypassExecutionTime).toBeLessThan(TIMING.FAST_ACTION_MAX_TIME);
@@ -297,7 +312,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       const bypassStartTime = Date.now();
       await waitForSpecificValue(12, TIMING.THUNK_WAIT_TIME);
       const bypassExecutionTime = Date.now() - bypassStartTime;
-      console.log(`Distinctive thunk first stage completed in ${bypassExecutionTime}ms, counter = 12`);
+      console.log(
+        `Distinctive thunk first stage completed in ${bypassExecutionTime}ms, counter = 12`,
+      );
 
       // The bypass should have executed quickly, not waiting for the slow thunk
       expect(bypassExecutionTime).toBeLessThan(TIMING.FAST_ACTION_MAX_TIME);
@@ -335,7 +352,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       expect(initialValue).toBe(2);
 
       console.log('==== STATE SYNCHRONIZATION TEST ====');
-      console.log('This test explicitly documents the state synchronization issue with concurrent thunks');
+      console.log(
+        'This test explicitly documents the state synchronization issue with concurrent thunks',
+      );
 
       // Enable bypass thunk lock
       console.log('Enabling bypass thunk lock');
@@ -353,7 +372,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       console.log('Slow thunk first stage completed, counter = 4');
 
       // Now run the distinctive pattern thunk that will run concurrently with the slow thunk
-      console.log('Dispatching distinctive pattern thunk - should change counter: 4 → 12 → 14 → 13');
+      console.log(
+        'Dispatching distinctive pattern thunk - should change counter: 4 → 12 → 14 → 13',
+      );
       const distinctiveButton = await getButtonInCurrentWindow('distinctive-pattern-btn');
       await distinctiveButton.click();
 
@@ -379,7 +400,8 @@ describe('BypassThunkLock Flag Functionality', () => {
       console.log(`Current counter value after pause: ${currentValue}`);
 
       // Now wait longer to see if it changes again - use platform-specific timing
-      const platformWaitTime = process.platform === 'linux' ? TIMING.LONG_THUNK_WAIT_TIME : TIMING.THUNK_WAIT_TIME;
+      const platformWaitTime =
+        process.platform === 'linux' ? TIMING.LONG_THUNK_WAIT_TIME : TIMING.THUNK_WAIT_TIME;
       await browser.pause(platformWaitTime);
 
       // Check the final counter value
@@ -392,7 +414,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       // This test is deliberately written to pass even with the issue present
       // When the issue is fixed, this test should be updated
       if (finalValue === 13) {
-        console.log('STATE SYNCHRONIZATION WORKING CORRECTLY - Slow thunk used updated state from distinctive thunk');
+        console.log(
+          'STATE SYNCHRONIZATION WORKING CORRECTLY - Slow thunk used updated state from distinctive thunk',
+        );
       } else {
         console.log('STATE SYNCHRONIZATION ISSUE DETECTED - Slow thunk used stale state values');
         // This is currently the expected behavior - we're documenting the issue
@@ -478,7 +502,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       console.log('First stage of slow thunk completed, counter = 4');
 
       // Switch to second window, enable bypass, and perform a simple increment WITH bypass flag
-      console.log('Switching to second window to enable bypass and perform increment WITH bypass flag');
+      console.log(
+        'Switching to second window to enable bypass and perform increment WITH bypass flag',
+      );
       await switchToWindow(1); // Second window is at index 1
       await toggleBypassThunkLock(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);

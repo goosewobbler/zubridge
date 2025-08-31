@@ -31,7 +31,10 @@ export class ActionExecutor<S extends AnyState = AnyState> {
       // Process action through state manager
       debug('executor', `Calling stateManager.processAction for ${action.type}`);
       const result = this.stateManager.processAction(action);
-      debug('executor', `stateManager.processAction returned for ${action.type}, result type: ${typeof result}`);
+      debug(
+        'executor',
+        `stateManager.processAction returned for ${action.type}, result type: ${typeof result}`,
+      );
 
       // Check if the result contains an error property
       if (result && typeof result === 'object' && result.error) {
@@ -56,8 +59,14 @@ export class ActionExecutor<S extends AnyState = AnyState> {
       return result;
     } catch (error) {
       debug('executor:error', `Error executing action ${action.type}: ${error}`);
-      debug('executor:error', `Error details: ${error instanceof Error ? error.message : String(error)}`);
-      debug('executor:error', `Error stack: ${error instanceof Error ? error.stack : 'No stack available'}`);
+      debug(
+        'executor:error',
+        `Error details: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      debug(
+        'executor:error',
+        `Error stack: ${error instanceof Error ? error.stack : 'No stack available'}`,
+      );
       throw error;
     } finally {
       // Clear thunk context after action processing

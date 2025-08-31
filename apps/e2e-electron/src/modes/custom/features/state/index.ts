@@ -13,7 +13,9 @@ export const reset = () => {
   store.setState(() => initialState as unknown as AnyState);
 };
 
-export const generateLargeState = async (options?: { variant?: 'small' | 'medium' | 'large' | 'xl' }) => {
+export const generateLargeState = async (options?: {
+  variant?: 'small' | 'medium' | 'large' | 'xl';
+}) => {
   const variant = options?.variant || 'medium';
   console.log(`[Custom] Generating ${variant} test state`);
 

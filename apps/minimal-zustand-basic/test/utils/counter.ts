@@ -26,7 +26,10 @@ export const getCounterValue = async (): Promise<number> => {
 /**
  * Wait for the counter to reach a specific value
  */
-export const waitForCounterValue = async (expectedValue: number, timeoutMs = 10000): Promise<void> => {
+export const waitForCounterValue = async (
+  expectedValue: number,
+  timeoutMs = 10000,
+): Promise<void> => {
   console.log(`Waiting for counter to reach value: ${expectedValue}`);
 
   const startTime = Date.now();

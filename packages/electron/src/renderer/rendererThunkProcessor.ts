@@ -7,7 +7,10 @@ import type {} from '@zubridge/types/internal';
 
 // Platform-specific timeout for action completion
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
-debug('ipc', `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`);
+debug(
+  'ipc',
+  `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`,
+);
 
 /**
  * Handles thunk execution in the renderer process
@@ -86,7 +89,9 @@ export class RendererThunkProcessor {
    * Set a custom state provider function
    * This allows explicitly registering a way to get state after initialization
    */
-  public setStateProvider(provider: (opts?: { bypassAccessControl?: boolean }) => Promise<any>): void {
+  public setStateProvider(
+    provider: (opts?: { bypassAccessControl?: boolean }) => Promise<any>,
+  ): void {
     this.stateProvider = provider;
     debug('ipc', '[RENDERER_THUNK] Custom state provider registered');
   }
@@ -109,7 +114,10 @@ export class RendererThunkProcessor {
 
     // Check if there was an error in the result
     if (result && result.error) {
-      debug('ipc:error', `[RENDERER_THUNK] Action ${actionId} completed with error: ${result.error}`);
+      debug(
+        'ipc:error',
+        `[RENDERER_THUNK] Action ${actionId} completed with error: ${result.error}`,
+      );
     }
 
     // Call any completion callbacks waiting on this action
@@ -122,7 +130,10 @@ export class RendererThunkProcessor {
         // Call the callback with the result directly, let the callback handle errors
         callback(result);
       } catch (callbackError) {
-        debug('ipc:error', `[RENDERER_THUNK] Error in completion callback for action ${actionId}: ${callbackError}`);
+        debug(
+          'ipc:error',
+          `[RENDERER_THUNK] Error in completion callback for action ${actionId}: ${callbackError}`,
+        );
       }
       this.actionCompletionCallbacks.delete(actionId);
     } else {
@@ -136,7 +147,10 @@ export class RendererThunkProcessor {
       `[RENDERER_THUNK] Removed ${actionId} from pending dispatches, remaining: ${this.pendingDispatches.size}`,
     );
     if (this.pendingDispatches.size > 0) {
-      debug('ipc', `[RENDERER_THUNK] Remaining dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`);
+      debug(
+        'ipc',
+        `[RENDERER_THUNK] Remaining dispatch IDs: ${Array.from(this.pendingDispatches).join(', ')}`,
+      );
     }
   }
 
@@ -156,7 +170,10 @@ export class RendererThunkProcessor {
       bypassAccessControl: options?.bypassAccessControl ?? false,
       bypassThunkLock: options?.bypassThunkLock ?? false,
     });
-    debug('ipc', `[RENDERER_THUNK] Executing thunk ${thunk.id} (bypassThunkLock=${thunk.bypassThunkLock})`);
+    debug(
+      'ipc',
+      `[RENDERER_THUNK] Executing thunk ${thunk.id} (bypassThunkLock=${thunk.bypassThunkLock})`,
+    );
 
     // Track if this is the first action in the thunk
     let isFirstAction = true;
@@ -169,7 +186,12 @@ export class RendererThunkProcessor {
           'ipc',
           `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (bypassThunkLock=${thunk.bypassThunkLock})`,
         );
-        await this.thunkRegistrar(thunk.id, parentId, options?.bypassThunkLock, options?.bypassAccessControl);
+        await this.thunkRegistrar(
+          thunk.id,
+          parentId,
+          options?.bypassThunkLock,
+          options?.bypassAccessControl,
+        );
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
       } catch (error) {
         debug('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
@@ -223,7 +245,10 @@ export class RendererThunkProcessor {
 
         const actionId = actionObj.__id as string;
 
-        debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} dispatching action ${actionObj.type} (${actionId})`);
+        debug(
+          'ipc',
+          `[RENDERER_THUNK] Thunk ${thunk.id} dispatching action ${actionObj.type} (${actionId})`,
+        );
 
         // Mark this action as starting a thunk if it's the first action in the thunk
         if (isFirstAction) {
@@ -244,7 +269,11 @@ export class RendererThunkProcessor {
         const actionPromise = new Promise<any>((resolve, reject) => {
           // Store the callback to be called when action acknowledgment is received
           this.actionCompletionCallbacks.set(actionId, (result) => {
-            debug('ipc', `[RENDERER_THUNK] Action ${actionId} completion callback called with result`, result);
+            debug(
+              'ipc',
+              `[RENDERER_THUNK] Action ${actionId} completion callback called with result`,
+              result,
+            );
 
             // Check if the result contains an error
             if (result && result.error) {
@@ -305,7 +334,10 @@ export class RendererThunkProcessor {
             throw error;
           }
         } else {
-          debug('ipc:error', `[RENDERER_THUNK] No action sender configured, cannot send action ${actionId}`);
+          debug(
+            'ipc:error',
+            `[RENDERER_THUNK] No action sender configured, cannot send action ${actionId}`,
+          );
           throw new Error('Action sender not configured for renderer thunk processor');
         }
 
@@ -337,7 +369,11 @@ export class RendererThunkProcessor {
   /**
    * Dispatch an action to the main process (for non-thunk scenarios)
    */
-  public async dispatchAction(action: Action | string, payload?: unknown, parentId?: string): Promise<void> {
+  public async dispatchAction(
+    action: Action | string,
+    payload?: unknown,
+    parentId?: string,
+  ): Promise<void> {
     debug('ipc', '[RENDERER_THUNK] dispatchAction called with:', { action, payload, parentId });
 
     // Use the zubridge handlers if available
@@ -357,7 +393,10 @@ export class RendererThunkProcessor {
 
     // If no actionSender, this instance can't dispatch directly
     if (!this.actionSender) {
-      debug('ipc:error', '[RENDERER_THUNK] dispatchAction: No action sender configured, cannot dispatch.');
+      debug(
+        'ipc:error',
+        '[RENDERER_THUNK] dispatchAction: No action sender configured, cannot dispatch.',
+      );
       throw new Error('Action sender not configured for direct dispatch.');
     }
 
@@ -379,11 +418,18 @@ export class RendererThunkProcessor {
 
       // Store the callback to be called when action acknowledgment is received
       this.actionCompletionCallbacks.set(actionId, (result) => {
-        debug('ipc', `[RENDERER_THUNK] Action ${actionId} completion callback called with result:`, result);
+        debug(
+          'ipc',
+          `[RENDERER_THUNK] Action ${actionId} completion callback called with result:`,
+          result,
+        );
 
         // Check if the result contains an error
         if (result && result.error) {
-          debug('ipc:error', `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`);
+          debug(
+            'ipc:error',
+            `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,
+          );
           reject(new Error(result.error));
         } else {
           resolve();
@@ -405,7 +451,10 @@ export class RendererThunkProcessor {
       this.actionTimeouts.set(actionId, safetyTimeout);
 
       // Send the action to the main process
-      debug('ipc', `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.__id})`);
+      debug(
+        'ipc',
+        `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.__id})`,
+      );
       this.actionSender!(actionObj, parentId)
         .then(() => {
           debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);

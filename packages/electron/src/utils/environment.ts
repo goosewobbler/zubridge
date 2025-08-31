@@ -16,10 +16,14 @@ export const isDev = async (): Promise<boolean> => {
       return false;
     }
     return (
-      process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1' || !process.env.VITE_DEV_SERVER_URL
+      process.env.NODE_ENV === 'development' ||
+      process.env.ELECTRON_IS_DEV === '1' ||
+      !process.env.VITE_DEV_SERVER_URL
     );
   }
   const { app } = await import('electron');
 
-  return !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1';
+  return (
+    !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1'
+  );
 };

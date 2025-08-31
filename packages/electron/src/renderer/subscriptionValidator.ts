@@ -22,7 +22,10 @@ export async function getWindowSubscriptions(): Promise<string[]> {
   try {
     const now = Date.now();
     // Use cached value if recent
-    if (cachedSubscriptions.length > 0 && now - lastSubscriptionFetchTime < SUBSCRIPTION_CACHE_TTL) {
+    if (
+      cachedSubscriptions.length > 0 &&
+      now - lastSubscriptionFetchTime < SUBSCRIPTION_CACHE_TTL
+    ) {
       return cachedSubscriptions;
     }
 
@@ -215,7 +218,11 @@ export function stateKeyExists(state: any, key: string): boolean {
  * @param action Optional action to check for bypass flags
  * @throws Error if the key doesn't exist or the window isn't subscribed
  */
-export async function validateStateAccessWithExistence(state: any, key: string, action?: Action): Promise<void> {
+export async function validateStateAccessWithExistence(
+  state: any,
+  key: string,
+  action?: Action,
+): Promise<void> {
   // Always check if the key exists in the state, regardless of bypass flag
   if (!stateKeyExists(state, key)) {
     throw new Error(`State key '${key}' does not exist in the store`);

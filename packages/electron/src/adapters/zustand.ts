@@ -8,7 +8,9 @@ import type { ZubridgeMiddleware } from '../middleware.js';
  * Helper to check if a value is a Promise
  */
 function isPromise(value: unknown): value is Promise<unknown> {
-  return !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
+  return (
+    !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function'
+  );
 }
 
 /**
@@ -58,13 +60,19 @@ export function createZustandAdapter<S extends AnyState>(
           if (handler) {
             debug('adapters', `Found custom handler for action type: ${action.type}`);
             // Execute the handler - it might be async
-            debug('adapters', `Executing handler for ${action.type}, time: ${new Date().toISOString()}`);
+            debug(
+              'adapters',
+              `Executing handler for ${action.type}, time: ${new Date().toISOString()}`,
+            );
             const startTime = new Date().getTime();
             const result = handler(action.payload);
 
             // If the handler returns a Promise, it's async
             if (isPromise(result)) {
-              debug('adapters', `Handler for ${action.type} returned a Promise, it will complete asynchronously`);
+              debug(
+                'adapters',
+                `Handler for ${action.type} returned a Promise, it will complete asynchronously`,
+              );
 
               // Add unique ID for tracking this promise
               const promiseId = Math.random().toString(36).substring(2, 10);
@@ -85,7 +93,10 @@ export function createZustandAdapter<S extends AnyState>(
                     'adapters',
                     `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
                   );
-                  debug('adapters', `[ADAPTER_DEBUG] [${promiseId}] STATE IS NOW UPDATED for ${action.type}`);
+                  debug(
+                    'adapters',
+                    `[ADAPTER_DEBUG] [${promiseId}] STATE IS NOW UPDATED for ${action.type}`,
+                  );
                 }),
               );
 
@@ -96,7 +107,10 @@ export function createZustandAdapter<S extends AnyState>(
               };
             } else {
               const endTime = new Date().getTime();
-              debug('adapters', `Sync handler for ${action.type} completed in ${endTime - startTime}ms`);
+              debug(
+                'adapters',
+                `Sync handler for ${action.type} completed in ${endTime - startTime}ms`,
+              );
               return { isSync: true }; // Sync action
             }
           }
@@ -121,7 +135,9 @@ export function createZustandAdapter<S extends AnyState>(
 
           // Try direct match with state functions
           const methodMatch = findCaseInsensitiveMatch(
-            Object.fromEntries(Object.entries(state).filter(([_, value]) => typeof value === 'function')),
+            Object.fromEntries(
+              Object.entries(state).filter(([_, value]) => typeof value === 'function'),
+            ),
             action.type,
           );
 
@@ -130,7 +146,10 @@ export function createZustandAdapter<S extends AnyState>(
             // Call the method and check if it returns a Promise
             const result = methodMatch[1](action.payload);
             if (isPromise(result)) {
-              debug('adapters', `Method ${methodMatch[0]} returned a Promise, it will complete asynchronously`);
+              debug(
+                'adapters',
+                `Method ${methodMatch[0]} returned a Promise, it will complete asynchronously`,
+              );
               // Return both the async status and the completion promise
               return {
                 isSync: false,
@@ -174,9 +193,18 @@ export function createZustandAdapter<S extends AnyState>(
         }
       } catch (error) {
         debug('adapters:error', 'Error processing action:', error);
-        debug('adapters:error', `Error type: ${typeof error}, instanceof Error: ${error instanceof Error}`);
-        debug('adapters:error', `Error message: ${error instanceof Error ? error.message : String(error)}`);
-        debug('adapters:error', `Stack trace: ${error instanceof Error ? error.stack : 'No stack available'}`);
+        debug(
+          'adapters:error',
+          `Error type: ${typeof error}, instanceof Error: ${error instanceof Error}`,
+        );
+        debug(
+          'adapters:error',
+          `Error message: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        debug(
+          'adapters:error',
+          `Stack trace: ${error instanceof Error ? error.stack : 'No stack available'}`,
+        );
 
         // Return the error so it can be propagated to the renderer
         return {

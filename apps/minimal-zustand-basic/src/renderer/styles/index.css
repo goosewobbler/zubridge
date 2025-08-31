@@ -35,7 +35,7 @@
   --container-width: 300px;
 }
 
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @layer components {
   /* Base theme styles */

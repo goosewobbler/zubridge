@@ -110,7 +110,11 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
         try {
           stateJson = JSON.stringify(state);
         } catch (stringifyError) {
-          debug('core:error', '[zubridge-electron] Error stringifying state for NAPI middleware:', stringifyError);
+          debug(
+            'core:error',
+            '[zubridge-electron] Error stringifying state for NAPI middleware:',
+            stringifyError,
+          );
           // Send an error object as state or handle differently
           stateJson = JSON.stringify({ error: 'State stringification failed' });
         }

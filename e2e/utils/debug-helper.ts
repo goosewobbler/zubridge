@@ -64,7 +64,11 @@ export class DebugHelper {
   /**
    * Track window operation sequences to identify corruption patterns
    */
-  static logWindowOperation(operation: string, windowIndex?: number, result?: 'SUCCESS' | 'FAILED') {
+  static logWindowOperation(
+    operation: string,
+    windowIndex?: number,
+    result?: 'SUCCESS' | 'FAILED',
+  ) {
     if (process.platform !== 'linux') {
       return;
     }
@@ -104,7 +108,9 @@ export class DebugHelper {
 
       return false;
     } catch (err) {
-      console.log(`[WINDOW_HEALTH] ${timestamp} - ${operation}: FAILED to check - ${(err as Error).message}`);
+      console.log(
+        `[WINDOW_HEALTH] ${timestamp} - ${operation}: FAILED to check - ${(err as Error).message}`,
+      );
       DebugHelper.logWindowCorruption(`Health check failed during ${operation}`, windowIndex);
       return true;
     }
@@ -127,9 +133,12 @@ export class DebugHelper {
       const { execSync } = require('child_process');
 
       // Quick non-blocking checks
-      const xvfb = execSync('pgrep -f xvfb >/dev/null 2>&1 && echo "RUNNING" || echo "NOT_RUNNING"', {
-        encoding: 'utf8',
-      }).trim();
+      const xvfb = execSync(
+        'pgrep -f xvfb >/dev/null 2>&1 && echo "RUNNING" || echo "NOT_RUNNING"',
+        {
+          encoding: 'utf8',
+        },
+      ).trim();
       console.log(`[ENV_DEBUG] XVFB: ${xvfb}`);
     } catch (err) {
       console.log(`[ENV_DEBUG] Environment check minimal failure`);

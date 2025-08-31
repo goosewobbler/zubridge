@@ -12,12 +12,16 @@ try {
   let content = fs.readFileSync(indexPath, 'utf8');
 
   // Add a log at the very top of the file
-  const topLine = "console.log('[Middleware Loader] TOP OF FILE MARKER: index.js is being parsed.');\n";
+  const topLine =
+    "console.log('[Middleware Loader] TOP OF FILE MARKER: index.js is being parsed.');\n";
   content = topLine + content;
 
   // Generic function to add logging before a line matching a pattern
   const addLogBefore = (targetLinePattern, logMessage) => {
-    const regex = new RegExp(`^(\\s*)${targetLinePattern.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'gm');
+    const regex = new RegExp(
+      `^(\\s*)${targetLinePattern.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`,
+      'gm',
+    );
     content = content.replace(regex, (match, p1Indentation) => {
       const logLine = `${p1Indentation}console.log(${JSON.stringify(logMessage)});`;
       return `${logLine}\n${match}`;
@@ -26,7 +30,10 @@ try {
 
   // Generic function to add logging after a line matching a pattern
   const addLogAfter = (targetLinePattern, logMessage) => {
-    const regex = new RegExp(`^(\\s*${targetLinePattern.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})$`, 'gm');
+    const regex = new RegExp(
+      `^(\\s*${targetLinePattern.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})$`,
+      'gm',
+    );
     content = content.replace(regex, (match, p1OriginalLine) => {
       const indentation = p1OriginalLine.match(/^(\\s*)/)[0];
       const logLine = `${indentation}console.log(${JSON.stringify(logMessage)});`;
@@ -127,9 +134,14 @@ try {
       );
 
       const tryBlockPatternForCatch = `try {\\s*if \\(localFileExisted\\) \\{[\\s\\S]*?require\\('./${nodeFile}'\\)[\\s\\S]*?\\} else \\{[\\s\\S]*?require\\('${packageName}'\\)[\\s\\S]*?\\}\\s*}`;
-      const catchRegex = new RegExp(`(${tryBlockPatternForCatch})(\\s*)catch\\s*\\(e\\)\\s*{`, 'gm');
+      const catchRegex = new RegExp(
+        `(${tryBlockPatternForCatch})(\\s*)catch\\s*\\(e\\)\\s*{`,
+        'gm',
+      );
       content = content.replace(catchRegex, (fullMatch, _p1TryBlock, p2CatchIndentation) => {
-        console.log(`DEBUG: Linux ${arch}-${libc} - Modifying catch. Indentation: '${p2CatchIndentation}'`);
+        console.log(
+          `DEBUG: Linux ${arch}-${libc} - Modifying catch. Indentation: '${p2CatchIndentation}'`,
+        );
         return `${_p1TryBlock}${p2CatchIndentation}catch (e) {\n${p2CatchIndentation}  console.error('[Middleware Loader] Linux ${arch}-${libc}: Error loading binding:', e);`;
       });
     });
@@ -185,7 +197,10 @@ try {
 
   // Final error logging
   const finalErrorIf = 'if (!nativeBinding) {';
-  const finalErrorIfRegex = new RegExp(`^(\\s*)${finalErrorIf.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'gm');
+  const finalErrorIfRegex = new RegExp(
+    `^(\\s*)${finalErrorIf.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`,
+    'gm',
+  );
   content = content.replace(finalErrorIfRegex, (match, p1Indentation) => {
     const errorBlock = `
 ${p1Indentation}if (!nativeBinding) {

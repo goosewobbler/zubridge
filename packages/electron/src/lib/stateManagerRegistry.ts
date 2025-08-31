@@ -6,7 +6,8 @@ import { createZustandAdapter, ZustandOptions } from '../adapters/zustand.js';
 import { createReduxAdapter, ReduxOptions } from '../adapters/redux.js';
 import type { CoreBridgeOptions } from '../bridge.js';
 
-type CombinedOptions<S extends AnyState> = (ZustandOptions<S> | ReduxOptions<S>) & Partial<CoreBridgeOptions>;
+type CombinedOptions<S extends AnyState> = (ZustandOptions<S> | ReduxOptions<S>) &
+  Partial<CoreBridgeOptions>;
 
 // WeakMap allows stores to be garbage collected when no longer referenced
 // Use a variable reference so we can replace it in tests

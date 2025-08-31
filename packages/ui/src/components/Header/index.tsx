@@ -62,7 +62,9 @@ export const Header: React.FC<HeaderProps> = ({
 
       {counterValue !== undefined && (
         <div className="flex-1 text-center">
-          <h2 className="text-xl font-bold whitespace-nowrap">Counter: {isLoading ? '...' : counterValue}</h2>
+          <h2 className="text-xl font-bold whitespace-nowrap">
+            Counter: {isLoading ? '...' : counterValue}
+          </h2>
         </div>
       )}
 

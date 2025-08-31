@@ -315,7 +315,9 @@ describe('bridge.ts', () => {
       });
 
       createCoreBridge(stateManager);
-      const dispatchHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === IpcChannel.DISPATCH)?.[1];
+      const dispatchHandler = vi
+        .mocked(ipcMain.on)
+        .mock.calls.find((call) => call[0] === IpcChannel.DISPATCH)?.[1];
       if (dispatchHandler) {
         const mockEvent = { sender: { id: 1, send: vi.fn() } } as any;
         // Expect this path to be taken, error to be handled internally by debug log

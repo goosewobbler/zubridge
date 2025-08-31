@@ -27,7 +27,9 @@ describe('Basic State Synchronization', () => {
     try {
       // Use a single function to set up the test environment
       await setupTestEnvironment(CORE_WINDOW_COUNT);
-      console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
+      console.log(
+        `beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`,
+      );
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
       // If setup fails, try to recover or throw to stop tests

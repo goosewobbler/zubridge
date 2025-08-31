@@ -4,7 +4,10 @@ import { debug } from '@zubridge/core';
 /**
  * Helper function to find a case-insensitive match in an object
  */
-export function findCaseInsensitiveMatch<T>(obj: Record<string, T>, key: string): [string, T] | undefined {
+export function findCaseInsensitiveMatch<T>(
+  obj: Record<string, T>,
+  key: string,
+): [string, T] | undefined {
   // Try exact match first
   if (key in obj) {
     debug('store', `Found exact match for handler key: ${key}`);
@@ -69,7 +72,10 @@ export function findNestedHandler<T>(obj: Record<string, any>, path: string): T 
  * Resolves a handler function from provided handlers using action type
  * This handles both direct matches and nested path resolution
  */
-export function resolveHandler(handlers: Record<string, Handler | any>, actionType: string): Handler | undefined {
+export function resolveHandler(
+  handlers: Record<string, Handler | any>,
+  actionType: string,
+): Handler | undefined {
   debug('store', `Resolving handler for action type: ${actionType}`);
 
   // Try direct match with handlers

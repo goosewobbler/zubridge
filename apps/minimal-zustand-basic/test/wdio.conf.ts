@@ -13,7 +13,7 @@ const config: any = {
   maxInstances: 1,
   capabilities: [
     {
-      'browserName': 'electron',
+      browserName: 'electron',
       'wdio:electronServiceOptions': {
         appEntryPoint: appEntryPoint,
       },

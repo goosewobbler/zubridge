@@ -17,7 +17,9 @@ export const reducer: Reducer<typeof initialState> = (state, action: Action) => 
       return initialState;
     case 'STATE:GENERATE-FILLER': {
       // Type narrowing for action.payload
-      const payload = action.payload as { variant?: 'small' | 'medium' | 'large' | 'xl' } | undefined;
+      const payload = action.payload as
+        | { variant?: 'small' | 'medium' | 'large' | 'xl' }
+        | undefined;
       const variant = payload?.variant || 'medium';
       console.log(`[Reducer] Generating ${variant} test state`);
 

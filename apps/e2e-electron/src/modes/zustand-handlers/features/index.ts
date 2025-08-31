@@ -59,7 +59,11 @@ export interface ErrorHandlers {
 }
 
 // Define ActionHandlers as a Record<string, Handler> to be compatible with createDispatch
-export type ActionHandlers = Record<string, Handler> & CounterHandlers & ThemeHandlers & StateHandlers & ErrorHandlers;
+export type ActionHandlers = Record<string, Handler> &
+  CounterHandlers &
+  ThemeHandlers &
+  StateHandlers &
+  ErrorHandlers;
 
 /**
  * All handlers for the handlers mode

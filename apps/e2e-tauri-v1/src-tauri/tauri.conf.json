@@ -36,7 +36,13 @@
       "active": true,
       "targets": "all",
       "identifier": "com.zubridge.e2e-tauri-v1",
-      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
     },
     "security": {
       "csp": "default-src 'self' asset: https://asset.localhost; connect-src 'self' ipc://localhost ipc:* plugin:*; img-src 'self' asset: https://asset.localhost data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"

@@ -65,7 +65,8 @@ export const Button: React.FC<ButtonProps> = ({
     'hover:-translate-y-[1px] hover:shadow-sm',
     'active:translate-y-[1px] active:shadow-none',
     // Disabled state
-    (disabled || loading) && 'bg-gray-400 cursor-not-allowed transform-none hover:bg-gray-400 hover:shadow-none',
+    (disabled || loading) &&
+      'bg-gray-400 cursor-not-allowed transform-none hover:bg-gray-400 hover:shadow-none',
     // Custom classes
     className,
   ]

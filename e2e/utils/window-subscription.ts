@@ -85,12 +85,16 @@ export async function validateAndFixWindowSubscription(
 
   // Step 4: We're on the wrong window - search for the correct one
   // This happens when WebDriver window switching becomes unreliable on Linux
-  console.log(`[LINUX DEBUG] Current window not subscribed to '${expectedKey}', looking for correct subscription...`);
+  console.log(
+    `[LINUX DEBUG] Current window not subscribed to '${expectedKey}', looking for correct subscription...`,
+  );
 
   let foundCorrectWindow = false;
   // Check all windows to find one subscribed to the expected key
   for (let i = 0; i < allWindowHandles.length; i++) {
-    console.log(`[LINUX DEBUG] Checking window ${i} (handle: ${allWindowHandles[i].substring(0, 8)}...)`);
+    console.log(
+      `[LINUX DEBUG] Checking window ${i} (handle: ${allWindowHandles[i].substring(0, 8)}...)`,
+    );
     try {
       await browser.switchToWindow(allWindowHandles[i]);
       const windowSubs = await browser.execute(() => {
@@ -108,7 +112,9 @@ export async function validateAndFixWindowSubscription(
       console.log(`[LINUX DEBUG] Window ${i} subscriptions:`, windowSubs);
 
       if (Array.isArray(windowSubs) && (windowSubs as string[]).includes(expectedKey)) {
-        console.log(`[LINUX DEBUG] Found window ${i} subscribed to '${expectedKey}', using this window`);
+        console.log(
+          `[LINUX DEBUG] Found window ${i} subscribed to '${expectedKey}', using this window`,
+        );
         foundCorrectWindow = true;
         break;
       }
@@ -120,12 +126,18 @@ export async function validateAndFixWindowSubscription(
   // Step 5: Recovery - No window has the expected subscription
   // This indicates test setup failed due to Linux WebDriver instability
   if (!foundCorrectWindow) {
-    console.log(`[LINUX DEBUG] No window found subscribed to '${expectedKey}'! This is the root cause.`);
-    console.log(`[LINUX DEBUG] The test setup may have failed to properly subscribe window 0 to '${expectedKey}'.`);
+    console.log(
+      `[LINUX DEBUG] No window found subscribed to '${expectedKey}'! This is the root cause.`,
+    );
+    console.log(
+      `[LINUX DEBUG] The test setup may have failed to properly subscribe window 0 to '${expectedKey}'.`,
+    );
 
     // Recovery strategy: Re-establish the subscription on window 0
     // This works around WebDriver instability that prevented initial subscription
-    console.log(`[LINUX DEBUG] Attempting to re-establish '${expectedKey}' subscription on window 0...`);
+    console.log(
+      `[LINUX DEBUG] Attempting to re-establish '${expectedKey}' subscription on window 0...`,
+    );
     try {
       await browser.switchToWindow(allWindowHandles[0]);
       await unsubscribeAllFn();
@@ -150,7 +162,10 @@ export async function validateAndFixWindowSubscription(
         console.log(`[LINUX DEBUG] Successfully re-established '${expectedKey}' subscription`);
         return true;
       } else {
-        console.log(`[LINUX DEBUG] Re-subscription verification failed, subscriptions:`, newSubscriptions);
+        console.log(
+          `[LINUX DEBUG] Re-subscription verification failed, subscriptions:`,
+          newSubscriptions,
+        );
         return false;
       }
     } catch (resubError) {

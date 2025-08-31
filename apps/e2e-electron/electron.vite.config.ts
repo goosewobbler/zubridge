@@ -195,8 +195,8 @@ export default defineConfig({
     // Define globals for the renderer process
     define: {
       // This prevents errors with __dirname in the renderer
-      '__dirname': JSON.stringify(''),
-      '__filename': JSON.stringify(''),
+      __dirname: JSON.stringify(''),
+      __filename: JSON.stringify(''),
       // This prevents errors with process.env in the renderer
       'process.env': '{}',
       // Let the renderer know which mode it's running in

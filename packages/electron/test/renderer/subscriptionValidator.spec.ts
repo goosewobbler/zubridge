@@ -65,7 +65,9 @@ describe('subscriptionValidator', () => {
 
     it('should handle errors by returning an empty array', async () => {
       // Setup
-      mockWindowSubscriptionValidator.getWindowSubscriptions.mockRejectedValue(new Error('API failed'));
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockRejectedValue(
+        new Error('API failed'),
+      );
 
       // Execute
       const result = await getWindowSubscriptions();
@@ -128,7 +130,9 @@ describe('subscriptionValidator', () => {
 
       // Verify
       expect(result).toBe(true);
-      expect(mockWindowSubscriptionValidator.isSubscribedToKey).toHaveBeenCalledWith('user.profile');
+      expect(mockWindowSubscriptionValidator.isSubscribedToKey).toHaveBeenCalledWith(
+        'user.profile',
+      );
     });
 
     it('should return false when not subscribed to any related key', async () => {
@@ -148,7 +152,10 @@ describe('subscriptionValidator', () => {
     it('should pass silently when key is subscribed', async () => {
       // Setup
       mockWindowSubscriptionValidator.isSubscribedToKey.mockResolvedValue(true);
-      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(['counter', 'theme']);
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue([
+        'counter',
+        'theme',
+      ]);
 
       // Execute & Verify - should not throw
       await expect(validateStateAccess('counter')).resolves.toBeUndefined();
@@ -192,7 +199,9 @@ describe('subscriptionValidator', () => {
       await expect(validateStateAccess('settings.theme')).rejects.toThrow(
         "Access denied: This window is not subscribed to state key 'settings.theme'",
       );
-      expect(mockWindowSubscriptionValidator.isSubscribedToKey).toHaveBeenCalledWith('settings.theme');
+      expect(mockWindowSubscriptionValidator.isSubscribedToKey).toHaveBeenCalledWith(
+        'settings.theme',
+      );
     });
 
     it('should provide informative error when trying to access multiple unsubscribed keys', async () => {
@@ -204,7 +213,9 @@ describe('subscriptionValidator', () => {
       await expect(validateStateAccess('counter.value')).rejects.toThrow(
         "Access denied: This window is not subscribed to state key 'counter.value'",
       );
-      expect(mockWindowSubscriptionValidator.isSubscribedToKey).toHaveBeenCalledWith('counter.value');
+      expect(mockWindowSubscriptionValidator.isSubscribedToKey).toHaveBeenCalledWith(
+        'counter.value',
+      );
     });
   });
 
@@ -231,7 +242,8 @@ describe('subscriptionValidator', () => {
         const parts = key.split('.');
         let current = state;
         for (const part of parts) {
-          if (current === undefined || current === null || typeof current !== 'object') return false;
+          if (current === undefined || current === null || typeof current !== 'object')
+            return false;
           if (!(part in current)) return false;
           current = current[part];
         }
@@ -337,7 +349,10 @@ describe('subscriptionValidator', () => {
       // Setup
       mockWindowSubscriptionValidator.stateKeyExists.mockReturnValue(true);
       mockWindowSubscriptionValidator.isSubscribedToKey.mockResolvedValue(true);
-      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(['counter', 'theme']);
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue([
+        'counter',
+        'theme',
+      ]);
 
       const state = { counter: 0, theme: 'light' };
 
@@ -351,7 +366,11 @@ describe('subscriptionValidator', () => {
       // Setup
       mockWindowSubscriptionValidator.stateKeyExists.mockReturnValue(false);
       mockWindowSubscriptionValidator.isSubscribedToKey.mockResolvedValue(true);
-      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(['counter', 'theme', 'user']);
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue([
+        'counter',
+        'theme',
+        'user',
+      ]);
 
       const state = { counter: 0, theme: 'light' };
 
@@ -434,7 +453,10 @@ describe('subscriptionValidator', () => {
       await expect(validateStateAccessWithExistence(state, 'user.profile.age')).rejects.toThrow(
         "State key 'user.profile.age' does not exist in the store",
       );
-      expect(mockWindowSubscriptionValidator.stateKeyExists).toHaveBeenCalledWith(state, 'user.profile.age');
+      expect(mockWindowSubscriptionValidator.stateKeyExists).toHaveBeenCalledWith(
+        state,
+        'user.profile.age',
+      );
     });
 
     it('should throw appropriate error when accessing undefined state', async () => {
@@ -447,7 +469,10 @@ describe('subscriptionValidator', () => {
       await expect(validateStateAccessWithExistence(undefined, 'counter')).rejects.toThrow(
         "State key 'counter' does not exist in the store",
       );
-      expect(mockWindowSubscriptionValidator.stateKeyExists).toHaveBeenCalledWith(undefined, 'counter');
+      expect(mockWindowSubscriptionValidator.stateKeyExists).toHaveBeenCalledWith(
+        undefined,
+        'counter',
+      );
     });
   });
 });

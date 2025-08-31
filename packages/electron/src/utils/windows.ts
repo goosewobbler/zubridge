@@ -5,8 +5,13 @@ import { debug } from '@zubridge/core';
 /**
  * Type guard to check if an object is an Electron WebContents
  */
-export const isWebContents = (wrapperOrWebContents: WrapperOrWebContents): wrapperOrWebContents is WebContents => {
-  const result = wrapperOrWebContents && typeof wrapperOrWebContents === 'object' && 'id' in wrapperOrWebContents;
+export const isWebContents = (
+  wrapperOrWebContents: WrapperOrWebContents,
+): wrapperOrWebContents is WebContents => {
+  const result =
+    wrapperOrWebContents &&
+    typeof wrapperOrWebContents === 'object' &&
+    'id' in wrapperOrWebContents;
   if (result) {
     debug('windows', `isWebContents: TRUE for id ${(wrapperOrWebContents as WebContents).id}`);
   } else {
@@ -18,12 +23,19 @@ export const isWebContents = (wrapperOrWebContents: WrapperOrWebContents): wrapp
 /**
  * Type guard to check if an object is a WebContentsWrapper
  */
-export const isWrapper = (wrapperOrWebContents: WrapperOrWebContents): wrapperOrWebContents is WebContentsWrapper => {
+export const isWrapper = (
+  wrapperOrWebContents: WrapperOrWebContents,
+): wrapperOrWebContents is WebContentsWrapper => {
   const result =
-    wrapperOrWebContents && typeof wrapperOrWebContents === 'object' && 'webContents' in wrapperOrWebContents;
+    wrapperOrWebContents &&
+    typeof wrapperOrWebContents === 'object' &&
+    'webContents' in wrapperOrWebContents;
 
   if (result) {
-    debug('windows', `isWrapper: TRUE for id ${(wrapperOrWebContents as WebContentsWrapper).webContents?.id}`);
+    debug(
+      'windows',
+      `isWrapper: TRUE for id ${(wrapperOrWebContents as WebContentsWrapper).webContents?.id}`,
+    );
   } else {
     debug('windows', 'isWrapper: FALSE', wrapperOrWebContents);
   }
@@ -33,7 +45,9 @@ export const isWrapper = (wrapperOrWebContents: WrapperOrWebContents): wrapperOr
 /**
  * Get the WebContents object from either a WebContentsWrapper or WebContents
  */
-export const getWebContents = (wrapperOrWebContents: WrapperOrWebContents): WebContents | undefined => {
+export const getWebContents = (
+  wrapperOrWebContents: WrapperOrWebContents,
+): WebContents | undefined => {
   // Create a more readable description of the input for logging
   let description = 'Invalid input';
 
@@ -50,13 +64,19 @@ export const getWebContents = (wrapperOrWebContents: WrapperOrWebContents): WebC
   debug('windows', `getWebContents called with: ${description}`);
 
   if (isWebContents(wrapperOrWebContents)) {
-    debug('windows', `getWebContents: Returning direct WebContents with ID: ${wrapperOrWebContents.id}`);
+    debug(
+      'windows',
+      `getWebContents: Returning direct WebContents with ID: ${wrapperOrWebContents.id}`,
+    );
     return wrapperOrWebContents;
   }
 
   if (isWrapper(wrapperOrWebContents)) {
     const webContents = wrapperOrWebContents.webContents;
-    debug('windows', `getWebContents: Extracting from wrapper, ID: ${webContents?.id || 'undefined'}`);
+    debug(
+      'windows',
+      `getWebContents: Extracting from wrapper, ID: ${webContents?.id || 'undefined'}`,
+    );
     return webContents;
   }
 
@@ -85,7 +105,11 @@ export const isDestroyed = (webContents: WebContents): boolean => {
 /**
  * Safely send a message to a WebContents
  */
-export const safelySendToWindow = (webContents: WebContents, channel: string, data: unknown): boolean => {
+export const safelySendToWindow = (
+  webContents: WebContents,
+  channel: string,
+  data: unknown,
+): boolean => {
   try {
     debug(
       'windows',
@@ -100,36 +124,62 @@ export const safelySendToWindow = (webContents: WebContents, channel: string, da
     // Type check for WebContents API
     const hasWebContentsAPI = typeof webContents.send === 'function';
     if (!hasWebContentsAPI) {
-      debug('windows', `safelySendToWindow: WebContents ID ${webContents.id} missing 'send' function`);
+      debug(
+        'windows',
+        `safelySendToWindow: WebContents ID ${webContents.id} missing 'send' function`,
+      );
       return false;
     }
 
     // Check if isLoading is a function before calling it
     const isLoading = typeof webContents.isLoading === 'function' ? webContents.isLoading() : false;
-    debug('windows', `safelySendToWindow: WebContents ID ${webContents.id} isLoading: ${isLoading}`);
+    debug(
+      'windows',
+      `safelySendToWindow: WebContents ID ${webContents.id} isLoading: ${isLoading}`,
+    );
 
     if (isLoading) {
-      debug('windows', `safelySendToWindow: WebContents ID ${webContents.id} is loading, queueing message for later`);
+      debug(
+        'windows',
+        `safelySendToWindow: WebContents ID ${webContents.id} is loading, queueing message for later`,
+      );
       webContents.once('did-finish-load', () => {
         try {
           if (!webContents.isDestroyed()) {
-            debug('windows', `safelySendToWindow: Now sending delayed message to WebContents ID ${webContents.id}`);
+            debug(
+              'windows',
+              `safelySendToWindow: Now sending delayed message to WebContents ID ${webContents.id}`,
+            );
             webContents.send(channel, data);
           } else {
-            debug('windows', `safelySendToWindow: WebContents ID ${webContents.id} was destroyed before load finished`);
+            debug(
+              'windows',
+              `safelySendToWindow: WebContents ID ${webContents.id} was destroyed before load finished`,
+            );
           }
         } catch (e) {
-          debug('windows', `safelySendToWindow: Error sending delayed message to WebContents ID ${webContents.id}`, e);
+          debug(
+            'windows',
+            `safelySendToWindow: Error sending delayed message to WebContents ID ${webContents.id}`,
+            e,
+          );
         }
       });
       return true;
     }
 
-    debug('windows', `safelySendToWindow: Sending message immediately to WebContents ID ${webContents.id}`);
+    debug(
+      'windows',
+      `safelySendToWindow: Sending message immediately to WebContents ID ${webContents.id}`,
+    );
     webContents.send(channel, data);
     return true;
   } catch (error) {
-    debug('windows', `safelySendToWindow: Exception while sending to WebContents ID ${webContents?.id}`, error);
+    debug(
+      'windows',
+      `safelySendToWindow: Exception while sending to WebContents ID ${webContents?.id}`,
+      error,
+    );
     return false;
   }
 };
@@ -139,14 +189,20 @@ export const safelySendToWindow = (webContents: WebContents, channel: string, da
  */
 export const setupDestroyListener = (webContents: WebContents, cleanup: () => void): void => {
   try {
-    debug('windows', `setupDestroyListener: Setting up cleanup for WebContents ID ${webContents?.id}`);
+    debug(
+      'windows',
+      `setupDestroyListener: Setting up cleanup for WebContents ID ${webContents?.id}`,
+    );
     if (typeof webContents.once === 'function') {
       webContents.once('destroyed', () => {
         debug('windows', `WebContents ID ${webContents.id} destroyed, running cleanup`);
         cleanup();
       });
     } else {
-      debug('windows', `setupDestroyListener: WebContents ID ${webContents.id} missing 'once' function`);
+      debug(
+        'windows',
+        `setupDestroyListener: WebContents ID ${webContents.id} missing 'once' function`,
+      );
     }
   } catch (e) {
     debug('windows', `setupDestroyListener: Exception for WebContents ID ${webContents?.id}`, e);
@@ -247,7 +303,8 @@ export const createWebContentsTracker = (): WebContentsTracker => {
         return false;
       }
 
-      const tracked = webContents && webContentsTracker.has(webContents) && activeIds.has(webContents.id);
+      const tracked =
+        webContents && webContentsTracker.has(webContents) && activeIds.has(webContents.id);
 
       debug('windows', `isTracked: WebContents ID ${webContents.id} tracked: ${tracked}`);
       return tracked;
@@ -276,7 +333,10 @@ export const createWebContentsTracker = (): WebContentsTracker => {
           result.push(webContents);
         } else {
           // Clean up any destroyed WebContents we find
-          debug('windows', `getActiveWebContents: Found destroyed WebContents ID ${id}, cleaning up`);
+          debug(
+            'windows',
+            `getActiveWebContents: Found destroyed WebContents ID ${id}, cleaning up`,
+          );
           activeIds.delete(id);
           webContentsById.delete(id);
         }
@@ -299,7 +359,10 @@ export const createWebContentsTracker = (): WebContentsTracker => {
  */
 export const prepareWebContents = (wrappers?: WrapperOrWebContents[]): WebContents[] => {
   if (!wrappers || !Array.isArray(wrappers)) {
-    debug('windows', 'prepareWebContents: No wrappers provided or invalid input, returning empty array');
+    debug(
+      'windows',
+      'prepareWebContents: No wrappers provided or invalid input, returning empty array',
+    );
     return [];
   }
 

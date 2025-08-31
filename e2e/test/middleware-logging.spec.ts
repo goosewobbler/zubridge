@@ -3,7 +3,12 @@ import { it, describe, before, beforeEach, after, afterEach } from 'mocha';
 import WebSocket from 'ws';
 import assert from 'node:assert';
 import { browser } from 'wdio-electron-service';
-import { getButtonInCurrentWindow, refreshWindowHandles, windowHandles, switchToWindow } from '../utils/window.js';
+import {
+  getButtonInCurrentWindow,
+  refreshWindowHandles,
+  windowHandles,
+  switchToWindow,
+} from '../utils/window.js';
 import { TIMING } from '../constants.js';
 
 // Names of core windows for easier reference in tests
@@ -68,7 +73,9 @@ function summarize(
   const median = sorted[Math.floor(sorted.length / 2)];
   const min = sorted[0];
   const max = sorted[sorted.length - 1];
-  const stddev = Math.sqrt(values.reduce((a: number, b: number) => a + (b - mean) ** 2, 0) / values.length);
+  const stddev = Math.sqrt(
+    values.reduce((a: number, b: number) => a + (b - mean) ** 2, 0) / values.length,
+  );
   return { mean, median, min, max, stddev, count: values.length };
 }
 
@@ -92,7 +99,14 @@ async function performIncrementsAndCollectMetrics(
 // Type guard for stats
 function isStats(
   obj: any,
-): obj is { mean: number; median: number; min: number; max: number; stddev: number; count: number } {
+): obj is {
+  mean: number;
+  median: number;
+  min: number;
+  max: number;
+  stddev: number;
+  count: number;
+} {
   return obj && typeof obj.mean === 'number' && typeof obj.count === 'number';
 }
 
@@ -110,7 +124,9 @@ describe('IPC Traffic Logging Middleware', () => {
 
     // Connect to the middleware WebSocket server
     return new Promise<void>((resolve) => {
-      console.log(`Connecting to middleware WebSocket server on ws://localhost:${WEBSOCKET_PORT}...`);
+      console.log(
+        `Connecting to middleware WebSocket server on ws://localhost:${WEBSOCKET_PORT}...`,
+      );
       ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
 
       // Store received log messages in the array
@@ -121,10 +137,16 @@ describe('IPC Traffic Logging Middleware', () => {
 
           if (DEBUG_WS_MESSAGES) {
             // Log the first 100 chars of each message for debugging
-            console.log('Received message:', messageStr.substring(0, 100) + (messageStr.length > 100 ? '...' : ''));
+            console.log(
+              'Received message:',
+              messageStr.substring(0, 100) + (messageStr.length > 100 ? '...' : ''),
+            );
 
             // If it's a state update with metrics, log it fully
-            if (messageStr.includes('"entry_type":"StateUpdated"') && messageStr.includes('"processing_metrics"')) {
+            if (
+              messageStr.includes('"entry_type":"StateUpdated"') &&
+              messageStr.includes('"processing_metrics"')
+            ) {
               console.log('FOUND METRICS MESSAGE:', messageStr);
             }
           }
@@ -158,11 +180,17 @@ describe('IPC Traffic Logging Middleware', () => {
 
               // Check if this message contains performance metrics
               if (parsedData.entry_type === 'StateUpdated' && parsedData.processing_metrics) {
-                console.log('PERFORMANCE METRICS RECEIVED:', JSON.stringify(parsedData.processing_metrics, null, 2));
+                console.log(
+                  'PERFORMANCE METRICS RECEIVED:',
+                  JSON.stringify(parsedData.processing_metrics, null, 2),
+                );
 
                 // Verify the structure of the metrics object
                 if (typeof parsedData.processing_metrics.total_ms !== 'number') {
-                  console.warn('WARNING: total_ms is not a number:', parsedData.processing_metrics.total_ms);
+                  console.warn(
+                    'WARNING: total_ms is not a number:',
+                    parsedData.processing_metrics.total_ms,
+                  );
                 }
               }
             } else {
@@ -246,7 +274,10 @@ describe('IPC Traffic Logging Middleware', () => {
     assert(stateUpdates.length > 0, 'Should receive state update logs');
     if (stateUpdates.length > 0) {
       // Debug the state structure
-      console.log('First state update contents:', JSON.stringify(stateUpdates[0], null, 2).substring(0, 200));
+      console.log(
+        'First state update contents:',
+        JSON.stringify(stateUpdates[0], null, 2).substring(0, 200),
+      );
       // Check for state_summary or state_delta
       if (stateUpdates[0].state_summary) {
         console.log('State summary received:', JSON.stringify(stateUpdates[0].state_summary));
@@ -257,12 +288,16 @@ describe('IPC Traffic Logging Middleware', () => {
       }
       // Check for processing metrics if they're available
       if (stateUpdates[0].processing_metrics) {
-        console.log('Processing metrics received:', JSON.stringify(stateUpdates[0].processing_metrics));
+        console.log(
+          'Processing metrics received:',
+          JSON.stringify(stateUpdates[0].processing_metrics),
+        );
         // Verify it has at least the total_ms property
         expect(stateUpdates[0].processing_metrics).toHaveProperty('total_ms');
       }
       // Accept state information in any form to pass the test
-      const hasStateInfo = stateUpdates[0].state !== undefined || stateUpdates[0].state_summary !== undefined;
+      const hasStateInfo =
+        stateUpdates[0].state !== undefined || stateUpdates[0].state_summary !== undefined;
       assert(hasStateInfo, 'State update should include state information or summary');
     }
   });
@@ -307,7 +342,10 @@ describe('IPC Traffic Logging Middleware', () => {
       console.log(`Found ${actionLogs.length} action logs`);
       // Look for counter actions specifically for debugging
       const counterActions = actionLogs.filter(
-        (msg) => msg.action && msg.action.action_type && msg.action.action_type.toLowerCase().includes('counter'),
+        (msg) =>
+          msg.action &&
+          msg.action.action_type &&
+          msg.action.action_type.toLowerCase().includes('counter'),
       );
       if (counterActions.length > 0) {
         console.log(`Found ${counterActions.length} counter actions`);
@@ -341,7 +379,10 @@ describe('IPC Traffic Logging Middleware', () => {
     console.log(`Found ${stateUpdatesWithMetrics.length} state updates with performance metrics`);
     if (stateUpdatesWithMetrics.length > 0) {
       // Log the first performance metrics entry
-      console.log('Performance metrics:', JSON.stringify(stateUpdatesWithMetrics[0].processing_metrics, null, 2));
+      console.log(
+        'Performance metrics:',
+        JSON.stringify(stateUpdatesWithMetrics[0].processing_metrics, null, 2),
+      );
       // Verify the metrics structure
       expect(stateUpdatesWithMetrics[0].processing_metrics).toHaveProperty('total_ms');
       // Get the total_ms value for checks
@@ -407,7 +448,11 @@ describe('IPC Traffic Logging Middleware', () => {
       const incrementButton = await getButtonInCurrentWindow('increment');
       expect(incrementButton).toBeExisting();
       // Perform NUM_INCREMENTS increments for better statistics
-      const perfValues = await performIncrementsAndCollectMetrics(incrementButton, NUM_INCREMENTS, logMessages);
+      const perfValues = await performIncrementsAndCollectMetrics(
+        incrementButton,
+        NUM_INCREMENTS,
+        logMessages,
+      );
       const stats = summarize(perfValues);
       console.log(`Perf stats for ${NUM_INCREMENTS} increments (large, ${subType}):`, stats);
       if (isStats(stats) && stats.count > 0 && stats.mean > 0) {
@@ -457,7 +502,11 @@ describe('IPC Traffic Logging Middleware', () => {
       const subscriptionPatterns = [
         { name: 'all-state', keys: ['*'], setup: subscribeToAll },
         { name: 'counter-only', keys: ['counter'], setup: () => subscribeToKeys('counter') },
-        { name: 'multi-key', keys: ['counter', 'theme'], setup: () => subscribeToKeys('counter,theme') },
+        {
+          name: 'multi-key',
+          keys: ['counter', 'theme'],
+          setup: () => subscribeToKeys('counter,theme'),
+        },
       ];
 
       // Run through all combinations
@@ -581,13 +630,18 @@ describe('IPC Traffic Logging Middleware', () => {
         console.log('\nPerformance comparison across state sizes:');
 
         // Get all metrics for 'counter-only' subscription
-        const counterOnlyMetrics = performanceMetrics.filter((m) => m.subscriptionType === 'counter-only');
+        const counterOnlyMetrics = performanceMetrics.filter(
+          (m) => m.subscriptionType === 'counter-only',
+        );
 
         if (counterOnlyMetrics.length >= 2) {
           // Sort by variant size (small, medium, large)
           const sortedMetrics = counterOnlyMetrics.sort((a, b) => {
             const sizeOrder: Record<string, number> = { small: 0, medium: 1, large: 2, xl: 3 };
-            return sizeOrder[a.variant as keyof typeof sizeOrder] - sizeOrder[b.variant as keyof typeof sizeOrder];
+            return (
+              sizeOrder[a.variant as keyof typeof sizeOrder] -
+              sizeOrder[b.variant as keyof typeof sizeOrder]
+            );
           });
 
           // Compare each adjacent pair

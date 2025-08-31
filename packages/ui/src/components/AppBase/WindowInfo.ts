@@ -1,7 +1,13 @@
 /**
  * Common window types across platforms
  */
-export type WindowType = 'main' | 'runtime' | 'directWebContents' | 'browserView' | 'webContentsView' | 'secondary';
+export type WindowType =
+  | 'main'
+  | 'runtime'
+  | 'directWebContents'
+  | 'browserView'
+  | 'webContentsView'
+  | 'secondary';
 
 /**
  * Information about the current window

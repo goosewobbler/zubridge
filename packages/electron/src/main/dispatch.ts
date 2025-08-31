@@ -1,4 +1,11 @@
-import type { Action, AnyState, Dispatch, DispatchOptions, StateManager, Thunk } from '@zubridge/types';
+import type {
+  Action,
+  AnyState,
+  Dispatch,
+  DispatchOptions,
+  StateManager,
+  Thunk,
+} from '@zubridge/types';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import { ZustandOptions } from '../adapters/zustand.js';

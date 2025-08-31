@@ -47,7 +47,10 @@ const shouldQuit = (isAppQuitting: boolean) => {
 };
 
 // Monitor window DOM content loaded
-function setupDomReadyLogging(window: BrowserWindow | BrowserView | WebContentsView, windowName: string) {
+function setupDomReadyLogging(
+  window: BrowserWindow | BrowserView | WebContentsView,
+  windowName: string,
+) {
   window.webContents.on('dom-ready', () => {
     debugWindow(`${windowName} DOM ready`);
   });
@@ -189,7 +192,9 @@ export async function initDirectWebContentsWindow(): Promise<BrowserWindow> {
   });
 
   debugWindow(`Direct WebContents window created with ID: ${directWebContentsWindow.id}`);
-  directWebContentsWindow.setTitle(`Zubridge Electron Example (${getZubridgeMode()}) - Direct WebContents Window`);
+  directWebContentsWindow.setTitle(
+    `Zubridge Electron Example (${getZubridgeMode()}) - Direct WebContents Window`,
+  );
 
   if (isDevEnv) {
     debugWindow('Loading direct WebContents window from dev server');
@@ -640,7 +645,9 @@ export function createRuntimeWindow(): BrowserWindow {
 
   // Track this window
   runtimeWindows.push(runtimeWindow);
-  debugWindow(`Runtime window ${runtimeWindow.id} added to tracking. Total: ${runtimeWindows.length}`);
+  debugWindow(
+    `Runtime window ${runtimeWindow.id} added to tracking. Total: ${runtimeWindows.length}`,
+  );
 
   if (isDevEnv) {
     debugWindow('Loading runtime window from dev server');
@@ -664,7 +671,9 @@ export function createRuntimeWindow(): BrowserWindow {
     const index = runtimeWindows.findIndex((w) => w.id === runtimeWindow.id);
     if (index !== -1) {
       runtimeWindows.splice(index, 1);
-      debugWindow(`Runtime window ${runtimeWindow.id} removed from tracking. Remaining: ${runtimeWindows.length}`);
+      debugWindow(
+        `Runtime window ${runtimeWindow.id} removed from tracking. Remaining: ${runtimeWindows.length}`,
+      );
     }
   });
 

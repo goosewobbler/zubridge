@@ -3,7 +3,13 @@ import type { IpcMainEvent, WebContents } from 'electron';
 import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
 import { debug } from '@zubridge/core';
-import type { Action, StateManager, AnyState, BackendBridge, WrapperOrWebContents } from '@zubridge/types';
+import type {
+  Action,
+  StateManager,
+  AnyState,
+  BackendBridge,
+  WrapperOrWebContents,
+} from '@zubridge/types';
 import { v4 as uuidv4 } from 'uuid';
 
 import { IpcChannel } from './constants.js';
@@ -38,7 +44,11 @@ export interface CoreBridgeOptions {
   // Middleware hooks
   middleware?: ZubridgeMiddleware;
   beforeProcessAction?: (action: Action, windowId?: number) => Promise<Action> | Action;
-  afterProcessAction?: (action: Action, processingTime: number, windowId?: number) => Promise<void> | void;
+  afterProcessAction?: (
+    action: Action,
+    processingTime: number,
+    windowId?: number,
+  ) => Promise<void> | void;
   beforeStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   afterStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   onBridgeDestroy?: () => Promise<void> | void;
@@ -95,13 +105,16 @@ export function createCoreBridge<State extends AnyState>(
 
     // Register middleware callbacks if the middleware provides them
     if (options?.middleware?.trackActionDispatch) {
-      middlewareCallbacks.trackActionDispatch = (action) => options.middleware!.trackActionDispatch!(action);
+      middlewareCallbacks.trackActionDispatch = (action) =>
+        options.middleware!.trackActionDispatch!(action);
     }
     if (options?.middleware?.trackActionReceived) {
-      middlewareCallbacks.trackActionReceived = (action) => options.middleware!.trackActionReceived!(action);
+      middlewareCallbacks.trackActionReceived = (action) =>
+        options.middleware!.trackActionReceived!(action);
     }
     if (options?.middleware?.trackStateUpdate) {
-      middlewareCallbacks.trackStateUpdate = (action, state) => options.middleware!.trackStateUpdate!(action, state);
+      middlewareCallbacks.trackStateUpdate = (action, state) =>
+        options.middleware!.trackStateUpdate!(action, state);
     }
     if (options?.middleware?.trackActionAcknowledged) {
       middlewareCallbacks.trackActionAcknowledged = (actionId) =>
@@ -143,7 +156,10 @@ export function createCoreBridge<State extends AnyState>(
 
       // If this is a thunk action, ensure the thunk is registered before enqueueing
       if (parentId && !thunkManager.hasThunk(parentId)) {
-        debug('ipc', `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.__id}`);
+        debug(
+          'ipc',
+          `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.__id}`,
+        );
         const thunkObj = new ThunkClass({
           id: parentId,
           sourceWindowId: event.sender.id,
@@ -155,7 +171,10 @@ export function createCoreBridge<State extends AnyState>(
       // Queue the action for processing
       actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId, (error) => {
         // This callback is called when the action is completed (successfully or with error)
-        debug('ipc', `[BRIDGE DEBUG] Action ${action.__id} completed with ${error ? 'error' : 'success'}`);
+        debug(
+          'ipc',
+          `[BRIDGE DEBUG] Action ${action.__id} completed with ${error ? 'error' : 'success'}`,
+        );
 
         if (error) {
           debug(
@@ -185,7 +204,10 @@ export function createCoreBridge<State extends AnyState>(
               error: error ? (error instanceof Error ? error.message : String(error)) : null,
             });
 
-            debug('ipc', `[BRIDGE DEBUG] Acknowledgment sent for action ${action.__id} to window ${event.sender.id}`);
+            debug(
+              'ipc',
+              `[BRIDGE DEBUG] Acknowledgment sent for action ${action.__id} to window ${event.sender.id}`,
+            );
 
             // Track action acknowledged with middleware
             if (middlewareCallbacks.trackActionAcknowledged) {
@@ -206,7 +228,10 @@ export function createCoreBridge<State extends AnyState>(
         const { action } = data || {};
         if (action?.__id) {
           debug('ipc', `Sending acknowledgment for action ${action.__id} despite error`);
-          debug('ipc', `[BRIDGE DEBUG] Sending acknowledgment for action ${action.__id} despite error`);
+          debug(
+            'ipc',
+            `[BRIDGE DEBUG] Sending acknowledgment for action ${action.__id} despite error`,
+          );
           if (!isDestroyed(event.sender)) {
             safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
               actionId: action.__id,
@@ -231,7 +256,10 @@ export function createCoreBridge<State extends AnyState>(
         return;
       }
 
-      debug('middleware', `Received action dispatch tracking for ${action.type} (ID: ${action.__id})`);
+      debug(
+        'middleware',
+        `Received action dispatch tracking for ${action.type} (ID: ${action.__id})`,
+      );
 
       // Add source window ID to the action
       const actionWithSource = {
@@ -242,7 +270,10 @@ export function createCoreBridge<State extends AnyState>(
       // Call middleware tracking function if available
       if (middlewareCallbacks.trackActionDispatch) {
         // Ensure payload is a string for Rust middleware
-        if (actionWithSource.payload !== undefined && typeof actionWithSource.payload !== 'string') {
+        if (
+          actionWithSource.payload !== undefined &&
+          typeof actionWithSource.payload !== 'string'
+        ) {
           actionWithSource.payload = JSON.stringify(actionWithSource.payload);
         }
         await middlewareCallbacks.trackActionDispatch(actionWithSource);
@@ -282,7 +313,10 @@ export function createCoreBridge<State extends AnyState>(
 
       // Check for bypassAccessControl in options or '*' subscription
       if ((options && options.bypassAccessControl) || subscriptions.includes('*')) {
-        debug('ipc', `[BRIDGE DEBUG] Returning full state to renderer ${windowId} (bypass access control)`);
+        debug(
+          'ipc',
+          `[BRIDGE DEBUG] Returning full state to renderer ${windowId} (bypass access control)`,
+        );
         return state;
       }
 
@@ -297,9 +331,15 @@ export function createCoreBridge<State extends AnyState>(
       }
 
       // Otherwise, filter state by subscriptions
-      debug('ipc', `[BRIDGE DEBUG] Filtering state for renderer ${windowId} with subscriptions: ${subscriptions}`);
+      debug(
+        'ipc',
+        `[BRIDGE DEBUG] Filtering state for renderer ${windowId} with subscriptions: ${subscriptions}`,
+      );
       const filteredState = getPartialState(state, subscriptions);
-      debug('ipc', `[BRIDGE DEBUG] Returning filtered state to renderer ${windowId}: ${JSON.stringify(filteredState)}`);
+      debug(
+        'ipc',
+        `[BRIDGE DEBUG] Returning filtered state to renderer ${windowId}: ${JSON.stringify(filteredState)}`,
+      );
       return filteredState;
     } catch (error) {
       debug('core:error', 'Error handling getState:', error);
@@ -336,7 +376,8 @@ export function createCoreBridge<State extends AnyState>(
       debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} registration queued successfully`);
 
       // Send ack to renderer
-      event.sender && safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: true });
+      event.sender &&
+        safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: true });
     } catch (error) {
       debug('core:error', '[BRIDGE DEBUG] Error handling thunk registration:', error);
       // Send failure ack
@@ -363,10 +404,16 @@ export function createCoreBridge<State extends AnyState>(
 
       const wasActive = thunkManager.isThunkActive(thunkId);
       thunkManager.completeThunk(thunkId);
-      debug('core', `[BRIDGE DEBUG] Thunk ${thunkId} marked for completion (was active: ${wasActive})`);
+      debug(
+        'core',
+        `[BRIDGE DEBUG] Thunk ${thunkId} marked for completion (was active: ${wasActive})`,
+      );
 
       // The ThunkTracker will notify ActionQueueManager via state change listener
-      debug('core', '[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener');
+      debug(
+        'core',
+        '[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener',
+      );
     } catch (error) {
       debug('core:error', '[BRIDGE DEBUG] Error handling thunk completion:', error);
     }
@@ -376,7 +423,10 @@ export function createCoreBridge<State extends AnyState>(
   ipcMain.on(IpcChannel.STATE_UPDATE_ACK, (event: IpcMainEvent, data: any) => {
     try {
       const { updateId, thunkId } = data || {};
-      debug('thunk', `Received state update acknowledgment for ${updateId} from renderer ${event.sender.id}`);
+      debug(
+        'thunk',
+        `Received state update acknowledgment for ${updateId} from renderer ${event.sender.id}`,
+      );
 
       if (!updateId) {
         debug('thunk:warn', 'Missing updateId in state update acknowledgment');
@@ -458,7 +508,10 @@ export function createCoreBridge<State extends AnyState>(
       // Set up a destroy listener to clean up subscriptions when the window is closed
       if (!destroyListenerSet.has(webContents.id)) {
         setupDestroyListener(webContents, () => {
-          debug('thunk', `Window ${webContents.id} destroyed, cleaning up subscriptions and pending state updates`);
+          debug(
+            'thunk',
+            `Window ${webContents.id} destroyed, cleaning up subscriptions and pending state updates`,
+          );
           subscriptionManagers.delete(webContents.id);
           destroyListenerSet.delete(webContents.id);
           // Clean up dead renderer from pending state updates to prevent hanging acknowledgments
@@ -480,7 +533,10 @@ export function createCoreBridge<State extends AnyState>(
           // Only track state updates caused by thunk actions, not all updates while thunk is active
           if (currentThunkId) {
             thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [webContents.id]);
-            debug('core', `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`);
+            debug(
+              'core',
+              `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`,
+            );
           } else {
             debug('core', `State update ${updateId} not tracked (not from thunk action)`);
           }
@@ -538,7 +594,10 @@ export function createCoreBridge<State extends AnyState>(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
     keys?: string[],
   ): { unsubscribe: () => void } {
-    debug('core', `[subscribe] Called with windows and keys: ${keys ? JSON.stringify(keys) : 'undefined'}`);
+    debug(
+      'core',
+      `[subscribe] Called with windows and keys: ${keys ? JSON.stringify(keys) : 'undefined'}`,
+    );
 
     // If windows is not provided, subscribe all windows to full state
     if (!windows) {
@@ -552,7 +611,10 @@ export function createCoreBridge<State extends AnyState>(
   }
 
   // Unified unsubscribe API (windows first, keys optional)
-  function unsubscribe(windows?: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
+  function unsubscribe(
+    windows?: WrapperOrWebContents[] | WrapperOrWebContents,
+    keys?: string[],
+  ): void {
     // If windows is not provided, unsubscribe all windows
     if (!windows) {
       subscriptionManagers.clear();
@@ -598,7 +660,10 @@ export function createCoreBridge<State extends AnyState>(
       // If no explicit windowId is provided, use the sender's ID
       const targetWindowId = windowId || event.sender.id;
       const subscriptions = getWindowSubscriptions(targetWindowId);
-      debug('subscription', `[GET_WINDOW_SUBSCRIPTIONS] Window ${targetWindowId} subscriptions: ${subscriptions}`);
+      debug(
+        'subscription',
+        `[GET_WINDOW_SUBSCRIPTIONS] Window ${targetWindowId} subscriptions: ${subscriptions}`,
+      );
       return subscriptions;
     } catch (error) {
       debug('subscription:error', `[GET_WINDOW_SUBSCRIPTIONS] Error getting subscriptions:`, error);

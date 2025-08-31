@@ -10,8 +10,12 @@ export interface ElectronAPI {
   minimizeWindow?: () => void;
   maximizeWindow?: () => void;
   openDevTools?: () => void;
-  subscribe: (keys: string[]) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
-  unsubscribe: (keys: string[]) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
+  subscribe: (
+    keys: string[],
+  ) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
+  unsubscribe: (
+    keys: string[],
+  ) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
 }
 
 /**

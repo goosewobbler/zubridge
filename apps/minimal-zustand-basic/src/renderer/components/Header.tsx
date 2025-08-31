@@ -50,14 +50,18 @@ export const Header: React.FC<HeaderProps> = ({
 
       {counterValue !== undefined && (
         <div className="flex-1 text-center">
-          <h2 className="text-xl font-bold whitespace-nowrap">Counter: {isLoading ? '...' : counterValue}</h2>
+          <h2 className="text-xl font-bold whitespace-nowrap">
+            Counter: {isLoading ? '...' : counterValue}
+          </h2>
         </div>
       )}
 
       <div className="flex flex-col items-end flex-1">
         <div className="flex items-center">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-          <span className="ml-2">Bridge: {bridgeStatus.charAt(0).toUpperCase() + bridgeStatus.slice(1)}</span>
+          <span className="ml-2">
+            Bridge: {bridgeStatus.charAt(0).toUpperCase() + bridgeStatus.slice(1)}
+          </span>
         </div>
         <div className="flex items-center">
           <span className="text-xs opacity-75">Subscriptions: {subscriptionsText}</span>

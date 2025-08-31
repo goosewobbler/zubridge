@@ -29,4 +29,7 @@ export type CounterMethod = 'action' | 'thunk' | 'main-thunk' | 'slow-thunk' | '
  * Thunk creator function type that includes context
  * Uses a generic state type S that must extend BaseState (which now has optional properties)
  */
-export type ThunkCreator<S extends BaseState = BaseState> = (counter: number, context: ThunkContext) => Thunk<S>;
+export type ThunkCreator<S extends BaseState = BaseState> = (
+  counter: number,
+  context: ThunkContext,
+) => Thunk<S>;

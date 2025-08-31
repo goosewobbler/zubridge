@@ -3,7 +3,11 @@ import type { AnyState, StateManager } from '@zubridge/types';
 import type { StoreApi } from 'zustand/vanilla';
 import type { Store } from 'redux';
 
-import { getStateManager, removeStateManager, clearStateManagers } from '../../src/lib/stateManagerRegistry.js';
+import {
+  getStateManager,
+  removeStateManager,
+  clearStateManagers,
+} from '../../src/lib/stateManagerRegistry.js';
 import * as zustandAdapter from '../../src/adapters/zustand.js';
 import * as reduxAdapter from '../../src/adapters/redux.js';
 
@@ -51,8 +55,12 @@ describe('StateManagerRegistry', () => {
     };
 
     // Mock adapter creation functions
-    createZustandAdapterSpy = vi.spyOn(zustandAdapter, 'createZustandAdapter').mockReturnValue(mockZustandAdapter);
-    createReduxAdapterSpy = vi.spyOn(reduxAdapter, 'createReduxAdapter').mockReturnValue(mockReduxAdapter);
+    createZustandAdapterSpy = vi
+      .spyOn(zustandAdapter, 'createZustandAdapter')
+      .mockReturnValue(mockZustandAdapter);
+    createReduxAdapterSpy = vi
+      .spyOn(reduxAdapter, 'createReduxAdapter')
+      .mockReturnValue(mockReduxAdapter);
 
     // Reset internal WeakMap by calling clearStateManagers
     clearStateManagers();

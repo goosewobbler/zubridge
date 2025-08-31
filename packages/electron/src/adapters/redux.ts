@@ -8,7 +8,9 @@ import type { ZubridgeMiddleware } from '../middleware.js';
  * Helper to check if a value is a Promise
  */
 function isPromise(value: unknown): value is Promise<unknown> {
-  return !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
+  return (
+    !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function'
+  );
 }
 
 /**
@@ -25,7 +27,10 @@ export interface ReduxOptions<S extends AnyState> {
  * This adapter connects a Redux store to the Zubridge bridge,
  * allowing it to be used with the Electron IPC system.
  */
-export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?: ReduxOptions<S>): StateManager<S> {
+export function createReduxAdapter<S extends AnyState>(
+  store: Store<S>,
+  options?: ReduxOptions<S>,
+): StateManager<S> {
   debug('adapters', 'Creating Redux adapter', options);
 
   return {
@@ -42,13 +47,19 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
           const handler = resolveHandler(options.handlers, action.type);
           if (handler) {
             debug('adapters', `Found custom handler for action type: ${action.type}`);
-            debug('adapters', `Executing handler for ${action.type}, time: ${new Date().toISOString()}`);
+            debug(
+              'adapters',
+              `Executing handler for ${action.type}, time: ${new Date().toISOString()}`,
+            );
             const startTime = new Date().getTime();
             const result = handler(action.payload);
 
             // If the handler returns a Promise, it's async
             if (isPromise(result)) {
-              debug('adapters', `Handler for ${action.type} returned a Promise, it will complete asynchronously`);
+              debug(
+                'adapters',
+                `Handler for ${action.type} returned a Promise, it will complete asynchronously`,
+              );
               // Return both the async status and the completion promise
               return {
                 isSync: false,
@@ -66,7 +77,10 @@ export function createReduxAdapter<S extends AnyState>(store: Store<S>, options?
               };
             } else {
               const endTime = new Date().getTime();
-              debug('adapters', `Sync handler for ${action.type} completed in ${endTime - startTime}ms`);
+              debug(
+                'adapters',
+                `Sync handler for ${action.type} completed in ${endTime - startTime}ms`,
+              );
               return { isSync: true }; // Sync action
             }
           }

@@ -7,7 +7,7 @@
     @apply bg-white text-black;
   }
 
-  :root[data-theme='dark'] {
+  :root[data-theme="dark"] {
     @apply bg-black text-white;
   }
 }

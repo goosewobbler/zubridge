@@ -10,10 +10,13 @@ import fs from 'node:fs';
 export const getDirname = (): string => {
   // Get the URL of the caller using Error stack trace
   const stackTrace = new Error().stack;
-  const callerFilePath = stackTrace?.split('\n')[2].match(/at.*\((.*):[0-9]+:[0-9]+\)/)?.[1] || import.meta.url;
+  const callerFilePath =
+    stackTrace?.split('\n')[2].match(/at.*\((.*):[0-9]+:[0-9]+\)/)?.[1] || import.meta.url;
 
   // Convert from ES module URL to filesystem path
-  return callerFilePath.startsWith('file:') ? path.dirname(fileURLToPath(callerFilePath)) : callerFilePath;
+  return callerFilePath.startsWith('file:')
+    ? path.dirname(fileURLToPath(callerFilePath))
+    : callerFilePath;
 };
 
 /**

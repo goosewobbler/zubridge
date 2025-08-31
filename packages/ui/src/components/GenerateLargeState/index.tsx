@@ -53,7 +53,13 @@ export const GenerateLargeState: React.FC<GenerateLargeStateProps> = ({
 
   return (
     <div className={containerClass}>
-      <Button onClick={handleClick} variant="primary" loading={isGenerating} disabled={isGenerating} className="w-full">
+      <Button
+        onClick={handleClick}
+        variant="primary"
+        loading={isGenerating}
+        disabled={isGenerating}
+        className="w-full"
+      >
         Generate Large State
       </Button>
     </div>

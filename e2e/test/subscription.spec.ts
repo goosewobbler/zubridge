@@ -65,7 +65,9 @@ describe.skip('Selective Subscription Behaviour', () => {
         await switchToWindow(0);
       }
 
-      console.log(`beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`);
+      console.log(
+        `beforeEach setup complete, ${CORE_WINDOW_COUNT} windows verified, focus on main.`,
+      );
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
       // If setup fails, try to recover or throw to stop tests
@@ -203,7 +205,9 @@ describe.skip('Selective Subscription Behaviour', () => {
 
     // Get the initial counter value in our theme-only window
     const themeOnlyInitialCounter = await getCounterValue();
-    console.log(`Theme-only window (index ${themeOnlyWindowIndex}) initial counter: ${themeOnlyInitialCounter}`);
+    console.log(
+      `Theme-only window (index ${themeOnlyWindowIndex}) initial counter: ${themeOnlyInitialCounter}`,
+    );
 
     // Find a window with full subscriptions for creating a new window
     const fullSubWindowForCreateIndex = await findWindowBySubscription('*');
@@ -212,7 +216,9 @@ describe.skip('Selective Subscription Behaviour', () => {
     }
 
     // Create a new window from a fully-subscribed window
-    console.log(`Creating new window from fully-subscribed window (index ${fullSubWindowForCreateIndex})`);
+    console.log(
+      `Creating new window from fully-subscribed window (index ${fullSubWindowForCreateIndex})`,
+    );
     await switchToWindow(fullSubWindowForCreateIndex);
     await (await getButtonInCurrentWindow('create')).click();
     await browser.pause(TIMING.WINDOW_CHANGE_PAUSE * 2);
@@ -249,13 +255,17 @@ describe.skip('Selective Subscription Behaviour', () => {
       throw new Error('Could not find the theme-only window after incrementing counter');
     }
 
-    console.log(`Switching back to theme-only window at index ${themeOnlyWindowIndexAfterIncrement}`);
+    console.log(
+      `Switching back to theme-only window at index ${themeOnlyWindowIndexAfterIncrement}`,
+    );
     await switchToWindow(themeOnlyWindowIndexAfterIncrement);
     console.log(`Theme-only window title: ${await browser.getTitle()}`);
 
     // Verify window still has theme-only subscription
     const mainWindowSubsAfterIncrement = await getWindowSubscriptions();
-    console.log(`Theme-only window subscriptions before counter check: ${mainWindowSubsAfterIncrement}`);
+    console.log(
+      `Theme-only window subscriptions before counter check: ${mainWindowSubsAfterIncrement}`,
+    );
     expect(mainWindowSubsAfterIncrement).toContain('theme');
     expect(mainWindowSubsAfterIncrement).not.toContain('counter');
 
@@ -306,7 +316,9 @@ describe.skip('Selective Subscription Behaviour', () => {
 
     // Verify window still has theme-only subscription before checking theme sync
     const mainWindowSubsBeforeThemeCheck = await getWindowSubscriptions();
-    console.log(`Theme-only window subscriptions before theme check: ${mainWindowSubsBeforeThemeCheck}`);
+    console.log(
+      `Theme-only window subscriptions before theme check: ${mainWindowSubsBeforeThemeCheck}`,
+    );
     expect(mainWindowSubsBeforeThemeCheck).toContain('theme');
     expect(mainWindowSubsBeforeThemeCheck).not.toContain('counter');
 
@@ -673,7 +685,8 @@ describe.skip('Selective Subscription Behaviour', () => {
     await (await getButtonInCurrentWindow('increment')).click();
 
     // Use platform-specific wait time for state synchronization
-    const syncWait = process.platform === 'linux' ? TIMING.STATE_SYNC_PAUSE * 2 : TIMING.STATE_SYNC_PAUSE;
+    const syncWait =
+      process.platform === 'linux' ? TIMING.STATE_SYNC_PAUSE * 2 : TIMING.STATE_SYNC_PAUSE;
     await browser.pause(syncWait);
 
     // Verify second window counter incremented
@@ -808,7 +821,8 @@ describe.skip('Selective Subscription Behaviour', () => {
     await (await getButtonInCurrentWindow('increment')).click();
 
     // Use platform-specific wait time for state synchronization
-    const syncWait = process.platform === 'linux' ? TIMING.STATE_SYNC_PAUSE * 2 : TIMING.STATE_SYNC_PAUSE;
+    const syncWait =
+      process.platform === 'linux' ? TIMING.STATE_SYNC_PAUSE * 2 : TIMING.STATE_SYNC_PAUSE;
     await browser.pause(syncWait);
 
     // Verify counter incremented in first window

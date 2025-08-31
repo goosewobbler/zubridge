@@ -69,7 +69,10 @@ export class Thunk {
     this.bypassAccessControl = options.bypassAccessControl;
     this._contextId = options.contextId;
 
-    debug('thunk', `Created thunk ${this.id} (type: ${this.source}, bypassThunkLock: ${this.bypassThunkLock})`);
+    debug(
+      'thunk',
+      `Created thunk ${this.id} (type: ${this.source}, bypassThunkLock: ${this.bypassThunkLock})`,
+    );
   }
 
   /**

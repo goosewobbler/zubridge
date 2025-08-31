@@ -35,7 +35,9 @@ export async function waitForSpecificValue(
 
           // Only log if the counter has changed
           if (typeof previousValue === 'number' && currentValue !== previousValue) {
-            console.log(`Counter changed from ${previousValue} to ${currentValue}, waiting for ${expectedValue}`);
+            console.log(
+              `Counter changed from ${previousValue} to ${currentValue}, waiting for ${expectedValue}`,
+            );
           }
           previousValue = currentValue;
           return currentValue === expectedValue;
@@ -88,7 +90,9 @@ export async function waitForIncrement(
       const currentValue = await getCounterValue();
       const incrementedValue = previousValue + 1;
       if (currentValue !== previousValue) {
-        console.log(`Counter changed from ${previousValue} to ${currentValue}, waiting for ${incrementedValue}`);
+        console.log(
+          `Counter changed from ${previousValue} to ${currentValue}, waiting for ${incrementedValue}`,
+        );
       }
       previousValue = currentValue;
       return currentValue === incrementedValue;

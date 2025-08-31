@@ -131,7 +131,10 @@ describe('actionValidator', () => {
 
       // Mock subscription checks to allow access
       vi.mocked(subscriptionValidator.isSubscribedToKey).mockResolvedValue(true);
-      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue(['user', 'user.profile']);
+      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([
+        'user',
+        'user.profile',
+      ]);
 
       // Execute
       const canDispatch = await canDispatchAction(action);
@@ -190,7 +193,9 @@ describe('actionValidator', () => {
       };
 
       // Mock window subscriptions and state key existence check
-      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue(['nonexistent.key']);
+      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([
+        'nonexistent.key',
+      ]);
       vi.mocked(subscriptionValidator.isSubscribedToKey).mockResolvedValue(true);
       vi.mocked(subscriptionValidator.stateKeyExists).mockReturnValue(false);
 
@@ -247,7 +252,10 @@ describe('actionValidator', () => {
 
       // Mock subscription checks to deny access
       vi.mocked(subscriptionValidator.isSubscribedToKey).mockResolvedValue(false);
-      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue(['counter', 'theme']);
+      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([
+        'counter',
+        'theme',
+      ]);
 
       // Execute & Verify - should throw
       await expect(validateActionDispatch(action)).rejects.toThrow(
@@ -267,7 +275,11 @@ describe('actionValidator', () => {
 
     it('should throw error with specific message when attempting to dispatch action affecting multiple unsubscribed keys', async () => {
       // Setup
-      registerActionMapping('COMPLEX_UPDATE', ['user.profile', 'settings.preferences', 'notifications']);
+      registerActionMapping('COMPLEX_UPDATE', [
+        'user.profile',
+        'settings.preferences',
+        'notifications',
+      ]);
       const action: Action = {
         type: 'COMPLEX_UPDATE',
       };
@@ -293,17 +305,21 @@ describe('actionValidator', () => {
 
       // Mock subscription checks to allow access but key doesn't exist
       vi.mocked(subscriptionValidator.isSubscribedToKey).mockResolvedValue(true);
-      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue(['nonexistent.key']);
+      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([
+        'nonexistent.key',
+      ]);
 
       // Mock state existence check to fail
       vi.mocked(subscriptionValidator.stateKeyExists).mockReturnValue(false);
 
       // Make validateStateAccessWithExistence throw for non-existent key
-      vi.mocked(subscriptionValidator.validateStateAccessWithExistence).mockImplementation(async (state, key) => {
-        if (key === 'nonexistent.key') {
-          throw new Error(`State key '${key}' does not exist in the store`);
-        }
-      });
+      vi.mocked(subscriptionValidator.validateStateAccessWithExistence).mockImplementation(
+        async (state, key) => {
+          if (key === 'nonexistent.key') {
+            throw new Error(`State key '${key}' does not exist in the store`);
+          }
+        },
+      );
 
       // Execute & Verify - should throw with specific error about non-existent key
       await expect(validateActionDispatch(action)).rejects.toThrow(
@@ -313,7 +329,11 @@ describe('actionValidator', () => {
 
     it('should handle complex scenarios with both unsubscribed and non-existent keys', async () => {
       // Setup
-      registerActionMapping('COMPLEX_SCENARIO', ['existing.key', 'nonexistent.key', 'unsubscribed.key']);
+      registerActionMapping('COMPLEX_SCENARIO', [
+        'existing.key',
+        'nonexistent.key',
+        'unsubscribed.key',
+      ]);
       const action: Action = {
         type: 'COMPLEX_SCENARIO',
       };
@@ -355,7 +375,10 @@ describe('actionValidator', () => {
 
       // Mock subscriptions to allow the mapped keys
       vi.mocked(subscriptionValidator.isSubscribedToKey).mockResolvedValue(true);
-      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue(['user.name', 'user.email']);
+      vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([
+        'user.name',
+        'user.email',
+      ]);
 
       // Execute - since we're only testing expected mappings, this should pass
       await expect(validateActionDispatch(action)).resolves.toBeUndefined();

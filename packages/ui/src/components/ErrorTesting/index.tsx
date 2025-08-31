@@ -29,7 +29,9 @@ export function ErrorTesting({
   errors: externalErrors,
   onClear,
 }: ErrorTestingProps) {
-  const [internalErrors, setInternalErrors] = useState<Array<{ message: string; timestamp: number }>>([]);
+  const [internalErrors, setInternalErrors] = useState<
+    Array<{ message: string; timestamp: number }>
+  >([]);
   const errors = externalErrors ?? internalErrors;
   const clearErrors = onClear ?? (() => setInternalErrors([]));
 
@@ -58,15 +60,23 @@ export function ErrorTesting({
 
       // Determine which key we're not subscribed to
       const isThemeSubscribed =
-        currentSubscriptions === '*' || (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('theme'));
+        currentSubscriptions === '*' ||
+        (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('theme'));
       const isCounterSubscribed =
         currentSubscriptions === '*' ||
         (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('counter'));
 
       // Choose a key we're not subscribed to (or counter if we're subscribed to everything)
-      const keyToCheck = !isCounterSubscribed ? 'counter' : !isThemeSubscribed ? 'theme' : 'counter';
+      const keyToCheck = !isCounterSubscribed
+        ? 'counter'
+        : !isThemeSubscribed
+          ? 'theme'
+          : 'counter';
 
-      debug('ui', `Checking access to ${keyToCheck} with subscriptions: ${JSON.stringify(currentSubscriptions)}`);
+      debug(
+        'ui',
+        `Checking access to ${keyToCheck} with subscriptions: ${JSON.stringify(currentSubscriptions)}`,
+      );
 
       const value = state[keyToCheck];
       const expectUndefined = keyToCheck === 'counter' ? !isCounterSubscribed : !isThemeSubscribed;
@@ -144,7 +154,8 @@ export function ErrorTesting({
 
       // Determine which key we're not subscribed to
       const isThemeSubscribed =
-        currentSubscriptions === '*' || (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('theme'));
+        currentSubscriptions === '*' ||
+        (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('theme'));
       const isCounterSubscribed =
         currentSubscriptions === '*' ||
         (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('counter'));
@@ -178,16 +189,28 @@ export function ErrorTesting({
     <div className="error-testing-container">
       <h3 className="mt-0 mb-3 text-lg font-semibold">Error Testing</h3>
       <div className="flex flex-wrap gap-2 error-buttons">
-        <Button onClick={handleVerifyUnsubscribed} variant="close" data-testid="verify-unsubscribed-btn">
+        <Button
+          onClick={handleVerifyUnsubscribed}
+          variant="close"
+          data-testid="verify-unsubscribed-btn"
+        >
           Verify Unsubscribed
         </Button>
         <Button onClick={handleDispatchInvalid} variant="close" data-testid="dispatch-invalid-btn">
           Invalid Payload
         </Button>
-        <Button onClick={handleTriggerMainError} variant="close" data-testid="trigger-main-error-btn">
+        <Button
+          onClick={handleTriggerMainError}
+          variant="close"
+          data-testid="trigger-main-error-btn"
+        >
           Main Process Error
         </Button>
-        <Button onClick={handleUpdateUnsubscribedState} variant="close" data-testid="update-unsubscribed-btn">
+        <Button
+          onClick={handleUpdateUnsubscribedState}
+          variant="close"
+          data-testid="update-unsubscribed-btn"
+        >
           Update Unsubscribed
         </Button>
       </div>

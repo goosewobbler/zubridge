@@ -1,7 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 import type { State } from '../types.js';
-import { createReduxAdapter, createZustandAdapter, createCustomAdapter, type UnifiedStore } from './adapters/index.js';
+import {
+  createReduxAdapter,
+  createZustandAdapter,
+  createCustomAdapter,
+  type UnifiedStore,
+} from './adapters/index.js';
 import { debug } from '@zubridge/core';
 import { initialState } from '@zubridge/apps-shared';
 

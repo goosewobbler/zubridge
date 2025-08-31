@@ -182,7 +182,9 @@ export async function findWindowBySubscription(
           await browser.pause(TIMING.STATE_SYNC_PAUSE);
         }
       } catch (error) {
-        console.log(`[LINUX DEBUG] Error getting subscriptions for window ${i} (attempt ${attempt + 1}): ${error}`);
+        console.log(
+          `[LINUX DEBUG] Error getting subscriptions for window ${i} (attempt ${attempt + 1}): ${error}`,
+        );
         if (process.platform === 'linux' && attempt < maxAttempts - 1) {
           await refreshWindowHandles();
           await browser.pause(TIMING.STATE_SYNC_PAUSE);
@@ -192,7 +194,11 @@ export async function findWindowBySubscription(
 
     console.log(`Window[${i}] has subscriptions: ${subs}`);
 
-    if (subs && subs.includes(subscriptionPattern) && (!excludePattern || !subs.includes(excludePattern))) {
+    if (
+      subs &&
+      subs.includes(subscriptionPattern) &&
+      (!excludePattern || !subs.includes(excludePattern))
+    ) {
       console.log(`Found matching window at index ${i}`);
       return i;
     }

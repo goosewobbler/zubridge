@@ -143,7 +143,10 @@ export class ActionScheduler extends EventEmitter {
    */
   public canExecuteImmediately(action: Action): boolean {
     // Log the current action being evaluated
-    debug('scheduler-debug', `[DECISION] Evaluating if action ${action.type} (${action.__id}) can execute immediately`);
+    debug(
+      'scheduler-debug',
+      `[DECISION] Evaluating if action ${action.type} (${action.__id}) can execute immediately`,
+    );
     debug(
       'scheduler-debug',
       `[DECISION] Action details: parentThunkId=${action.__thunkParentId}, bypassThunkLock=${action.__bypassThunkLock}`,
@@ -151,7 +154,10 @@ export class ActionScheduler extends EventEmitter {
 
     // Actions with bypassThunkLock can always execute immediately
     if (action.__bypassThunkLock) {
-      debug('scheduler', `Action ${action.type} (${action.__id}) has bypassThunkLock, can execute immediately`);
+      debug(
+        'scheduler',
+        `Action ${action.type} (${action.__id}) has bypassThunkLock, can execute immediately`,
+      );
       return true;
     }
 
@@ -159,7 +165,10 @@ export class ActionScheduler extends EventEmitter {
     const rootThunkId = this.thunkManager.getRootThunkId();
     const hasActiveThunk = rootThunkId && this.thunkManager.isThunkActive(rootThunkId);
 
-    debug('scheduler-debug', `[DECISION] Root thunk: ${rootThunkId || 'none'}, active: ${hasActiveThunk}`);
+    debug(
+      'scheduler-debug',
+      `[DECISION] Root thunk: ${rootThunkId || 'none'}, active: ${hasActiveThunk}`,
+    );
 
     // If there's an active thunk and this is not a thunk action, it must wait
     if (hasActiveThunk && !action.__thunkParentId) {
@@ -190,7 +199,10 @@ export class ActionScheduler extends EventEmitter {
 
     // If there are no running tasks, the action can execute immediately
     if (runningTasks.length === 0) {
-      debug('scheduler', `No running tasks, action ${action.type} (${action.__id}) can execute immediately`);
+      debug(
+        'scheduler',
+        `No running tasks, action ${action.type} (${action.__id}) can execute immediately`,
+      );
       return true;
     }
 
@@ -199,14 +211,22 @@ export class ActionScheduler extends EventEmitter {
     debug('scheduler-debug', `[DECISION] Has blocking tasks: ${hasBlockingTask}`);
 
     if (!hasBlockingTask) {
-      debug('scheduler', `No blocking tasks running, action ${action.type} (${action.__id}) can execute immediately`);
+      debug(
+        'scheduler',
+        `No blocking tasks running, action ${action.type} (${action.__id}) can execute immediately`,
+      );
       return true;
     }
 
     // If this is a thunk action, check if it belongs to the same thunk as running tasks
     if (action.__thunkParentId) {
-      const belongsToRunningThunk = runningTasks.some((task) => task.thunkId === action.__thunkParentId);
-      debug('scheduler-debug', `[DECISION] Action belongs to running thunk: ${belongsToRunningThunk}`);
+      const belongsToRunningThunk = runningTasks.some(
+        (task) => task.thunkId === action.__thunkParentId,
+      );
+      debug(
+        'scheduler-debug',
+        `[DECISION] Action belongs to running thunk: ${belongsToRunningThunk}`,
+      );
 
       if (belongsToRunningThunk) {
         debug(
@@ -216,12 +236,18 @@ export class ActionScheduler extends EventEmitter {
         return true;
       }
 
-      debug('scheduler', `Thunk action ${action.type} (${action.__id}) must wait for current thunk to complete`);
+      debug(
+        'scheduler',
+        `Thunk action ${action.type} (${action.__id}) must wait for current thunk to complete`,
+      );
       return false;
     }
 
     // Default to blocking for safety
-    debug('scheduler', `Action ${action.type} (${action.__id}) must wait due to blocking tasks running`);
+    debug(
+      'scheduler',
+      `Action ${action.type} (${action.__id}) must wait due to blocking tasks running`,
+    );
     return false;
   }
 
@@ -258,10 +284,17 @@ export class ActionScheduler extends EventEmitter {
 
       // Execute all executable actions
       for (const queuedAction of executableActions) {
-        this.executeAction(queuedAction.action, queuedAction.sourceWindowId, queuedAction.onComplete);
+        this.executeAction(
+          queuedAction.action,
+          queuedAction.sourceWindowId,
+          queuedAction.onComplete,
+        );
       }
 
-      debug('scheduler', `Executed ${executableActions.length} actions, ${this.queue.length} remaining in queue`);
+      debug(
+        'scheduler',
+        `Executed ${executableActions.length} actions, ${this.queue.length} remaining in queue`,
+      );
     } finally {
       this.processing = false;
     }
@@ -288,7 +321,10 @@ export class ActionScheduler extends EventEmitter {
     // Emit event
     this.emit(ActionSchedulerEvents.ACTION_STARTED, action);
 
-    debug('scheduler', `Executing action ${action.type} (${actionId}) from window ${sourceWindowId}`);
+    debug(
+      'scheduler',
+      `Executing action ${action.type} (${actionId}) from window ${sourceWindowId}`,
+    );
 
     try {
       // Process the action

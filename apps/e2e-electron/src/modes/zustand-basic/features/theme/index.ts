@@ -11,7 +11,7 @@ export const attachThemeHandlers = <S extends BaseState>(store: StoreApi<S>) => 
   // Set up theme initial state
   setState((state) => ({
     ...state,
-    'theme': 'dark', // Initialize to dark mode using string union
+    theme: 'dark', // Initialize to dark mode using string union
 
     // Implement the toggle theme handler
     'THEME:TOGGLE': () => {

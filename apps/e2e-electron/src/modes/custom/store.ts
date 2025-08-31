@@ -61,7 +61,8 @@ export class CustomStore extends EventEmitter implements StateManager<AnyState> 
 
     if (handler) {
       // If the action has a payload, pass it to the handler
-      const payload = typeof action === 'object' && 'payload' in action ? action.payload : undefined;
+      const payload =
+        typeof action === 'object' && 'payload' in action ? action.payload : undefined;
 
       // Call the handler with the appropriate arguments
       const newState = typeof payload !== 'undefined' ? handler(payload) : handler(this.getState());

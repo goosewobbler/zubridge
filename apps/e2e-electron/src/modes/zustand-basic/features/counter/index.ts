@@ -11,7 +11,7 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
   // Set up counter initial state
   setState((state) => ({
     ...state,
-    'counter': 0,
+    counter: 0,
 
     // Implement the increment counter handler
     'COUNTER:INCREMENT': () => {

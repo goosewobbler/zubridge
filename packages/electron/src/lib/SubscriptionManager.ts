@@ -109,7 +109,11 @@ function hasRelevantChange<S>(prev: S, next: S, keys?: string[]): boolean {
     const prevValue = deepGet(prev, key);
     const nextValue = deepGet(next, key);
     const changed = !dequal(prevValue, nextValue);
-    debug('subscription', `[hasRelevantChange] Comparing key ${key}:`, { prevValue, nextValue, changed });
+    debug('subscription', `[hasRelevantChange] Comparing key ${key}:`, {
+      prevValue,
+      nextValue,
+      changed,
+    });
     return changed;
   });
 }
@@ -121,7 +125,11 @@ export class SubscriptionManager<S> {
    * Subscribe to state changes for specific keys (deep keys supported).
    * Returns an unsubscribe function.
    */
-  subscribe(keys: string[] | undefined, callback: SubscriptionCallback<S>, windowId: number): () => void {
+  subscribe(
+    keys: string[] | undefined,
+    callback: SubscriptionCallback<S>,
+    windowId: number,
+  ): () => void {
     debug(
       'subscription',
       `[subscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
@@ -130,11 +138,18 @@ export class SubscriptionManager<S> {
 
     // Get existing subscriptions for this window
     const existingKeys = this.getCurrentSubscriptionKeys(windowId);
-    debug('subscription', `[subscribe] Existing subscriptions for window ${windowId}:`, existingKeys);
+    debug(
+      'subscription',
+      `[subscribe] Existing subscriptions for window ${windowId}:`,
+      existingKeys,
+    );
 
     // If already subscribed to '*', only update if explicitly subscribing to '*'
     if (existingKeys.includes('*') && (!keys || !keys.includes('*'))) {
-      debug('subscription', `[subscribe] Window ${windowId} already has '*' subscription, keeping it`);
+      debug(
+        'subscription',
+        `[subscribe] Window ${windowId} already has '*' subscription, keeping it`,
+      );
       return () => this.unsubscribe(keys, callback, windowId);
     }
 
@@ -169,7 +184,11 @@ export class SubscriptionManager<S> {
 
     // Get current subscriptions after update
     const currentSubscriptions = this.getCurrentSubscriptionKeys(windowId);
-    debug('subscription', `[subscribe] Current subscriptions for window ${windowId}:`, currentSubscriptions);
+    debug(
+      'subscription',
+      `[subscribe] Current subscriptions for window ${windowId}:`,
+      currentSubscriptions,
+    );
 
     return () => this.unsubscribe(keys, callback, windowId);
   }
@@ -177,7 +196,11 @@ export class SubscriptionManager<S> {
   /**
    * Unsubscribe a window from specific keys, or all if no keys provided.
    */
-  unsubscribe(keys: string[] | undefined, callback: SubscriptionCallback<S>, windowId: number): void {
+  unsubscribe(
+    keys: string[] | undefined,
+    callback: SubscriptionCallback<S>,
+    windowId: number,
+  ): void {
     debug(
       'subscription',
       `[unsubscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
@@ -214,10 +237,16 @@ export class SubscriptionManager<S> {
     debug('subscription', `[unsubscribe] Remaining keys for window ${windowId}:`, remainingKeys);
 
     if (remainingKeys.length === 0) {
-      debug('subscription', `[unsubscribe] No keys left, removing subscription for window ${windowId}`);
+      debug(
+        'subscription',
+        `[unsubscribe] No keys left, removing subscription for window ${windowId}`,
+      );
       this.subscriptions.delete(subscriptionKey);
     } else {
-      debug('subscription', `[unsubscribe] Updating subscription with remaining keys for window ${windowId}`);
+      debug(
+        'subscription',
+        `[unsubscribe] Updating subscription with remaining keys for window ${windowId}`,
+      );
       this.subscriptions.set(subscriptionKey, { ...subscription, keys: remainingKeys });
     }
   }
@@ -226,7 +255,10 @@ export class SubscriptionManager<S> {
    * Notify all subscribers whose keys have changed, passing the relevant partial state.
    */
   notify(prev: S, next: S): void {
-    debug('subscription', `[notify] Starting notification with ${this.subscriptions.size} subscribers`);
+    debug(
+      'subscription',
+      `[notify] Starting notification with ${this.subscriptions.size} subscribers`,
+    );
     debug('subscription', '[notify] States:', {
       prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
       next: JSON.stringify(next),
@@ -241,10 +273,16 @@ export class SubscriptionManager<S> {
           debug('subscription', `[notify] Notifying window ${windowId} with state:`, partialState);
           callback(partialState);
         } else {
-          debug('subscription', `[notify] Empty partial state for window ${windowId} - skipping notification`);
+          debug(
+            'subscription',
+            `[notify] Empty partial state for window ${windowId} - skipping notification`,
+          );
         }
       } else {
-        debug('subscription', `[notify] No relevant changes for window ${windowId} - skipping notification`);
+        debug(
+          'subscription',
+          `[notify] No relevant changes for window ${windowId} - skipping notification`,
+        );
       }
     }
     debug('subscription', '[notify] Notification complete');
@@ -258,13 +296,19 @@ export class SubscriptionManager<S> {
    * - Array of specific keys otherwise
    */
   getCurrentSubscriptionKeys(windowId: number): string[] {
-    debug('subscription', `[getCurrentSubscriptionKeys] Looking up subscriptions for window ${windowId}`);
+    debug(
+      'subscription',
+      `[getCurrentSubscriptionKeys] Looking up subscriptions for window ${windowId}`,
+    );
 
     const subscriptionKey = getSubscriptionKey(windowId);
     const subscription = this.subscriptions.get(subscriptionKey);
 
     if (!subscription) {
-      debug('subscription', `[getCurrentSubscriptionKeys] No subscription found for window ${windowId}`);
+      debug(
+        'subscription',
+        `[getCurrentSubscriptionKeys] No subscription found for window ${windowId}`,
+      );
       return [];
     }
 

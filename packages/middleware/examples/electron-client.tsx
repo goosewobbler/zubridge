@@ -28,7 +28,9 @@ type CounterActions =
 export function App(): JSX.Element {
   // Get state from Zubridge store with proper typing
   const counter = useElectronZubridgeStore<number>((state: AppState) => state.counter ?? 0);
-  const isDarkTheme = useElectronZubridgeStore<boolean>((state: AppState) => state.theme?.isDark ?? false);
+  const isDarkTheme = useElectronZubridgeStore<boolean>(
+    (state: AppState) => state.theme?.isDark ?? false,
+  );
   const lastProcessingTime = useElectronZubridgeStore<number | undefined>(
     (state: AppState) => state.lastActionProcessingTime,
   );
@@ -37,7 +39,9 @@ export function App(): JSX.Element {
   const dispatch = useElectronZubridgeDispatch<AppState, CounterActions>();
 
   // Track bridge connection status
-  const bridgeStatus = useElectronZubridgeStore<string>((state: AppState) => state.__bridge_status ?? 'initializing');
+  const bridgeStatus = useElectronZubridgeStore<string>(
+    (state: AppState) => state.__bridge_status ?? 'initializing',
+  );
 
   // Debug state to show middleware connection
   const [middlewareConnected, setMiddlewareConnected] = useState<boolean>(false);

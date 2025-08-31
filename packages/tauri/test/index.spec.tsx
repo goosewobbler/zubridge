@@ -58,16 +58,25 @@ const mockInvoke = vi.fn(async (cmd: string, args?: any): Promise<any> => {
 });
 
 // Raw mock implementation with payload structure
-const mockListenRaw = vi.fn(async (event: string, callback: (event: { payload: any }) => void): Promise<UnlistenFn> => {
-  if (event === '__zubridge_state_update' || event === 'zubridge://state-update' || event === 'custom-event') {
-    stateUpdateListener = callback;
-    return Promise.resolve(unlistenMock);
-  }
-  return Promise.resolve(vi.fn()); // Return a generic mock unlisten for other events
-});
+const mockListenRaw = vi.fn(
+  async (event: string, callback: (event: { payload: any }) => void): Promise<UnlistenFn> => {
+    if (
+      event === '__zubridge_state_update' ||
+      event === 'zubridge://state-update' ||
+      event === 'custom-event'
+    ) {
+      stateUpdateListener = callback;
+      return Promise.resolve(unlistenMock);
+    }
+    return Promise.resolve(vi.fn()); // Return a generic mock unlisten for other events
+  },
+);
 
 // Type-compatible wrapper for the BackendOptions interface
-const mockListen = async <E = unknown,>(event: string, handler: (event: E) => void): Promise<UnlistenFn> => {
+const mockListen = async <E = unknown>(
+  event: string,
+  handler: (event: E) => void,
+): Promise<UnlistenFn> => {
   // Adapt the handler to expect an event with payload
   return mockListenRaw(event, (e: { payload: any }) => {
     // Call the original handler with the payload as the event
@@ -206,7 +215,10 @@ describe('@zubridge/tauri', () => {
         return mockInvoke(cmd, args);
       });
 
-      const newMockListen = async <E = unknown,>(event: string, handler: (event: E) => void): Promise<UnlistenFn> => {
+      const newMockListen = async <E = unknown>(
+        event: string,
+        handler: (event: E) => void,
+      ): Promise<UnlistenFn> => {
         return mockListenRaw(event, (e: { payload: any }) => {
           handler(e as unknown as E);
         });
@@ -258,7 +270,9 @@ describe('@zubridge/tauri', () => {
           // @ts-ignore - Testing invalid parameters
           await initializeBridge();
         }),
-      ).rejects.toThrow("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+      ).rejects.toThrow(
+        "Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.",
+      );
     });
 
     it('should throw error when invoke function is missing', async () => {
@@ -267,7 +281,9 @@ describe('@zubridge/tauri', () => {
           // @ts-ignore - Testing invalid parameters
           await initializeBridge({ listen: mockListen });
         }),
-      ).rejects.toThrow("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+      ).rejects.toThrow(
+        "Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.",
+      );
     });
 
     it('should throw error when listen function is missing', async () => {
@@ -276,7 +292,9 @@ describe('@zubridge/tauri', () => {
           // @ts-ignore - Testing invalid parameters
           await initializeBridge({ invoke: mockInvoke });
         }),
-      ).rejects.toThrow("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+      ).rejects.toThrow(
+        "Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.",
+      );
     });
 
     it('should handle initialization with v1 Tauri APIs', async () => {
@@ -326,7 +344,11 @@ describe('@zubridge/tauri', () => {
 
       try {
         await initializeBridge({
-          invoke: mockInvokeError as unknown as <R = unknown>(cmd: string, args?: any, options?: any) => Promise<R>,
+          invoke: mockInvokeError as unknown as <R = unknown>(
+            cmd: string,
+            args?: any,
+            options?: any,
+          ) => Promise<R>,
           listen: mockListenRaw,
         });
       } catch (e) {
@@ -381,7 +403,11 @@ describe('@zubridge/tauri', () => {
 
       await act(async () => {
         await initializeBridge({
-          invoke: pluginInvoke as unknown as <R = unknown>(cmd: string, args?: any, options?: any) => Promise<R>,
+          invoke: pluginInvoke as unknown as <R = unknown>(
+            cmd: string,
+            args?: any,
+            options?: any,
+          ) => Promise<R>,
           listen: mockListen,
           commands: {
             getInitialState: 'plugin:zubridge|get_initial_state',
@@ -408,7 +434,10 @@ describe('@zubridge/tauri', () => {
         await dispatchFn!({ type: 'TEST_PLUGIN' });
       });
 
-      expect(pluginInvoke).toHaveBeenCalledWith('plugin:zubridge|dispatch_action', expect.anything());
+      expect(pluginInvoke).toHaveBeenCalledWith(
+        'plugin:zubridge|dispatch_action',
+        expect.anything(),
+      );
     });
 
     it('should fall back to direct format commands when plugin format fails', async () => {
@@ -432,7 +461,10 @@ describe('@zubridge/tauri', () => {
       });
 
       // Verify that the plugin format was tried first and then the direct format
-      expect(mockPluginFailInvoke).toHaveBeenCalledWith('plugin:zubridge|get_initial_state', undefined);
+      expect(mockPluginFailInvoke).toHaveBeenCalledWith(
+        'plugin:zubridge|get_initial_state',
+        undefined,
+      );
       expect(mockPluginFailInvoke).toHaveBeenCalledWith('get_initial_state', undefined);
 
       // Wait for the state to be updated after the async operations complete
@@ -515,7 +547,11 @@ describe('@zubridge/tauri', () => {
 
     it('should dispatch an action', async () => {
       await initializeBridge({
-        invoke: mockInvoke as unknown as <R = unknown>(cmd: string, args?: any, options?: any) => Promise<R>,
+        invoke: mockInvoke as unknown as <R = unknown>(
+          cmd: string,
+          args?: any,
+          options?: any,
+        ) => Promise<R>,
         listen: mockListen,
       });
 
@@ -946,7 +982,9 @@ describe('@zubridge/tauri', () => {
       const { result } = renderHook(() => useZubridgeDispatch());
 
       // Test that it throws the expected error about missing dispatch command
-      await expect(result.current({ type: 'TEST' })).rejects.toThrow('Zubridge dispatch command not determined');
+      await expect(result.current({ type: 'TEST' })).rejects.toThrow(
+        'Zubridge dispatch command not determined',
+      );
 
       cleanupZubridge();
     });

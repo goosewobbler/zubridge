@@ -1,6 +1,10 @@
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
-import { isSubscribedToKey, getWindowSubscriptions, stateKeyExists } from './subscriptionValidator.js';
+import {
+  isSubscribedToKey,
+  getWindowSubscriptions,
+  stateKeyExists,
+} from './subscriptionValidator.js';
 
 // Map of action types to the state keys they affect
 // This needs to be populated by the application based on its action structure
@@ -44,7 +48,10 @@ export function getAffectedStateKeys(actionType: string): string[] {
 export async function canDispatchAction(action: Action): Promise<boolean> {
   // If the action has the bypass access control flag, allow it regardless of subscriptions
   if (action.__bypassAccessControl === true) {
-    debug('action-validator', `Access control bypass set on action ${action.type}, allowing dispatch`);
+    debug(
+      'action-validator',
+      `Access control bypass set on action ${action.type}, allowing dispatch`,
+    );
     return true;
   }
 
@@ -66,7 +73,8 @@ export async function canDispatchAction(action: Action): Promise<boolean> {
   }
 
   // Get current state - safely access zubridge
-  const currentState = typeof window !== 'undefined' && window.zubridge ? await window.zubridge.getState() : null;
+  const currentState =
+    typeof window !== 'undefined' && window.zubridge ? await window.zubridge.getState() : null;
 
   // Check if the window is subscribed to all affected keys
   for (const key of affectedKeys) {
@@ -78,7 +86,10 @@ export async function canDispatchAction(action: Action): Promise<boolean> {
 
     const hasAccess = await isSubscribedToKey(key);
     if (!hasAccess) {
-      debug('action-validator', `Window lacks permission to affect key ${key} with action ${actionType}`);
+      debug(
+        'action-validator',
+        `Window lacks permission to affect key ${key} with action ${actionType}`,
+      );
       return false;
     }
   }
@@ -112,7 +123,8 @@ export async function validateActionDispatch(action: Action): Promise<void> {
   }
 
   // Get current state - safely access zubridge
-  const currentState = typeof window !== 'undefined' && window.zubridge ? await window.zubridge.getState() : null;
+  const currentState =
+    typeof window !== 'undefined' && window.zubridge ? await window.zubridge.getState() : null;
 
   // Check if all affected keys exist in the state
   for (const key of affectedKeys) {

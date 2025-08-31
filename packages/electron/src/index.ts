@@ -43,7 +43,9 @@ type UseBoundStore<S extends ReadonlyStoreApi<unknown>> = {
 // Create Electron-specific handlers
 export const createHandlers = <S extends AnyState>(): Handlers<S> => {
   if (typeof window === 'undefined' || !window.zubridge) {
-    throw new Error('Zubridge handlers not found in window. Make sure the preload script is properly set up.');
+    throw new Error(
+      'Zubridge handlers not found in window. Make sure the preload script is properly set up.',
+    );
   }
 
   return window.zubridge as Handlers<S>;
@@ -52,7 +54,9 @@ export const createHandlers = <S extends AnyState>(): Handlers<S> => {
 /**
  * Creates a hook for accessing the store state in renderer components
  */
-export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>): UseBoundStore<StoreApi<S>> => {
+export const createUseStore = <S extends AnyState>(
+  customHandlers?: Handlers<S>,
+): UseBoundStore<StoreApi<S>> => {
   const handlers = customHandlers || createHandlers<S>();
   const vanillaStore = createStore<S>(handlers);
   const useBoundStore = (selector: (state: S) => unknown) => useStore(vanillaStore, selector);
@@ -66,9 +70,10 @@ export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>)
 /**
  * Creates a dispatch function for use in renderer components
  */
-function useDispatch<S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
-  customHandlers?: Handlers<S>,
-): DispatchFunc<S, TActions> {
+function useDispatch<
+  S extends AnyState = AnyState,
+  TActions extends Record<string, any> = Record<string, any>,
+>(customHandlers?: Handlers<S>): DispatchFunc<S, TActions> {
   const handlers = customHandlers || createHandlers<S>();
 
   // Create a dispatch function that delegates directly to handlers.dispatch

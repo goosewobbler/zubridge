@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RendererThunkProcessor, getThunkProcessor } from '../../src/renderer/rendererThunkProcessor.js';
+import {
+  RendererThunkProcessor,
+  getThunkProcessor,
+} from '../../src/renderer/rendererThunkProcessor.js';
 import type { Action } from '@zubridge/types';
 
 const mockActionSender = vi.fn();
@@ -284,7 +287,9 @@ describe('RendererThunkProcessor', () => {
     await processor.dispatchAction({ type: 'USE_WINDOW_ZUBRIDGE' });
 
     // Check that the mock was called
-    expect(mockZubridge.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'USE_WINDOW_ZUBRIDGE' }));
+    expect(mockZubridge.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'USE_WINDOW_ZUBRIDGE' }),
+    );
 
     // Restore original window
     global.window = originalWindow;

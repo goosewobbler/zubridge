@@ -17,7 +17,9 @@ export const attachStateHandlers = <S extends BaseState>(store: StoreApi<S>) => 
       setState(() => initialState as Partial<S>);
     },
 
-    'STATE:GENERATE-FILLER': async (options?: { variant?: 'small' | 'medium' | 'large' | 'xl' }) => {
+    'STATE:GENERATE-FILLER': async (options?: {
+      variant?: 'small' | 'medium' | 'large' | 'xl';
+    }) => {
       const variant = options?.variant || 'medium';
       console.log(`[Basic] Generating ${variant} test state`);
 

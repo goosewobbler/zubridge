@@ -33,7 +33,9 @@ export const waitUntilWindowsAvailable = async (expectedCount: number): Promise<
     attempts++;
   }
 
-  throw new Error(`Timeout waiting for ${expectedCount} windows. Only found ${windowHandles.length}`);
+  throw new Error(
+    `Timeout waiting for ${expectedCount} windows. Only found ${windowHandles.length}`,
+  );
 };
 
 /**
@@ -43,7 +45,9 @@ export const switchToWindow = async (index: number): Promise<boolean> => {
   await refreshWindowHandles();
 
   if (index >= windowHandles.length) {
-    console.warn(`Cannot switch to window ${index}, only ${windowHandles.length} windows available`);
+    console.warn(
+      `Cannot switch to window ${index}, only ${windowHandles.length} windows available`,
+    );
     return false;
   }
 

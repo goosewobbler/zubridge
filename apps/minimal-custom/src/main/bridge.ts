@@ -1,11 +1,19 @@
-import { createCoreBridge, createDispatch, type ZustandBridge, type ZubridgeMiddleware } from '@zubridge/electron/main';
+import {
+  createCoreBridge,
+  createDispatch,
+  type ZustandBridge,
+  type ZubridgeMiddleware,
+} from '@zubridge/electron/main';
 import type { StateManager, AnyState } from '@zubridge/types';
 
 /**
  * Creates a bridge using the custom store approach
  * This demonstrates how to use createCoreBridge with a custom state manager
  */
-export function createBridge(store: StateManager<AnyState>, middleware?: ZubridgeMiddleware): ZustandBridge {
+export function createBridge(
+  store: StateManager<AnyState>,
+  middleware?: ZubridgeMiddleware,
+): ZustandBridge {
   console.log('[Custom Mode] Creating bridge with custom state manager');
 
   // Create the core bridge with our custom store

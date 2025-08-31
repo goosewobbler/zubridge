@@ -11,7 +11,9 @@ export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }
     () => window.bypassFlags?.bypassAccessControl || false,
   );
 
-  const [bypassThunkLock, setBypassThunkLock] = useState(() => window.bypassFlags?.bypassThunkLock || false);
+  const [bypassThunkLock, setBypassThunkLock] = useState(
+    () => window.bypassFlags?.bypassThunkLock || false,
+  );
 
   // Update the window object when state changes
   useEffect(() => {
@@ -67,10 +69,12 @@ export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }
 
       <div className="p-3 mt-4 text-sm bg-gray-100 rounded-md dark:bg-gray-800">
         <p className="mb-2">
-          <strong>bypassAccessControl</strong>: Allows accessing state that this window isn't subscribed to
+          <strong>bypassAccessControl</strong>: Allows accessing state that this window isn't
+          subscribed to
         </p>
         <p>
-          <strong>bypassThunkLock</strong>: Allows actions to execute even when a thunk is in progress
+          <strong>bypassThunkLock</strong>: Allows actions to execute even when a thunk is in
+          progress
         </p>
       </div>
     </div>

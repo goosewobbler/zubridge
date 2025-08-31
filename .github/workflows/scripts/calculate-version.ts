@@ -83,7 +83,10 @@ async function main() {
 
   // Get target packages
   const packageList = packagesInput.includes(',')
-    ? packagesInput.split(',').map((p) => p.trim()).filter(Boolean)
+    ? packagesInput
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
     : [packagesInput.trim()];
 
   const targets: string[] = [];
@@ -103,7 +106,7 @@ async function main() {
 
   // Get scoped target names
   const scopedTargets = targets
-    .map(dirName => getScopedPackageName(dirName))
+    .map((dirName) => getScopedPackageName(dirName))
     .filter(Boolean) as string[];
 
   console.log(`Using specified directories: ${targets.join(', ')}`);
@@ -142,8 +145,10 @@ async function main() {
     bumpFlag,
     dryRun ? '--dry-run' : '',
     '--json',
-    `-t ${targetsArg}`
-  ].filter(Boolean).join(' ');
+    `-t ${targetsArg}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   // Execute command
   let newVersion: string | null = null;
@@ -152,7 +157,9 @@ async function main() {
   try {
     // Parse JSON output
     const jsonOutput = JSON.parse(commandOutput);
-    const refPackageUpdate = jsonOutput.updates?.find((update: any) => update.packageName === refPkgScopedName);
+    const refPackageUpdate = jsonOutput.updates?.find(
+      (update: any) => update.packageName === refPkgScopedName,
+    );
 
     if (refPackageUpdate?.newVersion) {
       newVersion = refPackageUpdate.newVersion;
@@ -194,8 +201,7 @@ async function main() {
   console.log('Version calculation completed successfully');
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Script failed:', error);
   process.exit(1);
 });
-

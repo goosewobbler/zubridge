@@ -104,7 +104,9 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
       const onCompleted = (completedTask: ThunkTask) => {
         if (completedTask.id === task.id) {
           debug('queue', `Thunk task ${task.id} completed successfully`);
-          actionScheduler.getScheduler().removeListener(ThunkSchedulerEvents.TASK_COMPLETED, onCompleted);
+          actionScheduler
+            .getScheduler()
+            .removeListener(ThunkSchedulerEvents.TASK_COMPLETED, onCompleted);
           actionScheduler.getScheduler().removeListener(ThunkSchedulerEvents.TASK_FAILED, onFailed);
           resolve(null);
         }
@@ -113,7 +115,9 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
       const onFailed = (failedTask: ThunkTask, error: Error) => {
         if (failedTask.id === task.id) {
           debug('queue:error', `Thunk task ${task.id} failed: ${error.message}`);
-          actionScheduler.getScheduler().removeListener(ThunkSchedulerEvents.TASK_COMPLETED, onCompleted);
+          actionScheduler
+            .getScheduler()
+            .removeListener(ThunkSchedulerEvents.TASK_COMPLETED, onCompleted);
           actionScheduler.getScheduler().removeListener(ThunkSchedulerEvents.TASK_FAILED, onFailed);
           reject(error);
         }
@@ -128,7 +132,10 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
   /**
    * Get the current thunk state
    */
-  public getThunkState(): { version: number; thunks: Array<{ id: string; windowId: number; parentId?: string }> } {
+  public getThunkState(): {
+    version: number;
+    thunks: Array<{ id: string; windowId: number; parentId?: string }>;
+  } {
     return thunkManager.getActiveThunksSummary();
   }
 
@@ -155,7 +162,10 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
   ): void {
     if (parentThunkId) {
       action.__thunkParentId = parentThunkId;
-      debug('queue', `Action ${action.type} from window ${sourceWindowId} belongs to thunk ${parentThunkId}`);
+      debug(
+        'queue',
+        `Action ${action.type} from window ${sourceWindowId} belongs to thunk ${parentThunkId}`,
+      );
     }
 
     action.__sourceWindowId = sourceWindowId; // Ensure sourceWindowId is on the action itself
@@ -180,7 +190,9 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
 export let actionQueue: ActionQueueManager;
 
 // Export a function to initialize the queue with the state manager
-export function initActionQueue<S extends AnyState>(stateManager: StateManager<S>): ActionQueueManager<S> {
+export function initActionQueue<S extends AnyState>(
+  stateManager: StateManager<S>,
+): ActionQueueManager<S> {
   actionQueue = new ActionQueueManager<S>(stateManager);
   return actionQueue as ActionQueueManager<S>;
 }

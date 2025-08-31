@@ -60,13 +60,17 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
   const doubleCounterThunk = () => {
     // Use a thunk to get the current state and dispatch a new action
     const currentValue = counter;
-    console.log(`[${windowLabel}] Thunk: Doubling counter from ${currentValue} to ${currentValue * 2}`);
+    console.log(
+      `[${windowLabel}] Thunk: Doubling counter from ${currentValue} to ${currentValue * 2}`,
+    );
     dispatch('COUNTER:SET', currentValue * 2);
   };
 
   const doubleCounterAction = () => {
     const currentValue = counter;
-    console.log(`[${windowLabel}] Action: Doubling counter from ${currentValue} to ${currentValue * 2}`);
+    console.log(
+      `[${windowLabel}] Action: Doubling counter from ${currentValue} to ${currentValue * 2}`,
+    );
     dispatch('COUNTER:SET', currentValue * 2);
   };
 
@@ -84,7 +88,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
       height: 485,
     });
     webview.once('tauri://created', () => console.log(`Window ${uniqueLabel} created`));
-    webview.once('tauri://error', (e) => console.error(`Failed to create window ${uniqueLabel}:`, e));
+    webview.once('tauri://error', (e) =>
+      console.error(`Failed to create window ${uniqueLabel}:`, e),
+    );
   };
 
   // Use WebviewWindow.getByLabel to get the current window instance
@@ -97,7 +103,9 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
         console.log(`[App.runtime] Found window, calling close()...`);
         await currentWindow.close();
       } else {
-        console.warn(`[App.runtime] WebviewWindow.getByLabel returned null for label: ${windowLabel}`);
+        console.warn(
+          `[App.runtime] WebviewWindow.getByLabel returned null for label: ${windowLabel}`,
+        );
       }
     } catch (error) {
       console.error('[App.runtime] Error closing window:', error);
@@ -129,7 +137,11 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
       <div className="theme-section">
         <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={toggleTheme} />
 
-        <WindowActions onCreateWindow={createWindow} onCloseWindow={closeWindow} isMainWindow={false} />
+        <WindowActions
+          onCreateWindow={createWindow}
+          onCloseWindow={closeWindow}
+          isMainWindow={false}
+        />
       </div>
     </WindowDisplay>
   );

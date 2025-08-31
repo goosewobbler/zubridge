@@ -9,7 +9,9 @@ const appDir = process.env.APP_DIR as string; // This should be 'electron-exampl
 const mode = process.env.MODE || 'zustand-basic'; // Default to zustand-basic mode if not specified
 const appPath = path.join(__dirname, '..', 'apps', appDir); // Path to 'apps/electron-example'
 const packageJsonPath = path.join(appPath, 'package.json');
-const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf-8' })) as NormalizedPackageJson;
+const packageJson = JSON.parse(
+  fs.readFileSync(packageJsonPath, { encoding: 'utf-8' }),
+) as NormalizedPackageJson;
 
 const currentPlatform = process.platform;
 const currentArch = process.arch;
@@ -123,7 +125,9 @@ if (binaryFinders[currentPlatform]) {
   if (binaryPath) {
     console.log(`[DEBUG] Using ${currentPlatform} binary: ${binaryPath}`);
   } else {
-    console.log(`[DEBUG] No platform-specific binary found for ${currentPlatform}, will try fallback`);
+    console.log(
+      `[DEBUG] No platform-specific binary found for ${currentPlatform}, will try fallback`,
+    );
   }
 }
 
@@ -218,7 +222,9 @@ if (currentPlatform === 'linux') {
   console.log(`[DEBUG] Added Linux-specific flags for CI stability`);
 }
 
-const appArgs = process.env.ELECTRON_APP_PATH ? [process.env.ELECTRON_APP_PATH, ...baseArgs] : baseArgs;
+const appArgs = process.env.ELECTRON_APP_PATH
+  ? [process.env.ELECTRON_APP_PATH, ...baseArgs]
+  : baseArgs;
 
 // Determine which spec files to run based on the mode
 let specPattern;
@@ -244,7 +250,7 @@ const config = {
   services: ['electron'],
   capabilities: [
     {
-      'browserName': 'electron',
+      browserName: 'electron',
       'wdio:electronServiceOptions': {
         appBinaryPath: binaryPath,
         appArgs,
@@ -364,7 +370,9 @@ const config = {
       try {
         const globalBrowser = (global as any).browser;
         if (globalBrowser) {
-          console.log(`[DEBUG] Browser capabilities: ${JSON.stringify(globalBrowser.capabilities, null, 2)}`);
+          console.log(
+            `[DEBUG] Browser capabilities: ${JSON.stringify(globalBrowser.capabilities, null, 2)}`,
+          );
           console.log(`[DEBUG] Browser session ID: ${globalBrowser.sessionId}`);
         } else {
           console.log('[DEBUG] Browser not yet available in before hook');

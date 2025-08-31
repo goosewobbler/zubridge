@@ -143,7 +143,10 @@ export class ThunkManager extends EventEmitter {
 
     // Add debug logs to track thunk state
     debug('thunk-debug', `Thunk ${thunkId} state before activation: ${thunk.state}`);
-    debug('thunk-debug', `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`);
+    debug(
+      'thunk-debug',
+      `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`,
+    );
 
     // Update thunk state
     thunk.activate();
@@ -173,7 +176,10 @@ export class ThunkManager extends EventEmitter {
 
     // Add debug logs to track thunk state
     debug('thunk-debug', `Thunk ${thunkId} state before completion: ${thunk.state}`);
-    debug('thunk-debug', `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`);
+    debug(
+      'thunk-debug',
+      `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`,
+    );
     debug('thunk-debug', `Root thunk is currently: ${this.rootThunkId || 'none'}`);
 
     // Check if the thunk is already completed
@@ -193,7 +199,10 @@ export class ThunkManager extends EventEmitter {
       debug('thunk-debug', `Thunk ${thunkId} has no pending actions, finalizing completion now`);
       this.finalizeThunkCompletion(thunkId);
     } else {
-      debug('thunk-debug', `Thunk ${thunkId} has ${pendingActions.size} pending actions, deferring completion`);
+      debug(
+        'thunk-debug',
+        `Thunk ${thunkId} has ${pendingActions.size} pending actions, deferring completion`,
+      );
     }
   }
 
@@ -212,7 +221,10 @@ export class ThunkManager extends EventEmitter {
     // Double check if there are any pending actions for this thunk
     const pendingActions = this.thunkActions.get(thunkId);
     if (pendingActions && pendingActions.size > 0) {
-      debug('thunk-debug', `Thunk ${thunkId} still has ${pendingActions.size} pending actions, deferring completion`);
+      debug(
+        'thunk-debug',
+        `Thunk ${thunkId} still has ${pendingActions.size} pending actions, deferring completion`,
+      );
       return;
     }
 
@@ -274,7 +286,10 @@ export class ThunkManager extends EventEmitter {
   /**
    * Get all active thunks for broadcasting
    */
-  getActiveThunksSummary(): { version: number; thunks: Array<{ id: string; windowId: number; parentId?: string }> } {
+  getActiveThunksSummary(): {
+    version: number;
+    thunks: Array<{ id: string; windowId: number; parentId?: string }>;
+  } {
     // Get all running tasks from the scheduler
     const runningTasks = this.scheduler.getRunningTasks();
 
@@ -300,7 +315,10 @@ export class ThunkManager extends EventEmitter {
   canProcessAction(action: Action): boolean {
     // Actions with bypassThunkLock can always be processed immediately
     if (action.__bypassThunkLock) {
-      debug('thunk-debug', `Action ${action.type} (${action.__id}) has bypassThunkLock, allowing immediate processing`);
+      debug(
+        'thunk-debug',
+        `Action ${action.type} (${action.__id}) has bypassThunkLock, allowing immediate processing`,
+      );
       return true;
     }
 
@@ -309,7 +327,10 @@ export class ThunkManager extends EventEmitter {
     const isIdle = status.isIdle;
 
     if (isIdle) {
-      debug('thunk-debug', `Scheduler is idle, allowing action ${action.type} (${action.__id}) to process immediately`);
+      debug(
+        'thunk-debug',
+        `Scheduler is idle, allowing action ${action.type} (${action.__id}) to process immediately`,
+      );
       return true;
     }
 
@@ -330,7 +351,10 @@ export class ThunkManager extends EventEmitter {
   processThunkAction(action: Action): boolean {
     const thunkId = (action as ThunkAction).parentId || action.__thunkParentId;
     if (!thunkId) {
-      debug('thunk-debug', `Action ${action.type} has no parentId or __thunkParentId, not a thunk action`);
+      debug(
+        'thunk-debug',
+        `Action ${action.type} has no parentId or __thunkParentId, not a thunk action`,
+      );
       return false;
     }
 
@@ -369,7 +393,10 @@ export class ThunkManager extends EventEmitter {
       this.thunkActions.set(thunkId, thunkActionSet);
     }
 
-    debug('thunk-debug', `Adding action ${action.__id} (${action.type}) to thunk ${thunkId} tracking`);
+    debug(
+      'thunk-debug',
+      `Adding action ${action.__id} (${action.type}) to thunk ${thunkId} tracking`,
+    );
     thunkActionSet.add(action.__id);
 
     // Create a ThunkTask for this action
@@ -395,7 +422,10 @@ export class ThunkManager extends EventEmitter {
           // Check if action is still part of thunk's tracked actions
           const actionSet = this.thunkActions.get(thunkId);
           if (!actionSet || !actionSet.has(action.__id!)) {
-            debug('thunk-debug', `Action ${action.__id} no longer tracked for thunk ${thunkId}, skipping execution`);
+            debug(
+              'thunk-debug',
+              `Action ${action.__id} no longer tracked for thunk ${thunkId}, skipping execution`,
+            );
             return null;
           }
 
@@ -527,7 +557,10 @@ export class ThunkManager extends EventEmitter {
   acknowledgeStateUpdate(updateId: string, rendererId: number): boolean {
     const update = this.pendingStateUpdates.get(updateId);
     if (!update) {
-      debug('thunk:warn', `Received acknowledgment for unknown update ${updateId} from renderer ${rendererId}`);
+      debug(
+        'thunk:warn',
+        `Received acknowledgment for unknown update ${updateId} from renderer ${rendererId}`,
+      );
       return false;
     }
 
@@ -586,7 +619,10 @@ export class ThunkManager extends EventEmitter {
           Array.from(update.subscribedRenderers).every((id) => update.acknowledgedBy.has(id));
 
         if (allAcknowledged) {
-          debug('thunk', `All remaining renderers acknowledged update ${update.updateId} after cleanup`);
+          debug(
+            'thunk',
+            `All remaining renderers acknowledged update ${update.updateId} after cleanup`,
+          );
 
           // Clean up this update
           this.pendingStateUpdates.delete(update.updateId);
@@ -671,7 +707,10 @@ export class ThunkManager extends EventEmitter {
     for (const updateId of expiredUpdates) {
       const update = this.pendingStateUpdates.get(updateId);
       if (update) {
-        debug('thunk:warn', `Cleaning up expired state update ${updateId} for thunk ${update.thunkId}`);
+        debug(
+          'thunk:warn',
+          `Cleaning up expired state update ${updateId} for thunk ${update.thunkId}`,
+        );
         this.pendingStateUpdates.delete(updateId);
 
         // Remove from thunk tracking

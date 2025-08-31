@@ -29,8 +29,12 @@ export interface ZubridgeAppWindow {
     quitApp: () => Promise<void>;
     getWindowInfo: () => Promise<{ id: number; type: string; subscriptions: string[] }>;
     getMode: () => Promise<{ modeName: string; name?: string }>;
-    subscribe: (keys: string[]) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
-    unsubscribe: (keys: string[]) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
+    subscribe: (
+      keys: string[],
+    ) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
+    unsubscribe: (
+      keys: string[],
+    ) => Promise<{ success: boolean; subscriptions?: string[]; error?: string }>;
     minimizeWindow?: () => void;
     maximizeWindow?: () => void;
     openDevTools?: () => void;

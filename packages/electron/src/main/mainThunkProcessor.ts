@@ -1,6 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
-import type { Action, AnyState, Thunk, Dispatch, StateManager, DispatchOptions } from '@zubridge/types';
+import type {
+  Action,
+  AnyState,
+  Thunk,
+  Dispatch,
+  StateManager,
+  DispatchOptions,
+} from '@zubridge/types';
 import { thunkManager } from '../lib/initThunkManager.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 import { actionQueue } from './actionQueue.js';
@@ -8,7 +15,10 @@ import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
 // Platform-specific timeout for action completion
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
-debug('core', `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`);
+debug(
+  'core',
+  `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`,
+);
 
 /**
  * Handles thunk execution in the main process
@@ -95,7 +105,10 @@ export class MainThunkProcessor {
       bypassAccessControl: options?.bypassAccessControl,
     });
 
-    debug('core', `[MAIN_THUNK] Executing thunk with ID: ${thunkObj.id}${parentId ? ` (parent: ${parentId})` : ''}`);
+    debug(
+      'core',
+      `[MAIN_THUNK] Executing thunk with ID: ${thunkObj.id}${parentId ? ` (parent: ${parentId})` : ''}`,
+    );
     debug('core', `[MAIN_THUNK] Current active root thunk: ${currentActiveRootThunk || 'none'}`);
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
     debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
@@ -107,13 +120,21 @@ export class MainThunkProcessor {
         try {
           // Create a dispatch function for the thunk that tracks each action
           // This dispatch is "scoped" to the parent's keys/force
-          const dispatch: Dispatch<S> = async (action: any, payload?: unknown, _childOptions?: DispatchOptions) => {
+          const dispatch: Dispatch<S> = async (
+            action: any,
+            payload?: unknown,
+            _childOptions?: DispatchOptions,
+          ) => {
             // Only allow the same keys/force as the parent (no escalation)
             const effectiveOptions = { ...options };
             if (typeof action === 'function') {
               debug('core', `[MAIN_THUNK] Handling nested thunk from ${thunkObj.id}`);
               // Pass down the same options to nested thunks, and pass current thunkId as parentId
-              const result = await this.executeThunk(action as Thunk<S>, effectiveOptions, thunkObj.id);
+              const result = await this.executeThunk(
+                action as Thunk<S>,
+                effectiveOptions,
+                thunkObj.id,
+              );
               return result;
             }
             return this.dispatchAction(action, payload, thunkObj.id, effectiveOptions);
@@ -134,7 +155,10 @@ export class MainThunkProcessor {
           return result;
         } catch (error) {
           debug('core:error', `[MAIN_THUNK] Error executing thunk: ${error}`);
-          thunkManager.markThunkFailed(thunkObj.id, error instanceof Error ? error : new Error(String(error)));
+          thunkManager.markThunkFailed(
+            thunkObj.id,
+            error instanceof Error ? error : new Error(String(error)),
+          );
           throw error;
         }
       },
@@ -152,7 +176,10 @@ export class MainThunkProcessor {
 
     // Check immediate completion first (in case there were no state changes)
     if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
-      debug('core', `[MAIN_THUNK] Thunk ${thunkObj.id} already fully complete (no pending state updates)`);
+      debug(
+        'core',
+        `[MAIN_THUNK] Thunk ${thunkObj.id} already fully complete (no pending state updates)`,
+      );
       return result;
     }
 
@@ -177,7 +204,10 @@ export class MainThunkProcessor {
 
       // Set up timeout for state propagation
       const timeout = setTimeout(() => {
-        debug('core:error', `[MAIN_THUNK] Timeout waiting for state propagation for thunk ${thunkObj.id}`);
+        debug(
+          'core:error',
+          `[MAIN_THUNK] Timeout waiting for state propagation for thunk ${thunkObj.id}`,
+        );
         reject(
           new Error(
             `Thunk completion timeout: state propagation not acknowledged within ${this.actionCompletionTimeoutMs}ms`,
@@ -212,7 +242,9 @@ export class MainThunkProcessor {
 
     // Convert string actions to object form
     const actionObj: Action =
-      typeof action === 'string' ? { type: action, __id: uuidv4() } : { ...action, __id: action.__id || uuidv4() };
+      typeof action === 'string'
+        ? { type: action, __id: uuidv4() }
+        : { ...action, __id: action.__id || uuidv4() };
 
     // Mark the action as originating from the main process
     actionObj.__isFromMainProcess = true;
@@ -259,14 +291,20 @@ export class MainThunkProcessor {
 
       // Mark the first action in a thunk with __startsThunk
       if (isFirstActionForThunk) {
-        debug('core', `[MAIN_THUNK] Marking action ${actionObj.__id} as starting thunk ${parentId}`);
+        debug(
+          'core',
+          `[MAIN_THUNK] Marking action ${actionObj.__id} as starting thunk ${parentId}`,
+        );
         actionObj.__startsThunk = true;
         this.sentFirstActionForThunk.add(parentId);
       }
 
       // Ensure thunk is registered before enqueueing the action
       if (!thunkManager.hasThunk(parentId)) {
-        debug('core', `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.__id}`);
+        debug(
+          'core',
+          `[MAIN_THUNK] Registering thunk ${parentId} before enqueueing action ${actionObj.__id}`,
+        );
         const thunkObj = new ThunkClass({
           id: parentId,
           sourceWindowId: 0,
@@ -288,7 +326,10 @@ export class MainThunkProcessor {
     const MAIN_PROCESS_WINDOW_ID = 0;
 
     // Enqueue the action through the action queue to ensure proper ordering
-    debug('core', `[MAIN_THUNK] Enqueueing action: ${actionObj.type} (${actionObj.__id}) through action queue`);
+    debug(
+      'core',
+      `[MAIN_THUNK] Enqueueing action: ${actionObj.type} (${actionObj.__id}) through action queue`,
+    );
 
     return new Promise((resolve, reject) => {
       // Create a promise for this action

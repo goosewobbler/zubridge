@@ -125,7 +125,9 @@ export const switchToWindow = async (index: number) => {
               await browser.pause(TIMING.WINDOW_SWITCH_PAUSE * 2);
               continue;
             } else {
-              console.warn(`Window ${index} title remains empty after ${maxAttempts} attempts - continuing anyway`);
+              console.warn(
+                `Window ${index} title remains empty after ${maxAttempts} attempts - continuing anyway`,
+              );
             }
           }
 

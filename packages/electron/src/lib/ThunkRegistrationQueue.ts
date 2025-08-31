@@ -27,13 +27,19 @@ export class ThunkRegistrationQueue {
 
     // Listen for thunk completion events to process the next registration
     this.thunkManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, () => {
-      debug('queue', `[THUNK-QUEUE] Received ROOT_THUNK_COMPLETED event, processing next registration`);
+      debug(
+        'queue',
+        `[THUNK-QUEUE] Received ROOT_THUNK_COMPLETED event, processing next registration`,
+      );
       this.processNextThunkRegistration();
     });
 
     // Listen for thunk started events (useful for bypass thunks)
     this.thunkManager.on(ThunkManagerEvent.THUNK_STARTED, () => {
-      debug('queue', `[THUNK-QUEUE] Received THUNK_STARTED event, processing next registration for bypass thunks`);
+      debug(
+        'queue',
+        `[THUNK-QUEUE] Received THUNK_STARTED event, processing next registration for bypass thunks`,
+      );
       this.processNextThunkRegistration();
     });
   }
@@ -93,7 +99,10 @@ export class ThunkRegistrationQueue {
     const canRegister = status.thunks.length === 0;
 
     if (canRegister) {
-      debug('queue', `[THUNK-QUEUE] Scheduler allows thunk registration, processing next thunk registration`);
+      debug(
+        'queue',
+        `[THUNK-QUEUE] Scheduler allows thunk registration, processing next thunk registration`,
+      );
       this.processingThunkRegistration = true;
       const registration = this.thunkRegistrationQueue.shift();
       if (registration) {
@@ -102,7 +111,10 @@ export class ThunkRegistrationQueue {
         this.processingThunkRegistration = false;
       }
     } else {
-      debug('queue', `[THUNK-QUEUE] Scheduler state doesn't allow registration, waiting for state change`);
+      debug(
+        'queue',
+        `[THUNK-QUEUE] Scheduler state doesn't allow registration, waiting for state change`,
+      );
     }
   }
 
@@ -159,7 +171,10 @@ export class ThunkRegistrationQueue {
 
       // Execute the thunk based on its source type
       if (thunk.source === 'main' && mainThunkCallback) {
-        debug('queue-debug', `[DEBUG] Executing main thunk callback for thunk ${thunk.id} directly`);
+        debug(
+          'queue-debug',
+          `[DEBUG] Executing main thunk callback for thunk ${thunk.id} directly`,
+        );
 
         // Mark the thunk as executing (starts it in the scheduler)
         this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
@@ -213,7 +228,10 @@ export class ThunkRegistrationQueue {
           }
         });
       } else {
-        debug('queue', `[THUNK-QUEUE] No callback for thunk ${thunk.id}, only marking as executing`);
+        debug(
+          'queue',
+          `[THUNK-QUEUE] No callback for thunk ${thunk.id}, only marking as executing`,
+        );
 
         // For renderer thunks, only mark them as executing
         // They will be completed when the renderer calls completeThunk

@@ -42,7 +42,9 @@ export function watchUIPackage(): Plugin {
         // Skip if already building
         if (isBuildingUI) return;
 
-        console.log(`[watch-ui-package] UI package file changed: ${path.relative(uiSourcePath, filePath)}`);
+        console.log(
+          `[watch-ui-package] UI package file changed: ${path.relative(uiSourcePath, filePath)}`,
+        );
         console.log('[watch-ui-package] Rebuilding UI package...');
 
         try {

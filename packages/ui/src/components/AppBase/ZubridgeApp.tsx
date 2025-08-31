@@ -188,7 +188,10 @@ export function ZubridgeApp({
               'ui',
               `Using shared thunk with getState override for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
             );
-            return await dispatch(actionHandlers.doubleCounterWithGetStateOverride(counter), window.bypassFlags);
+            return await dispatch(
+              actionHandlers.doubleCounterWithGetStateOverride(counter),
+              window.bypassFlags,
+            );
           }
         } else if (method === 'slow-thunk') {
           // Use the slow thunk if available
@@ -202,7 +205,11 @@ export function ZubridgeApp({
         } else if (method === 'main-thunk') {
           debug('ui', `Starting ${method} execution`);
           debug('ui', `window.counter available:`, !!window.counter);
-          debug('ui', `window.counter.executeMainThunk available:`, !!window.counter?.executeMainThunk);
+          debug(
+            'ui',
+            `window.counter.executeMainThunk available:`,
+            !!window.counter?.executeMainThunk,
+          );
 
           if (!window.counter?.executeMainThunk) {
             debug('ui:error', `window.counter.executeMainThunk not available for ${method}`);
@@ -215,7 +222,11 @@ export function ZubridgeApp({
         } else if (method === 'slow-main-thunk') {
           debug('ui', `Starting ${method} execution`);
           debug('ui', `window.counter available:`, !!window.counter);
-          debug('ui', `window.counter.executeMainThunkSlow available:`, !!window.counter?.executeMainThunkSlow);
+          debug(
+            'ui',
+            `window.counter.executeMainThunkSlow available:`,
+            !!window.counter?.executeMainThunkSlow,
+          );
 
           if (!window.counter?.executeMainThunkSlow) {
             debug('ui:error', `window.counter.executeMainThunkSlow not available for ${method}`);

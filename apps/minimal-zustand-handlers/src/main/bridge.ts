@@ -21,7 +21,10 @@ export const createHandlers = (store: StoreApi<State>): ActionHandlers => {
  * Creates a bridge using the handlers approach
  * In this approach, we provide separate action handlers
  */
-export function createBridge(store: StoreApi<State>, middleware?: ZubridgeMiddleware): ZustandBridge {
+export function createBridge(
+  store: StoreApi<State>,
+  middleware?: ZubridgeMiddleware,
+): ZustandBridge {
   console.log('[Handlers Mode] Creating bridge with separate handlers');
 
   // Define action handlers

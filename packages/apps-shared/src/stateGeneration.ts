@@ -10,7 +10,12 @@
  * @param prefix Key prefix for identification
  * @returns A complex nested object
  */
-export function generateComplexState(depth = 0, maxDepth = 3, width = 3, prefix = ''): Record<string, any> {
+export function generateComplexState(
+  depth = 0,
+  maxDepth = 3,
+  width = 3,
+  prefix = '',
+): Record<string, any> {
   const result: Record<string, any> = {};
 
   // Base case - at max depth just create leaf values
@@ -54,7 +59,9 @@ export function generateComplexState(depth = 0, maxDepth = 3, width = 3, prefix 
         // Array of objects
         result[key] = Array(Math.floor(Math.random() * 3) + 2)
           .fill(null)
-          .map((_, idx) => generateComplexState(depth + 1, maxDepth - 1, width - 1, `${key}_item_${idx}_`));
+          .map((_, idx) =>
+            generateComplexState(depth + 1, maxDepth - 1, width - 1, `${key}_item_${idx}_`),
+          );
         break;
       case 2:
         // Mix of values and nested objects
@@ -164,7 +171,13 @@ export function generateTestState(
     small: { flatSize: 100, nestedDepth: 2, nestedWidth: 2, arraySize: 50, arrayComplexity: 2 },
     medium: { flatSize: 1000, nestedDepth: 3, nestedWidth: 3, arraySize: 200, arrayComplexity: 3 },
     large: { flatSize: 5000, nestedDepth: 4, nestedWidth: 4, arraySize: 500, arrayComplexity: 4 },
-    xl: { flatSize: 100_000, nestedDepth: 7, nestedWidth: 7, arraySize: 10_000, arrayComplexity: 5 },
+    xl: {
+      flatSize: 100_000,
+      nestedDepth: 7,
+      nestedWidth: 7,
+      arraySize: 10_000,
+      arrayComplexity: 5,
+    },
   };
 
   // Get the base configuration from the variant

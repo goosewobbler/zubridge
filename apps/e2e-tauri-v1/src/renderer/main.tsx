@@ -35,7 +35,10 @@ function AppWrapper() {
         // Initialize Zubridge bridge
         await initializeBridge({
           invoke,
-          listen: listen as unknown as <E = unknown>(event: string, handler: (event: E) => void) => Promise<() => void>,
+          listen: listen as unknown as <E = unknown>(
+            event: string,
+            handler: (event: E) => void,
+          ) => Promise<() => void>,
           commands: {
             getInitialState: 'get_initial_state',
             dispatchAction: 'dispatch_action',

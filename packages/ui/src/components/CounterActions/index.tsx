@@ -30,10 +30,20 @@ export const CounterActions: React.FC<CounterActionsProps> = ({
     <div className={rootClass}>
       <div className="flex flex-col items-center gap-4">
         <div className="flex justify-between w-full gap-4">
-          <Button onClick={onDecrement} disabled={isLoading} aria-label="Decrement counter" className="flex-1">
+          <Button
+            onClick={onDecrement}
+            disabled={isLoading}
+            aria-label="Decrement counter"
+            className="flex-1"
+          >
             -
           </Button>
-          <Button onClick={onIncrement} disabled={isLoading} aria-label="Increment counter" className="flex-1">
+          <Button
+            onClick={onIncrement}
+            disabled={isLoading}
+            aria-label="Increment counter"
+            className="flex-1"
+          >
             +
           </Button>
         </div>

@@ -27,7 +27,12 @@ class MockThunk {
 // Minimal mock ThunkScheduler
 class MockScheduler implements IThunkScheduler {
   getRunningTasks = vi.fn(() => [] as ThunkTask[]);
-  getQueueStatus = vi.fn(() => ({ isIdle: true, queuedTasks: 0, runningTasks: 0, highestPriorityQueued: -1 }));
+  getQueueStatus = vi.fn(() => ({
+    isIdle: true,
+    queuedTasks: 0,
+    runningTasks: 0,
+    highestPriorityQueued: -1,
+  }));
   removeTasks = vi.fn();
   processQueue = vi.fn();
   enqueue = vi.fn();

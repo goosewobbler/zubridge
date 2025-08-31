@@ -83,7 +83,9 @@ export const halveValueSlow = async (state: AnyState): Promise<Partial<AnyState>
   const currentValue = state.counter as number;
   const newValue = Math.round(currentValue / 2);
 
-  console.log(`[Custom Counter] Halving counter from ${currentValue} to ${newValue} with 2500ms delay`);
+  console.log(
+    `[Custom Counter] Halving counter from ${currentValue} to ${newValue} with 2500ms delay`,
+  );
   console.log(`[Custom Counter] Time before delay: ${new Date().toISOString()}`);
 
   // Wait for 2500ms to simulate a slow operation

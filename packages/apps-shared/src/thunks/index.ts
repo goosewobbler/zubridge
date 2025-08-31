@@ -8,7 +8,8 @@ import type { BaseState, ThunkContext } from '../types.js';
 const getLogPrefix = (context: ThunkContext) => {
   const { environment, logPrefix } = context;
   const prefix =
-    logPrefix || (environment === 'main' ? 'MAIN_PROCESS' : environment === 'renderer' ? 'RENDERER' : 'TAURI');
+    logPrefix ||
+    (environment === 'main' ? 'MAIN_PROCESS' : environment === 'renderer' ? 'RENDERER' : 'TAURI');
   return `[${prefix}_THUNK]`;
 };
 
@@ -78,7 +79,9 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Calling getState()`);
 
       const beforeStateTime = Date.now();
-      const state = bypassAccessControlOverride ? await getState({ bypassAccessControl: true }) : await getState();
+      const state = bypassAccessControlOverride
+        ? await getState({ bypassAccessControl: true })
+        : await getState();
       const afterStateTime = Date.now();
       const stateLatency = afterStateTime - beforeStateTime;
 
@@ -86,7 +89,10 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
         'thunk',
         `${logPrefix} [DEBUG] [${thunkType}] [${now}] Got state in ${stateLatency}ms: ${JSON.stringify(state)}`,
       );
-      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`);
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`,
+      );
 
       if (state.counter === undefined) {
         throw new Error('Counter is undefined');
@@ -127,7 +133,9 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
     try {
       // Log initial state
       const actualInitialCounter = await getCounter();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] STARTING THUNK at ${new Date().toISOString()}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] STARTING THUNK at ${new Date().toISOString()}`,
+      );
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] Initial counter param: ${initialCounter}, actual state counter: ${actualInitialCounter}`,
       );
@@ -144,10 +152,14 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       );
 
       const timestamp1 = new Date().toISOString();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`,
+      );
 
       const duration1 = await dispatchWithDelay(doubleActionType);
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] First action completed in ${duration1}ms`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] First action completed in ${duration1}ms`,
+      );
 
       // Add delay to simulate async work
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
@@ -176,10 +188,14 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       );
 
       const timestamp2 = new Date().toISOString();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before second action: ${timestamp2}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Time before second action: ${timestamp2}`,
+      );
 
       const duration2 = await dispatchWithDelay(doubleActionType);
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Second action completed in ${duration2}ms`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Second action completed in ${duration2}ms`,
+      );
 
       // Add delay to simulate async work
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
@@ -209,20 +225,28 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
       );
 
       const timestamp3 = new Date().toISOString();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before third action: ${timestamp3}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Time before third action: ${timestamp3}`,
+      );
 
       const duration3 = await dispatchWithDelay(halveActionType);
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Third action completed in ${duration3}ms`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Third action completed in ${duration3}ms`,
+      );
 
       // Add delay to simulate async work
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
 
       // Log final state
       const finalValue = await getCounter();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] After final operation: counter value is ${finalValue}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] After final operation: counter value is ${finalValue}`,
+      );
 
       // Verify result - the expected value after double → double → halve is currentValue (should be robust to bypass)
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] THUNK COMPLETED at ${new Date().toISOString()}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] THUNK COMPLETED at ${new Date().toISOString()}`,
+      );
       return finalValue;
     } catch (error) {
       console.error(`${logPrefix} [DEBUG] [${thunkType}] Error executing thunk:`, error);
@@ -284,7 +308,12 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
   context: ThunkContext,
   options: DoubleCounterOptions = {},
 ): Thunk<Partial<S>> => {
-  const { useSlow = false, delayBetweenOperations = 100, includeTimestamps = false, asyncHandlers = true } = options;
+  const {
+    useSlow = false,
+    delayBetweenOperations = 100,
+    includeTimestamps = false,
+    asyncHandlers = true,
+  } = options;
 
   const logPrefix = getLogPrefix(context);
   const actionType = useSlow ? 'COUNTER:SET:SLOW' : 'COUNTER:SET';
@@ -304,7 +333,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
         'thunk',
         `${logPrefix} [DEBUG] [${thunkType}] [${now}] Got state in ${stateLatency}ms: ${JSON.stringify(state)}`,
       );
-      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`);
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`,
+      );
 
       return state.counter ?? initialCounter; // Use nullish coalescing to handle undefined counter
     };
@@ -321,7 +353,10 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
     // Helper function to dispatch and handle non-async handlers
     const dispatchWithDelay = async (action: string, value: number) => {
       const startTime = new Date().getTime();
-      debug('thunk', `${logPrefix} [DEBUG] [${thunkType}] Dispatching action ${action} with value ${value}`);
+      debug(
+        'thunk',
+        `${logPrefix} [DEBUG] [${thunkType}] Dispatching action ${action} with value ${value}`,
+      );
 
       await dispatch(action, value);
 
@@ -342,7 +377,9 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       // Log initial state
       const actualInitialState = await getState();
       const actualInitialCounter = await getCounter();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] STARTING THUNK at ${new Date().toISOString()}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] STARTING THUNK at ${new Date().toISOString()}`,
+      );
       logWithTimestamp(
         `${logPrefix} [DEBUG] [${thunkType}] Initial counter param: ${initialCounter}, actual state counter: ${actualInitialCounter}`,
       );
@@ -358,10 +395,14 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       );
 
       const timestamp1 = new Date().toISOString();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Time before first action: ${timestamp1}`,
+      );
 
       const duration1 = await dispatchWithDelay(actionType, firstValue);
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] First action completed in ${duration1}ms`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] First action completed in ${duration1}ms`,
+      );
 
       // Add delay to simulate async work
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
@@ -390,7 +431,9 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       );
 
       const timestamp2 = new Date().toISOString();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before second action: ${timestamp2}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Time before second action: ${timestamp2}`,
+      );
 
       // Double-check state hasn't changed
       const preActionValue = await getCounter();
@@ -401,7 +444,9 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       }
 
       const duration2 = await dispatchWithDelay(actionType, expectedSecondValue);
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Second action completed in ${duration2}ms`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Second action completed in ${duration2}ms`,
+      );
 
       // Add delay to simulate async work
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
@@ -430,7 +475,9 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       );
 
       const timestamp3 = new Date().toISOString();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Time before third action: ${timestamp3}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Time before third action: ${timestamp3}`,
+      );
 
       // Double-check state hasn't changed
       const preThirdActionValue = await getCounter();
@@ -441,26 +488,34 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
       }
 
       const duration3 = await dispatchWithDelay(actionType, expectedFinalValue);
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Third action completed in ${duration3}ms`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] Third action completed in ${duration3}ms`,
+      );
 
       // Add delay to simulate async work
       await new Promise((resolve) => setTimeout(resolve, delayBetweenOperations));
 
       // Log final state
       const finalValue = await getCounter();
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] After final operation: counter value is ${finalValue}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] After final operation: counter value is ${finalValue}`,
+      );
 
       // For example, starting with 2: 2 → 6 → 8 → 7
       const expectedResult = initialCounter * 3 + 2 - 1;
       if (finalValue === expectedResult) {
-        logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] Test PASSED: Got expected value: ${finalValue}`);
+        logWithTimestamp(
+          `${logPrefix} [DEBUG] [${thunkType}] Test PASSED: Got expected value: ${finalValue}`,
+        );
       } else {
         logWithTimestamp(
           `${logPrefix} [DEBUG] [${thunkType}] Test FAILED: Got unexpected value: ${finalValue}, expected ${expectedResult}`,
         );
       }
 
-      logWithTimestamp(`${logPrefix} [DEBUG] [${thunkType}] THUNK COMPLETED at ${new Date().toISOString()}`);
+      logWithTimestamp(
+        `${logPrefix} [DEBUG] [${thunkType}] THUNK COMPLETED at ${new Date().toISOString()}`,
+      );
       return finalValue;
     } catch (error) {
       console.error(`${logPrefix} [DEBUG] [${thunkType}] Error executing thunk:`, error);

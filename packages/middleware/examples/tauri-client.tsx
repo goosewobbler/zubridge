@@ -32,7 +32,9 @@ export function App(): React.Element {
   const dispatch = useZubridgeDispatch<AppState, CounterActions>();
 
   // Track bridge connection status
-  const bridgeStatus = useZubridgeStore<string>((state: AppState) => state.__bridge_status ?? 'initializing');
+  const bridgeStatus = useZubridgeStore<string>(
+    (state: AppState) => state.__bridge_status ?? 'initializing',
+  );
 
   // Debug state to show middleware connection
   const [middlewareConnected, setMiddlewareConnected] = useState<boolean>(false);
@@ -122,7 +124,10 @@ export function App(): React.Element {
             <li>State updates are synced back to the frontend automatically</li>
             <li>The WebSocket server allows external debugging of the state flow</li>
           </ul>
-          <p>Open the browser console and a WebSocket client to see the full middleware communication.</p>
+          <p>
+            Open the browser console and a WebSocket client to see the full middleware
+            communication.
+          </p>
         </div>
       </main>
     </div>

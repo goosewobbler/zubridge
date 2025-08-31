@@ -214,7 +214,9 @@ describe('useDispatch', () => {
   it.skip('should properly handle errors in dispatch promises', async () => {
     // Skipping this test in the interim build
     // Mock a dispatch that fails
-    mockHandlers.dispatch = vi.fn().mockImplementation(() => Promise.reject(new Error('Action failed')));
+    mockHandlers.dispatch = vi
+      .fn()
+      .mockImplementation(() => Promise.reject(new Error('Action failed')));
 
     // Expect the dispatch to throw when awaited
     await expect(dispatch('FAILING_ACTION')).rejects.toThrow('Action failed');
@@ -228,6 +230,8 @@ describe('useDispatch', () => {
     });
 
     // Expect the thunk dispatch to throw
-    await expect(dispatch(errorThunk as unknown as Thunk<TestState>)).rejects.toThrow('Thunk execution failed');
+    await expect(dispatch(errorThunk as unknown as Thunk<TestState>)).rejects.toThrow(
+      'Thunk execution failed',
+    );
   });
 });

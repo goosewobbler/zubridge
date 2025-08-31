@@ -137,7 +137,9 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
   // Ensure we have functions before proceeding
   if (!providedInvoke || !providedListen) {
     isInitializing = false;
-    throw new Error("Zubridge Tauri: Stored 'invoke' or 'listen' function is missing unexpectedly.");
+    throw new Error(
+      "Zubridge Tauri: Stored 'invoke' or 'listen' function is missing unexpectedly.",
+    );
   }
 
   isInitializing = true;
@@ -155,7 +157,10 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
   }
 
   const promise = (async () => {
-    internalStore.setState((s: BridgeState) => ({ ...s, __bridge_status: 'initializing' as const }));
+    internalStore.setState((s: BridgeState) => ({
+      ...s,
+      __bridge_status: 'initializing' as const,
+    }));
     try {
       // Try to get initial state with fallback support
       const initialState = await invokeWithFallback<AnyState>(currentInvoke, options?.commands);
@@ -173,24 +178,30 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
       // Set up state update listener for receiving store changes from backend
       debug('tauri', `Setting up state update listener on ${activeCommands.stateUpdateEvent}...`);
 
-      unlistenStateUpdate = await currentListen(activeCommands.stateUpdateEvent, (event: BridgeEvent<AnyState>) => {
-        debug('tauri', 'Zubridge Tauri: Received state update event.', event.payload);
-        internalStore.setState(
-          (prevState: BridgeState) => {
-            return {
-              ...event.payload,
-              __bridge_status: prevState.__bridge_status,
-            };
-          },
-          true, // Replace state
-        );
-      });
+      unlistenStateUpdate = await currentListen(
+        activeCommands.stateUpdateEvent,
+        (event: BridgeEvent<AnyState>) => {
+          debug('tauri', 'Zubridge Tauri: Received state update event.', event.payload);
+          internalStore.setState(
+            (prevState: BridgeState) => {
+              return {
+                ...event.payload,
+                __bridge_status: prevState.__bridge_status,
+              };
+            },
+            true, // Replace state
+          );
+        },
+      );
 
       debug('tauri', 'State update listener active.');
 
       // Set status to ready NOW THAT LISTENER IS ACTIVE
       internalStore.setState((s: BridgeState) => ({ ...s, __bridge_status: 'ready' as const }));
-      debug('tauri', `Initialization successful. Using commands: ${JSON.stringify(activeCommands)}`);
+      debug(
+        'tauri',
+        `Initialization successful. Using commands: ${JSON.stringify(activeCommands)}`,
+      );
     } catch (error) {
       debug('tauri:error', 'Initialization failed!', error);
       // Clean up listener if partially set up
@@ -277,12 +288,18 @@ export function useZubridgeStore<StateSlice>(
  * @returns Dispatch function that supports actions, action strings, and thunks
  */
 export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFunc<S> {
-  const dispatch = async (actionOrThunk: Thunk<S> | Action | string, payload?: unknown): Promise<void> => {
+  const dispatch = async (
+    actionOrThunk: Thunk<S> | Action | string,
+    payload?: unknown,
+  ): Promise<void> => {
     // For thunks (function actions), execute them locally in the renderer process
     if (typeof actionOrThunk === 'function') {
       try {
         // Execute the thunk with getState and dispatch functions
-        return (actionOrThunk as Thunk<S>)(() => Promise.resolve(internalStore.getState() as S), dispatch);
+        return (actionOrThunk as Thunk<S>)(
+          () => Promise.resolve(internalStore.getState() as S),
+          dispatch,
+        );
       } catch (error) {
         debug('tauri:error', 'Error executing thunk:', error);
         throw error;
@@ -290,7 +307,8 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
     }
 
     // Handle string action type with payload
-    const action: Action = typeof actionOrThunk === 'string' ? { type: actionOrThunk, payload } : actionOrThunk;
+    const action: Action =
+      typeof actionOrThunk === 'string' ? { type: actionOrThunk, payload } : actionOrThunk;
 
     // Ensure invoke was provided during initialization
     if (!providedInvoke) {
@@ -311,12 +329,20 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
           if (status !== 'ready') {
             // Initialization finished but resulted in an error or unexpected state
             const error = internalStore.getState().__bridge_error;
-            debug('tauri:error', `Initialization finished with status '${status}'. Cannot dispatch. Error:`, error);
+            debug(
+              'tauri:error',
+              `Initialization finished with status '${status}'. Cannot dispatch. Error:`,
+              error,
+            );
             throw new Error(`Zubridge initialization failed with status: ${status}`);
           }
           debug('tauri', 'Initialization complete, proceeding with dispatch.');
         } catch (initError) {
-          debug('tauri:error', `Initialization failed while waiting in dispatch. Cannot dispatch. Error:`, initError);
+          debug(
+            'tauri:error',
+            `Initialization failed while waiting in dispatch. Cannot dispatch. Error:`,
+            initError,
+          );
           throw initError; // Re-throw the initialization error
         }
       } else {
@@ -351,7 +377,11 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
       return Promise.resolve();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      debug(`[useZubridgeDispatch] Error invoking dispatch action for ${action.type}:`, errorMessage, error);
+      debug(
+        `[useZubridgeDispatch] Error invoking dispatch action for ${action.type}:`,
+        errorMessage,
+        error,
+      );
       // Rethrow or handle error as needed by the application
       throw error;
     }
@@ -370,7 +400,9 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
 export async function getState(): Promise<AnyState> {
   if (!providedInvoke) throw new Error('Zubridge not initialized.');
   if (!activeCommands.getInitialState) {
-    throw new Error('Zubridge getInitialState command not determined. Try initializing the bridge first.');
+    throw new Error(
+      'Zubridge getInitialState command not determined. Try initializing the bridge first.',
+    );
   }
 
   try {

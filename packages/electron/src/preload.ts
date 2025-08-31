@@ -1,7 +1,14 @@
 import { ipcRenderer, contextBridge } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Handlers, Thunk, DispatchOptions, InternalThunk } from '@zubridge/types';
+import type {
+  Action,
+  AnyState,
+  Handlers,
+  Thunk,
+  DispatchOptions,
+  InternalThunk,
+} from '@zubridge/types';
 import { IpcChannel } from './constants.js';
 import { debug } from '@zubridge/core';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
@@ -36,7 +43,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
   const thunkProcessor = getThunkProcessorWithConfig();
 
   // Map to track pending thunk registration promises
-  const pendingThunkRegistrations = new Map<string, { resolve: () => void; reject: (err: unknown) => void }>();
+  const pendingThunkRegistrations = new Map<
+    string,
+    { resolve: () => void; reject: (err: unknown) => void }
+  >();
 
   // Helper function to track action dispatch
   const trackActionDispatch = (action: Action) => {
@@ -110,7 +120,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
       // Extract options or default to empty object
       const dispatchOptions =
-        typeof payloadOrOptions === 'object' && !Array.isArray(payloadOrOptions) && payloadOrOptions !== null
+        typeof payloadOrOptions === 'object' &&
+        !Array.isArray(payloadOrOptions) &&
+        payloadOrOptions !== null
           ? (payloadOrOptions as DispatchOptions)
           : options || {};
 
@@ -138,7 +150,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           bypassThunkLock: !!bypassThunkLock,
         };
 
-        debug('ipc', `[PRELOAD] Set bypassThunkLock: ${thunkOptions.bypassThunkLock} for thunk execution`);
+        debug(
+          'ipc',
+          `[PRELOAD] Set bypassThunkLock: ${thunkOptions.bypassThunkLock} for thunk execution`,
+        );
 
         // Execute the thunk directly through the thunkProcessor implementation
         // This avoids the circular reference where executeThunk calls back to preload
@@ -151,7 +166,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           ? {
               type: action,
               payload:
-                payloadOrOptions !== undefined && typeof payloadOrOptions !== 'object' ? payloadOrOptions : undefined,
+                payloadOrOptions !== undefined && typeof payloadOrOptions !== 'object'
+                  ? payloadOrOptions
+                  : undefined,
               __id: uuidv4(),
             }
           : {
@@ -206,7 +223,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
         // Set up a timeout in case we don't get an acknowledgment
         const timeoutMs = process.platform === 'linux' ? 60000 : 30000; // Platform-specific timeout
-        debug('ipc', `Setting up acknowledgment timeout of ${timeoutMs}ms for platform ${process.platform}`);
+        debug(
+          'ipc',
+          `Setting up acknowledgment timeout of ${timeoutMs}ms for platform ${process.platform}`,
+        );
         const timeoutId = setTimeout(() => {
           // Remove the listener if we timed out
           ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
@@ -241,7 +261,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       debug('ipc', `Received acknowledgment for action: ${actionId}`);
 
       if (thunkState) {
-        debug('ipc', `Received thunk state with ${thunkState.activeThunks?.length || 0} active thunks`);
+        debug(
+          'ipc',
+          `Received thunk state with ${thunkState.activeThunks?.length || 0} active thunks`,
+        );
       }
 
       // Notify the thunk processor of action completion
@@ -288,10 +311,18 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
             bypassThunkLock?: boolean,
             bypassAccessControl?: boolean,
           ) => {
-            debug('ipc', `[PRELOAD] Registering thunk: thunkId=${thunkId}, bypassThunkLock=${bypassThunkLock}`);
+            debug(
+              'ipc',
+              `[PRELOAD] Registering thunk: thunkId=${thunkId}, bypassThunkLock=${bypassThunkLock}`,
+            );
             return new Promise<void>((resolve, reject) => {
               pendingThunkRegistrations.set(thunkId, { resolve, reject });
-              ipcRenderer.send(IpcChannel.REGISTER_THUNK, { thunkId, parentId, bypassThunkLock, bypassAccessControl });
+              ipcRenderer.send(IpcChannel.REGISTER_THUNK, {
+                thunkId,
+                parentId,
+                bypassThunkLock,
+                bypassAccessControl,
+              });
             });
           },
           // Function to notify thunk completion
@@ -311,7 +342,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
               // Get the window ID
               const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
               // Then fetch subscriptions for this window ID
-              const result = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_SUBSCRIPTIONS, windowId);
+              const result = await ipcRenderer.invoke(
+                IpcChannel.GET_WINDOW_SUBSCRIPTIONS,
+                windowId,
+              );
               return Array.isArray(result) ? result : [];
             } catch (error) {
               debug('subscription:error', 'Error getting window subscriptions:', error);
@@ -358,7 +392,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           validateStateAccess: async (key: string): Promise<boolean> => {
             const isSubscribed = await subscriptionValidatorAPI.isSubscribedToKey(key);
             if (!isSubscribed) {
-              debug('subscription:error', `State access validation failed: not subscribed to key '${key}'`);
+              debug(
+                'subscription:error',
+                `State access validation failed: not subscribed to key '${key}'`,
+              );
               return false;
             }
             return true;
@@ -390,7 +427,10 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
         // Expose the subscription validator API to the window
         debug('ipc', 'Exposing subscription validator API to window');
-        contextBridge.exposeInMainWorld('__zubridge_subscriptionValidator', subscriptionValidatorAPI);
+        contextBridge.exposeInMainWorld(
+          '__zubridge_subscriptionValidator',
+          subscriptionValidatorAPI,
+        );
 
         // Add a state provider to the thunk processor
         thunkProcessor.setStateProvider((opts) => handlers.getState(opts));

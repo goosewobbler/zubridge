@@ -132,7 +132,8 @@ describe('BypassAccessControl Flag Functionality', () => {
 
     // There should be no error about missing counter
     const hasMissingCounterError = errorMessages.some(
-      (msg) => msg.includes('counter is undefined') || msg.includes('Cannot read properties of undefined'),
+      (msg) =>
+        msg.includes('counter is undefined') || msg.includes('Cannot read properties of undefined'),
     );
     expect(hasMissingCounterError).toBe(false);
 
@@ -180,7 +181,8 @@ describe('BypassAccessControl Flag Functionality', () => {
 
     // There should be an error about missing counter value
     const hasMissingCounterError = errorMessages.some(
-      (msg) => msg.includes('Counter is undefined') || msg.includes('Cannot read properties of undefined'),
+      (msg) =>
+        msg.includes('Counter is undefined') || msg.includes('Cannot read properties of undefined'),
     );
     expect(hasMissingCounterError).toBe(true);
 
@@ -225,7 +227,8 @@ describe('BypassAccessControl Flag Functionality', () => {
 
     // There should be no error about missing counter
     const hasMissingCounterError = errorMessages.some(
-      (msg) => msg.includes('counter is undefined') || msg.includes('Cannot read properties of undefined'),
+      (msg) =>
+        msg.includes('counter is undefined') || msg.includes('Cannot read properties of undefined'),
     );
     expect(hasMissingCounterError).toBe(false);
 
@@ -254,7 +257,8 @@ describe('BypassAccessControl Flag Functionality', () => {
 
     // There should be an error about missing counter value
     const hasErrorAfterRegularThunk = errorMessagesAfterRegularThunk.some(
-      (msg) => msg.includes('Counter is undefined') || msg.includes('Cannot read properties of undefined'),
+      (msg) =>
+        msg.includes('Counter is undefined') || msg.includes('Cannot read properties of undefined'),
     );
     expect(hasErrorAfterRegularThunk).toBe(true);
 
