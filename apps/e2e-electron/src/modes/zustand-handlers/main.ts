@@ -1,22 +1,21 @@
+import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
-import type { ZustandBridge, ZubridgeMiddleware } from '@zubridge/electron/main';
-
+import type { BaseState } from '../../types.js';
 import {
-  incrementCounter,
   decrementCounter,
+  doubleCounter,
+  doubleCounterSlow,
+  halveCounter,
+  halveCounterSlow,
+  incrementCounter,
   setCounter,
   setCounterSlow,
-  doubleCounter,
-  halveCounter,
-  doubleCounterSlow,
-  halveCounterSlow,
 } from './features/counter/index.js';
-import { toggleTheme, setTheme } from './features/theme/index.js';
-import { resetState, generateLargeState } from './features/state/index.js';
 import { triggerMainProcessError } from './features/error/index.js';
-import type { BaseState } from '../../types.js';
 import type { ActionHandlers } from './features/index.js';
+import { generateLargeState, resetState } from './features/state/index.js';
+import { setTheme, toggleTheme } from './features/theme/index.js';
 
 /**
  * Creates action handlers for the handlers mode

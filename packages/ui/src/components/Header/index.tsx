@@ -1,7 +1,7 @@
-import React from 'react';
-import clsx from 'clsx';
 // Import app window augmentations
 import type {} from '@zubridge/types/app';
+import clsx from 'clsx';
+import type React from 'react';
 
 interface HeaderProps {
   windowId: number | string;

@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
+import { v4 as uuidv4 } from 'uuid';
 
 export enum ThunkState {
   PENDING = 'pending',

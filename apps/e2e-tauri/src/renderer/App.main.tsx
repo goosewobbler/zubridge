@@ -1,10 +1,11 @@
-// @ts-ignore: React is used for JSX transformation
-import React from 'react';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+// @ts-expect-error: React is used for JSX transformation
+
 import { invoke } from '@tauri-apps/api/core';
-import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { AnyState } from '@zubridge/tauri';
-import { CounterActions, ThemeToggle, WindowDisplay, WindowActions, Header } from '@zubridge/ui';
+import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri';
+import { CounterActions, Header, ThemeToggle, WindowActions, WindowDisplay } from '@zubridge/ui';
+import React from 'react';
 import './styles/index.css';
 
 interface MainAppProps {

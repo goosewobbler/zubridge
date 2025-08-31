@@ -1,7 +1,11 @@
 import { browser } from 'wdio-electron-service';
 import { TIMING } from '../constants.js';
-import { switchToWindow, refreshWindowHandles, windowHandles } from './window.js';
-import { getButtonInCurrentWindow } from './window.js';
+import {
+  getButtonInCurrentWindow,
+  refreshWindowHandles,
+  switchToWindow,
+  windowHandles,
+} from './window.js';
 
 /**
  * Subscribe to specific state keys using the UI
@@ -195,8 +199,7 @@ export async function findWindowBySubscription(
     console.log(`Window[${i}] has subscriptions: ${subs}`);
 
     if (
-      subs &&
-      subs.includes(subscriptionPattern) &&
+      subs?.includes(subscriptionPattern) &&
       (!excludePattern || !subs.includes(excludePattern))
     ) {
       console.log(`Found matching window at index ${i}`);
@@ -209,7 +212,7 @@ export async function findWindowBySubscription(
     console.log(
       `[LINUX DEBUG] Subscription search failed. Pattern: "${subscriptionPattern}", Exclude: "${excludePattern || 'none'}"`,
     );
-    console.log(`[LINUX DEBUG] Available windows and their subscriptions:`);
+    console.log('[LINUX DEBUG] Available windows and their subscriptions:');
     for (let i = 0; i < windowHandles.length; i++) {
       await switchToWindow(i);
       const subs = await getWindowSubscriptions();

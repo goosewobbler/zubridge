@@ -1,10 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
-import { type Action } from '@zubridge/types';
-import { Thunk, ThunkState } from './Thunk.js';
+import type { Action } from '@zubridge/types';
 import { ThunkPriority } from '../constants.js';
+import type { ThunkAction, ThunkTask } from '../types/thunk.js';
+import { type Thunk, ThunkState } from './Thunk.js';
 import { ThunkScheduler } from './ThunkScheduler.js';
-import { ThunkAction, ThunkTask } from '../types/thunk.js';
 
 /**
  * Thunk action type enum
@@ -102,7 +102,7 @@ export class ThunkManager extends EventEmitter {
    */
   private currentThunkActionId?: string;
 
-  private stateManager?: { processAction: (action: Action) => any };
+  private stateManager?: { processAction: (action: Action) => unknown };
 
   constructor(scheduler: ThunkScheduler) {
     super();
@@ -132,7 +132,7 @@ export class ThunkManager extends EventEmitter {
   /**
    * Mark a thunk as executing
    */
-  markThunkExecuting(thunkId: string, windowId?: number): void {
+  markThunkExecuting(thunkId: string, _windowId?: number): void {
     debug('thunk', `Marking thunk as executing: id=${thunkId}`);
 
     const thunk = this.thunks.get(thunkId);
@@ -341,7 +341,7 @@ export class ThunkManager extends EventEmitter {
   /**
    * Set the state manager for processing actions
    */
-  setStateManager(stateManager: { processAction: (action: Action) => any }) {
+  setStateManager(stateManager: { processAction: (action: Action) => unknown }) {
     this.stateManager = stateManager;
   }
 
@@ -433,7 +433,7 @@ export class ThunkManager extends EventEmitter {
           const result = this.stateManager!.processAction(action);
 
           // If the action returns a promise, await it
-          if (result && result.completion && typeof result.completion.then === 'function') {
+          if (result?.completion && typeof result.completion.then === 'function') {
             await result.completion;
           }
 
@@ -694,7 +694,7 @@ export class ThunkManager extends EventEmitter {
   /**
    * Clean up expired pending state updates (prevent memory leaks)
    */
-  cleanupExpiredStateUpdates(maxAgeMs: number = 30000): void {
+  cleanupExpiredStateUpdates(maxAgeMs = 30000): void {
     const now = Date.now();
     const expiredUpdates: string[] = [];
 

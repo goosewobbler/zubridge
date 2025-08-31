@@ -1,10 +1,10 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Action } from '@zubridge/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  canDispatchAction,
+  getAffectedStateKeys,
   registerActionMapping,
   registerActionMappings,
-  getAffectedStateKeys,
-  canDispatchAction,
   validateActionDispatch,
 } from '../../src/renderer/actionValidator';
 
@@ -22,7 +22,7 @@ vi.mock('../../src/renderer/subscriptionValidator', () => ({
 import * as subscriptionValidator from '../../src/renderer/subscriptionValidator';
 
 // Clear the action map between tests
-let actionToStateKeyMap = new Map<string, string[]>();
+let _actionToStateKeyMap = new Map<string, string[]>();
 
 describe('actionValidator', () => {
   // Reset mocks between tests
@@ -30,7 +30,7 @@ describe('actionValidator', () => {
     vi.resetAllMocks();
 
     // Clear action mappings before each test
-    actionToStateKeyMap = new Map<string, string[]>();
+    _actionToStateKeyMap = new Map<string, string[]>();
 
     // Reset the mocks with default values
     vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([]);
@@ -314,7 +314,7 @@ describe('actionValidator', () => {
 
       // Make validateStateAccessWithExistence throw for non-existent key
       vi.mocked(subscriptionValidator.validateStateAccessWithExistence).mockImplementation(
-        async (state, key) => {
+        async (_state, key) => {
           if (key === 'nonexistent.key') {
             throw new Error(`State key '${key}' does not exist in the store`);
           }
@@ -339,7 +339,7 @@ describe('actionValidator', () => {
       };
 
       // Mock state with only some keys existing
-      const mockState = {
+      const _mockState = {
         existing: { key: 'value' },
         unsubscribed: { key: 'value' },
       };
@@ -351,7 +351,7 @@ describe('actionValidator', () => {
       vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue(['existing.key']);
 
       // Mock state existence check
-      vi.mocked(subscriptionValidator.stateKeyExists).mockImplementation((state, key) => {
+      vi.mocked(subscriptionValidator.stateKeyExists).mockImplementation((_state, key) => {
         if (key === 'nonexistent.key') return false;
         return true;
       });

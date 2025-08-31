@@ -1,11 +1,12 @@
-// @ts-ignore: React is used for JSX
-import React from 'react';
+// @ts-expect-error: React is used for JSX
+
 // Correct import paths for Tauri window APIs
 import { WebviewWindow } from '@tauri-apps/api/window'; // Import WebviewWindow from correct path
-// Import Zubridge hooks
-import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri'; // Removed initializeBridge import
 import type { AnyState } from '@zubridge/tauri'; // Import state type if needed for selectors
-import { CounterActions, ThemeToggle, WindowDisplay, WindowActions, Header } from '@zubridge/ui';
+// Import Zubridge hooks
+import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri'; // Removed initializeBridge import
+import { CounterActions, Header, ThemeToggle, WindowActions, WindowDisplay } from '@zubridge/ui';
+import React from 'react';
 import './styles/index.css';
 
 interface RuntimeAppProps {
@@ -100,7 +101,7 @@ export function RuntimeApp({ windowLabel }: RuntimeAppProps) {
       // Await the promise returned by getByLabel
       const currentWindow = await WebviewWindow.getByLabel(windowLabel);
       if (currentWindow) {
-        console.log(`[App.runtime] Found window, calling close()...`);
+        console.log('[App.runtime] Found window, calling close()...');
         await currentWindow.close();
       } else {
         console.warn(

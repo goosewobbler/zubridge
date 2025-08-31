@@ -1,4 +1,5 @@
-import React, { ButtonHTMLAttributes } from 'react';
+import type React from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'create' | 'reset' | 'close' | 'link' | 'outline';
@@ -33,7 +34,6 @@ export const Button: React.FC<ButtonProps> = ({
         return 'bg-transparent text-primary hover:text-primary-dark underline hover:no-underline';
       case 'outline':
         return 'bg-transparent border border-primary text-primary hover:bg-primary/10';
-      case 'primary':
       default:
         return 'bg-primary hover:bg-primary-dark active:bg-primary-darker';
     }
@@ -46,7 +46,6 @@ export const Button: React.FC<ButtonProps> = ({
         return 'py-1 px-3 text-xs';
       case 'lg':
         return 'py-3 px-6 text-base';
-      case 'md':
       default:
         return 'py-2 px-4 text-sm';
     }

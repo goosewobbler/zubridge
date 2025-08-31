@@ -1,8 +1,8 @@
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
 import {
-  isSubscribedToKey,
   getWindowSubscriptions,
+  isSubscribedToKey,
   stateKeyExists,
 } from './subscriptionValidator.js';
 

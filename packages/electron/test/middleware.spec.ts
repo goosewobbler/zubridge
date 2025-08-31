@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createMiddlewareOptions } from '../src/middleware.js';
 import type { Action } from '@zubridge/types';
+import { describe, expect, it, vi } from 'vitest';
+import { createMiddlewareOptions } from '../src/middleware.js';
 
 describe('middleware.ts', () => {
   // Create a mock middleware object

@@ -12,7 +12,7 @@ export interface State {
   'THEME:TOGGLE': () => void;
 
   // Index signature to satisfy AnyState requirement
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

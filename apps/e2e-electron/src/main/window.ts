@@ -1,7 +1,7 @@
 import path from 'node:path';
 import process from 'node:process';
-import { BrowserWindow, BrowserView, WebContentsView, shell, app } from 'electron';
 import { isDev } from '@zubridge/electron/main';
+import { app, BrowserView, BrowserWindow, shell, WebContentsView } from 'electron';
 import { getZubridgeMode } from '../utils/mode.js';
 import { getPreloadPath } from '../utils/path.js';
 
@@ -16,12 +16,12 @@ const isTestMode = process.env.TEST === 'true';
 debugWindow(`Test mode: ${isTestMode}`);
 
 // Window reference variables
-let mainWindow: BrowserWindow | undefined = undefined;
-let directWebContentsWindow: BrowserWindow | undefined = undefined;
-let browserViewWindow: BrowserWindow | undefined = undefined;
-let browserView: BrowserView | undefined = undefined;
-let webContentsViewWindow: BrowserWindow | undefined = undefined;
-let webContentsView: WebContentsView | undefined = undefined;
+let mainWindow: BrowserWindow | undefined;
+let directWebContentsWindow: BrowserWindow | undefined;
+let browserViewWindow: BrowserWindow | undefined;
+let browserView: BrowserView | undefined;
+let webContentsViewWindow: BrowserWindow | undefined;
+let webContentsView: WebContentsView | undefined;
 
 // Track runtime windows that need cleanup
 const runtimeWindows: BrowserWindow[] = [];
@@ -315,10 +315,10 @@ export async function initBrowserViewWindow(): Promise<{
       });
     }
     // Return early with a null browserView to signal that it wasn't attached
-    return { window: browserViewWindow, browserView: null as any };
+    return { window: browserViewWindow, browserView: null };
   }
 
-  setupDomReadyLogging(browserView as any, 'BrowserView');
+  setupDomReadyLogging(browserView, 'BrowserView');
 
   // Load the secondary window content
   if (isDevEnv) {
@@ -431,7 +431,7 @@ export async function initBrowserViewWindow(): Promise<{
 
       if (devToolsShortcut) {
         debugWindow('DevTools shortcut pressed in BrowserView');
-        if (browserView && browserView.webContents.isDevToolsOpened()) {
+        if (browserView?.webContents.isDevToolsOpened()) {
           browserView.webContents.closeDevTools();
           debugWindow('Closed DevTools for BrowserView');
         } else if (browserView) {
@@ -509,7 +509,7 @@ export async function initWebContentsViewWindow(): Promise<{
       });
     }
     // Return early with a null webContentsView to signal that it wasn't attached
-    return { window: webContentsViewWindow, webContentsView: null as any };
+    return { window: webContentsViewWindow, webContentsView: null };
   }
 
   // Size the WebContentsView to fill the window

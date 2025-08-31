@@ -1,6 +1,6 @@
-import url from 'node:url';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
+import url from 'node:url';
 
 import type { NormalizedPackageJson } from 'read-package-up';
 
@@ -53,9 +53,8 @@ const findMacBinary = () => {
     if (fs.existsSync(binPath)) {
       console.log(`[DEBUG] Found macOS binary in ${dir}`);
       return binPath;
-    } else {
-      console.log(`[DEBUG] Binary not found at: ${binPath}`);
     }
+    console.log(`[DEBUG] Binary not found at: ${binPath}`);
   }
 
   // Last resort: look for any mac* directory in dist
@@ -63,7 +62,7 @@ const findMacBinary = () => {
   console.log(`[DEBUG] Fallback: scanning dist directory: ${distDir}`);
 
   if (fs.existsSync(distDir)) {
-    console.log(`[DEBUG] Dist directory exists, listing contents...`);
+    console.log('[DEBUG] Dist directory exists, listing contents...');
     try {
       const allDirs = fs.readdirSync(distDir);
       console.log(`[DEBUG] All directories in dist: ${allDirs.join(', ')}`);
@@ -219,7 +218,7 @@ if (currentPlatform === 'linux') {
     '--allow-running-insecure-content', // Allow mixed content for tests
   );
 
-  console.log(`[DEBUG] Added Linux-specific flags for CI stability`);
+  console.log('[DEBUG] Added Linux-specific flags for CI stability');
 }
 
 const appArgs = process.env.ELECTRON_APP_PATH
@@ -227,7 +226,7 @@ const appArgs = process.env.ELECTRON_APP_PATH
   : baseArgs;
 
 // Determine which spec files to run based on the mode
-let specPattern;
+let specPattern: string | string[];
 const specificSpecFile = process.env.SPEC_FILE;
 
 if (specificSpecFile) {
@@ -269,7 +268,7 @@ const config = {
   outputDir: `wdio-logs-${appDir}-${mode}`,
   specs: [specPattern],
   baseUrl: `file://${__dirname}`,
-  onPrepare: function (config, _capabilities) {
+  onPrepare: (config: unknown, _capabilities: unknown) => {
     console.log('[DEBUG] Starting test preparation with WebdriverIO');
     console.log(`[DEBUG] Platform: ${currentPlatform}, Binary path: ${binaryPath}`);
     console.log(`[DEBUG] App args: ${JSON.stringify(appArgs)}`);
@@ -346,7 +345,7 @@ const config = {
           }
         }
       } catch (err) {
-        console.error(`[ERROR] Failed to check binary permissions:`, err);
+        console.error('[ERROR] Failed to check binary permissions:', err);
       }
     } else {
       console.error(`[ERROR] Binary path ${binaryPath} does not exist`);
@@ -354,12 +353,12 @@ const config = {
   },
 
   // Add session start debugging
-  beforeSession: function (config, capabilities, specs) {
+  beforeSession: (_config: unknown, capabilities: unknown, _specs: unknown) => {
     console.log('[DEBUG] WebDriverIO session starting...');
     console.log(`[DEBUG] Capabilities: ${JSON.stringify(capabilities, null, 2)}`);
   },
 
-  before: function (capabilities, specs) {
+  before: (_capabilities: unknown, _specs: unknown) => {
     console.log('[DEBUG] Browser session started, about to begin tests');
 
     // Add debugging for Linux specifically
@@ -368,7 +367,9 @@ const config = {
 
       // Check if we can access the browser
       try {
-        const globalBrowser = (global as any).browser;
+        const globalBrowser = (
+          global as { browser?: { capabilities?: unknown; sessionId?: unknown } }
+        ).browser;
         if (globalBrowser) {
           console.log(
             `[DEBUG] Browser capabilities: ${JSON.stringify(globalBrowser.capabilities, null, 2)}`,
@@ -383,11 +384,15 @@ const config = {
     }
   },
 
-  beforeTest: async function (test, context) {
+  beforeTest: async (test: { fullTitle?: string }, _context: unknown) => {
     console.log(`[PRE_TEST] Starting: ${test.fullTitle}`);
   },
 
-  afterTest: async function (test, context, { error, result, duration, passed, retries }) {
+  afterTest: async (
+    test: { fullTitle?: string },
+    _context: unknown,
+    { passed, error }: { passed: boolean; error?: Error },
+  ) => {
     console.log(`[POST_TEST] Finished: ${test.fullTitle} - ${passed ? 'PASSED' : 'FAILED'}`);
 
     if (!passed && error) {

@@ -1,8 +1,8 @@
-import { PropsWithChildren } from 'react';
-import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
-import { ZubridgeApp } from '../ZubridgeApp';
-import { useBridgeStatus } from '../hooks/useBridgeStatus';
+import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri';
+import type { PropsWithChildren } from 'react';
+import { type BridgeStateStore, useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { ActionHandlers, WindowInfo } from '../WindowInfo';
+import { ZubridgeApp } from '../ZubridgeApp';
 
 /**
  * Props for the TauriApp component
@@ -47,7 +47,7 @@ export function withTauri() {
     const store = useZubridgeStore((state) => state);
     const dispatch = useZubridgeDispatch();
     // Cast store to any to avoid type error in useBridgeStatus
-    const bridgeStatus = useBridgeStatus(store as any);
+    const bridgeStatus = useBridgeStatus(store as BridgeStateStore);
 
     // Platform handlers for Tauri
     const actionHandlers: ActionHandlers = {
@@ -83,9 +83,8 @@ export function withTauri() {
           if (currentWindow) {
             await currentWindow.close();
             return { success: true };
-          } else {
-            throw new Error('Window not found');
           }
+          throw new Error('Window not found');
         } catch (error) {
           console.error('Failed to close window:', error);
           return { success: false, error: String(error) };

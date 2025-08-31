@@ -1,5 +1,5 @@
-import { type StoreApi } from 'zustand';
-import { initialState, type BaseState, generateTestState } from '@zubridge/apps-shared';
+import { type BaseState, generateTestState, initialState } from '@zubridge/apps-shared';
+import type { StoreApi } from 'zustand';
 
 /**
  * Attaches the state handlers to the state object

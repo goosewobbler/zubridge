@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Assuming this script is in packages/middleware/node/scripts/
 // __dirname will be .../packages/middleware/node/scripts/
@@ -29,12 +29,12 @@ try {
   };
 
   // Generic function to add logging after a line matching a pattern
-  const addLogAfter = (targetLinePattern, logMessage) => {
+  const _addLogAfter = (targetLinePattern, logMessage) => {
     const regex = new RegExp(
       `^(\\s*${targetLinePattern.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})$`,
       'gm',
     );
-    content = content.replace(regex, (match, p1OriginalLine) => {
+    content = content.replace(regex, (_match, p1OriginalLine) => {
       const indentation = p1OriginalLine.match(/^(\\s*)/)[0];
       const logLine = `${indentation}console.log(${JSON.stringify(logMessage)});`;
       return `${p1OriginalLine}\n${logLine}`;
@@ -42,13 +42,13 @@ try {
   };
 
   // Generic function to add logging inside a catch block
-  const addLogToCatch = (catchPatternStart, logMessagePrefix) => {
+  const _addLogToCatch = (catchPatternStart, logMessagePrefix) => {
     // More specific pattern to target the catch block's require error
     const regex = new RegExp(
       `(${catchPatternStart.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\s*catch\\s*\\(e\\)\\s*{)`,
       'gm',
     );
-    content = content.replace(regex, (match, p1CatchBlockStart) => {
+    content = content.replace(regex, (_match, p1CatchBlockStart) => {
       // Extract indentation from the line *before* the catch
       const lines = content.split('\\n');
       let currentLineNum = 0;
@@ -68,15 +68,15 @@ try {
   // Add top-level platform logs
   content = content.replace(
     /case 'linux':/g,
-    "case 'linux':\n    console.log(`[Middleware Loader] Linux: arch=${arch}, __dirname=${__dirname}`);",
+    `case 'linux':\n    console.log(\`[Middleware Loader] Linux: arch=\${arch}, __dirname=\${__dirname}\`);`,
   );
   content = content.replace(
     /case 'darwin':/g,
-    "case 'darwin':\n    console.log(`[Middleware Loader] Darwin: arch=${arch}, __dirname=${__dirname}`);",
+    `case 'darwin':\n    console.log(\`[Middleware Loader] Darwin: arch=\${arch}, __dirname=\${__dirname}\`);`,
   );
   content = content.replace(
     /case 'win32':/g,
-    "case 'win32':\n    console.log(`[Middleware Loader] Windows: arch=${arch}, __dirname=${__dirname}`);",
+    `case 'win32':\n    console.log(\`[Middleware Loader] Windows: arch=\${arch}, __dirname=\${__dirname}\`);`,
   );
 
   // --- Linux Specific Logging ---
@@ -138,7 +138,7 @@ try {
         `(${tryBlockPatternForCatch})(\\s*)catch\\s*\\(e\\)\\s*{`,
         'gm',
       );
-      content = content.replace(catchRegex, (fullMatch, _p1TryBlock, p2CatchIndentation) => {
+      content = content.replace(catchRegex, (_fullMatch, _p1TryBlock, p2CatchIndentation) => {
         console.log(
           `DEBUG: Linux ${arch}-${libc} - Modifying catch. Indentation: '${p2CatchIndentation}'`,
         );
@@ -165,7 +165,7 @@ try {
 
     const tryBlockPatternForCatch = `try {\\s*if \\(localFileExisted\\) \\{[\\s\\S]*?require\\('./${nodeFile}'\\)[\\s\\S]*?\\} else \\{[\\s\\S]*?require\\('${packageName}'\\)[\\s\\S]*?\\}\\s*}`;
     const catchRegex = new RegExp(`(${tryBlockPatternForCatch})(\\s*)catch\\s*\\(e\\)\\s*{`, 'gm');
-    content = content.replace(catchRegex, (fullMatch, _p1TryBlock, p2CatchIndentation) => {
+    content = content.replace(catchRegex, (_fullMatch, _p1TryBlock, p2CatchIndentation) => {
       console.log(`DEBUG: Darwin ${arch} - Modifying catch. Indentation: '${p2CatchIndentation}'`);
       return `${_p1TryBlock}${p2CatchIndentation}catch (e) {\n${p2CatchIndentation}  console.error('[Middleware Loader] Darwin ${archDisplay}: Error loading binding:', e);`;
     });
@@ -189,7 +189,7 @@ try {
 
     const tryBlockPatternForCatch = `try {\\s*if \\(localFileExisted\\) \\{[\\s\\S]*?require\\('./${nodeFile}'\\)[\\s\\S]*?\\} else \\{[\\s\\S]*?require\\('${packageName}'\\)[\\s\\S]*?\\}\\s*}`;
     const catchRegex = new RegExp(`(${tryBlockPatternForCatch})(\\s*)catch\\s*\\(e\\)\\s*{`, 'gm');
-    content = content.replace(catchRegex, (fullMatch, _p1TryBlock, p2CatchIndentation) => {
+    content = content.replace(catchRegex, (_fullMatch, _p1TryBlock, p2CatchIndentation) => {
       console.log(`DEBUG: Windows ${arch} - Modifying catch. Indentation: '${p2CatchIndentation}'`);
       return `${_p1TryBlock}${p2CatchIndentation}catch (e) {\n${p2CatchIndentation}  console.error('[Middleware Loader] Windows ${archDisplay}: Error loading binding:', e);`;
     });
@@ -201,7 +201,7 @@ try {
     `^(\\s*)${finalErrorIf.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`,
     'gm',
   );
-  content = content.replace(finalErrorIfRegex, (match, p1Indentation) => {
+  content = content.replace(finalErrorIfRegex, (_match, p1Indentation) => {
     const errorBlock = `
 ${p1Indentation}if (!nativeBinding) {
 ${p1Indentation}  if (loadError) {

@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { AnyState, Handlers, Thunk, DispatchFunc } from '@zubridge/types';
+import type { AnyState, DispatchFunc, Handlers, Thunk } from '@zubridge/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Import from source
-import { createUseStore, useDispatch, createHandlers } from '../src/index';
+import { createHandlers, createUseStore, useDispatch } from '../src/index';
 
 type TestState = {
   testCounter: number;
@@ -53,7 +53,7 @@ describe('createHandlers', () => {
   });
 
   it('should throw an error when window is undefined', () => {
-    // @ts-ignore - Intentionally setting window to undefined for testing
+    // @ts-expect-error - Intentionally setting window to undefined for testing
     global.window = undefined;
 
     expect(() => createHandlers()).toThrow('Zubridge handlers not found in window');
@@ -62,7 +62,7 @@ describe('createHandlers', () => {
   it('should throw an error when window.zubridge is undefined', () => {
     // Create a new window object without zubridge
     const windowWithoutZubridge = { ...originalWindow } as Window & typeof globalThis;
-    (windowWithoutZubridge as any).zubridge = undefined;
+    (windowWithoutZubridge as { zubridge?: unknown }).zubridge = undefined;
     global.window = windowWithoutZubridge;
 
     expect(() => createHandlers()).toThrow('Zubridge handlers not found in window');
@@ -85,7 +85,7 @@ describe('createHandlers', () => {
 describe('createUseStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as any).zubridge = {
+    (window as { zubridge?: Handlers<AnyState> }).zubridge = {
       dispatch: vi.fn(),
       getState: vi.fn().mockReturnValue(Promise.resolve({ test: 'state' })),
       subscribe: vi.fn(),
@@ -111,8 +111,8 @@ describe('createUseStore', () => {
 
 describe('useDispatch', () => {
   let mockHandlers: Handlers<TestState>;
-  let dispatch: DispatchFunc<TestState, any>;
-  let actionCompletionResolver: (value?: any) => void;
+  let dispatch: DispatchFunc<TestState, Record<string, unknown>>;
+  let actionCompletionResolver: (value?: unknown) => void;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -136,7 +136,7 @@ describe('useDispatch', () => {
   it.skip('should handle string action types and return a promise', async () => {
     // Skipping this test in the interim build
     // Setup a special implementation to test resolution
-    mockHandlers.dispatch = vi.fn().mockImplementation((action, payload) => {
+    mockHandlers.dispatch = vi.fn().mockImplementation((_action, _payload) => {
       return new Promise((resolve) => {
         // Store the resolver for later manual resolution
         actionCompletionResolver = resolve;

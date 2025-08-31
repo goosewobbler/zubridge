@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @theme {
   /* Colors - Core palette */
   --color-primary-light: #a78bfa;
@@ -34,8 +36,6 @@
   --button-width: 140px;
   --container-width: 300px;
 }
-
-@import "tailwindcss";
 
 @layer components {
   /* Base theme styles */

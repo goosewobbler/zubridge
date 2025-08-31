@@ -1,13 +1,14 @@
 // Example showing middleware integration with @zubridge/electron using TypeScript and ESM
-import { app, BrowserWindow } from 'electron';
+
 import { join } from 'node:path';
 import {
   createZustandBridge,
-  type ZustandBridge,
   type ZubridgeMiddleware,
+  type ZustandBridge,
 } from '@zubridge/electron';
-import { createStore, type StoreApi } from 'zustand/vanilla';
 import { initZubridgeMiddleware } from '@zubridge/middleware';
+import { app, BrowserWindow } from 'electron';
+import { createStore, type StoreApi } from 'zustand/vanilla';
 
 // Define our app state type
 interface AppState {
@@ -19,7 +20,7 @@ interface AppState {
 }
 
 // Create a Zustand store with typed state
-const store: StoreApi<AppState> = createStore<AppState>((set) => ({
+const store: StoreApi<AppState> = createStore<AppState>((_set) => ({
   counter: 0,
   theme: {
     isDark: false,

@@ -1,9 +1,9 @@
-import { type StoreApi } from 'zustand';
-import { type BaseState } from '@zubridge/apps-shared';
+import type { BaseState } from '@zubridge/apps-shared';
+import type { StoreApi } from 'zustand';
 import { attachCounterHandlers } from './counter/index.js';
-import { attachThemeHandlers } from './theme/index.js';
-import { attachStateHandlers } from './state/index.js';
 import { attachErrorHandlers } from './error/index.js';
+import { attachStateHandlers } from './state/index.js';
+import { attachThemeHandlers } from './theme/index.js';
 
 /**
  * Types for the basic mode state

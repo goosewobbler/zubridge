@@ -1,9 +1,9 @@
-import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
-import { BaseSystemTray } from '../../main/tray/base.js';
+import type { BrowserWindow } from 'electron';
 import type { Store } from 'redux';
-import type { BaseState } from '../../types.js';
 import type { StoreApi } from 'zustand';
+import { BaseSystemTray } from '../../main/tray/base.js';
+import type { BaseState } from '../../types.js';
 
 /**
  * Redux mode tray implementation
@@ -11,14 +11,14 @@ import type { StoreApi } from 'zustand';
  * which automatically creates a Redux state manager adapter internally
  */
 export class ReduxSystemTray extends BaseSystemTray {
-  private store: Store<any> | null = null;
+  private store: Store<BaseState> | null = null;
   private storeUnsubscribe: (() => void) | null = null;
 
-  public init(store: StoreApi<BaseState> | Store<any>, window: BrowserWindow) {
+  public init(store: StoreApi<BaseState> | Store<BaseState>, window: BrowserWindow) {
     this.window = window;
 
     // Use the shared store from the main process
-    this.store = store as Store<any>;
+    this.store = store as Store<BaseState>;
     console.log('[Redux Tray] Using shared Redux store');
 
     // Create dispatch directly from the store
@@ -36,7 +36,7 @@ export class ReduxSystemTray extends BaseSystemTray {
     const unsubscribe = this.store.subscribe(() => {
       if (this.store) {
         const state = this.store.getState();
-        console.log(`[Redux Tray] State update:`, state);
+        console.log('[Redux Tray] State update:', state);
 
         // Update the tray with the current state
         this.update({

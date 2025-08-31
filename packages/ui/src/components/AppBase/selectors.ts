@@ -27,10 +27,10 @@ export type Selector<T> = (state: AppState) => T;
 /**
  * Generic selector that can be used with any store implementation
  */
-export function useSelector<T>(store: any, selector: Selector<T>): T {
+export function useSelector<T>(store: unknown, selector: Selector<T>): T {
   // This is a utility function that will be implemented by the platform-specific HOCs
   // for example, in Electron it will call useStore(selector)
-  return selector(store);
+  return selector(store as AppState);
 }
 
 /**

@@ -1,8 +1,7 @@
-import React from 'react';
 import clsx from 'clsx';
-
+import type React from 'react';
+import type { CounterMethod } from '../../types';
 import { Button } from '../Button';
-import { CounterMethod } from '../../types';
 
 interface CounterActionsProps {
   onIncrement: () => void;

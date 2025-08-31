@@ -1,6 +1,6 @@
+import { generateTestState, initialState } from '@zubridge/apps-shared';
 import type { StoreApi } from 'zustand';
 import type { BaseState } from '../../../../types.js';
-import { initialState, generateTestState } from '@zubridge/apps-shared';
 
 /**
  * Reset state to initial values

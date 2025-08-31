@@ -46,7 +46,7 @@ import type {} from '@zubridge/types/app';
  */
 export interface BaseState extends SharedBaseState {
   // Additional fields can be added here if needed
-  [key: string]: any; // Add index signature to satisfy AnyState constraint
+  [key: string]: unknown; // Add index signature to satisfy AnyState constraint
 }
 
 /**
@@ -54,6 +54,3 @@ export interface BaseState extends SharedBaseState {
  * For now, it's just an alias for BaseState, but can be extended if needed.
  */
 export type State = BaseState;
-
-// This file is treated as a module
-export {};

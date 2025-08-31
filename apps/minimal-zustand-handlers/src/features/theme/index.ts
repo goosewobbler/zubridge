@@ -1,4 +1,4 @@
-import { type StoreApi } from 'zustand';
+import type { StoreApi } from 'zustand';
 
 /**
  * Creates a theme toggle handler for the handlers mode

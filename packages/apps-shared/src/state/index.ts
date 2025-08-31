@@ -1,4 +1,4 @@
-import { BaseState } from '../types.js';
+import type { BaseState } from '../types.js';
 
 /**
  * Initial state for all apps

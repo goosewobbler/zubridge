@@ -1,9 +1,10 @@
 // No need to redeclare the window global since it's in @zubridge/types
-import { useState, useCallback } from 'react';
+
 import { debug } from '@zubridge/core';
+import type { Action, Dispatch } from '@zubridge/types';
 // Import app window augmentations
 import type {} from '@zubridge/types/app';
-import type { Action, Dispatch } from '@zubridge/types';
+import { useCallback, useState } from 'react';
 import { Button } from '../Button';
 import { ErrorLog } from '../ErrorLog';
 
@@ -19,7 +20,7 @@ interface ErrorTestingProps {
 interface StateObject {
   counter?: number;
   theme?: { mode: string };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function ErrorTesting({
@@ -56,7 +57,7 @@ export function ErrorTesting({
         throw new Error('zubridge is not available');
       }
 
-      const state = window.zubridge.getState() as StateObject;
+      const state = window.zubridge.getState() as unknown as StateObject;
 
       // Determine which key we're not subscribed to
       const isThemeSubscribed =
@@ -93,7 +94,7 @@ export function ErrorTesting({
         );
       } else {
         logError(
-          `Subscription validation succeeded: Key '${keyToCheck}' is ${value === undefined ? 'undefined' : 'defined as ' + JSON.stringify(value)}, ` +
+          `Subscription validation succeeded: Key '${keyToCheck}' is ${value === undefined ? 'undefined' : `defined as ${JSON.stringify(value)}`}, ` +
             `as expected with current subscriptions: ${JSON.stringify(currentSubscriptions)}`,
         );
       }
@@ -110,13 +111,9 @@ export function ErrorTesting({
       // This can't be serialized but won't crash React if rendered
       const nonSerializable = {
         id: Symbol('unique-id'),
-        method: function () {
-          return 'This is a function';
-        },
+        method: () => 'This is a function',
         calculate: () => Math.random(),
-        toString: function () {
-          return '[Complex Object]';
-        },
+        toString: () => '[Complex Object]',
       };
 
       debug('ui', 'Attempting to dispatch with non-serializable payload');
@@ -178,7 +175,7 @@ export function ErrorTesting({
         `Successfully updated ${targetKey}. If this window is not subscribed to ${targetKey}, bypassAccessControl may be enabled.`,
       );
       logError(
-        `Successfully updated ${targetKey} (${payload}). This window ${Array.isArray(currentSubscriptions) ? 'has subscriptions: ' + currentSubscriptions.join(', ') : 'subscription status: ' + currentSubscriptions}`,
+        `Successfully updated ${targetKey} (${payload}). This window ${Array.isArray(currentSubscriptions) ? `has subscriptions: ${currentSubscriptions.join(', ')}` : `subscription status: ${currentSubscriptions}`}`,
       );
     } catch (error) {
       logError(`Access control error: ${error instanceof Error ? error.message : String(error)}`);

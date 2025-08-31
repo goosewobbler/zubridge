@@ -1,6 +1,6 @@
-import { getButtonInCurrentWindow } from './window.js';
-import { TIMING } from '../constants.js';
 import { browser } from 'wdio-electron-service';
+import { TIMING } from '../constants.js';
+import { getButtonInCurrentWindow } from './window.js';
 
 /**
  * Waits for the counter to reach a specific expected value.
@@ -118,14 +118,14 @@ export const getCounterValue = async () => {
         const counterText = await counterElement.getText();
         // Fix: Add null/undefined check and ensure counterText is a string
         if (counterText && typeof counterText === 'string' && counterText.includes('Counter:')) {
-          return parseFloat(counterText.replace('Counter: ', ''));
+          return Number.parseFloat(counterText.replace('Counter: ', ''));
         }
       }
 
       // If we can't get it from the UI (e.g., not subscribed), get it directly from the state
       console.log('Counter not visible in UI, getting from state directly');
       const state = await browser.execute(() => {
-        // @ts-ignore - zubridge is available in the browser context
+        // @ts-expect-error - zubridge is available in the browser context
         return window.zubridge?.getState ? window.zubridge.getState() : null;
       });
 
@@ -175,7 +175,7 @@ export const incrementCounterAndVerify = async (targetValue: number): Promise<nu
 export const resetCounter = async () => {
   const counterElement = await browser.$('h2');
   const counterText = await counterElement.getText();
-  const currentCount = parseInt(counterText.replace('Counter: ', ''));
+  const currentCount = Number.parseInt(counterText.replace('Counter: ', ''), 10);
   if (currentCount > 0) {
     const decrementButton = await browser.$('button=-');
     for (let i = 0; i < currentCount; i++) {
@@ -185,5 +185,5 @@ export const resetCounter = async () => {
   }
   const newCounterElement = await browser.$('h2');
   const newCounterText = await newCounterElement.getText();
-  return parseInt(newCounterText.replace('Counter: ', ''));
+  return Number.parseInt(newCounterText.replace('Counter: ', ''), 10);
 };

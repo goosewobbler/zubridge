@@ -39,10 +39,9 @@ export async function getWindowSubscriptions(): Promise<string[]> {
       lastSubscriptionFetchTime = now;
 
       return cachedSubscriptions;
-    } else {
-      debug('subscription:error', 'Subscription validator API not available');
-      return [];
     }
+    debug('subscription:error', 'Subscription validator API not available');
+    return [];
   } catch (error) {
     debug('subscription:error', 'Error getting window subscriptions:', error);
     return [];
@@ -147,7 +146,9 @@ export async function validateStateAccessBatch(keys: string[], action?: Action):
   if (action && action.__bypassAccessControl === true) {
     debug(
       'subscription',
-      `Access control bypass set on action ${action.type}, bypassing subscription validation for keys: ${keys.join(', ')}`,
+      `Access control bypass set on action ${action.type}, bypassing subscription validation for keys: ${keys.join(
+        ', ',
+      )}`,
     );
     return; // Skip validation when bypass flag is set
   }
@@ -182,7 +183,7 @@ export async function validateStateAccessBatch(keys: string[], action?: Action):
  * @param key The key to look for (can use dot notation)
  * @returns True if the key exists, false otherwise
  */
-export function stateKeyExists(state: any, key: string): boolean {
+export function stateKeyExists(state: Record<string, unknown>, key: string): boolean {
   const api = getSubscriptionAPI();
   if (api) {
     // Use the preload-exposed API
@@ -219,7 +220,7 @@ export function stateKeyExists(state: any, key: string): boolean {
  * @throws Error if the key doesn't exist or the window isn't subscribed
  */
 export async function validateStateAccessWithExistence(
-  state: any,
+  state: Record<string, unknown>,
   key: string,
   action?: Action,
 ): Promise<void> {

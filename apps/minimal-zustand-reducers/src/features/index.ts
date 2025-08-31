@@ -21,7 +21,7 @@ export const initialState: State = {
 /**
  * Root reducer that combines all feature reducers
  */
-export const rootReducer: Reducer<State> = (state = initialState, action) => {
+export const rootReducer: Reducer<State> = (state, action) => {
   // Apply individual feature reducers
   return {
     counter: counterReducer(state.counter, action),

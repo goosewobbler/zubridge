@@ -1,6 +1,6 @@
-import type { WebContents } from 'electron';
-import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
 import { debug } from '@zubridge/core';
+import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
+import type { WebContents } from 'electron';
 
 /**
  * Type guard to check if an object is an Electron WebContents
@@ -117,7 +117,7 @@ export const safelySendToWindow = (
     );
 
     if (!webContents || isDestroyed(webContents)) {
-      debug('windows', `safelySendToWindow: WebContents is undefined or destroyed, aborting send`);
+      debug('windows', 'safelySendToWindow: WebContents is undefined or destroyed, aborting send');
       return false;
     }
 

@@ -8,8 +8,8 @@ export interface ZubridgeAppWindow {
    * Counter API for thunk testing
    */
   counter?: {
-    executeMainThunk: () => Promise<any>;
-    executeMainThunkSlow: () => Promise<any>;
+    executeMainThunk: () => Promise<unknown>;
+    executeMainThunkSlow: () => Promise<unknown>;
   };
 
   /**

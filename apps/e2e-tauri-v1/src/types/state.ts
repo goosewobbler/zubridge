@@ -7,7 +7,7 @@ export interface BaseState {
   window: {
     isOpen: boolean;
   };
-  [key: string]: any; // Add index signature to satisfy AnyState constraint
+  [key: string]: unknown; // Add index signature to satisfy AnyState constraint
 }
 
 /**
@@ -16,7 +16,7 @@ export interface BaseState {
 export function isBaseState(state: unknown): state is BaseState {
   if (!state || typeof state !== 'object') return false;
 
-  const s = state as any;
+  const s = state as Record<string, unknown>;
   return (
     typeof s.counter === 'number' &&
     s.window &&

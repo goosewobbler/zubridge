@@ -1,20 +1,20 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
+import type {} from '@zubridge/types/app';
+import { before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
+import { TIMING } from '../constants.js';
 import {
-  setupTestEnvironment,
-  waitUntilWindowsAvailable,
-  switchToWindow,
-  getButtonInCurrentWindow,
-} from '../utils/window.js';
-import {
-  waitForSpecificValue,
   getCounterValue,
   resetCounter,
   waitForIncrement,
+  waitForSpecificValue,
 } from '../utils/counter.js';
-import { TIMING } from '../constants.js';
-import type {} from '@zubridge/types/app';
+import {
+  getButtonInCurrentWindow,
+  setupTestEnvironment,
+  switchToWindow,
+  waitUntilWindowsAvailable,
+} from '../utils/window.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_COUNT = 2;
@@ -125,7 +125,7 @@ describe('BypassThunkLock Flag Functionality', () => {
 
       // The bypass action should take effect relatively quickly, adjust timing as needed
       expect(bypassDuration).toBeLessThan(3000);
-      console.log(`Action bypass test passed with adjusted expectation (< 3000ms)`);
+      console.log('Action bypass test passed with adjusted expectation (< 3000ms)');
 
       // Now wait for the thunk to complete its remaining operations
       console.log(

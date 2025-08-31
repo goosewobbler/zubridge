@@ -17,14 +17,14 @@ export const getCurrentTheme = async (): Promise<'dark' | 'light'> => {
   if (hasClass.isDark) {
     console.log('Current theme: dark');
     return 'dark';
-  } else if (hasClass.isLight) {
+  }
+  if (hasClass.isLight) {
     console.log('Current theme: light');
     return 'light';
-  } else {
-    // Default assumption
-    console.log('No theme class found, assuming dark theme');
-    return 'dark';
   }
+  // Default assumption
+  console.log('No theme class found, assuming dark theme');
+  return 'dark';
 };
 
 /**

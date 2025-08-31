@@ -1,10 +1,9 @@
-import { type BrowserWindow, Menu, Tray, app, nativeImage } from 'electron';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
 import { isDev } from '@zubridge/electron/main';
-
-import type { StoreApi } from 'zustand';
 import type { Dispatch } from '@zubridge/types';
+import { app, type BrowserWindow, Menu, nativeImage, Tray } from 'electron';
+import type { StoreApi } from 'zustand';
 import type { State } from '../../types.js';
 import { getResourcePath } from '../../utils/path.js';
 

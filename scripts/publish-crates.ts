@@ -153,7 +153,7 @@ for (const crate of cratesToPublish) {
       // updated the version in all components, so we don't need additional logic
       if (crate.isHybrid) {
         console.log(
-          `This is a hybrid package - package-versioner has synced all component versions`,
+          'This is a hybrid package - package-versioner has synced all component versions',
         );
       }
     }

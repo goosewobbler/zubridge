@@ -1,5 +1,5 @@
-import type { Handler } from '@zubridge/types';
 import { debug } from '@zubridge/core';
+import type { Handler } from '@zubridge/types';
 
 /**
  * Helper function to find a case-insensitive match in an object
@@ -31,7 +31,7 @@ export function findCaseInsensitiveMatch<T>(
  * Helper function to find a handler by nested path
  * Example: "counter.increment" -> obj.counter.increment
  */
-export function findNestedHandler<T>(obj: Record<string, any>, path: string): T | undefined {
+export function findNestedHandler<T>(obj: Record<string, unknown>, path: string): T | undefined {
   try {
     debug('store', `Resolving nested handler for path: ${path}`);
 
@@ -73,7 +73,7 @@ export function findNestedHandler<T>(obj: Record<string, any>, path: string): T 
  * This handles both direct matches and nested path resolution
  */
 export function resolveHandler(
-  handlers: Record<string, Handler | any>,
+  handlers: Record<string, Handler | unknown>,
   actionType: string,
 ): Handler | undefined {
   debug('store', `Resolving handler for action type: ${actionType}`);

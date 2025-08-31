@@ -1,17 +1,17 @@
-import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
-import { BaseSystemTray } from '../../main/tray/base.js';
-import type { BaseState } from '../../types.js';
+import type { Dispatch } from '@zubridge/types';
+import type { BrowserWindow } from 'electron';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand';
-import type { Dispatch } from '@zubridge/types';
+import { BaseSystemTray } from '../../main/tray/base.js';
+import type { BaseState } from '../../types.js';
 import { getCustomStore } from './store.js';
 
 /**
  * Custom mode tray implementation
  */
 export class CustomSystemTray extends BaseSystemTray {
-  public init(_store: StoreApi<BaseState> | Store | any, window: BrowserWindow) {
+  public init(_store: StoreApi<BaseState> | Store<BaseState>, window: BrowserWindow) {
     this.window = window;
 
     console.log('[Custom Tray] Initializing with custom store');
@@ -27,7 +27,7 @@ export class CustomSystemTray extends BaseSystemTray {
 
     // Subscribe to state changes to update the tray UI
     customStore.subscribe((state) => {
-      console.log(`[Custom Tray] State update:`, state);
+      console.log('[Custom Tray] State update:', state);
       this.update(state as BaseState);
     });
   }

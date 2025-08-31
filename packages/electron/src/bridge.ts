@@ -1,38 +1,35 @@
-import { ipcMain } from 'electron';
-import type { IpcMainEvent, WebContents } from 'electron';
-import type { StoreApi } from 'zustand';
-import type { Store } from 'redux';
 import { debug } from '@zubridge/core';
 import type {
   Action,
-  StateManager,
   AnyState,
   BackendBridge,
+  StateManager,
   WrapperOrWebContents,
 } from '@zubridge/types';
+import type { IpcMainEvent, WebContents } from 'electron';
+import { ipcMain } from 'electron';
+import type { Store } from 'redux';
 import { v4 as uuidv4 } from 'uuid';
-
+import type { StoreApi } from 'zustand';
+import type { ReduxOptions } from './adapters/redux.js';
+import type { ZustandOptions } from './adapters/zustand.js';
 import { IpcChannel } from './constants.js';
-import { initActionQueue } from './main/actionQueue.js';
-import { ZustandOptions } from './adapters/zustand.js';
-import { ReduxOptions } from './adapters/redux.js';
+import { actionScheduler, thunkManager } from './lib/initThunkManager.js';
+import { getPartialState, SubscriptionManager } from './lib/SubscriptionManager.js';
 import { getStateManager } from './lib/stateManagerRegistry.js';
+import { Thunk as ThunkClass } from './lib/Thunk.js';
+import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
+import { actionQueue, initActionQueue } from './main/actionQueue.js';
+import { createMiddlewareOptions, type ZubridgeMiddleware } from './middleware.js';
+import { sanitizeState } from './utils/serialization.js';
 import {
+  createWebContentsTracker,
   getWebContents,
   isDestroyed,
   safelySendToWindow,
-  createWebContentsTracker,
-  WebContentsTracker,
   setupDestroyListener,
+  type WebContentsTracker,
 } from './utils/windows.js';
-import { sanitizeState } from './utils/serialization.js';
-import { createMiddlewareOptions, ZubridgeMiddleware } from './middleware.js';
-import { actionQueue } from './main/actionQueue.js';
-import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
-import { SubscriptionManager } from './lib/SubscriptionManager.js';
-import { Thunk as ThunkClass } from './lib/Thunk.js';
-import { thunkManager, actionScheduler } from './lib/initThunkManager.js';
-import { getPartialState } from './lib/SubscriptionManager.js';
 
 // Instantiate the thunk registration queue
 const thunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
@@ -123,7 +120,7 @@ export function createCoreBridge<State extends AnyState>(
   }
 
   // Handle dispatch events from renderers
-  ipcMain.on(IpcChannel.DISPATCH, async (event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.DISPATCH, async (event: IpcMainEvent, data: unknown) => {
     try {
       debug('ipc', `Received action data from renderer ${event.sender.id}:`, data);
 
@@ -179,7 +176,9 @@ export function createCoreBridge<State extends AnyState>(
         if (error) {
           debug(
             'ipc:error',
-            `[BRIDGE DEBUG] Error details for action ${action.__id}: ${error instanceof Error ? error.message : String(error)}`,
+            `[BRIDGE DEBUG] Error details for action ${action.__id}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
           );
           debug(
             'ipc:error',
@@ -248,7 +247,7 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle track_action_dispatch events from renderers
-  ipcMain.on(IpcChannel.TRACK_ACTION_DISPATCH, async (event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.TRACK_ACTION_DISPATCH, async (event: IpcMainEvent, data: unknown) => {
     try {
       const { action } = data || {};
       if (!action || !action.type) {
@@ -301,7 +300,7 @@ export function createCoreBridge<State extends AnyState>(
       const rawState = stateManager.getState();
       debug(
         'store',
-        `[BRIDGE DEBUG] Raw state retrieved:`,
+        '[BRIDGE DEBUG] Raw state retrieved:',
         typeof rawState === 'object' ? Object.keys(rawState) : typeof rawState,
       );
       const state = sanitizeState(rawState);
@@ -312,7 +311,7 @@ export function createCoreBridge<State extends AnyState>(
       const subscriptions = subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
 
       // Check for bypassAccessControl in options or '*' subscription
-      if ((options && options.bypassAccessControl) || subscriptions.includes('*')) {
+      if (options?.bypassAccessControl || subscriptions.includes('*')) {
         debug(
           'ipc',
           `[BRIDGE DEBUG] Returning full state to renderer ${windowId} (bypass access control)`,
@@ -349,10 +348,10 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle thunk registration from renderers
-  ipcMain.on(IpcChannel.REGISTER_THUNK, async (event: IpcMainEvent, data: any) => {
-    debug('core', `[BRIDGE DEBUG] REGISTER_THUNK IPC handler called`);
+  ipcMain.on(IpcChannel.REGISTER_THUNK, async (event: IpcMainEvent, data: unknown) => {
+    debug('core', '[BRIDGE DEBUG] REGISTER_THUNK IPC handler called');
     debug('core', `[BRIDGE DEBUG] Event sender ID: ${event.sender.id}`);
-    debug('core', `[BRIDGE DEBUG] Data received:`, data);
+    debug('core', '[BRIDGE DEBUG] Data received:', data);
 
     try {
       const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = data;
@@ -360,7 +359,9 @@ export function createCoreBridge<State extends AnyState>(
 
       debug(
         'core',
-        `[BRIDGE DEBUG] Registering thunk ${thunkId} from window ${sourceWindowId}${parentId ? ` with parent ${parentId}` : ''}`,
+        `[BRIDGE DEBUG] Registering thunk ${thunkId} from window ${sourceWindowId}${
+          parentId ? ` with parent ${parentId}` : ''
+        }`,
       );
 
       // Use ThunkRegistrationQueue to register the thunk with proper global locking
@@ -392,7 +393,7 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle thunk completion from renderers
-  ipcMain.on(IpcChannel.COMPLETE_THUNK, (_event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.COMPLETE_THUNK, (_event: IpcMainEvent, data: unknown) => {
     try {
       const { thunkId } = data;
       debug('ipc', `[BRIDGE DEBUG] Received thunk completion notification for ${thunkId}`);
@@ -420,7 +421,7 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Handle state update acknowledgments from renderers
-  ipcMain.on(IpcChannel.STATE_UPDATE_ACK, (event: IpcMainEvent, data: any) => {
+  ipcMain.on(IpcChannel.STATE_UPDATE_ACK, (event: IpcMainEvent, data: unknown) => {
     try {
       const { updateId, thunkId } = data || {};
       debug(
@@ -446,7 +447,7 @@ export function createCoreBridge<State extends AnyState>(
   });
 
   // Subscribe to state manager changes and selectively notify windows
-  let prevState: State | undefined = undefined;
+  let prevState: State | undefined;
   const stateManagerUnsubscribe = stateManager.subscribe((state: State) => {
     debug('core', 'State manager notified of state change');
     const activeWebContents = windowTracker.getActiveWebContents();
@@ -570,7 +571,9 @@ export function createCoreBridge<State extends AnyState>(
     }
     return {
       unsubscribe: () => {
-        unsubs.forEach((fn) => fn());
+        unsubs.forEach((fn) => {
+          fn();
+        });
         subscribedWebContents.forEach((webContents) => {
           windowTracker.untrack(webContents);
         });
@@ -666,7 +669,7 @@ export function createCoreBridge<State extends AnyState>(
       );
       return subscriptions;
     } catch (error) {
-      debug('subscription:error', `[GET_WINDOW_SUBSCRIPTIONS] Error getting subscriptions:`, error);
+      debug('subscription:error', '[GET_WINDOW_SUBSCRIPTIONS] Error getting subscriptions:', error);
       return [];
     }
   });

@@ -1,14 +1,14 @@
 import { debug } from '@zubridge/core';
-import { ThunkManager, ThunkManagerEvent } from './ThunkManager.js';
-import { Thunk } from './Thunk.js';
+import type { Thunk } from './Thunk.js';
+import { type ThunkManager, ThunkManagerEvent } from './ThunkManager.js';
 
 // Type for queued thunk registration
-interface QueuedThunk<T = any> {
+interface QueuedThunk<T = unknown> {
   thunk: Thunk;
   mainThunkCallback?: () => Promise<T>;
   rendererCallback?: () => void;
   resolve: (value: T | PromiseLike<T>) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
 }
 
 export enum IpcChannel {
@@ -29,7 +29,7 @@ export class ThunkRegistrationQueue {
     this.thunkManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, () => {
       debug(
         'queue',
-        `[THUNK-QUEUE] Received ROOT_THUNK_COMPLETED event, processing next registration`,
+        '[THUNK-QUEUE] Received ROOT_THUNK_COMPLETED event, processing next registration',
       );
       this.processNextThunkRegistration();
     });
@@ -38,13 +38,13 @@ export class ThunkRegistrationQueue {
     this.thunkManager.on(ThunkManagerEvent.THUNK_STARTED, () => {
       debug(
         'queue',
-        `[THUNK-QUEUE] Received THUNK_STARTED event, processing next registration for bypass thunks`,
+        '[THUNK-QUEUE] Received THUNK_STARTED event, processing next registration for bypass thunks',
       );
       this.processNextThunkRegistration();
     });
   }
 
-  public registerThunk<T = any>(
+  public registerThunk<T = unknown>(
     thunk: Thunk,
     mainThunkCallback?: () => Promise<T>,
     rendererCallback?: () => void,
@@ -68,15 +68,15 @@ export class ThunkRegistrationQueue {
   }
 
   public processNextThunkRegistration() {
-    debug('queue-debug', `[DEBUG] processNextThunkRegistration called`);
+    debug('queue-debug', '[DEBUG] processNextThunkRegistration called');
 
     if (this.processingThunkRegistration) {
-      debug('queue-debug', `[DEBUG] Already processing a thunk registration, not proceeding`);
+      debug('queue-debug', '[DEBUG] Already processing a thunk registration, not proceeding');
       return;
     }
 
     if (this.thunkRegistrationQueue.length === 0) {
-      debug('queue-debug', `[DEBUG] No thunk registrations in the queue, not proceeding`);
+      debug('queue-debug', '[DEBUG] No thunk registrations in the queue, not proceeding');
       return;
     }
 
@@ -101,7 +101,7 @@ export class ThunkRegistrationQueue {
     if (canRegister) {
       debug(
         'queue',
-        `[THUNK-QUEUE] Scheduler allows thunk registration, processing next thunk registration`,
+        '[THUNK-QUEUE] Scheduler allows thunk registration, processing next thunk registration',
       );
       this.processingThunkRegistration = true;
       const registration = this.thunkRegistrationQueue.shift();
@@ -127,7 +127,7 @@ export class ThunkRegistrationQueue {
     this.processNextThunkRegistration();
   }
 
-  private handleError(registration: QueuedThunk<any>, error: any) {
+  private handleError(registration: QueuedThunk<unknown>, error: unknown) {
     // Fail the promise
     registration.reject(error);
 

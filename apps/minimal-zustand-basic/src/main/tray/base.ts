@@ -1,8 +1,8 @@
-import { type BrowserWindow, Menu, Tray, app, nativeImage } from 'electron';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
+import type { createDispatch } from '@zubridge/electron/main';
 import { isDev } from '@zubridge/electron/main';
-import { createDispatch } from '@zubridge/electron/main';
+import { app, type BrowserWindow, Menu, nativeImage, Tray } from 'electron';
 import type { State } from '../../features/index.js';
 
 // Get icon paths
@@ -134,7 +134,7 @@ export abstract class BaseSystemTray {
   /**
    * Abstract method that must be implemented by subclasses
    */
-  abstract init(...args: any[]): void;
+  abstract init(...args: unknown[]): void;
 
   /**
    * Clean up resources when the tray is destroyed

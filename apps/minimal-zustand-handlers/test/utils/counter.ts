@@ -18,7 +18,7 @@ export const getCounterValue = async (): Promise<number> => {
     throw new Error(`Could not parse counter value from text: "${text}"`);
   }
 
-  const value = parseInt(match[1], 10);
+  const value = Number.parseInt(match[1], 10);
   console.log(`Current counter value: ${value}`);
   return value;
 };

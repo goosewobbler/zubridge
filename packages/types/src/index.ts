@@ -1,5 +1,5 @@
-import type { StoreApi } from 'zustand';
 import type { WebContents } from 'electron';
+import type { StoreApi } from 'zustand';
 
 type ThunkGetStateOptions = {
   bypassAccessControl?: boolean;
@@ -33,7 +33,7 @@ export type Action<T extends string = string> = {
 export type AnyState = Record<string, unknown>;
 export type Reducer<S> = (state: S, args: Action) => S;
 export type RootReducer<S extends AnyState> = (state: S, args: Action) => S;
-export type Handler = (payload?: any) => void;
+export type Handler = (payload?: unknown) => void;
 export type MainZustandBridgeOpts<S extends AnyState> = {
   handlers?: Record<string, Handler>;
   reducer?: RootReducer<S>;
@@ -63,7 +63,7 @@ export type BridgeState<S extends AnyState = AnyState> = S & {
  * Platforms will implement their specific versions.
  */
 export interface BackendOptions<T = unknown> {
-  invoke: <R = T>(cmd: string, args?: any) => Promise<R>;
+  invoke: <R = T>(cmd: string, args?: unknown) => Promise<R>;
   listen: <E = unknown>(event: string, handler: (event: E) => void) => Promise<() => void>;
 }
 
@@ -73,13 +73,13 @@ export interface BackendOptions<T = unknown> {
 export interface BridgeEvent<T = unknown> {
   payload: T;
   // Allow other properties to exist on the event
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Shared base bridge interface that works across platforms
 export interface BaseBridge<WindowId> {
   // Common cleanup method all implementations have
-  unsubscribe: (...args: any[]) => void;
+  unsubscribe: (...args: unknown[]) => void;
 
   // Method to get all currently subscribed window identifiers
   getSubscribedWindows: () => WindowId[];
@@ -117,11 +117,11 @@ export type DispatchOptions = {
 
 export type Dispatch<S> = {
   // String action with optional payload and options
-  (action: string, payload?: unknown, options?: DispatchOptions): Promise<any>;
+  (action: string, payload?: unknown, options?: DispatchOptions): Promise<unknown>;
   // Action object with options
-  (action: Action, options?: DispatchOptions): Promise<any>;
+  (action: Action, options?: DispatchOptions): Promise<unknown>;
   // Thunk with options
-  (action: Thunk<S>, options?: DispatchOptions): Promise<any>;
+  (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 };
 
 interface BaseHandler<S> {
@@ -147,21 +147,21 @@ export type ReadonlyStoreApi<T> = Pick<StoreApi<T>, 'getState' | 'getInitialStat
  * @template S The state type
  * @template TActions A record mapping action type strings to their payload types
  */
-export type DispatchFunc<S, TActions extends Record<string, any> = Record<string, any>> = {
+export type DispatchFunc<S, TActions extends Record<string, unknown> = Record<string, unknown>> = {
   // Handle thunks with options
-  (action: Thunk<S>, options?: DispatchOptions): Promise<any>;
+  (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 
   // Handle string action types with optional payload and options
-  (action: string, payload?: unknown, options?: DispatchOptions): Promise<any>;
+  (action: string, payload?: unknown, options?: DispatchOptions): Promise<unknown>;
 
   // Handle strongly typed action objects with options
   <TType extends keyof TActions>(
     action: { type: TType; payload?: TActions[TType] },
     options?: DispatchOptions,
-  ): Promise<any>;
+  ): Promise<unknown>;
 
   // Handle generic action objects with options
-  (action: Action, options?: DispatchOptions): Promise<any>;
+  (action: Action, options?: DispatchOptions): Promise<unknown>;
 };
 
 /**
@@ -171,7 +171,7 @@ export type DispatchFunc<S, TActions extends Record<string, any> = Record<string
  */
 export type ProcessResult = {
   isSync: boolean;
-  completion?: Promise<any>; // Allow any return type, not just void
+  completion?: Promise<unknown>; // Allow any return type, not just void
   error?: Error | unknown; // Add error field to propagate errors to the caller
 };
 
@@ -195,10 +195,8 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
   ) => {
     unsubscribe: () => void;
   };
-  unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
   destroy: () => void;
   getWindowSubscriptions: (windowId: WindowId) => string[];
-  getSubscribedWindows: () => WindowId[];
 }
 
 /**
@@ -219,6 +217,6 @@ export interface CustomBridge<S extends AnyState = AnyState> extends BackendBrid
   dispatch: Dispatch<S>;
 }
 
+export type { ZubridgeAppWindow } from './app';
 // Export the window interfaces from internal.d.ts and app.d.ts
 export type { ZubridgeInternalWindow } from './internal';
-export type { ZubridgeAppWindow } from './app';

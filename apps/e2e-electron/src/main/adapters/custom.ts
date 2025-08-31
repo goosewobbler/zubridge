@@ -1,6 +1,6 @@
+import type { CustomStore } from '../../modes/custom/store.js';
 import type { State } from '../../types.js';
 import type { UnifiedStore } from './index.js';
-import type { CustomStore } from '../../modes/custom/store.js';
 
 /**
  * Creates a custom store adapter that converts a StateManager to the UnifiedStore interface

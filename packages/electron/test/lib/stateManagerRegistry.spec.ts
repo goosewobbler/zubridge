@@ -1,15 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnyState, StateManager } from '@zubridge/types';
-import type { StoreApi } from 'zustand/vanilla';
 import type { Store } from 'redux';
-
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StoreApi } from 'zustand/vanilla';
+import * as reduxAdapter from '../../src/adapters/redux.js';
+import * as zustandAdapter from '../../src/adapters/zustand.js';
 import {
+  clearStateManagers,
   getStateManager,
   removeStateManager,
-  clearStateManagers,
 } from '../../src/lib/stateManagerRegistry.js';
-import * as zustandAdapter from '../../src/adapters/zustand.js';
-import * as reduxAdapter from '../../src/adapters/redux.js';
 
 // Helper to create a mock Zustand store
 function createMockZustandStore() {
@@ -35,8 +34,8 @@ function createMockReduxStore() {
 describe('StateManagerRegistry', () => {
   let mockZustandAdapter: StateManager<AnyState>;
   let mockReduxAdapter: StateManager<AnyState>;
-  let createZustandAdapterSpy: any;
-  let createReduxAdapterSpy: any;
+  let createZustandAdapterSpy: ReturnType<typeof vi.spyOn>;
+  let createReduxAdapterSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -91,7 +90,7 @@ describe('StateManagerRegistry', () => {
       const invalidStore = { invalid: true };
 
       expect(() => {
-        // @ts-ignore - Testing with invalid store
+        // @ts-expect-error - Testing with invalid store
         getStateManager(invalidStore);
       }).toThrow('Unrecognized store type');
     });

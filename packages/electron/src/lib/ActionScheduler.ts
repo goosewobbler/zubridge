@@ -1,9 +1,9 @@
 import { EventEmitter } from 'node:events';
-import { v4 as uuid } from 'uuid';
-import { type Action } from '@zubridge/types';
 import { debug } from '@zubridge/core';
-import { ThunkManager } from './ThunkManager.js';
-import { ThunkScheduler } from './ThunkScheduler.js';
+import type { Action } from '@zubridge/types';
+import { v4 as uuid } from 'uuid';
+import type { ThunkManager } from './ThunkManager.js';
+import type { ThunkScheduler } from './ThunkScheduler.js';
 
 /**
  * Prioritized action in the queue
@@ -59,7 +59,7 @@ export class ActionScheduler extends EventEmitter {
   /**
    * Function to process actions
    */
-  private actionProcessor?: (action: Action) => Promise<any>;
+  private actionProcessor?: (action: Action) => Promise<unknown>;
 
   /**
    * Create a new ActionScheduler
@@ -78,7 +78,7 @@ export class ActionScheduler extends EventEmitter {
   /**
    * Set the action processor function
    */
-  public setActionProcessor(processor: (action: Action) => Promise<any>): void {
+  public setActionProcessor(processor: (action: Action) => Promise<unknown>): void {
     debug('scheduler', 'Setting action processor');
     this.actionProcessor = processor;
   }

@@ -10,6 +10,6 @@ export interface UnifiedStore<T> {
   destroy: () => void;
 }
 
+export { createCustomAdapter } from './custom.js';
 export { createReduxAdapter } from './redux.js';
 export { createZustandAdapter } from './zustand.js';
-export { createCustomAdapter } from './custom.js';

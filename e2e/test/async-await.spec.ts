@@ -1,9 +1,9 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before } from 'mocha';
+import { before, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import { setupTestEnvironment, getButtonInCurrentWindow } from '../utils/window.js';
-import { getCounterValue, resetCounter, waitForSpecificValue } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
+import { getCounterValue, resetCounter, waitForSpecificValue } from '../utils/counter.js';
+import { getButtonInCurrentWindow, setupTestEnvironment } from '../utils/window.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];

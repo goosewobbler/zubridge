@@ -1,8 +1,8 @@
-import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
-import { BaseSystemTray } from './base.js';
-import type { State } from '../../features/index.js';
+import type { BrowserWindow } from 'electron';
 import type { Store } from 'redux';
+import type { State } from '../../features/index.js';
+import { BaseSystemTray } from './base.js';
 
 /**
  * Redux mode tray implementation
@@ -28,7 +28,7 @@ export class ReduxSystemTray extends BaseSystemTray {
     // Subscribe to state changes to update the tray UI
     store.subscribe(() => {
       const state = store.getState();
-      console.log(`[Redux Tray] State update:`, state);
+      console.log('[Redux Tray] State update:', state);
 
       // Update the tray with the current state
       this.update({

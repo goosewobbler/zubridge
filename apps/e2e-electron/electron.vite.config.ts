@@ -1,11 +1,10 @@
-import { join, resolve } from 'node:path';
 import fs from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
-import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
 import { debug } from '@zubridge/core';
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 import type { Plugin } from 'vite';
 

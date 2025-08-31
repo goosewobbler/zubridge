@@ -1,12 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
-import type { Action, StateManager, AnyState } from '@zubridge/types';
-import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
-import { Thunk as ThunkClass } from '../lib/Thunk.js';
-import { thunkManager, actionScheduler } from '../lib/initThunkManager.js';
-import { ThunkTask } from '../types/thunk.js';
-import { ActionExecutor } from '../lib/ActionExecutor.js';
+import type { Action, AnyState, StateManager } from '@zubridge/types';
+import { v4 as uuidv4 } from 'uuid';
 import { ThunkSchedulerEvents } from '../constants.js';
+import { ActionExecutor } from '../lib/ActionExecutor.js';
+import { actionScheduler, thunkManager } from '../lib/initThunkManager.js';
+import type { Thunk as ThunkClass } from '../lib/Thunk.js';
+import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
+import type { ThunkTask } from '../types/thunk.js';
 
 /**
  * Manages a central action queue and scheduling in the main process
@@ -42,18 +42,18 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
    * Central method to process an action with proper routing and concurrency control
    * This is the main entry point for action processing
    */
-  private async processAction(action: Action): Promise<any> {
+  private async processAction(action: Action): Promise<unknown> {
     debug('queue', `Processing action ${action.type} (ID: ${action.__id || 'unknown'})`);
 
     // Determine if this is a thunk-related action
-    const isThunkAction = action.__thunkParentId || (action as any).parentId;
+    const isThunkAction = action.__thunkParentId;
     const hasBypassFlag = !!action.__bypassThunkLock;
 
     // Create a task for ThunkScheduler with proper concurrency settings if needed
     if (isThunkAction && !hasBypassFlag) {
       debug(
         'queue',
-        `Action ${action.type} is part of thunk ${action.__thunkParentId || (action as any).parentId}, scheduling task`,
+        `Action ${action.type} is part of thunk ${action.__thunkParentId}, scheduling task`,
       );
       return this.scheduleThunkAction(action);
     }
@@ -66,9 +66,9 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
   /**
    * Schedule a thunk action as a task with proper concurrency control
    */
-  private scheduleThunkAction(action: Action): Promise<any> {
-    // Get thunk ID from either source
-    const thunkId = action.__thunkParentId || (action as any).parentId;
+  private scheduleThunkAction(action: Action): Promise<unknown> {
+    // Get thunk ID from the action
+    const thunkId = action.__thunkParentId;
     if (!thunkId) {
       throw new Error('Thunk ID missing for thunk action');
     }
@@ -145,9 +145,9 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
    */
   public registerThunkQueued(
     thunk: InstanceType<typeof ThunkClass>,
-    mainThunkCallback?: () => Promise<any>,
+    mainThunkCallback?: () => Promise<unknown>,
     rendererCallback?: () => void,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return this.thunkRegistrationQueue.registerThunk(thunk, mainThunkCallback, rendererCallback);
   }
 

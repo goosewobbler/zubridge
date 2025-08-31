@@ -1,5 +1,5 @@
-import { createCoreBridge, createDispatch } from '@zubridge/electron/main';
 import type { ZubridgeMiddleware } from '@zubridge/electron/main';
+import { createCoreBridge, createDispatch } from '@zubridge/electron/main';
 import type { CustomBridge } from '@zubridge/types';
 import type { BaseState } from '../../types.js';
 import type { CustomStore } from './store.js';

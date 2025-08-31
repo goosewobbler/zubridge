@@ -1,10 +1,10 @@
 import { combineReducers } from '@reduxjs/toolkit';
-import { type BaseState } from '@zubridge/apps-shared';
+import type { BaseState } from '@zubridge/apps-shared';
 
 import { counterSlice } from './counter/index.js';
-import { themeSlice } from './theme/index.js';
-import { stateSlice } from './state/index.js';
 import { errorSlice } from './error/index.js';
+import { stateSlice } from './state/index.js';
+import { themeSlice } from './theme/index.js';
 
 // Define the root state type
 export interface State extends BaseState {}

@@ -1,14 +1,22 @@
-import type { AnyState, DispatchFunc, DispatchOptions, Handlers } from '@zubridge/types';
-import { useStore, type StoreApi } from 'zustand';
+import type {
+  Action,
+  AnyState,
+  DispatchFunc,
+  DispatchOptions,
+  ExtractState,
+  Handlers,
+  ReadonlyStoreApi,
+  Thunk,
+} from '@zubridge/types';
+import { type StoreApi, useStore } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
-import type { Action, Thunk, ExtractState, ReadonlyStoreApi } from '@zubridge/types';
 
 // Export types
 export type * from '@zubridge/types';
 
 // Store registry to implement singleton pattern
 // Maps handler objects to their corresponding stores
-const storeRegistry = new WeakMap<Handlers<any>, StoreApi<any>>();
+const storeRegistry = new WeakMap<Handlers<AnyState>, StoreApi<AnyState>>();
 
 // Internal implementation of store creation
 const createStore = <S extends AnyState>(bridge: Handlers<S>): StoreApi<S> => {
@@ -72,7 +80,7 @@ export const createUseStore = <S extends AnyState>(
  */
 function useDispatch<
   S extends AnyState = AnyState,
-  TActions extends Record<string, any> = Record<string, any>,
+  TActions extends Record<string, unknown> = Record<string, unknown>,
 >(customHandlers?: Handlers<S>): DispatchFunc<S, TActions> {
   const handlers = customHandlers || createHandlers<S>();
 
@@ -81,15 +89,15 @@ function useDispatch<
     action: string | Action | Thunk<S>,
     payloadOrOptions?: unknown | DispatchOptions,
     maybeOptions?: DispatchOptions,
-  ): Promise<any> => {
+  ): Promise<unknown> => {
     // Delegate based on the action type
     if (typeof action === 'string') {
       return handlers.dispatch(action, payloadOrOptions, maybeOptions);
-    } else if (typeof action === 'function') {
-      return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
-    } else {
+    }
+    if (typeof action === 'function') {
       return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
     }
+    return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
   };
 
   return dispatch;
@@ -97,23 +105,22 @@ function useDispatch<
 
 export { useDispatch };
 
-// Export environment utilities
-export * from './utils/environment.js';
+// Export action validation utilities
+export {
+  canDispatchAction,
+  getAffectedStateKeys,
+  registerActionMapping,
+  registerActionMappings,
+  validateActionDispatch,
+} from './renderer/actionValidator.js';
 
 // Export the validation utilities to be used by applications
 export {
+  getWindowSubscriptions,
+  isSubscribedToKey,
+  stateKeyExists,
   validateStateAccess,
   validateStateAccessWithExistence,
-  stateKeyExists,
-  isSubscribedToKey,
-  getWindowSubscriptions,
 } from './renderer/subscriptionValidator.js';
-
-// Export action validation utilities
-export {
-  registerActionMapping,
-  registerActionMappings,
-  getAffectedStateKeys,
-  canDispatchAction,
-  validateActionDispatch,
-} from './renderer/actionValidator.js';
+// Export environment utilities
+export * from './utils/environment.js';

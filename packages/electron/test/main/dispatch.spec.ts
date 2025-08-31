@@ -1,7 +1,7 @@
-import { vi, beforeEach, describe, expect, it } from 'vitest';
 import type { AnyState, StateManager } from '@zubridge/types';
-import type { StoreApi } from 'zustand/vanilla';
 import type { Store } from 'redux';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StoreApi } from 'zustand/vanilla';
 
 // Mock dependencies
 vi.mock('../../src/lib/stateManagerRegistry.js', () => ({
@@ -23,9 +23,9 @@ vi.mock('../../src/main/mainThunkProcessor.js', () => {
   };
 });
 
+import { getStateManager } from '../../src/lib/stateManagerRegistry.js';
 // Now import the tested modules
 import { createDispatch } from '../../src/main/dispatch.js';
-import { getStateManager } from '../../src/lib/stateManagerRegistry.js';
 import { getMainThunkProcessor } from '../../src/main/mainThunkProcessor.js';
 
 // Helper to create a mock StateManager
@@ -61,15 +61,15 @@ function createMockReduxStore(): Store<AnyState> {
 
 describe.skip('createDispatch utility', () => {
   let stateManager: StateManager<AnyState>;
-  let zustandStore: StoreApi<AnyState>;
-  let reduxStore: Store<AnyState>;
-  let mockThunkProcessor: any;
+  let _zustandStore: StoreApi<AnyState>;
+  let _reduxStore: Store<AnyState>;
+  let mockThunkProcessor: unknown;
 
   beforeEach(() => {
     // Create mocks for each test
     stateManager = createMockStateManager();
-    zustandStore = createMockZustandStore();
-    reduxStore = createMockReduxStore();
+    _zustandStore = createMockZustandStore();
+    _reduxStore = createMockReduxStore();
 
     // Reset mocks before each test
     vi.resetAllMocks();
@@ -87,7 +87,7 @@ describe.skip('createDispatch utility', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const dispatch = createDispatch(stateManager);
 
-      await expect(dispatch(null as any)).rejects.toThrow();
+      await expect(dispatch(null as unknown)).rejects.toThrow();
 
       consoleErrorSpy.mockRestore();
     });
@@ -106,7 +106,7 @@ describe.skip('createDispatch utility', () => {
       } as unknown as StoreApi<AnyState>;
 
       // Safely create the dispatch function
-      const dispatch = createDispatch(mockStore, options);
+      const _dispatch = createDispatch(mockStore, options);
 
       // Check that getStateManager was called with the expected arguments
       expect(getStateManager).toHaveBeenCalledWith(mockStore, options);

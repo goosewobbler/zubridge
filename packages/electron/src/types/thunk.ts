@@ -1,7 +1,7 @@
 /**
  * Zubridge thunk types
  */
-import { Action } from '@zubridge/types';
+import type { Action } from '@zubridge/types';
 
 /**
  * Status information about the task queue

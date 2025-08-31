@@ -28,7 +28,7 @@ export const refreshWindowHandles = async () => {
           console.log(`No window handles found on attempt ${attempt + 1}, retrying...`);
           await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`Error getting window handles on attempt ${attempt + 1}: ${error}`);
         if (attempt < maxRetries - 1) {
           await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
@@ -44,9 +44,9 @@ export const refreshWindowHandles = async () => {
         // Use platform-specific pause after switching
         await browser.pause(TIMING.WINDOW_SWITCH_PAUSE);
         windowHandles.push(handle);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Skip window handle - might be closing
-        console.log(`Skipping handle: ${error.message}`);
+        console.log(`Skipping handle: ${(error as Error).message}`);
       }
     }
 
@@ -119,16 +119,15 @@ export const switchToWindow = async (index: number) => {
             console.log(`Window ${index} has empty title - WebDriver state corruption detected`);
 
             if (attempt < maxAttempts - 1) {
-              console.log(`Retrying due to WebDriver state corruption...`);
+              console.log('Retrying due to WebDriver state corruption...');
               // Linux-specific fix: Refresh handles to reset WebDriver state when corruption detected
               await refreshWindowHandles();
               await browser.pause(TIMING.WINDOW_SWITCH_PAUSE * 2);
               continue;
-            } else {
-              console.warn(
-                `Window ${index} title remains empty after ${maxAttempts} attempts - continuing anyway`,
-              );
             }
+            console.warn(
+              `Window ${index} title remains empty after ${maxAttempts} attempts - continuing anyway`,
+            );
           }
 
           success = true;
@@ -152,10 +151,9 @@ export const switchToWindow = async (index: number) => {
       }
 
       return success;
-    } else {
-      console.warn(`Cannot switch to window ${index}, only have ${windowHandles.length} handles`);
-      return false;
     }
+    console.warn(`Cannot switch to window ${index}, only have ${windowHandles.length} handles`);
+    return false;
   } catch (error) {
     console.error(`Top-level error in switchToWindow(${index}): ${error}`);
 
@@ -297,7 +295,7 @@ export const getButtonInCurrentWindow = async (
   }
 
   const maxAttempts = 3;
-  let element;
+  let element: WebdriverIO.Element | undefined;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -404,7 +402,7 @@ async function closeExcessWindows(coreCount: number): Promise<void> {
       for (let i = coreCount; i < windows.length; i++) {
         try {
           windows[i].close();
-        } catch (e) {}
+        } catch (_e) {}
       }
     }, coreCount);
 
@@ -418,7 +416,7 @@ async function closeExcessWindows(coreCount: number): Promise<void> {
           await switchToWindow(i);
           await browser.execute(() => window.close());
           await browser.pause(100);
-        } catch (e) {}
+        } catch (_e) {}
       }
     }
   } catch (error) {
@@ -447,7 +445,7 @@ export const getWindowIndexToIdMapping = async (): Promise<{ [index: number]: nu
           // Extract the ID from text like "ID: 123"
           const idText = idElement.textContent || '';
           const match = idText.match(/ID:\s*(\d+)/);
-          return match ? parseInt(match[1], 10) : null;
+          return match ? Number.parseInt(match[1], 10) : null;
         }
         return null;
       });

@@ -1,5 +1,5 @@
-import React from 'react';
 import clsx from 'clsx';
+import type React from 'react';
 import { Button } from '../Button';
 
 // Define types for the different parameter options

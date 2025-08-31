@@ -1,6 +1,6 @@
+import { debug } from '@zubridge/core';
 import { create, type StoreApi } from 'zustand';
 import type { State } from '../../types.js';
-import { debug } from '@zubridge/core';
 
 /**
  * Gets or creates the reducers store

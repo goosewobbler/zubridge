@@ -1,17 +1,17 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
-import { browser } from 'wdio-electron-service';
-import {
-  setupTestEnvironment,
-  waitUntilWindowsAvailable,
-  switchToWindow,
-  getButtonInCurrentWindow,
-} from '../utils/window.js';
-import { subscribeToState, unsubscribeFromAllState } from '../utils/subscription.js';
-import { getCounterValue, resetCounter } from '../utils/counter.js';
-import { TIMING } from '../constants.js';
 import type {} from '@zubridge/types/app';
 import type {} from '@zubridge/types/internal';
+import { before, beforeEach, describe, it } from 'mocha';
+import { browser } from 'wdio-electron-service';
+import { TIMING } from '../constants.js';
+import { getCounterValue, resetCounter } from '../utils/counter.js';
+import { subscribeToState, unsubscribeFromAllState } from '../utils/subscription.js';
+import {
+  getButtonInCurrentWindow,
+  setupTestEnvironment,
+  switchToWindow,
+  waitUntilWindowsAvailable,
+} from '../utils/window.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_COUNT = 2;

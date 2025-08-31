@@ -1,8 +1,8 @@
 // Publish script for the project - publishes the packages to the npm registry
 // Usage: tsx scripts/publish.ts [option1] [option2] [...]
-import { execSync } from 'child_process';
-import fs from 'fs';
-import path from 'path';
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Centralized error handling function
 function handleError(message: string, exitCode = 1): never {
@@ -12,7 +12,7 @@ function handleError(message: string, exitCode = 1): never {
 
 const args = process.argv.slice(2);
 let tag = 'latest';
-let filterPackages: string[] = [];
+const filterPackages: string[] = [];
 
 // Process args
 const options: string[] = [];
@@ -170,7 +170,9 @@ if (packagesToPublish.length === 0) {
 }
 
 console.log(`Publishing packages with tag "${tag}":`);
-packagesToPublish.forEach((pkg) => console.log(`- ${pkg}`));
+packagesToPublish.forEach((pkg) => {
+  console.log(`- ${pkg}`);
+});
 
 // Construct filter argument for pnpm publish
 const filterArgs = packagesToPublish.map((pkg) => `--filter ./${pkg}`).join(' ');

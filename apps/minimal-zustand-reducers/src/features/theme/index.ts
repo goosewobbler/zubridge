@@ -5,7 +5,7 @@ import type { Action, Reducer } from '@zubridge/electron';
  * In the reducers pattern, the reducer function handles
  * all the theme-related actions
  */
-export const reducer: Reducer<'light' | 'dark'> = (state = 'dark', action: Action) => {
+export const reducer: Reducer<'light' | 'dark'> = (state, action: Action) => {
   // Get type from action, handling both string and object actions
   const actionType = typeof action === 'string' ? action : action.type;
 

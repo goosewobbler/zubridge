@@ -16,7 +16,7 @@ export type CounterAction =
  * In the reducers pattern, we implement pure functions that
  * receive the current state and an action, and return a new state
  */
-export const reducer: Reducer<number> = (counter = 0, action: Action) => {
+export const reducer: Reducer<number> = (counter, action: Action) => {
   switch (action.type) {
     case 'COUNTER:INCREMENT':
       console.log('[Reducer] Incrementing counter');
@@ -37,19 +37,21 @@ export const reducer: Reducer<number> = (counter = 0, action: Action) => {
       // The reducer itself is synchronous
       console.log(`[Reducer] Doubling counter from ${counter} to ${counter * 2}`);
       return counter * 2;
-    case 'COUNTER:HALVE:SLOW':
+    case 'COUNTER:HALVE:SLOW': {
       // Note: The 'SLOW' part is handled by middleware or thunks
       // The reducer itself is synchronous
       const newValueSlow = Math.round(counter / 2);
       console.log(`[Reducer] Halving counter from ${counter} to ${newValueSlow}`);
       return newValueSlow;
+    }
     case 'COUNTER:DOUBLE':
       console.log(`[Reducer] Doubling counter from ${counter} to ${counter * 2}`);
       return counter * 2;
-    case 'COUNTER:HALVE':
+    case 'COUNTER:HALVE': {
       const newValue = Math.round(counter / 2);
       console.log(`[Reducer] Halving counter from ${counter} to ${newValue}`);
       return newValue;
+    }
     default:
       return counter;
   }

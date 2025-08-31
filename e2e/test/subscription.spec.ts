@@ -1,25 +1,25 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
+import { before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import {
-  setupTestEnvironment,
-  windowHandles,
-  refreshWindowHandles,
-  waitUntilWindowsAvailable,
-  switchToWindow,
-  getButtonInCurrentWindow,
-  logWindowInfo,
-} from '../utils/window.js';
+import { TIMING } from '../constants.js';
 import { getCounterValue, resetCounter } from '../utils/counter.js';
 import {
-  subscribeToState,
-  unsubscribeFromState,
-  subscribeToAllState,
-  unsubscribeFromAllState,
-  getWindowSubscriptions,
   findWindowBySubscription,
+  getWindowSubscriptions,
+  subscribeToAllState,
+  subscribeToState,
+  unsubscribeFromAllState,
+  unsubscribeFromState,
 } from '../utils/subscription.js';
-import { TIMING } from '../constants.js';
+import {
+  getButtonInCurrentWindow,
+  logWindowInfo,
+  refreshWindowHandles,
+  setupTestEnvironment,
+  switchToWindow,
+  waitUntilWindowsAvailable,
+  windowHandles,
+} from '../utils/window.js';
 
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
 const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
@@ -633,7 +633,7 @@ describe.skip('Selective Subscription Behaviour', () => {
     // Start with any window, we'll explicitly set up subscriptions
     await refreshWindowHandles();
     await switchToWindow(0);
-    console.log(`Starting with window index 0 to test subscribe/unsubscribe all`);
+    console.log('Starting with window index 0 to test subscribe/unsubscribe all');
 
     // Reset counter to ensure a clean state
     await resetCounter();

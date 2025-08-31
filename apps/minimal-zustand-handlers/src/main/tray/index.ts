@@ -1,9 +1,9 @@
-import { type BrowserWindow } from 'electron';
-import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
+import type { BrowserWindow } from 'electron';
+import type { StoreApi } from 'zustand';
 import type { State } from '../../features/index.js';
-import { BaseSystemTray } from './base.js';
 import { createHandlers } from '../bridge.js';
+import { BaseSystemTray } from './base.js';
 
 /**
  * Handlers mode tray implementation
@@ -28,7 +28,7 @@ export class HandlersSystemTray extends BaseSystemTray {
 
     // Subscribe to state changes to update the tray UI
     store.subscribe((state) => {
-      console.log(`[Handlers Tray] State update:`, state);
+      console.log('[Handlers Tray] State update:', state);
       this.update(state);
     });
   }

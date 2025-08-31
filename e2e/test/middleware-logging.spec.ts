@@ -1,15 +1,15 @@
-import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach, after, afterEach } from 'mocha';
-import WebSocket from 'ws';
 import assert from 'node:assert';
+import { expect } from '@wdio/globals';
+import { after, afterEach, before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
+import WebSocket from 'ws';
+import { TIMING } from '../constants.js';
 import {
   getButtonInCurrentWindow,
   refreshWindowHandles,
-  windowHandles,
   switchToWindow,
+  windowHandles,
 } from '../utils/window.js';
-import { TIMING } from '../constants.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_COUNT = 2;
@@ -60,7 +60,7 @@ function getWaitMultiplier(variant: string): number {
 
 function normalizeMetric(value: unknown): number {
   if (typeof value === 'number') return value;
-  if (typeof value === 'string') return parseFloat(value);
+  if (typeof value === 'string') return Number.parseFloat(value);
   return 0;
 }
 
@@ -82,7 +82,7 @@ function summarize(
 async function performIncrementsAndCollectMetrics(
   incrementButton: ChainablePromiseElement,
   count: number,
-  logMessages: any[],
+  logMessages: unknown[],
 ): Promise<number[]> {
   for (let i = 0; i < count; i++) {
     await incrementButton.click();
@@ -91,15 +91,22 @@ async function performIncrementsAndCollectMetrics(
   await browser.pause(1000); // wait for all logs to arrive
   // Extract all total_ms values from StateUpdated messages
   return logMessages
-    .filter((msg: any) => msg.entry_type === 'StateUpdated' && msg.processing_metrics)
-    .map((msg: any) => normalizeMetric(msg.processing_metrics.total_ms))
+    .filter(
+      (msg: unknown) =>
+        (msg as { entry_type?: string; processing_metrics?: unknown }).entry_type ===
+          'StateUpdated' &&
+        (msg as { entry_type?: string; processing_metrics?: unknown }).processing_metrics,
+    )
+    .map((msg: unknown) =>
+      normalizeMetric(
+        (msg as { processing_metrics: { total_ms: number } }).processing_metrics.total_ms,
+      ),
+    )
     .filter((ms: number) => ms > 0);
 }
 
 // Type guard for stats
-function isStats(
-  obj: any,
-): obj is {
+function isStats(obj: unknown): obj is {
   mean: number;
   median: number;
   min: number;
@@ -117,7 +124,7 @@ function isStats(
  */
 describe('IPC Traffic Logging Middleware', () => {
   let ws: WebSocket;
-  const logMessages: any[] = [];
+  const logMessages: unknown[] = [];
 
   before(async function () {
     this.timeout(15000); // Increase timeout for WebSocket connection
@@ -152,7 +159,7 @@ describe('IPC Traffic Logging Middleware', () => {
           }
 
           // Try to parse JSON data - use more robust approach to handle potential issues
-          let parsedData;
+          let parsedData: unknown;
           try {
             parsedData = JSON.parse(messageStr);
           } catch (parseError) {
@@ -341,11 +348,8 @@ describe('IPC Traffic Logging Middleware', () => {
     if (actionLogs.length > 0) {
       console.log(`Found ${actionLogs.length} action logs`);
       // Look for counter actions specifically for debugging
-      const counterActions = actionLogs.filter(
-        (msg) =>
-          msg.action &&
-          msg.action.action_type &&
-          msg.action.action_type.toLowerCase().includes('counter'),
+      const counterActions = actionLogs.filter((msg) =>
+        msg.action?.action_type?.toLowerCase().includes('counter'),
       );
       if (counterActions.length > 0) {
         console.log(`Found ${counterActions.length} counter actions`);
@@ -414,7 +418,7 @@ describe('IPC Traffic Logging Middleware', () => {
 
   describe.skip('performance with large state', () => {
     // Store performance metrics for analysis
-    const performanceMetrics: Record<string, any>[] = [];
+    const performanceMetrics: Record<string, unknown>[] = [];
     // Use only the 'large' state for robust perf measurement
     const variants = ['xl'] as const;
     const NUM_INCREMENTS = 1000; // Use 1000 increments for better averaging
@@ -423,7 +427,9 @@ describe('IPC Traffic Logging Middleware', () => {
       console.log(`Generating large state with subscription type: ${subType}...`);
       logMessages.length = 0;
       console.log(
-        `WebSocket readyState before state generation: ${ws.readyState} (${ws.readyState === WebSocket.OPEN ? 'OPEN' : 'NOT OPEN'})`,
+        `WebSocket readyState before state generation: ${ws.readyState} (${
+          ws.readyState === WebSocket.OPEN ? 'OPEN' : 'NOT OPEN'
+        })`,
       );
       await switchToWindow(windowHandles[0] as unknown as number);
       try {
@@ -474,7 +480,7 @@ describe('IPC Traffic Logging Middleware', () => {
           console.log(
             `[${index + 1}] ${metric.variant} (${metric.subscriptionType}):`,
             `Total time: ${metric.mean.toFixed(2)}ms`,
-            `State update: ${metric.median ? metric.median.toFixed(2) + 'ms' : 'N/A'}`,
+            `State update: ${metric.median ? `${metric.median.toFixed(2)}ms` : 'N/A'}`,
           );
         });
         console.log('=======================================');
@@ -532,7 +538,7 @@ describe('IPC Traffic Logging Middleware', () => {
         console.log(`Collected ${performanceMetrics.length} performance data points`);
 
         // Group metrics by variant and subscription type
-        const groupedByVariant: Record<string, any[]> = {};
+        const groupedByVariant: Record<string, unknown[]> = {};
         for (const metric of performanceMetrics) {
           if (!groupedByVariant[metric.variant]) {
             groupedByVariant[metric.variant] = [];
@@ -651,9 +657,9 @@ describe('IPC Traffic Logging Middleware', () => {
 
             const totalTimeDiff = larger.mean - smaller.mean;
             console.log(
-              `${larger.variant} vs. ${smaller.variant} (counter-only) - Total time difference: ${totalTimeDiff.toFixed(2)}ms (${
-                totalTimeDiff > 0 ? 'slower' : 'faster'
-              } with ${larger.variant})`,
+              `${larger.variant} vs. ${smaller.variant} (counter-only) - Total time difference: ${totalTimeDiff.toFixed(
+                2,
+              )}ms (${totalTimeDiff > 0 ? 'slower' : 'faster'} with ${larger.variant})`,
             );
 
             // Larger state sizes should generally be slower, but we don't assert

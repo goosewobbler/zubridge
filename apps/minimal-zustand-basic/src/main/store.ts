@@ -1,7 +1,7 @@
 import { create, type StoreApi } from 'zustand';
+import { createCounterHandlers } from '../features/counter/index.js';
 import type { State } from '../features/index.js';
 import { initialState } from '../features/index.js';
-import { createCounterHandlers } from '../features/counter/index.js';
 import { createThemeHandlers } from '../features/theme/index.js';
 
 /**

@@ -9,7 +9,7 @@ import type { AnyState } from '@zubridge/types';
  * @returns A new state object with functions and non-serializable parts removed
  */
 export const sanitizeState = (state: AnyState, keys?: string[]): Record<string, unknown> => {
-  if (!state || typeof state !== 'object') return state as any;
+  if (!state || typeof state !== 'object') return state as Record<string, unknown>;
 
   const safeState: Record<string, unknown> = {};
   const keysToSanitize = keys || Object.keys(state);

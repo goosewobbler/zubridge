@@ -1,7 +1,7 @@
+import type { Action, AnyState, RootReducer } from '@zubridge/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand/vanilla';
-import type { AnyState, RootReducer, Action } from '@zubridge/types';
-import { createZustandAdapter, ZustandOptions } from '../../src/adapters/zustand.js';
+import { createZustandAdapter } from '../../src/adapters/zustand.js';
 
 // Mock the debug utility
 vi.mock('@zubridge/core', () => ({
@@ -112,7 +112,7 @@ describe('Zustand Adapter', () => {
             increment: incrementHandler,
             decrement: decrementHandler,
             reset: resetHandler,
-          } as any,
+          } as Record<string, unknown>,
         },
       });
 
@@ -134,7 +134,7 @@ describe('Zustand Adapter', () => {
         handlers: {
           Theme: {
             setTheme: setThemeHandler,
-          } as any,
+          } as Record<string, unknown>,
         },
       });
 
@@ -154,7 +154,7 @@ describe('Zustand Adapter', () => {
                 update: updateHandler,
               },
             },
-          } as any,
+          } as Record<string, unknown>,
         },
       });
 

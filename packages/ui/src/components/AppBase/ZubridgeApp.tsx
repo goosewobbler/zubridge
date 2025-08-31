@@ -1,19 +1,19 @@
-import { useEffect, useCallback, ReactNode, useState } from 'react';
 import { debug } from '@zubridge/core';
-import { WindowDisplay } from '../WindowDisplay';
+import type { Action, Dispatch } from '@zubridge/types';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import type { CounterMethod } from '../../types.js';
+import { BypassControls } from '../BypassControls';
 import { CounterActions } from '../CounterActions';
-import { ThemeToggle } from '../ThemeToggle';
-import { WindowActions } from '../WindowActions';
+import { ErrorTesting } from '../ErrorTesting';
+import { GenerateLargeState } from '../GenerateLargeState';
 import { Header } from '../Header';
 import { SubscriptionControls } from '../SubscriptionControls';
-import { ErrorTesting } from '../ErrorTesting';
-import { BypassControls } from '../BypassControls';
-import type { WindowInfo, ActionHandlers, WindowType } from './WindowInfo.js';
+import { ThemeToggle } from '../ThemeToggle';
+import { WindowActions } from '../WindowActions';
+import { WindowDisplay } from '../WindowDisplay';
+import { getBridgeStatusSelector, getCounterSelector, getThemeSelector } from './selectors.js';
+import type { ActionHandlers, WindowInfo, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
-import { getCounterSelector, getThemeSelector, getBridgeStatusSelector } from './selectors.js';
-import { CounterMethod } from '../../types.js';
-import { GenerateLargeState } from '../GenerateLargeState';
-import { Action, Dispatch } from '@zubridge/types';
 
 export interface ZubridgeAppProps {
   /**
@@ -24,7 +24,7 @@ export interface ZubridgeAppProps {
   /**
    * Application state store
    */
-  store: any;
+  store: unknown;
 
   /**
    * Dispatch function for actions
@@ -109,6 +109,14 @@ export function ZubridgeApp({
   const counter = getCounterSelector(store);
   const isDarkMode = getThemeSelector(store);
 
+  // Centralized error log state
+  const [errorLog, setErrorLog] = useState<Array<{ message: string; timestamp: number }>>([]);
+
+  // Centralized error handler
+  const handleError = useCallback((message: string) => {
+    setErrorLog((prev) => [...prev, { message, timestamp: Date.now() }]);
+  }, []);
+
   // Determine the bridge status - if externalBridgeStatus is provided, use it
   // Otherwise, try to get it from the store
   // Default to 'ready' if we can't determine status but we have a store
@@ -154,17 +162,16 @@ export function ZubridgeApp({
   }, [dispatch]);
 
   const handleGenerateLargeState = useCallback(
-    async (variantOrOptions: any) => {
+    async (variantOrOptions: unknown) => {
       // Check if we received a string variant or an options object
       if (typeof variantOrOptions === 'string' || variantOrOptions === undefined) {
         const variant = variantOrOptions || 'medium';
         debug('ui', `Generating ${variant} test state`);
         return await dispatch('STATE:GENERATE-FILLER', { variant });
-      } else {
-        // We received detailed options
-        debug('ui', `Generating custom test state with options:`, variantOrOptions);
-        return await dispatch('STATE:GENERATE-FILLER', variantOrOptions);
       }
+      // We received detailed options
+      debug('ui', 'Generating custom test state with options:', variantOrOptions);
+      return await dispatch('STATE:GENERATE-FILLER', variantOrOptions);
     },
     [dispatch],
   );
@@ -204,10 +211,10 @@ export function ZubridgeApp({
           }
         } else if (method === 'main-thunk') {
           debug('ui', `Starting ${method} execution`);
-          debug('ui', `window.counter available:`, !!window.counter);
+          debug('ui', 'window.counter available:', !!window.counter);
           debug(
             'ui',
-            `window.counter.executeMainThunk available:`,
+            'window.counter.executeMainThunk available:',
             !!window.counter?.executeMainThunk,
           );
 
@@ -221,10 +228,10 @@ export function ZubridgeApp({
           return result;
         } else if (method === 'slow-main-thunk') {
           debug('ui', `Starting ${method} execution`);
-          debug('ui', `window.counter available:`, !!window.counter);
+          debug('ui', 'window.counter available:', !!window.counter);
           debug(
             'ui',
-            `window.counter.executeMainThunkSlow available:`,
+            'window.counter.executeMainThunkSlow available:',
             !!window.counter?.executeMainThunkSlow,
           );
 
@@ -245,7 +252,7 @@ export function ZubridgeApp({
             },
             window.bypassFlags,
           );
-          debug('ui', `Slow action dispatch returned:`, result);
+          debug('ui', 'Slow action dispatch returned:', result);
           return result;
         } else {
           debug('ui', `Dispatching regular action for ${method}`);
@@ -256,7 +263,7 @@ export function ZubridgeApp({
             },
             window.bypassFlags,
           );
-          debug('ui', `Regular action dispatch returned:`, result);
+          debug('ui', 'Regular action dispatch returned:', result);
           return result;
         }
       } catch (error) {
@@ -265,7 +272,7 @@ export function ZubridgeApp({
         return Promise.reject(error);
       }
     },
-    [counter, dispatch, actionHandlers],
+    [counter, dispatch, actionHandlers, handleError],
   );
 
   const handleDistinctiveCounter = useCallback(
@@ -324,14 +331,6 @@ export function ZubridgeApp({
   const isMainWindow = windowInfo.type === 'main';
   const isRuntimeWindow = windowInfo.type === 'runtime';
 
-  // Centralized error log state
-  const [errorLog, setErrorLog] = useState<Array<{ message: string; timestamp: number }>>([]);
-
-  // Centralized error handler
-  const handleError = (message: string) => {
-    setErrorLog((prev) => [...prev, { message, timestamp: Date.now() }]);
-  };
-
   return (
     <div className={`zubridge-app ${className}`}>
       <Header
@@ -355,7 +354,7 @@ export function ZubridgeApp({
         >
           {children || (
             <>
-              <div className="p-4 mb-4 border rounded-md counter-actions-section border-accent">
+              <div className="p-4 mb-4 rounded-md border counter-actions-section border-accent">
                 <CounterActions
                   onIncrement={handleIncrement}
                   onDecrement={handleDecrement}
@@ -365,11 +364,11 @@ export function ZubridgeApp({
                 />
               </div>
 
-              <div className="mb-4 border rounded-md theme-sectionp-4 border-accent">
+              <div className="mb-4 rounded-md border theme-sectionp-4 border-accent">
                 <ThemeToggle theme={isDarkMode ? 'dark' : 'light'} onToggle={handleToggleTheme} />
               </div>
 
-              <div className="p-4 mb-4 border rounded-md subscription-section border-accent">
+              <div className="p-4 mb-4 rounded-md border subscription-section border-accent">
                 {onSubscribe && onUnsubscribe && (
                   <SubscriptionControls
                     onSubscribe={onSubscribe}
@@ -381,13 +380,13 @@ export function ZubridgeApp({
                 <GenerateLargeState onGenerate={handleGenerateLargeState} />
               </div>
 
-              <div className="p-4 mb-4 border rounded-md bypass-flags-section border-accent">
+              <div className="p-4 mb-4 rounded-md border bypass-flags-section border-accent">
                 <div className="pt-4 mt-5 border-t border-gray-200">
                   <BypassControls />
                 </div>
               </div>
 
-              <div className="p-4 mb-4 border rounded-md error-testing-section border-accent">
+              <div className="p-4 mb-4 rounded-md border error-testing-section border-accent">
                 <div className="pt-4 mt-5 border-t border-gray-200">
                   <ErrorTesting
                     dispatch={dispatch}
@@ -399,7 +398,7 @@ export function ZubridgeApp({
                 </div>
               </div>
 
-              <div className="p-4 mb-4 border rounded-md window-actions-section border-accent">
+              <div className="p-4 mb-4 rounded-md border window-actions-section border-accent">
                 <WindowActions
                   onCreateWindow={handleCreateWindow}
                   onCloseWindow={handleCloseWindow}

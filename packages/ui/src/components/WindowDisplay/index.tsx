@@ -1,5 +1,5 @@
-import React from 'react';
 import clsx from 'clsx';
+import type React from 'react';
 
 interface WindowDisplayProps {
   windowId: number | string;
@@ -16,10 +16,10 @@ interface WindowDisplayProps {
  * WindowDisplay component that shows information about the current window
  */
 export const WindowDisplay: React.FC<WindowDisplayProps> = ({
-  windowId,
-  windowTitle,
-  mode,
-  bridgeStatus = 'ready',
+  windowId: _windowId,
+  windowTitle: _windowTitle,
+  mode: _mode,
+  bridgeStatus: _bridgeStatus = 'ready',
   isMainWindow = false,
   isRuntimeWindow = false,
   className = '',

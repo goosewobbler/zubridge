@@ -1,5 +1,5 @@
 import { debug } from '@zubridge/core';
-import type { Action, StateManager, AnyState } from '@zubridge/types';
+import type { Action, AnyState, StateManager } from '@zubridge/types';
 import { thunkManager } from './initThunkManager.js';
 
 /**
@@ -15,12 +15,12 @@ export class ActionExecutor<S extends AnyState = AnyState> {
    * Execute an action directly through the state manager
    * This is the final execution step after all scheduling is done
    */
-  public async executeAction(action: Action): Promise<any> {
+  public async executeAction(action: Action): Promise<unknown> {
     debug('executor', `Executing action ${action.type} (ID: ${action.__id || 'unknown'})`);
 
     // Set thunk context if this action is from a thunk
-    const isThunkAction = !!(action as any).__thunkParentId;
-    const thunkId = (action as any).__thunkParentId;
+    const isThunkAction = !!action.__thunkParentId;
+    const thunkId = action.__thunkParentId;
 
     if (isThunkAction) {
       debug('executor', `Setting thunk context for action ${action.type} (thunk: ${thunkId})`);

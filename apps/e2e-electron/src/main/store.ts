@@ -1,14 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
+import { initialState } from '@zubridge/apps-shared';
+import { debug } from '@zubridge/core';
 import type { State } from '../types.js';
+import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 import {
+  createCustomAdapter,
   createReduxAdapter,
   createZustandAdapter,
-  createCustomAdapter,
   type UnifiedStore,
 } from './adapters/index.js';
-import { debug } from '@zubridge/core';
-import { initialState } from '@zubridge/apps-shared';
 
 // Singleton store instance
 let store: UnifiedStore<State>;
@@ -21,19 +21,22 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
   debug('store', 'Creating store for mode:', mode);
 
   switch (mode) {
-    case ZubridgeMode.ZustandBasic:
+    case ZubridgeMode.ZustandBasic: {
       const { getBasicStore } = await import('../modes/zustand-basic/store.js');
       return createZustandAdapter(getBasicStore());
+    }
 
-    case ZubridgeMode.ZustandHandlers:
+    case ZubridgeMode.ZustandHandlers: {
       const { getHandlersStore } = await import('../modes/zustand-handlers/store.js');
       return createZustandAdapter(getHandlersStore());
+    }
 
-    case ZubridgeMode.ZustandReducers:
+    case ZubridgeMode.ZustandReducers: {
       const { getReducersStore } = await import('../modes/zustand-reducers/store.js');
       return createZustandAdapter(getReducersStore());
+    }
 
-    case ZubridgeMode.Redux:
+    case ZubridgeMode.Redux: {
       // For Redux mode, create a Redux store with a root reducer
       const { rootReducer } = await import('../modes/redux/features/index.js');
 
@@ -42,8 +45,9 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
       });
       // Redux is using a nested state structure while other modes use a flat structure that matches BaseState
       return createReduxAdapter(reduxStore) as UnifiedStore<State>;
+    }
 
-    case ZubridgeMode.Custom:
+    case ZubridgeMode.Custom: {
       // For custom mode, get our EventEmitter-based store
       debug('store', '[Store] Custom mode detected - loading custom store');
       const { getCustomStore } = await import('../modes/custom/store.js');
@@ -53,11 +57,13 @@ export async function createModeStore(): Promise<UnifiedStore<State>> {
 
       // Use our custom adapter
       return createCustomAdapter(customStore);
+    }
 
-    default:
+    default: {
       // Default to zustand-basic mode
       const { getBasicStore: fallback } = await import('../modes/zustand-basic/store.js');
       return createZustandAdapter(fallback());
+    }
   }
 }
 

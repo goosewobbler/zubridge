@@ -1,7 +1,7 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app } from 'electron';
-import fs from 'node:fs';
 
 /**
  * Get the equivalent of __dirname for the caller's module
@@ -28,7 +28,7 @@ export const getPreloadPath = (): string => {
   if (app.isPackaged) {
     // Determine if the app is packed as an ASAR archive or as a directory
     const asarPath = path.join(process.resourcesPath, 'app.asar');
-    let preloadPath;
+    let preloadPath: string;
     if (fs.existsSync(asarPath)) {
       // Packaged as ASAR
       preloadPath = path.join(asarPath, 'preload', 'index.cjs');

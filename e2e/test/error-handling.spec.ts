@@ -1,9 +1,9 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
+import { before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import { setupTestEnvironment, switchToWindow, getButtonInCurrentWindow } from '../utils/window.js';
-import { subscribeToAllState } from '../utils/subscription.js';
 import { TIMING } from '../constants.js';
+import { subscribeToAllState } from '../utils/subscription.js';
+import { getButtonInCurrentWindow, setupTestEnvironment, switchToWindow } from '../utils/window.js';
 
 // Names of core windows for easier reference in tests
 const CORE_WINDOW_COUNT = 2; // Main and DirectWebContents windows
@@ -51,7 +51,7 @@ describe('Error Handling', () => {
       // Clear error log if it exists
       try {
         await clearErrorLog();
-      } catch (error) {
+      } catch (_error) {
         console.log('No error log to clear yet, continuing...');
       }
       // Make sure we're subscribed to all state to avoid subscription errors

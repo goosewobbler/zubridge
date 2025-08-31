@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/tauri';
 // Import v1 APIs
 import { getCurrent } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen } from '@tauri-apps/api/event';
-import { initializeBridge, cleanupZubridge } from '@zubridge/tauri';
+import { cleanupZubridge, initializeBridge } from '@zubridge/tauri';
 import { withTauri } from '@zubridge/ui/tauri';
+import React, { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
 
@@ -26,9 +26,12 @@ function AppWrapper() {
       try {
         // Wait for Tauri v1 globals (if needed)
         while (
-          !(window as any).__TAURI__ ||
-          typeof (window as any).__TAURI__.invoke !== 'function' ||
-          typeof (window as any).__TAURI__.event?.listen !== 'function'
+          !(window as { __TAURI__?: { invoke?: unknown; event?: { listen?: unknown } } })
+            .__TAURI__ ||
+          typeof (window as { __TAURI__?: { invoke?: unknown; event?: { listen?: unknown } } })
+            .__TAURI__?.invoke !== 'function' ||
+          typeof (window as { __TAURI__?: { invoke?: unknown; event?: { listen?: unknown } } })
+            .__TAURI__?.event?.listen !== 'function'
         ) {
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
@@ -57,7 +60,7 @@ function AppWrapper() {
         } else {
           setWindowType('secondary');
         }
-      } catch (error) {
+      } catch (_error) {
         setWindowLabel('error-label');
         setBridgeInitialized(false);
       }
@@ -97,7 +100,7 @@ function AppWrapper() {
         platform: 'tauri-v1',
       }}
       windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
-      appName={`Zubridge - Tauri v1 Example`}
+      appName={'Zubridge - Tauri v1 Example'}
     />
   );
 }

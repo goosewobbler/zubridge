@@ -1,8 +1,8 @@
-import { type BrowserWindow } from 'electron';
-import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
-import type { State } from '../../types.js';
+import type { BrowserWindow } from 'electron';
+import type { StoreApi } from 'zustand';
 import { BaseSystemTray } from '../../main/tray/base.js';
+import type { State } from '../../types.js';
 
 /**
  * Basic mode tray implementation

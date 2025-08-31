@@ -7,7 +7,7 @@ export interface State {
   theme: 'light' | 'dark';
 
   // Index signature to satisfy AnyState requirement
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

@@ -1,5 +1,5 @@
-import { vi } from 'vitest';
 import type {} from '@zubridge/types/internal'; // Import internal window augmentations
+import { vi } from 'vitest';
 
 // Set up mocks for the window object
 const mockZubridge = {

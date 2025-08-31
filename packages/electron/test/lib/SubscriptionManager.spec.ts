@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubscriptionManager } from '../../src/lib/SubscriptionManager.js';
 
 describe('SubscriptionManager', () => {
-  let subscriptionManager: SubscriptionManager<any>;
+  let subscriptionManager: SubscriptionManager<Record<string, unknown>>;
   const mockCallback = vi.fn();
   const windowId = 1;
 

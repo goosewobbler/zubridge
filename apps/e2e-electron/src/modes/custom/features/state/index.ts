@@ -1,6 +1,6 @@
-import { type StoreApi } from 'zustand';
+import { generateTestState, initialState } from '@zubridge/apps-shared';
 import type { AnyState } from '@zubridge/types';
-import { initialState, generateTestState } from '@zubridge/apps-shared';
+import type { StoreApi } from 'zustand';
 
 let store: StoreApi<AnyState>;
 

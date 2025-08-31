@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
 import { debug } from '@zubridge/core';
+import { useEffect, useState } from 'react';
 
 // Define a generic store type with bridge status
-interface BridgeStateStore {
+export interface BridgeStateStore {
   __bridge_status?: 'ready' | 'error' | 'initializing';
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 type BridgeStatus = 'ready' | 'error' | 'initializing';

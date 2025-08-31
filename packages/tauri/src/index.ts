@@ -1,16 +1,16 @@
-import { useSyncExternalStore } from 'react';
-import { createStore } from 'zustand/vanilla';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 import { debug } from '@zubridge/core';
 import type {
-  AnyState,
   Action,
-  Thunk,
-  DispatchFunc,
-  BridgeState,
-  BridgeEvent,
+  AnyState,
   BackendOptions as BaseBackendOptions,
+  BridgeEvent,
+  BridgeState,
+  DispatchFunc,
+  Thunk,
 } from '@zubridge/types';
-import type { UnlistenFn } from '@tauri-apps/api/event';
+import { useSyncExternalStore } from 'react';
+import { createStore } from 'zustand/vanilla';
 
 // Add type declaration reference if vite-env.d.ts is used
 /// <reference types="./vite-env" />
@@ -31,7 +31,7 @@ export interface CommandConfig {
  * Options for initializing the Tauri bridge
  */
 export interface BackendOptions<T = unknown> extends BaseBackendOptions<T> {
-  invoke: <R = T>(cmd: string, args?: any, options?: any) => Promise<R>;
+  invoke: <R = T>(cmd: string, args?: unknown, options?: unknown) => Promise<R>;
   listen: <E = unknown>(event: string, handler: (event: E) => void) => Promise<UnlistenFn>;
   /** Command configuration - if not provided, will try both plugin and direct formats */
   commands?: CommandConfig;
@@ -80,7 +80,7 @@ let activeCommands = {
 async function invokeWithFallback<R>(
   invoke: BackendOptions['invoke'],
   commandConfig: CommandConfig | undefined,
-  args?: any,
+  args?: unknown,
 ): Promise<R> {
   // If specific command names are provided, use them directly
   if (commandConfig?.getInitialState) {
@@ -104,8 +104,8 @@ async function invokeWithFallback<R>(
     } catch (directError) {
       debug('tauri:error', 'Both command formats failed:', { pluginError, directError });
       throw new Error(
-        `Zubridge Tauri: Failed to connect to backend. Tried both plugin and direct formats. ` +
-          `Consider providing explicit command names in the options.`,
+        'Zubridge Tauri: Failed to connect to backend. Tried both plugin and direct formats. ' +
+          'Consider providing explicit command names in the options.',
       );
     }
   }
@@ -340,7 +340,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
         } catch (initError) {
           debug(
             'tauri:error',
-            `Initialization failed while waiting in dispatch. Cannot dispatch. Error:`,
+            'Initialization failed while waiting in dispatch. Cannot dispatch. Error:',
             initError,
           );
           throw initError; // Re-throw the initialization error
@@ -352,7 +352,7 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
           `Dispatch called while status is '${status}' and initialization promise is missing. Cannot dispatch. Action:`,
           action,
         );
-        throw new Error(`Zubridge is not initialized and initialization is not in progress.`);
+        throw new Error('Zubridge is not initialized and initialization is not in progress.');
       }
     }
 

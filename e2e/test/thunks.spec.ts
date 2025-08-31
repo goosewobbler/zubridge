@@ -1,17 +1,17 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
+import { before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import {
-  setupTestEnvironment,
-  windowHandles,
-  refreshWindowHandles,
-  waitUntilWindowsAvailable,
-  switchToWindow,
-  getButtonInCurrentWindow,
-} from '../utils/window.js';
-import { waitForSpecificValue, getCounterValue, resetCounter } from '../utils/counter.js';
-import { validateAndFixWindowSubscription } from '../utils/window-subscription.js';
 import { TIMING } from '../constants.js';
+import { getCounterValue, resetCounter, waitForSpecificValue } from '../utils/counter.js';
+import {
+  getButtonInCurrentWindow,
+  refreshWindowHandles,
+  setupTestEnvironment,
+  switchToWindow,
+  waitUntilWindowsAvailable,
+  windowHandles,
+} from '../utils/window.js';
+import { validateAndFixWindowSubscription } from '../utils/window-subscription.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
@@ -42,7 +42,7 @@ async function subscribeToKeys(keys: string): Promise<void> {
 /**
  * Unsubscribe from specific keys using the UI
  */
-async function unsubscribeFromKeys(keys: string): Promise<void> {
+async function _unsubscribeFromKeys(keys: string): Promise<void> {
   console.log(`Unsubscribing from keys: ${keys}`);
 
   // Fill the input field
@@ -60,7 +60,7 @@ async function unsubscribeFromKeys(keys: string): Promise<void> {
 /**
  * Subscribe to all state using the UI
  */
-async function subscribeToAll(): Promise<void> {
+async function _subscribeToAll(): Promise<void> {
   console.log('Subscribing to all state');
 
   // Click the Subscribe All button using the helper
@@ -129,16 +129,16 @@ describe('Thunk Execution and Behavior', () => {
 
       // Wait for first expected value (4)
       await waitForSpecificValue(4);
-      console.log(`Intermediate counter value: 4`);
+      console.log('Intermediate counter value: 4');
 
       // Wait for second expected value (8)
       await waitForSpecificValue(8);
-      console.log(`Intermediate counter value: 8`);
+      console.log('Intermediate counter value: 8');
 
       // Verify final counter value
       // The sequence should be: 2 -> 4 -> 8 -> 4, so expect 4
       await waitForSpecificValue(4);
-      console.log(`Final counter value: 4`);
+      console.log('Final counter value: 4');
 
       // Check the final value
       const finalValue = await getCounterValue();
@@ -161,16 +161,16 @@ describe('Thunk Execution and Behavior', () => {
 
       // Wait for first expected value (4)
       await waitForSpecificValue(4);
-      console.log(`Intermediate counter value (main thunk): 4`);
+      console.log('Intermediate counter value (main thunk): 4');
 
       // Wait for second expected value (8)
       await waitForSpecificValue(8);
-      console.log(`Intermediate counter value (main thunk): 8`);
+      console.log('Intermediate counter value (main thunk): 8');
 
       // Verify final counter value
       // The sequence should be: 2 -> 4 -> 8 -> 4, so expect 4
       await waitForSpecificValue(4);
-      console.log(`Final counter value: 4`);
+      console.log('Final counter value: 4');
 
       // Check the final value
       const finalValue = await getCounterValue();
@@ -408,7 +408,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Wait for final value (4)
       await waitForSpecificValue(4);
-      console.log(`[ASYNC TEST] Third value change: 4`);
+      console.log('[ASYNC TEST] Third value change: 4');
 
       // Verify the final value
       const finalValue = await getCounterValue();
@@ -455,7 +455,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Wait for final value (4)
       await waitForSpecificValue(4);
-      console.log(`[ASYNC TEST] Third value change: 4`);
+      console.log('[ASYNC TEST] Third value change: 4');
 
       // Verify the final value
       const finalValue = await getCounterValue();
@@ -503,12 +503,12 @@ describe('Thunk Execution and Behavior', () => {
       await waitForSpecificValue(16); // Thunk 2, second doubling
       await waitForSpecificValue(8); // Thunk 2, halving
 
-      let finalValueInNewWindow = await getCounterValue();
+      const finalValueInNewWindow = await getCounterValue();
       expect(finalValueInNewWindow).toBe(8);
 
       await switchToWindow(0);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
-      let finalValueInMainWindow = await getCounterValue();
+      const finalValueInMainWindow = await getCounterValue();
       expect(finalValueInMainWindow).toBe(8);
     });
 
@@ -587,12 +587,12 @@ describe('Thunk Execution and Behavior', () => {
       await waitForSpecificValue(16); // Thunk 2, second doubling
       await waitForSpecificValue(8); // Thunk 2, halving
 
-      let finalValueInNewWindowCtx = await getCounterValue();
+      const finalValueInNewWindowCtx = await getCounterValue();
       expect(finalValueInNewWindowCtx).toBe(8);
 
       await switchToWindow(0);
       await browser.pause(TIMING.STATE_SYNC_PAUSE);
-      let finalValueInMainWindowCtx = await getCounterValue();
+      const finalValueInMainWindowCtx = await getCounterValue();
       expect(finalValueInMainWindowCtx).toBe(8);
     });
 
@@ -634,7 +634,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Linux: Add verification that subscription setup worked correctly
       if (process.platform === 'linux') {
-        console.log(`[LINUX DEBUG] Verifying subscription setup...`);
+        console.log('[LINUX DEBUG] Verifying subscription setup...');
 
         // Give subscriptions time to fully initialize
         await browser.pause(TIMING.STATE_SYNC_PAUSE);
@@ -643,7 +643,7 @@ describe('Thunk Execution and Behavior', () => {
         // This prevents the race condition where thunk executes before subscription is established
         await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
-        console.log(`[LINUX DEBUG] Subscription setup complete, ready for thunk execution`);
+        console.log('[LINUX DEBUG] Subscription setup complete, ready for thunk execution');
       }
 
       // Start a slow thunk in main window that affects counter
@@ -667,13 +667,13 @@ describe('Thunk Execution and Behavior', () => {
             counterType: typeof window.counter,
           };
         });
-        console.log(`[LINUX DEBUG] IPC availability:`, JSON.stringify(ipcAvailable));
+        console.log('[LINUX DEBUG] IPC availability:', JSON.stringify(ipcAvailable));
       }
 
       // Capture button click and potential IPC response
       if (process.platform === 'linux') {
         console.log(
-          `[LINUX DEBUG] About to click button - this should trigger IPC call to main process`,
+          '[LINUX DEBUG] About to click button - this should trigger IPC call to main process',
         );
       }
 
@@ -689,7 +689,7 @@ describe('Thunk Execution and Behavior', () => {
         console.log(`[LINUX DEBUG] Counter value after thunk start: ${afterStartValue}`);
 
         // Check the thunk manager state to see if locks are preventing execution
-        console.log(`[LINUX DEBUG] Checking thunk manager state...`);
+        console.log('[LINUX DEBUG] Checking thunk manager state...');
         const thunkState = await browser.execute(async () => {
           try {
             // Check what methods are available on window.zubridge
@@ -699,18 +699,18 @@ describe('Thunk Execution and Behavior', () => {
             return { success: false, result: null, error: String(error) };
           }
         });
-        console.log(`[LINUX DEBUG] Available zubridge methods:`, JSON.stringify(thunkState));
+        console.log('[LINUX DEBUG] Available zubridge methods:', JSON.stringify(thunkState));
 
         if (thunkState.success && thunkState.result && thunkState.result.availableMethods) {
           console.log(
-            `[LINUX DEBUG] Zubridge methods:`,
+            '[LINUX DEBUG] Zubridge methods:',
             thunkState.result.availableMethods.join(', '),
           );
         }
 
         // Linux: Simplified check - just wait for thunk to potentially complete
         console.log(
-          `[LINUX DEBUG] Waiting for main process thunk to complete (~2500ms + buffer)...`,
+          '[LINUX DEBUG] Waiting for main process thunk to complete (~2500ms + buffer)...',
         );
         await browser.pause(4000);
 
@@ -718,7 +718,7 @@ describe('Thunk Execution and Behavior', () => {
         console.log(`[LINUX DEBUG] Counter after 4 second wait: ${afterWait}`);
 
         if (afterWait === 4) {
-          console.log(`[LINUX DEBUG] Thunk completed successfully during wait period`);
+          console.log('[LINUX DEBUG] Thunk completed successfully during wait period');
           // Continue to the normal test flow - the thunk worked
         } else {
           console.log(
@@ -758,12 +758,12 @@ describe('Thunk Execution and Behavior', () => {
 
         if (currentValue === 2) {
           console.log(
-            `[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`,
+            '[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly',
           );
 
           // Wait additional time for main process slow thunk to complete
           console.log(
-            `[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`,
+            '[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...',
           );
           await browser.pause(3000);
 
@@ -778,8 +778,9 @@ describe('Thunk Execution and Behavior', () => {
             console.log(`Final counter value: ${finalValue}`);
             expect(finalValue).toBe(4);
             return; // Skip waitForSpecificValue since we already have the right value
-          } else if (afterExtraWait === 2) {
-            console.log(`[LINUX DEBUG] Thunk still not completed after 3000ms wait`);
+          }
+          if (afterExtraWait === 2) {
+            console.log('[LINUX DEBUG] Thunk still not completed after 3000ms wait');
             // Continue to waitForSpecificValue which will likely timeout, but at least we've tried
           } else {
             console.log(`[LINUX DEBUG] Unexpected counter value ${afterExtraWait} after wait`);
@@ -795,7 +796,7 @@ describe('Thunk Execution and Behavior', () => {
 
         // Linux: Add window context debugging to identify subscription issues
         if (process.platform === 'linux') {
-          console.log(`[LINUX DEBUG] Adding window context debugging...`);
+          console.log('[LINUX DEBUG] Adding window context debugging...');
           const currentWindowHandle = await browser.getWindowHandle();
           const allWindowHandles = await browser.getWindowHandles();
           const windowIndex = allWindowHandles.indexOf(currentWindowHandle);
@@ -807,7 +808,7 @@ describe('Thunk Execution and Behavior', () => {
           // Check what the window is subscribed to
           const subscriptions = await browser.execute(() => {
             try {
-              // @ts-ignore
+              // @ts-expect-error
               return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
                 ? // @ts-ignore
                   window.__zubridge_subscriptionValidator.getWindowSubscriptions()
@@ -831,7 +832,7 @@ describe('Thunk Execution and Behavior', () => {
         expect(finalValue).toBe(4);
       } catch (error) {
         if (process.platform === 'linux') {
-          console.log(`[LINUX DEBUG] waitForSpecificValue failed, checking current value...`);
+          console.log('[LINUX DEBUG] waitForSpecificValue failed, checking current value...');
           const currentValue = await getCounterValue();
           console.log(`[LINUX DEBUG] Current value after timeout: ${currentValue}`);
         }
@@ -877,7 +878,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Linux: Add verification that subscription setup worked correctly
       if (process.platform === 'linux') {
-        console.log(`[LINUX DEBUG] Verifying subscription setup...`);
+        console.log('[LINUX DEBUG] Verifying subscription setup...');
 
         // Give subscriptions time to fully initialize
         await browser.pause(TIMING.STATE_SYNC_PAUSE);
@@ -886,7 +887,7 @@ describe('Thunk Execution and Behavior', () => {
         // This prevents the race condition where thunk executes before subscription is established
         await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
-        console.log(`[LINUX DEBUG] Subscription setup complete, ready for thunk execution`);
+        console.log('[LINUX DEBUG] Subscription setup complete, ready for thunk execution');
       }
 
       // Start a slow thunk in main window that affects counter
@@ -936,12 +937,12 @@ describe('Thunk Execution and Behavior', () => {
         console.log(`[LINUX DEBUG] About to wait for value 4, current value is ${currentValue}`);
         if (currentValue === 2) {
           console.log(
-            `[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly`,
+            '[LINUX DEBUG] Counter has not changed from initial value - thunk may not be executing properly',
           );
 
           // Since this is a main process slow thunk (~2500ms), let's wait strategically
           console.log(
-            `[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...`,
+            '[LINUX DEBUG] Waiting additional time for main process slow thunk to complete...',
           );
           await browser.pause(3000); // Wait longer than the 2500ms thunk duration
 
@@ -955,7 +956,7 @@ describe('Thunk Execution and Behavior', () => {
             // Update currentValue so the test can proceed with correct expectation
             if (afterLongWait === 4) {
               console.log(
-                `[LINUX DEBUG] Thunk completed successfully, skipping waitForSpecificValue`,
+                '[LINUX DEBUG] Thunk completed successfully, skipping waitForSpecificValue',
               );
               const finalValue = await getCounterValue();
               console.log(`Final counter value: ${finalValue}`);
@@ -963,7 +964,7 @@ describe('Thunk Execution and Behavior', () => {
               return; // Skip the waitForSpecificValue call
             }
           } else {
-            console.log(`[LINUX DEBUG] Thunk still not completed after 3000ms wait`);
+            console.log('[LINUX DEBUG] Thunk still not completed after 3000ms wait');
           }
         }
       }
@@ -975,7 +976,7 @@ describe('Thunk Execution and Behavior', () => {
 
       // Linux: Add window context debugging to identify subscription issues
       if (process.platform === 'linux') {
-        console.log(`[LINUX DEBUG] Adding window context debugging...`);
+        console.log('[LINUX DEBUG] Adding window context debugging...');
         const currentWindowHandle = await browser.getWindowHandle();
         const allWindowHandles = await browser.getWindowHandles();
         const windowIndex = allWindowHandles.indexOf(currentWindowHandle);
@@ -987,7 +988,7 @@ describe('Thunk Execution and Behavior', () => {
         // Check what the window is subscribed to
         const subscriptions = await browser.execute(() => {
           try {
-            // @ts-ignore
+            // @ts-expect-error
             return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
               ? // @ts-ignore
                 window.__zubridge_subscriptionValidator.getWindowSubscriptions()

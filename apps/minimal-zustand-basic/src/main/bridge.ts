@@ -1,6 +1,6 @@
+import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
-import type { ZustandBridge, ZubridgeMiddleware } from '@zubridge/electron/main';
 import type { State } from '../features/index.js';
 
 /**

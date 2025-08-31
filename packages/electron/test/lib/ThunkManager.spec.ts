@@ -1,14 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ThunkState } from '../../src/lib/Thunk.js';
+import { EventEmitter } from 'node:events';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Thunk, ThunkState } from '../../src/lib/Thunk.js';
 import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
-import type { ThunkScheduler as IThunkScheduler, ThunkTask } from '../../src/types/thunk';
+import type { ThunkScheduler } from '../../src/lib/ThunkScheduler.js';
+import type { ThunkTask } from '../../src/types/thunk';
 
 // Minimal mock Thunk class
 class MockThunk {
   id: string;
   state: ThunkState = ThunkState.PENDING;
   parentId?: string;
-  sourceWindowId: number = 1;
+  sourceWindowId = 1;
   constructor(id: string, parentId?: string) {
     this.id = id;
     this.parentId = parentId;
@@ -24,8 +26,23 @@ class MockThunk {
   }
 }
 
-// Minimal mock ThunkScheduler
-class MockScheduler implements IThunkScheduler {
+// Minimal mock ThunkScheduler that extends EventEmitter like the real one
+class MockScheduler extends EventEmitter {
+  queue: ThunkTask[] = [];
+  runningTasks: Map<string, ThunkTask> = new Map();
+  isProcessing = false;
+  hasConflicts = vi.fn();
+  canTaskRun = vi.fn();
+  startTask = vi.fn();
+  completeTask = vi.fn();
+  failTask = vi.fn();
+  addTimestamp = vi.fn();
+  removeFromQueue = vi.fn();
+  insertInQueue = vi.fn();
+  findQueuePosition = vi.fn();
+  getHighestPriorityQueuedTask = vi.fn();
+  getPendingTasks = vi.fn();
+  cleanup = vi.fn();
   getRunningTasks = vi.fn(() => [] as ThunkTask[]);
   getQueueStatus = vi.fn(() => ({
     isIdle: true,
@@ -41,7 +58,7 @@ class MockScheduler implements IThunkScheduler {
 describe('ThunkManager', () => {
   let thunkManager: ThunkManager;
   let mockScheduler: MockScheduler;
-  let mockStateManager: any;
+  let mockStateManager: { processAction: (action: unknown) => unknown };
 
   beforeEach(() => {
     mockScheduler = new MockScheduler();
@@ -49,7 +66,7 @@ describe('ThunkManager', () => {
       processAction: vi.fn().mockReturnValue({ counter: 0 }),
     };
 
-    thunkManager = new ThunkManager(mockScheduler as any);
+    thunkManager = new ThunkManager(mockScheduler as ThunkScheduler);
     thunkManager.setStateManager(mockStateManager);
     vi.clearAllMocks();
   });
@@ -62,14 +79,14 @@ describe('ThunkManager', () => {
     it('should register a new thunk', () => {
       const thunkId = 'test-thunk-1';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as unknown as Thunk);
       expect(thunkManager.hasThunk(thunkId)).toBe(true);
     });
 
     it('should register a thunk with a specific ID', () => {
       const customId = 'custom-thunk-id';
       const thunk = new MockThunk(customId);
-      thunkManager.registerThunk(customId, thunk as any);
+      thunkManager.registerThunk(customId, thunk as Thunk);
       expect(thunkManager.hasThunk(customId)).toBe(true);
     });
 
@@ -79,8 +96,8 @@ describe('ThunkManager', () => {
       const parentThunk = new MockThunk(parentId);
       const childThunk = new MockThunk(childId, parentId);
 
-      thunkManager.registerThunk(parentId, parentThunk as any);
-      thunkManager.registerThunk(childId, childThunk as any, { parentId });
+      thunkManager.registerThunk(parentId, parentThunk as Thunk);
+      thunkManager.registerThunk(childId, childThunk as Thunk, { parentId });
 
       // The parent-child relationship is tracked in the Thunk objects
       expect(thunkManager.hasThunk(parentId)).toBe(true);
@@ -92,7 +109,7 @@ describe('ThunkManager', () => {
     it('should mark a thunk as executing', () => {
       const thunkId = 'test-thunk-2';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
 
       // Create a spy for the started event
       const startedSpy = vi.fn();
@@ -107,7 +124,7 @@ describe('ThunkManager', () => {
     it('should complete a thunk', () => {
       const thunkId = 'test-thunk-3';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as unknown as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       // Create a spy for the completion event
@@ -124,7 +141,7 @@ describe('ThunkManager', () => {
     it('should mark a thunk as failed', () => {
       const thunkId = 'test-thunk-4';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       // Create a spy for the failure event
@@ -170,7 +187,7 @@ describe('ThunkManager', () => {
       const thunk = new MockThunk(thunkId);
       thunk.state = ThunkState.COMPLETED;
 
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
 
       const completedSpy = vi.fn();
       thunkManager.on(ThunkManagerEvent.THUNK_COMPLETED, completedSpy);
@@ -186,7 +203,7 @@ describe('ThunkManager', () => {
     it('should determine if an action can be processed', () => {
       const thunkId = 'test-thunk-5';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as unknown as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       // Create an action with the thunk parent ID
@@ -201,7 +218,7 @@ describe('ThunkManager', () => {
       const thunk = new MockThunk(thunkId);
 
       // Register and mark as executing to ensure it's tracked properly
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       // Create an action with the thunk parent ID
@@ -239,7 +256,7 @@ describe('ThunkManager', () => {
     it('should track the root thunk ID', () => {
       const thunkId = 'root-thunk';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       // The root thunk ID should be set
@@ -252,7 +269,7 @@ describe('ThunkManager', () => {
 
       const thunkId = 'new-root-thunk';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       expect(rootChangedSpy).toHaveBeenCalled();
@@ -264,7 +281,7 @@ describe('ThunkManager', () => {
 
       const thunkId = 'root-thunk-to-complete';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
       thunkManager.completeThunk(thunkId);
 
@@ -285,7 +302,7 @@ describe('ThunkManager', () => {
       const thunkId = 'event-test-thunk';
       const thunk = new MockThunk(thunkId);
 
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       expect(registeredHandler).toHaveBeenCalled();
 
       thunkManager.markThunkExecuting(thunkId);
@@ -308,7 +325,7 @@ describe('ThunkManager', () => {
       } as ThunkTask,
     ]);
     const thunk = new MockThunk('t5');
-    thunkManager.registerThunk('t5', thunk as any);
+    thunkManager.registerThunk('t5', thunk as Thunk);
     const summary = thunkManager.getActiveThunksSummary();
     expect(summary.thunks.length).toBe(1);
     expect(summary.thunks[0].id).toBe('t5');
@@ -339,7 +356,7 @@ describe('ThunkManager', () => {
   it('should check if a thunk is active', () => {
     const thunkId = 'active-thunk';
     const thunk = new MockThunk(thunkId);
-    thunkManager.registerThunk(thunkId, thunk as any);
+    thunkManager.registerThunk(thunkId, thunk as Thunk);
     thunkManager.markThunkExecuting(thunkId);
 
     expect(thunkManager.isThunkActive(thunkId)).toBe(true);
@@ -369,7 +386,7 @@ describe('ThunkManager', () => {
 
       // Register and complete the thunk execution
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
       thunkManager.completeThunk(thunkId);
 
@@ -400,7 +417,7 @@ describe('ThunkManager', () => {
 
       const thunkId = 'active-thunk';
       const thunk = new MockThunk(thunkId);
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       thunkManager.markThunkExecuting(thunkId);
 
       expect(thunkManager.getCurrentActiveThunkId()).toBe(thunkId);
@@ -411,7 +428,7 @@ describe('ThunkManager', () => {
       const thunk = new MockThunk(thunkId);
 
       // Register thunk
-      thunkManager.registerThunk(thunkId, thunk as any);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
       expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
 
       // Start executing

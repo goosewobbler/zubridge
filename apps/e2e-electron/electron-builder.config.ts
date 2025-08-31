@@ -1,6 +1,6 @@
-import { Configuration } from 'electron-builder';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import type { Configuration } from 'electron-builder';
 
 // Get the current mode from environment variables, default to 'basic'
 const currentMode = process.env.ZUBRIDGE_MODE || 'zustand-basic';
@@ -65,7 +65,7 @@ if (!fs.existsSync(outputDir)) {
   // This file will be the entry point in the final application
   try {
     // Ensure correct directory structure and paths
-    console.log(`[DEBUG] Creating main entry file`);
+    console.log('[DEBUG] Creating main entry file');
 
     // Create a fixed package.json for the app
     const packageJson = {
@@ -83,16 +83,16 @@ if (!fs.existsSync(outputDir)) {
 
     // Check if the renderer index.html exists
     if (fs.existsSync(path.join(outputDir, 'renderer', 'index.html'))) {
-      console.log(`[DEBUG] Renderer index.html exists`);
+      console.log('[DEBUG] Renderer index.html exists');
     } else {
-      console.log(`[DEBUG] Renderer index.html not found`);
+      console.log('[DEBUG] Renderer index.html not found');
     }
 
     // Check if the main entry file exists
     if (fs.existsSync(path.join(outputDir, 'main', 'index.js'))) {
-      console.log(`[DEBUG] Main entry file exists`);
+      console.log('[DEBUG] Main entry file exists');
     } else {
-      console.log(`[DEBUG] Main entry file not found`);
+      console.log('[DEBUG] Main entry file not found');
     }
 
     // List files in output directory
@@ -110,7 +110,7 @@ if (!fs.existsSync(outputDir)) {
         }
       });
     } catch (error) {
-      console.error(`[DEBUG] Error checking files:`, error);
+      console.error('[DEBUG] Error checking files:', error);
     }
 
     // Copy resources to the output directory
@@ -132,7 +132,7 @@ if (!fs.existsSync(outputDir)) {
       console.log(`[DEBUG] Icon not found at ${sourceIconPath}`);
     }
   } catch (error) {
-    console.error(`[DEBUG] Error updating files:`, error);
+    console.error('[DEBUG] Error updating files:', error);
   }
 }
 

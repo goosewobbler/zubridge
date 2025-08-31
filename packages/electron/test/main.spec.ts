@@ -25,17 +25,16 @@ vi.mock('../src/lib/stateManagerRegistry', () => ({
   removeStateManager: vi.fn(),
 }));
 
+import type { AnyState } from '@zubridge/types';
+import type { BrowserWindow } from 'electron';
+import type { Store } from 'redux';
 // Now import everything else
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { BrowserWindow } from 'electron';
-import type { AnyState, StateManager } from '@zubridge/types';
 import type { StoreApi } from 'zustand/vanilla';
-import type { Store } from 'redux';
-import * as main from '../src/main';
 import * as bridge from '../src/bridge';
+import { removeStateManager } from '../src/lib/stateManagerRegistry';
+import * as main from '../src/main';
 import { createDispatch } from '../src/main/dispatch.js';
-import { getStateManager, removeStateManager } from '../src/lib/stateManagerRegistry';
-import { ZustandOptions } from '../src/adapters/zustand';
 
 // Helper mock functions
 function createMockWindow(id: number) {
@@ -72,7 +71,7 @@ function createMockReduxStore() {
   } as unknown as Store<AnyState>;
 }
 
-function createMockBridge() {
+function _createMockBridge() {
   return {
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),

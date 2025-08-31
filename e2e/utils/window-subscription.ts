@@ -52,7 +52,7 @@ export async function validateAndFixWindowSubscription(
     return true; // Skip validation on non-Linux platforms where this issue doesn't occur
   }
 
-  console.log(`[LINUX DEBUG] Verifying window context after switch...`);
+  console.log('[LINUX DEBUG] Verifying window context after switch...');
 
   // Step 1: Determine which window we actually landed on
   // Due to Linux WebDriver instability, switchToWindow(0) might not land on window 0
@@ -66,7 +66,7 @@ export async function validateAndFixWindowSubscription(
   // The subscription validator is injected by Zubridge for debugging
   const subscriptions = await browser.execute(() => {
     try {
-      // @ts-ignore
+      // @ts-expect-error
       return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
         ? // @ts-ignore
           window.__zubridge_subscriptionValidator.getWindowSubscriptions()
@@ -75,7 +75,7 @@ export async function validateAndFixWindowSubscription(
       return `Error: ${error}`;
     }
   });
-  console.log(`[LINUX DEBUG] Current window subscriptions:`, subscriptions);
+  console.log('[LINUX DEBUG] Current window subscriptions:', subscriptions);
 
   // Step 3: If we're already subscribed correctly, we're done
   if (subscriptions && Array.isArray(subscriptions) && subscriptions.includes(expectedKey)) {
@@ -99,12 +99,12 @@ export async function validateAndFixWindowSubscription(
       await browser.switchToWindow(allWindowHandles[i]);
       const windowSubs = await browser.execute(() => {
         try {
-          // @ts-ignore
+          // @ts-expect-error
           return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
             ? // @ts-ignore
               window.__zubridge_subscriptionValidator.getWindowSubscriptions()
             : [];
-        } catch (error) {
+        } catch (_error) {
           return [];
         }
       });
@@ -148,12 +148,12 @@ export async function validateAndFixWindowSubscription(
       // Verify the re-subscription worked
       const newSubscriptions = await browser.execute(() => {
         try {
-          // @ts-ignore
+          // @ts-expect-error
           return window.__zubridge_subscriptionValidator?.getWindowSubscriptions
             ? // @ts-ignore
               window.__zubridge_subscriptionValidator.getWindowSubscriptions()
             : [];
-        } catch (error) {
+        } catch (_error) {
           return [];
         }
       });
@@ -161,15 +161,14 @@ export async function validateAndFixWindowSubscription(
       if (Array.isArray(newSubscriptions) && (newSubscriptions as string[]).includes(expectedKey)) {
         console.log(`[LINUX DEBUG] Successfully re-established '${expectedKey}' subscription`);
         return true;
-      } else {
-        console.log(
-          `[LINUX DEBUG] Re-subscription verification failed, subscriptions:`,
-          newSubscriptions,
-        );
-        return false;
       }
+      console.log(
+        '[LINUX DEBUG] Re-subscription verification failed, subscriptions:',
+        newSubscriptions,
+      );
+      return false;
     } catch (resubError) {
-      console.log(`[LINUX DEBUG] Failed to re-subscribe:`, resubError);
+      console.log('[LINUX DEBUG] Failed to re-subscribe:', resubError);
       return false;
     }
   }

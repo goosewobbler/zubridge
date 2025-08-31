@@ -4,11 +4,11 @@ import { sanitizeState } from '../src/utils/serialization.js';
 describe('serialization.ts', () => {
   describe('sanitizeState', () => {
     it('should handle primitive values', () => {
-      expect(sanitizeState(null as any)).toBeNull();
-      expect(sanitizeState(undefined as any)).toBeUndefined();
-      expect(sanitizeState(42 as any)).toBe(42);
-      expect(sanitizeState('hello' as any)).toBe('hello');
-      expect(sanitizeState(true as any)).toBe(true);
+      expect(sanitizeState(null as unknown as Record<string, unknown>)).toBeNull();
+      expect(sanitizeState(undefined as unknown as Record<string, unknown>)).toBeUndefined();
+      expect(sanitizeState(42 as unknown as Record<string, unknown>)).toBe(42);
+      expect(sanitizeState('hello' as unknown as Record<string, unknown>)).toBe('hello');
+      expect(sanitizeState(true as unknown as Record<string, unknown>)).toBe(true);
     });
 
     it('should remove functions from objects', () => {
@@ -53,7 +53,7 @@ describe('serialization.ts', () => {
       });
 
       expect(output.user).not.toHaveProperty('sayHello');
-      expect((output.user as any).details).not.toHaveProperty('getAge');
+      expect((output.user as Record<string, unknown>).details).not.toHaveProperty('getAge');
     });
 
     it('should preserve arrays with functions', () => {
@@ -108,11 +108,11 @@ describe('serialization.ts', () => {
       expect(output.data).toHaveProperty('settings');
 
       // Verify settings
-      expect((output.data as any).settings).toHaveProperty('theme', 'dark');
-      expect((output.data as any).settings).not.toHaveProperty('toggleTheme');
+      expect((output.data as Record<string, unknown>).settings).toHaveProperty('theme', 'dark');
+      expect((output.data as Record<string, unknown>).settings).not.toHaveProperty('toggleTheme');
 
       // Verify users array
-      const users = (output.data as any).users;
+      const users = (output.data as Record<string, unknown>).users;
       expect(Array.isArray(users)).toBe(true);
       expect(users).toHaveLength(2);
 

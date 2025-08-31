@@ -8,7 +8,7 @@ export type CounterAction = { type: 'COUNTER:INCREMENT' } | { type: 'COUNTER:DEC
  * In the reducers pattern, we implement pure functions that
  * receive the current state and an action, and return a new state
  */
-export const reducer: Reducer<number> = (counter = 0, action: Action) => {
+export const reducer: Reducer<number> = (counter, action: Action) => {
   switch (action.type) {
     case 'COUNTER:INCREMENT':
       console.log('[Reducer] Incrementing counter');

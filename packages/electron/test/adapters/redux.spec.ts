@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Action, AnyState } from '@zubridge/types';
 import type { Store } from 'redux';
-import type { AnyState, Action } from '@zubridge/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createReduxAdapter } from '../../src/adapters/redux.js';
 
@@ -16,12 +16,14 @@ function createMockStore(initialState: AnyState = {}) {
 
   const store = {
     getState: vi.fn(() => currentState),
-    dispatch: vi.fn((action: any) => {
+    dispatch: vi.fn((action: Action) => {
       if (action.type === 'TEST_ACTION') {
         currentState = { ...currentState, value: action.payload };
       }
       // Notify all listeners
-      listeners.forEach((listener) => listener());
+      listeners.forEach((listener) => {
+        listener();
+      });
       return action;
     }),
     subscribe: vi.fn((listener: () => void) => {
@@ -139,10 +141,10 @@ describe('Redux Adapter', () => {
           handlers: {
             counter: {
               increment: counterHandler,
-            } as any,
+            },
             theme: {
               toggle: themeHandler,
-            } as any,
+            },
           },
         });
 
@@ -168,7 +170,7 @@ describe('Redux Adapter', () => {
           handlers: {
             Counter: {
               Increment: counterHandler,
-            } as any,
+            },
           },
         });
 
@@ -189,7 +191,7 @@ describe('Redux Adapter', () => {
                   update: updateHandler,
                 },
               },
-            } as any,
+            },
           },
         });
 
@@ -224,7 +226,7 @@ describe('Redux Adapter', () => {
           handlers: {
             counter: {
               increment: incrementHandler,
-            } as any,
+            },
           },
         });
 

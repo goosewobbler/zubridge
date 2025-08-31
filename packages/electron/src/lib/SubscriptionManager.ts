@@ -73,7 +73,7 @@ export function getPartialState<S>(state: S, keys?: string[]): Partial<S> {
 /**
  * Sets a deep value in an object at the given path (dot notation).
  */
-function setDeep(obj: any, path: string, value: any): void {
+function setDeep(obj: Record<string, unknown>, path: string, value: unknown): void {
   const keys = path.split('.');
   let curr = obj;
   for (let i = 0; i < keys.length - 1; i++) {
@@ -87,7 +87,7 @@ function setDeep(obj: any, path: string, value: any): void {
  * Checks if any of the subscribed keys have changed between prev and next state.
  */
 function hasRelevantChange<S>(prev: S, next: S, keys?: string[]): boolean {
-  debug('subscription', `[hasRelevantChange] Comparing states:`, {
+  debug('subscription', '[hasRelevantChange] Comparing states:', {
     prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
     next: JSON.stringify(next),
     keys,
@@ -168,7 +168,7 @@ export class SubscriptionManager<S> {
       this.subscriptions.set(subscriptionKey, { keys: undefined, callback, windowId });
     }
     // If there's an existing subscription with specific keys, merge the keys
-    else if (existingSubscription && existingSubscription.keys) {
+    else if (existingSubscription?.keys) {
       // Combine existing keys with new keys and remove duplicates
       const mergedKeys = [...new Set([...existingSubscription.keys, ...normalized])];
       debug('subscription', `[subscribe] Merging keys for window ${windowId}:`, mergedKeys);
@@ -198,7 +198,7 @@ export class SubscriptionManager<S> {
    */
   unsubscribe(
     keys: string[] | undefined,
-    callback: SubscriptionCallback<S>,
+    _callback: SubscriptionCallback<S>,
     windowId: number,
   ): void {
     debug(
@@ -318,7 +318,7 @@ export class SubscriptionManager<S> {
       return ['*'];
     }
 
-    debug('subscription', `[getCurrentSubscriptionKeys] Found specific keys:`, subscription.keys);
+    debug('subscription', '[getCurrentSubscriptionKeys] Found specific keys:', subscription.keys);
     return subscription.keys;
   }
 }

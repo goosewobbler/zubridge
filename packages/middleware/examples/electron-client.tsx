@@ -1,8 +1,8 @@
 // Example React client for an Electron app using @zubridge/electron with middleware
 // This file would be part of your React frontend
 
-import React, { useEffect, useState } from 'react';
-import { useElectronZubridgeStore, useElectronZubridgeDispatch } from '@zubridge/electron';
+import { useElectronZubridgeDispatch, useElectronZubridgeStore } from '@zubridge/electron';
+import { useEffect, useState } from 'react';
 
 // Define our app state interfaces
 interface ThemeState {
@@ -46,7 +46,7 @@ export function App(): JSX.Element {
   // Debug state to show middleware connection
   const [middlewareConnected, setMiddlewareConnected] = useState<boolean>(false);
   // Store performance metrics from WebSocket
-  const [performanceMetrics, setPerformanceMetrics] = useState<any[]>([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState<Record<string, unknown>[]>([]);
 
   // Connect to middleware WebSocket for direct communication (optional)
   useEffect(() => {
@@ -129,16 +129,26 @@ export function App(): JSX.Element {
         <div className="counter-container">
           <h2>Counter: {counter}</h2>
           <div className="button-group">
-            <button onClick={handleDecrement}>Decrement</button>
-            <button onClick={handleReset}>Reset</button>
-            <button onClick={handleIncrement}>Increment</button>
-            <button onClick={handleSlowIncrement}>Slow Increment</button>
+            <button type="button" onClick={handleDecrement}>
+              Decrement
+            </button>
+            <button type="button" onClick={handleReset}>
+              Reset
+            </button>
+            <button type="button" onClick={handleIncrement}>
+              Increment
+            </button>
+            <button type="button" onClick={handleSlowIncrement}>
+              Slow Increment
+            </button>
           </div>
         </div>
 
         <div className="theme-container">
           <h2>Theme: {isDarkTheme ? 'Dark' : 'Light'}</h2>
-          <button onClick={handleToggleTheme}>Toggle Theme</button>
+          <button type="button" onClick={handleToggleTheme}>
+            Toggle Theme
+          </button>
         </div>
 
         {/* Performance metrics display */}
@@ -171,7 +181,7 @@ export function App(): JSX.Element {
                     const ipcTime = totalTime - processingTime || 0;
 
                     return (
-                      <tr key={index}>
+                      <tr key={`${actionType}-${index}-${totalTime}`}>
                         <td>{actionType}</td>
                         <td>{totalTime.toFixed(2)} ms</td>
                         <td>{processingTime.toFixed(2)} ms</td>

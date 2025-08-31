@@ -1,10 +1,10 @@
+import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
-import type { ZustandBridge, ZubridgeMiddleware } from '@zubridge/electron/main';
 
-import { incrementCounter, decrementCounter } from '../features/counter/index.js';
+import { decrementCounter, incrementCounter } from '../features/counter/index.js';
+import type { ActionHandlers, State } from '../features/index.js';
 import { toggleTheme } from '../features/theme/index.js';
-import type { State, ActionHandlers } from '../features/index.js';
 
 /**
  * Creates action handlers for the handlers mode

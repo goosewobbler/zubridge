@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import type { StoreApi } from 'zustand';
 import type { Store } from 'redux';
+import type { StoreApi } from 'zustand';
 import type { State } from '../../types.js';
 import { rootReducer } from './features/index.js';
 

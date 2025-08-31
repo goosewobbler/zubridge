@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as electron from 'electron';
-import { preloadBridge, preloadZustandBridge } from '../src/preload.js';
-import { IpcChannel } from '../src/constants.js';
-import type { AnyState, Action } from '@zubridge/types';
+import type { Action, AnyState } from '@zubridge/types';
 import type { IpcRendererEvent } from 'electron';
+import * as electron from 'electron';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { IpcChannel } from '../src/constants.js';
+import { preloadBridge, preloadZustandBridge } from '../src/preload.js';
 
 // Mock electron for testing
 vi.mock('electron', () => {
@@ -25,7 +25,7 @@ vi.mock('electron', () => {
 });
 
 beforeEach(() => {
-  // @ts-ignore - mocking window properties
+  // @ts-expect-error - mocking window properties
   window.__zubridge_windowId = '123';
 
   // Mock IPC invoke for window ID and state
@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // @ts-ignore - cleanup mocks
+  // @ts-expect-error - cleanup mocks
   delete window.__zubridge_windowId;
   delete window.__zubridge_subscriptionValidator;
   vi.clearAllMocks();
@@ -61,7 +61,7 @@ describe('preloadBridge', () => {
     it('should set up subscription with ipcRenderer', () => {
       const callback = vi.fn();
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
-      let ipcCallback: (event: any, data: any) => void = () => {};
+      let ipcCallback: (event: unknown, data: unknown) => void = () => {};
       mockedIpcRenderer.on.mockImplementation((channel, cb) => {
         if (channel === IpcChannel.STATE_UPDATE) {
           ipcCallback = cb;
@@ -75,7 +75,7 @@ describe('preloadBridge', () => {
         expect.any(Function),
       );
       // No longer sends to old SUBSCRIBE channel
-      ipcCallback({} as any, { updateId: 'test-id', state: { counter: 42 }, thunkId: null });
+      ipcCallback({} as unknown, { updateId: 'test-id', state: { counter: 42 }, thunkId: null });
       expect(callback).toHaveBeenCalledWith({ counter: 42 });
     });
 
@@ -91,7 +91,11 @@ describe('preloadBridge', () => {
         .mock.calls.filter(([channel]) => channel === IpcChannel.STATE_UPDATE)
         .map(([, cb]) => cb);
       if (ipcCallbacks.length > 0) {
-        ipcCallbacks[0]({} as any, { updateId: 'test-id', state: { counter: 42 }, thunkId: null });
+        ipcCallbacks[0]({} as unknown, {
+          updateId: 'test-id',
+          state: { counter: 42 },
+          thunkId: null,
+        });
       }
       expect(callback).not.toHaveBeenCalled();
       expect(callback2).toHaveBeenCalledWith({ counter: 42 });
@@ -119,7 +123,7 @@ describe('preloadBridge', () => {
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
       // Store the registered callbacks for later use
-      const callbacks: Record<string, any> = {};
+      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
 
       mockedIpcRenderer.on.mockImplementation((channel, callback) => {
         callbacks[channel] = callback;
@@ -165,7 +169,7 @@ describe('preloadBridge', () => {
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
       // Store the registered callbacks for later use
-      const callbacks: Record<string, any> = {};
+      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
 
       mockedIpcRenderer.on.mockImplementation((channel, callback) => {
         callbacks[channel] = callback;

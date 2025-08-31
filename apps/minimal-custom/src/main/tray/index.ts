@@ -1,8 +1,8 @@
-import { type BrowserWindow } from 'electron';
 import { createDispatch } from '@zubridge/electron/main';
-import { BaseSystemTray } from './base.js';
+import type { AnyState, StateManager } from '@zubridge/types';
+import type { BrowserWindow } from 'electron';
 import type { State } from '../../features/index.js';
-import type { StateManager, AnyState } from '@zubridge/types';
+import { BaseSystemTray } from './base.js';
 
 /**
  * Custom mode tray implementation
@@ -14,14 +14,14 @@ export class CustomSystemTray extends BaseSystemTray {
     console.log('[Custom Tray] Initializing with shared custom store');
 
     // Use the shared store instance from the main process
-    this.dispatch = createDispatch(store) as any;
+    this.dispatch = createDispatch(store);
 
     // Initialize immediately with current state
     this.update(store.getState() as State);
 
     // Subscribe to state changes to update the tray UI
     store.subscribe((state: AnyState) => {
-      console.log(`[Custom Tray] State update:`, state);
+      console.log('[Custom Tray] State update:', state);
       this.update(state as State);
     });
   }

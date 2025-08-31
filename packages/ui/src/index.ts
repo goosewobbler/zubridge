@@ -1,19 +1,18 @@
 // Export shared components
-export * from './components/Button';
-export * from './components/CounterActions';
-export * from './components/Header';
-export * from './components/ThemeToggle';
-export * from './components/WindowActions';
-export * from './components/WindowDisplay';
-export * from './components/SubscriptionControls';
-export * from './components/GenerateLargeState';
-
-// Export shared hooks
-export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';
 
 // Export component types
 export type { ElectronAppProps } from './components/AppBase/hoc/withElectron';
 export type { TauriAppProps } from './components/AppBase/hoc/withTauri';
+// Export shared hooks
+export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';
+export * from './components/Button';
+export * from './components/CounterActions';
+export * from './components/GenerateLargeState';
+export * from './components/Header';
+export * from './components/SubscriptionControls';
+export * from './components/ThemeToggle';
+export * from './components/WindowActions';
+export * from './components/WindowDisplay';
 
 // Import types to augment Window interface
 import './types.js';

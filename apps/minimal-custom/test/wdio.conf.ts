@@ -1,12 +1,12 @@
-import url from 'node:url';
 import path from 'node:path';
+import url from 'node:url';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 const testSpecs = [path.join(__dirname, 'specs', '**/*.spec.ts')];
 const appEntryPoint = './out/main/index.js';
 
-const config: any = {
+const config: Record<string, unknown> = {
   runner: 'local',
   specs: testSpecs,
   exclude: [],

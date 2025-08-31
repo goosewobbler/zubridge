@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  RendererThunkProcessor,
-  getThunkProcessor,
-} from '../../src/renderer/rendererThunkProcessor.js';
 import type { Action } from '@zubridge/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getThunkProcessor,
+  RendererThunkProcessor,
+} from '../../src/renderer/rendererThunkProcessor.js';
 
 const mockActionSender = vi.fn();
 const mockThunkRegistrar = vi.fn();
@@ -61,7 +61,7 @@ describe('RendererThunkProcessor', () => {
   it('should execute a thunk and use the state provider', async () => {
     const stateProvider = vi.fn().mockResolvedValue({ counter: 42 });
     processor.setStateProvider(stateProvider);
-    const thunk = vi.fn(async (getState, dispatch) => {
+    const thunk = vi.fn(async (getState, _dispatch) => {
       const state = await getState();
       return state.counter;
     });
@@ -85,7 +85,7 @@ describe('RendererThunkProcessor', () => {
     mockThunkCompleter.mockResolvedValue(undefined);
 
     // Mock actionSender to simulate completing the action
-    mockActionSender.mockImplementation(async (action: Action, parentId?: string) => {
+    mockActionSender.mockImplementation(async (action: Action, _parentId?: string) => {
       // Simulate a slight delay
       await new Promise((resolve) => setTimeout(resolve, 10));
       // Complete the action
@@ -112,7 +112,7 @@ describe('RendererThunkProcessor', () => {
     mockThunkCompleter.mockResolvedValue(undefined);
 
     // Mock actionSender to simulate completing the action
-    mockActionSender.mockImplementation(async (action: Action, parentId?: string) => {
+    mockActionSender.mockImplementation(async (action: Action, _parentId?: string) => {
       // Simulate a slight delay
       await new Promise((resolve) => setTimeout(resolve, 10));
       // Complete the action with the nested thunk result
@@ -181,7 +181,7 @@ describe('RendererThunkProcessor', () => {
 
     // Mock the implementation to directly call the reject function
     // This simulates what happens in the actual code when actionSender throws
-    const originalDispatchAction = processor.dispatchAction;
+    const _originalDispatchAction = processor.dispatchAction;
 
     // Spy on dispatchAction to intercept the call
     const dispatchSpy = vi.spyOn(processor, 'dispatchAction').mockImplementation(async () => {
@@ -282,7 +282,7 @@ describe('RendererThunkProcessor', () => {
     global.window = {
       ...originalWindow,
       zubridge: mockZubridge,
-    } as any;
+    } as unknown as typeof global.window;
 
     await processor.dispatchAction({ type: 'USE_WINDOW_ZUBRIDGE' });
 

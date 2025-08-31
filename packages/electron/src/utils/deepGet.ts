@@ -1,9 +1,17 @@
-export function deepGet(obj: any, key: string | string[], def?: any): any {
+export function deepGet(
+  obj: Record<string, unknown>,
+  key: string | string[],
+  def?: unknown,
+): unknown {
   let p: number;
-  let undef;
+  let undef: unknown;
   const path = typeof key === 'string' ? key.split('.') : key;
+  let currentObj: unknown = obj;
   for (p = 0; p < path.length; p++) {
-    obj = obj ? obj[path[p]] : undef;
+    currentObj =
+      currentObj && typeof currentObj === 'object'
+        ? (currentObj as Record<string, unknown>)[path[p]]
+        : undef;
   }
-  return obj === undef ? def : obj;
+  return currentObj === undef ? def : currentObj;
 }

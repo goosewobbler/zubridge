@@ -1,6 +1,6 @@
+import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import type { Plugin, ViteDevServer } from 'vite';
 
 // For resolving the UI package path correctly

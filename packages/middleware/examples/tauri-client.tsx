@@ -1,8 +1,9 @@
 // Example React client for a Tauri app using @zubridge/tauri with middleware
 // This file would be part of your React frontend
 
-import React, { useEffect, useState } from 'react';
-import { useZubridgeStore, useZubridgeDispatch } from '@zubridge/tauri';
+import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 
 // Define our app state interfaces
 interface ThemeState {
@@ -55,7 +56,7 @@ export function App(): React.Element {
       setMiddlewareConnected(false);
     };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = (_event) => {
       // Messages from middleware are MessagePack encoded
       // Would need MessagePack library to decode in real app
       console.log('Received message from middleware');
@@ -104,15 +105,23 @@ export function App(): React.Element {
         <div className="counter-container">
           <h2>Counter: {counter}</h2>
           <div className="button-group">
-            <button onClick={handleDecrement}>Decrement</button>
-            <button onClick={handleReset}>Reset</button>
-            <button onClick={handleIncrement}>Increment</button>
+            <button type="button" onClick={handleDecrement}>
+              Decrement
+            </button>
+            <button type="button" onClick={handleReset}>
+              Reset
+            </button>
+            <button type="button" onClick={handleIncrement}>
+              Increment
+            </button>
           </div>
         </div>
 
         <div className="theme-container">
           <h2>Theme: {isDarkTheme ? 'Dark' : 'Light'}</h2>
-          <button onClick={handleToggleTheme}>Toggle Theme</button>
+          <button type="button" onClick={handleToggleTheme}>
+            Toggle Theme
+          </button>
         </div>
 
         <div className="info-panel">

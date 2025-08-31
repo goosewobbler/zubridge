@@ -5,5 +5,7 @@ import type { State } from '../../features/index.js';
  */
 export const useStore = () => {
   // Access the store through the window.zubridge object
-  return (window as any).zubridge?.useStore?.() as State | undefined;
+  return (window as { zubridge?: { useStore?: () => State } }).zubridge?.useStore?.() as
+    | State
+    | undefined;
 };

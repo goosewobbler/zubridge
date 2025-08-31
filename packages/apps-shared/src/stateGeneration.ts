@@ -15,8 +15,8 @@ export function generateComplexState(
   maxDepth = 3,
   width = 3,
   prefix = '',
-): Record<string, any> {
-  const result: Record<string, any> = {};
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   // Base case - at max depth just create leaf values
   if (depth >= maxDepth) {
@@ -98,12 +98,12 @@ export function generateFlatState(count: number): Record<string, number> {
  * @param complexity Complexity of each object (1-5)
  * @returns An array of objects
  */
-export function generateLargeArray(count: number, complexity = 1): any[] {
+export function generateLargeArray(count: number, complexity = 1): unknown[] {
   return Array(count)
     .fill(0)
     .map((_, i) => {
       // Basic object structure
-      const obj: Record<string, any> = {
+      const obj: Record<string, unknown> = {
         id: i,
         name: `Item ${i}`,
         value: Math.random() * 1000,
@@ -165,7 +165,7 @@ export function generateTestState(
     arraySize: number;
     arrayComplexity: number;
   }>,
-): Record<string, any> {
+): Record<string, unknown> {
   // Define variants with predetermined sizes
   const variants = {
     small: { flatSize: 100, nestedDepth: 2, nestedWidth: 2, arraySize: 50, arrayComplexity: 2 },
@@ -211,7 +211,7 @@ export function generateTestState(
       options: config,
       estimatedSize: `~${Math.floor(
         (config.flatSize * 8 + // ~8 bytes per flat key-value
-          Math.pow(config.nestedWidth, config.nestedDepth) * 20 + // ~20 bytes per nested item
+          config.nestedWidth ** config.nestedDepth * 20 + // ~20 bytes per nested item
           (config.flatSize / 2) * 8 + // ~8 bytes per number
           (config.flatSize / 5) * 10 + // ~10 bytes per string
           config.arraySize * 50 * config.arrayComplexity) / // ~50 bytes per object × complexity

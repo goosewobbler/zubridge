@@ -1,7 +1,7 @@
-import path from 'node:path';
 import fs from 'node:fs';
-import { defineConfig } from 'vite';
+import path from 'node:path';
 import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // Carefully calculate all paths to ensure consistency
 console.log(`[PATH DEBUG] __dirname: ${__dirname}`);

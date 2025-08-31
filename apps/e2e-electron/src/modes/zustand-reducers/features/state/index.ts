@@ -1,6 +1,6 @@
+import { generateTestState, initialState } from '@zubridge/apps-shared';
 import type { Reducer } from '@zubridge/electron';
 import type { Action } from '@zubridge/types';
-import { initialState, generateTestState } from '@zubridge/apps-shared';
 
 export type StateAction =
   | { type: 'STATE:RESET' }

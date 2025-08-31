@@ -1,9 +1,9 @@
+import { type BaseState, initialState } from '@zubridge/apps-shared';
 import type { AnyState } from '@zubridge/types';
-import { initialState, type BaseState } from '@zubridge/apps-shared';
 import * as counter from './counter/index.js';
-import * as theme from './theme/index.js';
-import * as state from './state/index.js';
 import * as error from './error/index.js';
+import * as state from './state/index.js';
+import * as theme from './theme/index.js';
 
 /**
  * Get the initial state for all features

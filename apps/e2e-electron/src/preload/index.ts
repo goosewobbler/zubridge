@@ -1,9 +1,7 @@
-import { contextBridge, ipcRenderer } from 'electron';
-
 import { preloadBridge } from '@zubridge/electron/preload';
-
-import type { State } from '../types.js';
+import { contextBridge, ipcRenderer } from 'electron';
 import { AppIpcChannel } from '../constants.js';
+import type { State } from '../types.js';
 
 console.log('[Preload] Script initializing');
 

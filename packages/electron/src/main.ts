@@ -1,47 +1,42 @@
+import type { AnyState, BackendBridge, Dispatch, WrapperOrWebContents } from '@zubridge/types';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
-import type { BackendBridge, AnyState, Dispatch, WrapperOrWebContents } from '@zubridge/types';
-import { createBridgeFromStore, CoreBridgeOptions } from './bridge.js';
-import { createDispatch } from './main/dispatch.js';
-import { ZustandOptions } from './adapters/zustand.js';
-import { ReduxOptions } from './adapters/redux.js';
+import type { ReduxOptions } from './adapters/redux.js';
+import type { ZustandOptions } from './adapters/zustand.js';
+import { type CoreBridgeOptions, createBridgeFromStore } from './bridge.js';
 import { removeStateManager } from './lib/stateManagerRegistry.js';
+import { createDispatch } from './main/dispatch.js';
 
+export type { ReduxOptions } from './adapters/redux.js';
+// Export types
+export type { ZustandOptions } from './adapters/zustand.js';
+export type { CoreBridgeOptions } from './bridge.js';
 /**
  * Re-export main process functionality
  */
-export { createCoreBridge } from './bridge.js';
-export { createBridgeFromStore } from './bridge.js';
+export { createBridgeFromStore, createCoreBridge } from './bridge.js';
 export { createDispatch } from './main/dispatch.js';
+export type { ZubridgeMiddleware } from './middleware.js';
 export { createMiddlewareOptions } from './middleware.js';
-
-// Export environment utilities (main process only)
-export { isDev } from './utils/environment.js';
-
-// Export validation functions with proper parameter types
-export {
-  validateStateAccess,
-  validateStateAccessWithExistence,
-  validateStateAccessBatch,
-  stateKeyExists,
-  isSubscribedToKey,
-  getWindowSubscriptions,
-} from './renderer/subscriptionValidator.js';
-
 // Export action validation functions with proper parameter types
 export {
+  canDispatchAction,
+  getAffectedStateKeys,
   registerActionMapping,
   registerActionMappings,
-  getAffectedStateKeys,
-  canDispatchAction,
   validateActionDispatch,
 } from './renderer/actionValidator.js';
-
-// Export types
-export type { ZustandOptions } from './adapters/zustand.js';
-export type { ReduxOptions } from './adapters/redux.js';
-export type { CoreBridgeOptions } from './bridge.js';
-export type { ZubridgeMiddleware } from './middleware.js';
+// Export validation functions with proper parameter types
+export {
+  getWindowSubscriptions,
+  isSubscribedToKey,
+  stateKeyExists,
+  validateStateAccess,
+  validateStateAccessBatch,
+  validateStateAccessWithExistence,
+} from './renderer/subscriptionValidator.js';
+// Export environment utilities (main process only)
+export { isDev } from './utils/environment.js';
 
 /**
  * Interface for a bridge that connects a Zustand store to the main process

@@ -1,12 +1,10 @@
+import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
-import type { StoreApi } from 'zustand';
 import type { RootReducer } from '@zubridge/types';
-import type { ZustandBridge } from '@zubridge/electron/main';
-import type { ZubridgeMiddleware } from '@zubridge/electron/main';
-
+import type { StoreApi } from 'zustand';
+import type { State } from '../features/index.js';
 // Import root reducer
 import { rootReducer } from '../features/index.js';
-import type { State } from '../features/index.js';
 
 /**
  * Creates a bridge using the reducers approach

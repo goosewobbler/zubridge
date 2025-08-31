@@ -1,10 +1,10 @@
 import {
   createCoreBridge,
   createDispatch,
-  type ZustandBridge,
   type ZubridgeMiddleware,
+  type ZustandBridge,
 } from '@zubridge/electron/main';
-import type { StateManager, AnyState } from '@zubridge/types';
+import type { AnyState, StateManager } from '@zubridge/types';
 
 /**
  * Creates a bridge using the custom store approach

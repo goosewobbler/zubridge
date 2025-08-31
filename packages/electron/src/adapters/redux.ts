@@ -1,8 +1,8 @@
-import type { Store } from 'redux';
-import type { AnyState, Action, Handler, StateManager } from '@zubridge/types';
 import { debug } from '@zubridge/core';
-import { resolveHandler } from '../utils/handlers.js';
+import type { Action, AnyState, Handler, StateManager } from '@zubridge/types';
+import type { Store } from 'redux';
 import type { ZubridgeMiddleware } from '../middleware.js';
+import { resolveHandler } from '../utils/handlers.js';
 
 /**
  * Helper to check if a value is a Promise
@@ -16,7 +16,7 @@ function isPromise(value: unknown): value is Promise<unknown> {
 /**
  * Options for the Redux adapter
  */
-export interface ReduxOptions<S extends AnyState> {
+export interface ReduxOptions<_S extends AnyState> {
   handlers?: Record<string, Handler>;
   middleware?: ZubridgeMiddleware;
 }
@@ -51,7 +51,7 @@ export function createReduxAdapter<S extends AnyState>(
               'adapters',
               `Executing handler for ${action.type}, time: ${new Date().toISOString()}`,
             );
-            const startTime = new Date().getTime();
+            const startTime = Date.now();
             const result = handler(action.payload);
 
             // If the handler returns a Promise, it's async
@@ -65,7 +65,7 @@ export function createReduxAdapter<S extends AnyState>(
                 isSync: false,
                 completion: result
                   .then(() => {
-                    const endTime = new Date().getTime();
+                    const endTime = Date.now();
                     debug(
                       'adapters',
                       `Async handler for ${action.type} completed in ${endTime - startTime}ms, time: ${new Date().toISOString()}`,
@@ -75,14 +75,13 @@ export function createReduxAdapter<S extends AnyState>(
                     debug('adapters:error', `Error in async handler for ${action.type}:`, error);
                   }),
               };
-            } else {
-              const endTime = new Date().getTime();
-              debug(
-                'adapters',
-                `Sync handler for ${action.type} completed in ${endTime - startTime}ms`,
-              );
-              return { isSync: true }; // Sync action
             }
+            const endTime = Date.now();
+            debug(
+              'adapters',
+              `Sync handler for ${action.type} completed in ${endTime - startTime}ms`,
+            );
+            return { isSync: true }; // Sync action
           }
         }
 

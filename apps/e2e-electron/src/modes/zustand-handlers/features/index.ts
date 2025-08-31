@@ -1,18 +1,18 @@
-import { type BaseState } from '@zubridge/apps-shared';
+import type { BaseState } from '@zubridge/apps-shared';
 import type { Handler } from '@zubridge/types';
 import {
-  incrementCounter,
   decrementCounter,
+  doubleCounter,
+  doubleCounterSlow,
+  halveCounter,
+  halveCounterSlow,
+  incrementCounter,
   setCounter,
   setCounterSlow,
-  doubleCounterSlow,
-  halveCounterSlow,
-  doubleCounter,
-  halveCounter,
 } from './counter/index.js';
-import { toggleTheme, setTheme } from './theme/index.js';
-import { resetState, generateLargeState } from './state/index.js';
 import { triggerMainProcessError } from './error/index.js';
+import { generateLargeState, resetState } from './state/index.js';
+import { setTheme, toggleTheme } from './theme/index.js';
 
 /**
  * Types for the handlers mode state

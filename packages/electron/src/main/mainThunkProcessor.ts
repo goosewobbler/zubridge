@@ -1,17 +1,17 @@
-import { v4 as uuidv4 } from 'uuid';
 import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
-  Thunk,
   Dispatch,
-  StateManager,
   DispatchOptions,
+  StateManager,
+  Thunk,
 } from '@zubridge/types';
+import { v4 as uuidv4 } from 'uuid';
 import { thunkManager } from '../lib/initThunkManager.js';
+import { Thunk as ThunkClass } from '../lib/Thunk.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
 import { actionQueue } from './actionQueue.js';
-import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
 // Platform-specific timeout for action completion
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
@@ -25,14 +25,14 @@ debug(
  */
 export class MainThunkProcessor {
   // State manager to process actions
-  private stateManager?: StateManager<any>;
+  private stateManager?: StateManager<AnyState>;
 
   // Map to track action promises for potentially async actions
   private pendingActionPromises = new Map<
     string,
     {
-      resolve: (value: any) => void;
-      promise: Promise<any>;
+      resolve: (value: unknown) => void;
+      promise: Promise<unknown>;
     }
   >();
 
@@ -54,7 +54,7 @@ export class MainThunkProcessor {
    * Initialize with required dependencies
    * This should be called before each dispatch operation with the current context
    */
-  public initialize(options: { stateManager: StateManager<any> }): void {
+  public initialize(options: { stateManager: StateManager<AnyState> }): void {
     this.stateManager = options.stateManager;
     thunkManager.setStateManager(this.stateManager);
     debug('core', '[MAIN_THUNK] Initialized with state manager');
@@ -86,7 +86,7 @@ export class MainThunkProcessor {
     thunk: Thunk<S>,
     options?: DispatchOptions,
     parentId?: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before executing thunks.');
     }
@@ -111,7 +111,7 @@ export class MainThunkProcessor {
     );
     debug('core', `[MAIN_THUNK] Current active root thunk: ${currentActiveRootThunk || 'none'}`);
     debug('core', `[MAIN_THUNK] Active thunks count: ${activeThunksSummary.thunks.length}`);
-    debug('core', `[MAIN_THUNK] Active thunks details:`, activeThunksSummary.thunks);
+    debug('core', '[MAIN_THUNK] Active thunks details:', activeThunksSummary.thunks);
 
     // Execute the thunk through the registration queue and then wait for state propagation
     const thunkExecutionPromise = this.mainThunkRegistrationQueue.registerThunk(
@@ -121,7 +121,7 @@ export class MainThunkProcessor {
           // Create a dispatch function for the thunk that tracks each action
           // This dispatch is "scoped" to the parent's keys/force
           const dispatch: Dispatch<S> = async (
-            action: any,
+            action: string | Action | Thunk<S>,
             payload?: unknown,
             _childOptions?: DispatchOptions,
           ) => {
@@ -219,15 +219,13 @@ export class MainThunkProcessor {
       checkCompletion();
 
       // Ensure timeout is cleared when resolved
-      const originalResolve = resolve;
-      const originalReject = reject;
-      resolve = (value: any) => {
+      const _safeResolve = (value: unknown) => {
         clearTimeout(timeout);
-        originalResolve(value);
+        resolve(value);
       };
-      reject = (error: any) => {
+      const _safeReject = (error: unknown) => {
         clearTimeout(timeout);
-        originalReject(error);
+        reject(error);
       };
     });
   }
@@ -266,7 +264,7 @@ export class MainThunkProcessor {
     payload?: unknown,
     parentId?: string,
     options?: DispatchOptions,
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (!this.stateManager) {
       throw new Error('State manager not set. Call initialize() before dispatching actions.');
     }

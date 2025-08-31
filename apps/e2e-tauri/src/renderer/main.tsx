@@ -1,10 +1,10 @@
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { cleanupZubridge, initializeBridge } from '@zubridge/tauri';
+import { withTauri } from '@zubridge/ui/tauri';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { invoke } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { initializeBridge, cleanupZubridge } from '@zubridge/tauri';
-import { withTauri } from '@zubridge/ui/tauri';
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
 
@@ -41,7 +41,7 @@ function AppWrapper() {
           ) => Promise<UnlistenFn>,
         });
         setBridgeInitialized(true);
-      } catch (error) {
+      } catch (_error) {
         setWindowLabel('error-label');
         setBridgeInitialized(false);
       }
@@ -80,7 +80,7 @@ function AppWrapper() {
         platform: 'tauri',
       }}
       windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
-      appName={`Zubridge - Tauri Example`}
+      appName={'Zubridge - Tauri Example'}
     />
   );
 }

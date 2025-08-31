@@ -1,20 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ipcMain } from 'electron';
+import type { Action, AnyState, StateManager, WebContentsWrapper } from '@zubridge/types';
 import type { WebContents } from 'electron';
-import type { AnyState, StateManager, WebContentsWrapper, Action } from '@zubridge/types';
-import type { StoreApi } from 'zustand/vanilla';
+import { ipcMain } from 'electron';
 import type { Store } from 'redux';
-import { createCoreBridge, createBridgeFromStore } from '../src/bridge.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StoreApi } from 'zustand/vanilla';
+import type { ZustandOptions } from '../src/adapters/zustand.js';
+import { createBridgeFromStore, createCoreBridge } from '../src/bridge.js';
 import { IpcChannel } from '../src/constants.js';
 import { getStateManager } from '../src/lib/stateManagerRegistry.js';
 import {
-  getWebContents,
-  prepareWebContents,
   createWebContentsTracker,
+  getWebContents,
   isDestroyed,
+  prepareWebContents,
   safelySendToWindow,
 } from '../src/utils/windows.js';
-import { ZustandOptions } from '../src/adapters/zustand.js';
 
 // Mock Electron's ipcMain
 vi.mock('electron', () => {
@@ -99,11 +99,11 @@ function createMockStateManager(): StateManager<AnyState> {
 // Helper function to create a mock tracker
 function createMockTracker() {
   return {
-    track: vi.fn((webContents) => true),
+    track: vi.fn((_webContents) => true),
     untrack: vi.fn(),
     untrackById: vi.fn(),
-    isTracked: vi.fn((webContents) => true),
-    hasId: vi.fn((id) => true),
+    isTracked: vi.fn((_webContents) => true),
+    hasId: vi.fn((_id) => true),
     getActiveIds: vi.fn(() => [1, 2]),
     getActiveWebContents: vi.fn(() => [createMockWebContents(1), createMockWebContents(2)]),
     cleanup: vi.fn(),
@@ -136,13 +136,13 @@ describe('bridge.ts', () => {
 
     // Setup default mocks for windows utils
     const mockTracker = createMockTracker();
-    vi.mocked(getWebContents).mockImplementation((id) => ({ id }) as any);
+    vi.mocked(getWebContents).mockImplementation((id) => ({ id }) as unknown as WebContents);
     vi.mocked(createWebContentsTracker).mockReturnValue(mockTracker);
     vi.mocked(prepareWebContents).mockImplementation((wrappers) => {
       if (!wrappers) return [];
       return wrappers.map((w) => {
         const webContents = 'webContents' in w ? w.webContents : w;
-        return { id: webContents.id, isDestroyed: () => false } as any;
+        return { id: webContents.id, isDestroyed: () => false } as unknown as WebContents;
       });
     });
   });
@@ -192,7 +192,7 @@ describe('bridge.ts', () => {
         };
 
         // Call the handler with the mock event and action object in correct format
-        dispatchHandler(mockEvent as any, {
+        dispatchHandler(mockEvent as unknown as IpcMainEvent, {
           action,
           parentId: undefined,
         });
@@ -223,7 +223,7 @@ describe('bridge.ts', () => {
       expect(getStateHandler).toBeDefined();
 
       if (getStateHandler) {
-        const result = getStateHandler({} as any);
+        const result = getStateHandler({} as unknown as IpcMainInvokeEvent);
         expect(stateManager.getState).toHaveBeenCalled();
         expect(result).toEqual({ counter: 0 });
       }
@@ -304,10 +304,12 @@ describe('bridge.ts', () => {
       const stateManager = createMockStateManager();
       vi.mocked(ipcMain.on).mockImplementation((channel, handler) => {
         if (channel === IpcChannel.DISPATCH) {
-          const mockEvent = { sender: { id: 1, send: vi.fn() } } as any;
+          const mockEvent = { sender: { id: 1, send: vi.fn() } } as unknown as IpcMainEvent;
           try {
-            (handler as any)(mockEvent, { action: { type: 'ERROR_ACTION' } });
-          } catch (e) {
+            (handler as unknown as (event: IpcMainEvent, data: unknown) => void)(mockEvent, {
+              action: { type: 'ERROR_ACTION' },
+            });
+          } catch (_e) {
             // error expected
           }
         }
@@ -319,9 +321,13 @@ describe('bridge.ts', () => {
         .mocked(ipcMain.on)
         .mock.calls.find((call) => call[0] === IpcChannel.DISPATCH)?.[1];
       if (dispatchHandler) {
-        const mockEvent = { sender: { id: 1, send: vi.fn() } } as any;
+        const mockEvent = { sender: { id: 1, send: vi.fn() } } as unknown as IpcMainEvent;
         // Expect this path to be taken, error to be handled internally by debug log
-        expect(() => (dispatchHandler as any)(mockEvent, { action: null })).not.toThrow();
+        expect(() =>
+          (dispatchHandler as unknown as (event: IpcMainEvent, data: unknown) => void)(mockEvent, {
+            action: null,
+          }),
+        ).not.toThrow();
       }
     });
 
@@ -337,7 +343,11 @@ describe('bridge.ts', () => {
         .mock.calls.find((call) => call[0] === IpcChannel.GET_STATE)?.[1];
       if (getStateHandler) {
         // Expect this path to be taken, error to be handled internally by debug log
-        expect(() => (getStateHandler as any)({} as any)).not.toThrow();
+        expect(() =>
+          (getStateHandler as unknown as (event: IpcMainInvokeEvent) => unknown)(
+            {} as unknown as IpcMainInvokeEvent,
+          ),
+        ).not.toThrow();
       }
     });
 
@@ -345,8 +355,8 @@ describe('bridge.ts', () => {
       const stateManager = createMockStateManager();
       vi.mocked(stateManager.subscribe).mockImplementation((callback) => {
         try {
-          (callback as any)({} as any);
-        } catch (e) {
+          (callback as unknown as (state: unknown) => void)({} as unknown);
+        } catch (_e) {
           // error expected if callback throws, then subscribe throws its own
         }
         throw new Error('Subscription error simulation');
@@ -379,12 +389,12 @@ describe('bridge.ts', () => {
       const bridge = createCoreBridge(stateManager);
 
       // Test with null
-      const result1 = bridge.subscribe(null as any);
+      const result1 = bridge.subscribe(null as unknown as WrapperOrWebContents[]);
       expect(result1).toHaveProperty('unsubscribe');
       expect(typeof result1.unsubscribe).toBe('function');
 
       // Test with non-array
-      const result2 = bridge.subscribe({} as any);
+      const result2 = bridge.subscribe({} as unknown as WrapperOrWebContents[]);
       expect(result2).toHaveProperty('unsubscribe');
       expect(typeof result2.unsubscribe).toBe('function');
 
@@ -539,16 +549,20 @@ describe('bridge.ts', () => {
 
       if (getStateHandler) {
         // Mock event with a window ID that has no subscription manager
-        const mockEvent = { sender: { id: 999 } } as any;
+        const mockEvent = { sender: { id: 999 } } as unknown as IpcMainInvokeEvent;
 
         // Call the handler without any options (no bypassAccessControl)
-        const result = (getStateHandler as any)(mockEvent, {});
+        const result = (
+          getStateHandler as unknown as (event: IpcMainInvokeEvent, options?: unknown) => unknown
+        )(mockEvent, {});
 
         // Should return full state since no subscription manager exists for this window
         expect(result).toEqual(testState);
 
         // Call with empty options
-        const result2 = (getStateHandler as any)(mockEvent, undefined);
+        const result2 = (
+          getStateHandler as unknown as (event: IpcMainInvokeEvent, options?: unknown) => unknown
+        )(mockEvent, undefined);
         expect(result2).toEqual(testState);
       }
     });
@@ -577,10 +591,12 @@ describe('bridge.ts', () => {
 
       if (getStateHandler) {
         // Mock event with the same window ID that now has a subscription manager
-        const mockEvent = { sender: { id: 123 } } as any;
+        const mockEvent = { sender: { id: 123 } } as unknown as IpcMainInvokeEvent;
 
         // Call the handler without bypassAccessControl
-        const result = (getStateHandler as any)(mockEvent, {});
+        const result = (
+          getStateHandler as unknown as (event: IpcMainInvokeEvent, options?: unknown) => unknown
+        )(mockEvent, {});
 
         // Should return filtered state (only 'general' key) since subscription manager exists
         expect(result).toEqual({ general: { value: 42 } });

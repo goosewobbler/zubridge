@@ -1,6 +1,6 @@
-import { type BrowserWindow } from 'electron';
-import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
+import type { BrowserWindow } from 'electron';
+import type { StoreApi } from 'zustand';
 import type { State } from '../../features/index.js';
 import { BaseSystemTray } from './base.js';
 
@@ -23,7 +23,7 @@ export class BasicSystemTray extends BaseSystemTray {
 
     // Subscribe to state changes to update the tray UI
     store.subscribe((state) => {
-      console.log(`[Basic Tray] State update:`, state);
+      console.log('[Basic Tray] State update:', state);
       this.update(state);
     });
   }

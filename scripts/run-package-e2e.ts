@@ -21,8 +21,8 @@
 
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
+import path from 'node:path';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -49,7 +49,7 @@ if (specificApp && !targetApp) {
 
 // Constants
 const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-const TEMP_DIR = path.join(os.tmpdir(), 'zubridge-e2e-' + Date.now());
+const TEMP_DIR = path.join(os.tmpdir(), `zubridge-e2e-${Date.now()}`);
 const ZUBRIDGE_PACKAGES = {
   dependencies: ['@zubridge/electron'],
   devDependencies: ['@zubridge/types'],
@@ -59,7 +59,7 @@ const ZUBRIDGE_PACKAGES = {
 function runCommand(
   command: string,
   options: { cwd?: string; stdio?: 'inherit' | 'pipe' } = {},
-): string | void {
+): string | undefined {
   try {
     const result = execSync(command, {
       encoding: 'utf-8',
@@ -180,11 +180,11 @@ function prepareApp(appPath: string): string {
   });
 
   // Step 1: Install original dependencies first (ensures electron postinstall runs)
-  console.log(`[DEBUG] Installing original dependencies first...`);
+  console.log('[DEBUG] Installing original dependencies first...');
   runCommand('pnpm install', { cwd: tempAppPath, stdio: 'inherit' });
 
   // Step 2: Add local packages separately
-  console.log(`[DEBUG] Adding local Zubridge packages...`);
+  console.log('[DEBUG] Adding local Zubridge packages...');
   for (const pkg of ZUBRIDGE_PACKAGES.dependencies) {
     const pkgName = pkg.replace('@zubridge/', '');
     const pkgDir = path.join(process.cwd(), 'packages', pkgName);
@@ -247,39 +247,39 @@ function prepareApp(appPath: string): string {
 
   // If electron binary doesn't exist, try multiple approaches
   if (!fs.existsSync(electronBinPath)) {
-    console.log(`[DEBUG] Electron binary missing, trying multiple approaches...`);
+    console.log('[DEBUG] Electron binary missing, trying multiple approaches...');
 
     // Approach 1: Force rebuild with explicit configuration
     try {
-      console.log(`[DEBUG] Approach 1: Rebuilding electron with explicit config...`);
+      console.log('[DEBUG] Approach 1: Rebuilding electron with explicit config...');
       runCommand('pnpm config set onlyBuiltDependencies "electron,esbuild"', {
         cwd: tempAppPath,
         stdio: 'inherit',
       });
       runCommand('pnpm rebuild electron', { cwd: tempAppPath, stdio: 'inherit' });
-      console.log(`[DEBUG] Electron rebuild completed`);
+      console.log('[DEBUG] Electron rebuild completed');
     } catch (error) {
-      console.warn(`[DEBUG] Electron rebuild failed:`, error);
+      console.warn('[DEBUG] Electron rebuild failed:', error);
 
       // Approach 2: Remove and reinstall electron
       try {
-        console.log(`[DEBUG] Approach 2: Removing and reinstalling electron...`);
+        console.log('[DEBUG] Approach 2: Removing and reinstalling electron...');
         runCommand('pnpm remove electron', { cwd: tempAppPath, stdio: 'inherit' });
         runCommand('pnpm add electron@35.0.0 --save-dev', { cwd: tempAppPath, stdio: 'inherit' });
-        console.log(`[DEBUG] Electron reinstall completed`);
+        console.log('[DEBUG] Electron reinstall completed');
       } catch (reinstallError) {
-        console.warn(`[DEBUG] Electron reinstall failed:`, reinstallError);
+        console.warn('[DEBUG] Electron reinstall failed:', reinstallError);
 
         // Approach 3: Try with npm instead of pnpm
         try {
-          console.log(`[DEBUG] Approach 3: Installing electron with npm...`);
+          console.log('[DEBUG] Approach 3: Installing electron with npm...');
           runCommand('npm install electron@35.0.0 --save-dev', {
             cwd: tempAppPath,
             stdio: 'inherit',
           });
-          console.log(`[DEBUG] Electron npm install completed`);
+          console.log('[DEBUG] Electron npm install completed');
         } catch (npmError) {
-          console.warn(`[DEBUG] Electron npm install failed:`, npmError);
+          console.warn('[DEBUG] Electron npm install failed:', npmError);
         }
       }
     }
@@ -290,7 +290,7 @@ function prepareApp(appPath: string): string {
   console.log(`[DEBUG] Final electron executable check: ${fs.existsSync(electronExecPath)}`);
 
   if (process.platform === 'darwin') {
-    console.log(`[DEBUG] Platform is macOS - executable should be in Electron.app bundle`);
+    console.log('[DEBUG] Platform is macOS - executable should be in Electron.app bundle');
   }
 
   // List contents of node_modules/.bin to see what's actually there
@@ -304,7 +304,7 @@ function prepareApp(appPath: string): string {
 }
 
 // Copy log files from temp directory back to repo directory
-function copyLogFiles(hasFailedTests: boolean = false): void {
+function copyLogFiles(hasFailedTests = false): void {
   console.log('\nCopying log files back to repo directory...');
 
   const minimalApps = findMinimalApps();
@@ -312,7 +312,7 @@ function copyLogFiles(hasFailedTests: boolean = false): void {
   for (const appPath of minimalApps) {
     const appName = path.basename(appPath);
     const tempAppPath = path.join(TEMP_DIR, appName);
-    const tempLogsDir = path.join(tempAppPath, 'wdio-logs-' + appName);
+    const tempLogsDir = path.join(tempAppPath, `wdio-logs-${appName}`);
     const repoLogsDir = path.join(appPath, `wdio-logs-${appName}-${TIMESTAMP}`);
 
     // Check if logs exist in temp directory
@@ -356,11 +356,11 @@ function runTests(appPath: string): boolean {
     runCommand('pnpm test', { cwd: appPath, stdio: 'inherit' });
     console.log(`✅ Tests passed for ${appName}`);
     return true;
-  } catch (error) {
+  } catch (_error) {
     console.error(`❌ Tests failed for ${appName}`);
 
     // Log wdio logs if they exist
-    const logsDir = path.join(appPath, 'wdio-logs-' + appName);
+    const logsDir = path.join(appPath, `wdio-logs-${appName}`);
     if (fs.existsSync(logsDir)) {
       console.log('\nWebdriverIO Logs:');
       const logFiles = fs.readdirSync(logsDir);
@@ -415,7 +415,7 @@ async function main() {
     }
 
     // Summary
-    console.log('\n' + '='.repeat(50));
+    console.log(`\n${'='.repeat(50)}`);
     console.log('TEST SUMMARY');
     console.log('='.repeat(50));
     console.log(`Total apps: ${minimalApps.length}`);

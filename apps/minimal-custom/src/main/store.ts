@@ -1,5 +1,5 @@
-import { EventEmitter } from 'events';
-import type { StateManager, Action, AnyState, ProcessResult } from '@zubridge/types';
+import { EventEmitter } from 'node:events';
+import type { Action, AnyState, ProcessResult, StateManager } from '@zubridge/types';
 import { handlers, initialState } from '../features/index.js';
 
 /**

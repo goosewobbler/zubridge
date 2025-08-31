@@ -5,6 +5,4 @@ interface ImportMeta {
   readonly vitest?: typeof import('vitest'); // Add this line
 }
 
-interface ImportMetaEnv {
-  // Add other environment variables if needed
-}
+type ImportMetaEnv = {};

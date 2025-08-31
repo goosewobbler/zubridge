@@ -1,9 +1,9 @@
-import { type BrowserWindow } from 'electron';
-import { type StoreApi } from 'zustand';
 import { createDispatch } from '@zubridge/electron/main';
+import type { BrowserWindow } from 'electron';
+import type { StoreApi } from 'zustand';
 import type { State } from '../../features/index.js';
-import { BaseSystemTray } from './base.js';
 import { rootReducer } from '../../features/index.js';
+import { BaseSystemTray } from './base.js';
 
 /**
  * Reducers mode tray implementation
@@ -24,7 +24,7 @@ export class ReducersSystemTray extends BaseSystemTray {
 
     // Subscribe to state changes to update the tray UI
     store.subscribe((state) => {
-      console.log(`[Reducers Tray] State update:`, state);
+      console.log('[Reducers Tray] State update:', state);
       this.update(state);
     });
   }

@@ -1,8 +1,9 @@
 /**
  * Debug logging utility for Zubridge packages
  */
-import debug, { Debugger } from 'weald';
+
 import wdioLogger from '@wdio/logger';
+import debug, { type Debugger } from 'weald';
 
 const logger = wdioLogger('zubridge');
 
@@ -37,7 +38,7 @@ function getDebugger(area: string): Debugger {
 /**
  * Log a debug message
  */
-export function debugLog(area: string, ...args: any[]): void {
+export function debugLog(area: string, ...args: unknown[]): void {
   const debugInstance = getDebugger(area);
   debugInstance(args);
 

@@ -1,3 +1,4 @@
+import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -7,13 +8,12 @@ import type {
   Thunk,
 } from '@zubridge/types';
 import type { Store } from 'redux';
-import type { StoreApi } from 'zustand/vanilla';
-import { ZustandOptions } from '../adapters/zustand.js';
-import { ReduxOptions } from '../adapters/redux.js';
-import { getStateManager } from '../lib/stateManagerRegistry.js';
-import { debug } from '@zubridge/core';
-import { getMainThunkProcessor } from './mainThunkProcessor.js';
 import { v4 as uuidv4 } from 'uuid';
+import type { StoreApi } from 'zustand/vanilla';
+import type { ReduxOptions } from '../adapters/redux.js';
+import type { ZustandOptions } from '../adapters/zustand.js';
+import { getStateManager } from '../lib/stateManagerRegistry.js';
+import { getMainThunkProcessor } from './mainThunkProcessor.js';
 
 // Get the main process thunk processor
 const mainThunkProcessor = getMainThunkProcessor();
@@ -57,7 +57,7 @@ export function createDispatch<S extends AnyState>(
     payload?: unknown,
     parentId?: string,
     options?: DispatchOptions,
-  ): Promise<any> => {
+  ): Promise<unknown> => {
     try {
       debug('core', 'Dispatching from main process');
 
@@ -134,7 +134,7 @@ export function createDispatch<S extends AnyState>(
     actionOrThunk: Thunk<S> | Action | string,
     payload?: unknown,
     options?: DispatchOptions,
-  ): Promise<any> => {
+  ): Promise<unknown> => {
     return internalDispatch(actionOrThunk, payload, undefined, options);
   };
 

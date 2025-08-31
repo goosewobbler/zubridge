@@ -1,16 +1,17 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
+import { before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import {
-  setupTestEnvironment,
-  windowHandles,
-  refreshWindowHandles,
-  waitUntilWindowsAvailable,
-  switchToWindow,
-  getButtonInCurrentWindow,
-} from '../utils/window.js';
-import { getCounterValue, incrementCounterAndVerify, resetCounter } from '../utils/counter.js';
 import { TIMING } from '../constants.js';
+import { getCounterValue, incrementCounterAndVerify, resetCounter } from '../utils/counter.js';
+import {
+  getButtonInCurrentWindow,
+  refreshWindowHandles,
+  setupTestEnvironment,
+  switchToWindow,
+  waitUntilWindowsAvailable,
+  windowHandles,
+} from '../utils/window.js';
+
 console.log(`Using timing configuration for platform: ${process.platform}`);
 
 // Names of core windows for easier reference in tests
@@ -422,7 +423,7 @@ describe('Advanced State Synchronization', () => {
         await resetCounter();
 
         // Get current value and increment
-        let currentValue = await getCounterValue();
+        const currentValue = await getCounterValue();
         console.log(`Current value before increment: ${currentValue}`);
         const incrementButton = await getButtonInCurrentWindow('increment');
         await incrementButton.click();
@@ -472,7 +473,7 @@ describe('Advanced State Synchronization', () => {
 
         // Make change in source window
         await switchToWindow(sourceWindowIndex);
-        let currentValue = await getCounterValue();
+        const currentValue = await getCounterValue();
         console.log(`Source window starting value: ${currentValue}`);
         const incrementButton = await getButtonInCurrentWindow('increment');
         await incrementButton.click();

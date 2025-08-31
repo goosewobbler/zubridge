@@ -1,4 +1,4 @@
-import type { Action, AnyState, DispatchOptions, Handlers, InternalThunk } from './index';
+import type { AnyState, Handlers } from './index';
 
 /**
  * Internal global augmentations for Zubridge
@@ -11,7 +11,7 @@ export interface ZubridgeInternalWindow {
   __zubridge_subscriptionValidator?: {
     getWindowSubscriptions: () => Promise<string[]>;
     isSubscribedToKey: (key: string) => Promise<boolean>;
-    stateKeyExists: (state: any, key: string) => boolean;
+    stateKeyExists: (state: unknown, key: string) => boolean;
   };
 
   /**

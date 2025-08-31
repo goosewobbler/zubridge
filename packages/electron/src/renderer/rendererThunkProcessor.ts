@@ -1,9 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { Action, AnyState, Dispatch, InternalThunk, DispatchOptions } from '@zubridge/types';
 import { debug } from '@zubridge/core';
-import { Thunk } from '../lib/Thunk.js';
+import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from '@zubridge/types';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
+import { v4 as uuidv4 } from 'uuid';
+import { Thunk } from '../lib/Thunk.js';
 
 // Platform-specific timeout for action completion
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
@@ -34,13 +34,13 @@ export class RendererThunkProcessor {
   private thunkCompleter?: (thunkId: string) => Promise<void>;
 
   // Custom state provider function
-  private stateProvider?: (opts?: { bypassAccessControl?: boolean }) => Promise<any>;
+  private stateProvider?: (opts?: { bypassAccessControl?: boolean }) => Promise<unknown>;
 
   // Queue of pending dispatches (action IDs)
   private pendingDispatches = new Set<string>();
 
   // Map of action IDs to their resolution functions
-  private actionCompletionCallbacks = new Map<string, (result: any) => void>();
+  private actionCompletionCallbacks = new Map<string, (result: unknown) => void>();
 
   // Map to track timeouts for action completion
   private actionTimeouts = new Map<string, NodeJS.Timeout>();
@@ -66,7 +66,7 @@ export class RendererThunkProcessor {
       bypassAccessControl?: boolean,
     ) => Promise<void>;
     thunkCompleter: (thunkId: string) => Promise<void>;
-    actionCompletionHandler?: (actionId: string, callback: (result: any) => void) => () => void;
+    actionCompletionHandler?: (actionId: string, callback: (result: unknown) => void) => () => void;
     actionCompletionTimeoutMs?: number;
   }): void {
     debug('ipc', '[RENDERER_THUNK] Initializing with options:', options);
@@ -90,7 +90,7 @@ export class RendererThunkProcessor {
    * This allows explicitly registering a way to get state after initialization
    */
   public setStateProvider(
-    provider: (opts?: { bypassAccessControl?: boolean }) => Promise<any>,
+    provider: (opts?: { bypassAccessControl?: boolean }) => Promise<unknown>,
   ): void {
     this.stateProvider = provider;
     debug('ipc', '[RENDERER_THUNK] Custom state provider registered');
@@ -100,7 +100,7 @@ export class RendererThunkProcessor {
    * Handle action completion notification
    * This should be called when an action acknowledgment is received from the main process
    */
-  public completeAction(actionId: string, result: any): void {
+  public completeAction(actionId: string, result: unknown): void {
     debug('ipc', `[RENDERER_THUNK] Action completed: ${actionId}`);
     debug('ipc', `[RENDERER_THUNK] Result: ${JSON.stringify(result)}`);
 
@@ -113,7 +113,7 @@ export class RendererThunkProcessor {
     }
 
     // Check if there was an error in the result
-    if (result && result.error) {
+    if (result?.error) {
       debug(
         'ipc:error',
         `[RENDERER_THUNK] Action ${actionId} completed with error: ${result.error}`,
@@ -161,7 +161,7 @@ export class RendererThunkProcessor {
     thunkFn: InternalThunk<S>,
     options?: DispatchOptions,
     parentId?: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     // Create a Thunk instance
     const thunk = new Thunk({
       sourceWindowId: this.currentWindowId ?? 0,
@@ -215,7 +215,10 @@ export class RendererThunkProcessor {
       };
 
       // Create a dispatch function for this thunk that tracks each action
-      const dispatch: Dispatch<S> = async (action: any, payload?: unknown) => {
+      const dispatch: Dispatch<S> = async (
+        action: string | Action | Thunk<S>,
+        payload?: unknown,
+      ) => {
         debug(
           'ipc',
           `[RENDERER_THUNK] [${thunk.id}] Dispatch called (bypassThunkLock=${thunk.bypassThunkLock})`,
@@ -266,7 +269,7 @@ export class RendererThunkProcessor {
         );
 
         // Create a promise that will resolve when this action completes
-        const actionPromise = new Promise<any>((resolve, reject) => {
+        const actionPromise = new Promise<unknown>((resolve, reject) => {
           // Store the callback to be called when action acknowledgment is received
           this.actionCompletionCallbacks.set(actionId, (result) => {
             debug(
@@ -276,7 +279,7 @@ export class RendererThunkProcessor {
             );
 
             // Check if the result contains an error
-            if (result && result.error) {
+            if (result?.error) {
               debug(
                 'ipc:error',
                 `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,
@@ -425,7 +428,7 @@ export class RendererThunkProcessor {
         );
 
         // Check if the result contains an error
-        if (result && result.error) {
+        if (result?.error) {
           debug(
             'ipc:error',
             `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,

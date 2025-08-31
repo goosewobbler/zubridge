@@ -1,16 +1,16 @@
-import { ipcRenderer, contextBridge } from 'electron';
-import type { IpcRendererEvent } from 'electron';
-import { v4 as uuidv4 } from 'uuid';
+import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
-  Handlers,
-  Thunk,
   DispatchOptions,
+  Handlers,
   InternalThunk,
+  Thunk,
 } from '@zubridge/types';
+import type { IpcRendererEvent } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from './constants.js';
-import { debug } from '@zubridge/core';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 
 // Return type for preload bridge function
@@ -78,7 +78,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
           // Notify all subscribers of the state change
-          listeners.forEach((fn) => fn(state));
+          listeners.forEach((fn) => {
+            fn(state);
+          });
 
           // Send acknowledgment back to main process
           debug('ipc', `Sending acknowledgment for state update ${updateId}`);
@@ -187,7 +189,9 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
       debug(
         'ipc',
-        `Dispatching action: ${actionObj.type}, bypassAccessControl=${!!actionObj.__bypassAccessControl}, bypassThunkLock=${!!actionObj.__bypassThunkLock}`,
+        `Dispatching action: ${
+          actionObj.type
+        }, bypassAccessControl=${!!actionObj.__bypassAccessControl}, bypassThunkLock=${!!actionObj.__bypassThunkLock}`,
       );
 
       // Track action dispatch for performance metrics
@@ -198,7 +202,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         const actionId = actionObj.__id as string;
 
         // Set up a one-time listener for the acknowledgment of this specific action
-        const ackListener = (_event: IpcRendererEvent, payload: any) => {
+        const ackListener = (_event: IpcRendererEvent, payload: unknown) => {
           // Check if this acknowledgment is for our action
           if (payload && payload.actionId === actionId) {
             // Remove the listener since we got our response
@@ -235,15 +239,13 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         }, timeoutMs);
 
         // Make sure to clear the timeout when the promise settles
-        const originalResolve = resolve;
-        const originalReject = reject;
-        resolve = (value: any) => {
+        const _safeResolve = (value: Action) => {
           clearTimeout(timeoutId);
-          originalResolve(value);
+          resolve(value);
         };
-        reject = (error: any) => {
+        const _safeReject = (error: unknown) => {
           clearTimeout(timeoutId);
-          originalReject(error);
+          reject(error);
         };
       });
     },
@@ -255,25 +257,28 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
     // Set up acknowledgment listener for the thunk processor
     debug('ipc', 'Set up IPC acknowledgement listener for thunk processor');
-    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (_event: IpcRendererEvent, payload: any) => {
-      const { actionId, thunkState } = payload || {};
+    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
+      const { actionId, thunkState } =
+        (payload as { actionId?: string; thunkState?: unknown }) || {};
 
       debug('ipc', `Received acknowledgment for action: ${actionId}`);
 
       if (thunkState) {
         debug(
           'ipc',
-          `Received thunk state with ${thunkState.activeThunks?.length || 0} active thunks`,
+          `Received thunk state with ${
+            (thunkState as { activeThunks?: unknown[] })?.activeThunks?.length || 0
+          } active thunks`,
         );
       }
 
       // Notify the thunk processor of action completion
       debug('ipc', `Notifying thunk processor of action completion: ${actionId}`);
-      thunkProcessor.completeAction(actionId, payload);
+      thunkProcessor.completeAction(actionId as string, payload);
     });
 
     // Set up thunk registration ack listener
-    ipcRenderer.on(IpcChannel.REGISTER_THUNK_ACK, (_event: IpcRendererEvent, payload: any) => {
+    ipcRenderer.on(IpcChannel.REGISTER_THUNK_ACK, (_event: IpcRendererEvent, payload: unknown) => {
       const { thunkId, success, error } = payload || {};
       const entry = pendingThunkRegistrations.get(thunkId);
       if (entry) {
@@ -402,7 +407,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
           },
 
           // Check if a state key exists in an object
-          stateKeyExists: (state: any, key: string): boolean => {
+          stateKeyExists: (state: Record<string, unknown>, key: string): boolean => {
             if (!key || !state) return false;
 
             // Handle dot notation by traversing the object

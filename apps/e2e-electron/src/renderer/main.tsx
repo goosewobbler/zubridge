@@ -3,21 +3,21 @@ import { createRoot } from 'react-dom/client';
 // Import UI package styles
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
-// Import Zubridge components
-import { withElectron } from '@zubridge/ui/electron';
 // Import shared utilities
 import {
-  createDoubleCounterThunk,
-  createDoubleCounterSlowThunk,
-  createDistinctiveCounterThunk,
   createDistinctiveCounterSlowThunk,
-  createDoubleCounterWithGetStateOverrideThunk,
-  createDoubleCounterSlowThunkForSyncHandlers,
   createDistinctiveCounterSlowThunkForSyncHandlers,
+  createDistinctiveCounterThunk,
+  createDoubleCounterSlowThunk,
+  createDoubleCounterSlowThunkForSyncHandlers,
+  createDoubleCounterThunk,
+  createDoubleCounterWithGetStateOverrideThunk,
   type ThunkContext,
 } from '@zubridge/apps-shared';
 // Import debug utility
 import { debug } from '@zubridge/core';
+// Import Zubridge components
+import { withElectron } from '@zubridge/ui/electron';
 
 // Create the Electron app component
 const ElectronApp = withElectron();

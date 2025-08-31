@@ -1,4 +1,4 @@
-import { type StoreApi } from 'zustand';
+import type { StoreApi } from 'zustand';
 import type { BaseState } from '../../../../types.js';
 
 /**
@@ -58,7 +58,7 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
 
     // Implement a slow double counter handler with delay
     'COUNTER:DOUBLE:SLOW': async () => {
-      console.log(`[Basic] Doubling counter with delay`);
+      console.log('[Basic] Doubling counter with delay');
       console.log(`[Basic] Time before delay: ${new Date().toISOString()}`);
 
       // Use a longer delay on Linux to ensure proper sequence execution
@@ -81,7 +81,7 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
 
     // Implement a slow halve counter handler with delay
     'COUNTER:HALVE:SLOW': async () => {
-      console.log(`[Basic] Halving counter with 2500ms delay`);
+      console.log('[Basic] Halving counter with 2500ms delay');
       console.log(`[Basic] Time before delay: ${new Date().toISOString()}`);
 
       // Wait for 2500ms to simulate a slow operation
@@ -100,7 +100,7 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
 
     // Implement a double counter handler (no delay)
     'COUNTER:DOUBLE': () => {
-      console.log(`[Basic] Doubling counter immediately`);
+      console.log('[Basic] Doubling counter immediately');
       setState((state) => {
         const newValue = (state.counter || 0) * 2;
         console.log(`[Basic] Counter doubled from ${state.counter} to ${newValue}`);
@@ -113,7 +113,7 @@ export const attachCounterHandlers = <S extends BaseState>(store: StoreApi<S>) =
 
     // Implement a halve counter handler (no delay)
     'COUNTER:HALVE': () => {
-      console.log(`[Basic] Halving counter immediately`);
+      console.log('[Basic] Halving counter immediately');
       setState((state) => {
         const newValue = Math.round((state.counter || 0) / 2);
         console.log(`[Basic] Counter halved from ${state.counter} to ${newValue}`);

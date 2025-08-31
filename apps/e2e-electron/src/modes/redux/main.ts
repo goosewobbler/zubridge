@@ -1,8 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
-import type { Store } from 'redux';
-import type { ZustandBridge } from '@zubridge/electron/main';
+import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import { createReduxBridge as createMainReduxBridge } from '@zubridge/electron/main';
-import type { ZubridgeMiddleware } from '@zubridge/electron/main';
+import type { Store } from 'redux';
 
 import { rootReducer } from './features/index.js';
 

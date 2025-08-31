@@ -1,5 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { initialState, generateTestState } from '@zubridge/apps-shared';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { generateTestState, initialState } from '@zubridge/apps-shared';
 
 // Define state variant types
 type StateVariant = 'small' | 'medium' | 'large' | 'xl';
@@ -19,11 +19,8 @@ export const stateSlice = createSlice({
       return initialState;
     },
     generateLargeState: {
-      reducer: (state, action: PayloadAction<any>) => {
-        return {
-          ...state,
-          filler: action.payload,
-        };
+      reducer: (state, action: PayloadAction<Record<string, unknown>>) => {
+        state.filler = action.payload;
       },
       prepare: (options?: GenerateStateOptions) => {
         const variant = options?.variant || 'medium';

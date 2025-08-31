@@ -1,7 +1,7 @@
 #!/usr/bin/env node
+import { type ExecException, execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 
 interface PackageJson {
   version: string;
@@ -13,8 +13,8 @@ function readPackageJson(pkgPath: string): PackageJson | undefined {
   try {
     const content = fs.readFileSync(path.resolve(pkgPath), 'utf-8');
     return JSON.parse(content);
-  } catch (error: any) {
-    console.error(`Error reading or parsing ${pkgPath}:`, error.message);
+  } catch (error) {
+    console.error(`Error reading or parsing ${pkgPath}:`, (error as Error).message);
     return undefined;
   }
 }
@@ -28,16 +28,18 @@ function runCommand(command: string): string {
       maxBuffer: 10 * 1024 * 1024,
     });
     return output;
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Error executing command: ${command}`);
-    if (error.stdout) console.error(error.stdout.toString().trim());
-    if (error.stderr) console.error(error.stderr.toString().trim());
+    const stdout = (error as ExecException).stdout;
+    const stderr = (error as ExecException).stderr;
+    if (stdout) console.error(stdout.toString().trim());
+    if (stderr) console.error(stderr.toString().trim());
     process.exit(1);
   }
 }
 
 // Strip scope from package name
-function getUnscopedPackageName(pkgName: string): string {
+function _getUnscopedPackageName(pkgName: string): string {
   return pkgName.includes('/') ? pkgName.split('/')[1] : pkgName;
 }
 
@@ -158,7 +160,7 @@ async function main() {
     // Parse JSON output
     const jsonOutput = JSON.parse(commandOutput);
     const refPackageUpdate = jsonOutput.updates?.find(
-      (update: any) => update.packageName === refPkgScopedName,
+      (update: { packageName: string }) => update.packageName === refPkgScopedName,
     );
 
     if (refPackageUpdate?.newVersion) {
@@ -167,7 +169,7 @@ async function main() {
     } else {
       throw new Error(`Could not find ${refPkgScopedName} in the updates array`);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Error parsing JSON output: ${error.message}`);
     console.log('Falling back to reading version from package.json');
 

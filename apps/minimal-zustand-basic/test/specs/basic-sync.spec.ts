@@ -1,10 +1,10 @@
 import { expect } from '@wdio/globals';
-import { it, describe, before, beforeEach } from 'mocha';
+import { before, beforeEach, describe, it } from 'mocha';
 import { browser } from 'wdio-electron-service';
-import { setupTestEnvironment, getButtonInCurrentWindow, switchToWindow } from '../utils/window.js';
+import { TIMING } from '../utils/constants.js';
 import { getCounterValue, resetCounter } from '../utils/counter.js';
 import { getCurrentTheme, waitForTheme } from '../utils/theme.js';
-import { TIMING } from '../utils/constants.js';
+import { getButtonInCurrentWindow, setupTestEnvironment, switchToWindow } from '../utils/window.js';
 
 console.log(`Using timing configuration for platform: ${process.platform}`);
 

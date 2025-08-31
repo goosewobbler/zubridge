@@ -1,7 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import { ThunkSchedulerEvents } from '../constants.js';
-import { ThunkTask, ThunkQueueStatus, ThunkScheduler as IThunkScheduler } from '../types/thunk.js';
+import type {
+  ThunkScheduler as IThunkScheduler,
+  ThunkQueueStatus,
+  ThunkTask,
+} from '../types/thunk.js';
 
 /**
  * Priority queue-based implementation of ThunkScheduler

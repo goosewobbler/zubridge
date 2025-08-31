@@ -1,5 +1,5 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Action } from '@zubridge/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock electron's ipcRenderer
 vi.mock('electron', () => ({
@@ -26,16 +26,16 @@ const mockWindowSubscriptionValidator = {
 global.window = {
   ...global.window,
   __zubridge_subscriptionValidator: mockWindowSubscriptionValidator,
-} as any;
+} as unknown as typeof global.window;
 
 // Import after mocking dependencies
 import {
+  clearSubscriptionCache,
+  getWindowSubscriptions,
+  isSubscribedToKey,
+  stateKeyExists,
   validateStateAccess,
   validateStateAccessWithExistence,
-  isSubscribedToKey,
-  getWindowSubscriptions,
-  stateKeyExists,
-  clearSubscriptionCache,
 } from '../../src/renderer/subscriptionValidator';
 
 describe('subscriptionValidator', () => {
@@ -325,7 +325,7 @@ describe('subscriptionValidator', () => {
       };
 
       // Setup dynamic responses based on the key
-      mockWindowSubscriptionValidator.stateKeyExists.mockImplementation((s, k) => {
+      mockWindowSubscriptionValidator.stateKeyExists.mockImplementation((_s, k) => {
         return (
           k.startsWith('user.profile.personal') ||
           k === 'user.profile.preferences.notifications.email' ||

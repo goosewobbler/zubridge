@@ -1,24 +1,21 @@
-import process from 'node:process';
-import { BrowserWindow, app, ipcMain } from 'electron';
 import path from 'node:path';
-
-import { isDev } from '@zubridge/electron/main';
-import { createDispatch } from '@zubridge/electron/main';
-import { debug } from '@zubridge/core';
+import process from 'node:process';
 import {
-  createDoubleCounterThunk,
   createDoubleCounterSlowThunk,
+  createDoubleCounterThunk,
   type ThunkContext,
 } from '@zubridge/apps-shared';
+import { debug } from '@zubridge/core';
+import { createDispatch, isDev } from '@zubridge/electron/main';
 import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
-
-import { store, initStore } from './store.js';
-import { tray } from './tray/index.js';
-import { createBridge, type AnyBridge } from './bridge.js';
+import { app, BrowserWindow, ipcMain } from 'electron';
+import { AppIpcChannel } from '../constants.js';
 import { getZubridgeMode } from '../utils/mode.js';
 import { getPreloadPath } from '../utils/path.js';
+import { type AnyBridge, createBridge } from './bridge.js';
+import { initStore, store } from './store.js';
+import { tray } from './tray/index.js';
 import * as windows from './window.js';
-import { AppIpcChannel } from '../constants.js';
 
 debug('example-app:env', '[main/index.ts] Actual process.env.DEBUG:', process.env.DEBUG);
 
@@ -353,7 +350,7 @@ app
         `Window states - Main: ${hasMainWindow}, Direct: ${hasDirectWebContentsWindow}, BrowserView: ${hasBrowserViewWindow}, WebContentsView: ${hasWebContentsViewWindow}`,
       );
 
-      let windowToFocus: BrowserWindow | undefined = undefined;
+      let windowToFocus: BrowserWindow | undefined;
 
       if (!hasMainWindow) {
         debug('example-app:init', 'Creating new main window on activate');

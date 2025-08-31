@@ -1,10 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { createStore } from './store.js';
+import { fileURLToPath } from 'node:url';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { createBridge } from './bridge.js';
-import type { State } from '../features/index.js';
-import type { StoreApi } from 'zustand';
+import { createStore } from './store.js';
 import { createTray } from './tray/index.js';
 
 // Add comprehensive crash handling and native debugging
@@ -22,11 +20,11 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // 2. Add Electron crash detection
-app.on('child-process-gone', (event, details) => {
+app.on('child-process-gone', (_event, details) => {
   console.error('[CRASH DEBUG] Child process gone:', details);
 });
 
-app.on('render-process-gone', (event, webContents, details) => {
+app.on('render-process-gone', (_event, _webContents, details) => {
   console.error('[CRASH DEBUG] Render process gone:', details);
 });
 
@@ -44,11 +42,11 @@ console.log('[CRASH DEBUG] - Environment DISPLAY:', process.env.DISPLAY);
 console.log('[CRASH DEBUG] - Environment NODE_ENV:', process.env.NODE_ENV);
 
 // 4. Add app-level crash debugging
-app.on('before-quit', (event) => {
+app.on('before-quit', (_event) => {
   console.log('[CRASH DEBUG] App before-quit event fired');
 });
 
-app.on('will-quit', (event) => {
+app.on('will-quit', (_event) => {
   console.log('[CRASH DEBUG] App will-quit event fired');
 });
 

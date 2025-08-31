@@ -1,5 +1,5 @@
-import type { Action as TypesAction, AnyState } from '@zubridge/types';
 import { debug } from '@zubridge/core';
+import type { AnyState, Action as TypesAction } from '@zubridge/types';
 
 // Local definition for the Action type expected by the NAPI middleware
 // This is used if direct import `from '@zubridge/middleware'` fails for type resolution.
@@ -69,7 +69,7 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
         debug('core', 'Applying middleware.processAction to action:', action);
 
         // Prepare action for the NAPI middleware which expects payload to be string | undefined
-        let payloadForNapi: string | undefined = undefined;
+        let payloadForNapi: string | undefined;
         if (action.payload !== undefined && action.payload !== null) {
           if (typeof action.payload === 'string') {
             payloadForNapi = action.payload;

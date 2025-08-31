@@ -1,10 +1,10 @@
-import { initialState, type BaseState } from '@zubridge/apps-shared';
+import { type BaseState, initialState } from '@zubridge/apps-shared';
 import type { Reducer } from '@zubridge/electron';
 
 import { reducer as counterReducer } from './counter/index.js';
-import { reducer as themeReducer } from './theme/index.js';
-import { reducer as stateReducer } from './state/index.js';
 import { reducer as errorReducer } from './error/index.js';
+import { reducer as stateReducer } from './state/index.js';
+import { reducer as themeReducer } from './theme/index.js';
 
 // Define the root state type for the reducers mode
 export interface State extends BaseState {}
