@@ -79,7 +79,7 @@ export async function canDispatchAction(action: Action): Promise<boolean> {
   // Check if the window is subscribed to all affected keys
   for (const key of affectedKeys) {
     // First check if the key exists in the state
-    if (!stateKeyExists(currentState, key)) {
+    if (!currentState || !stateKeyExists(currentState, key)) {
       debug('action-validator', `State key ${key} does not exist in the store`);
       return false;
     }
@@ -129,7 +129,7 @@ export async function validateActionDispatch(action: Action): Promise<void> {
   // Check if all affected keys exist in the state
   for (const key of affectedKeys) {
     // Verify key exists in state
-    if (!stateKeyExists(currentState, key)) {
+    if (!currentState || !stateKeyExists(currentState, key)) {
       throw new Error(`State key '${key}' does not exist in the store`);
     }
   }

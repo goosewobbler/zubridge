@@ -43,7 +43,7 @@ export { isDev } from './utils/environment.js';
  */
 export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
   subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
-  unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
+  unsubscribe: (...args: unknown[]) => void;
   getSubscribedWindows: () => number[];
   getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;
@@ -55,7 +55,7 @@ export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBri
  */
 export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
   subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
-  unsubscribe: (windows?: WrapperOrWebContents[], keys?: string[]) => void;
+  unsubscribe: (...args: unknown[]) => void;
   getSubscribedWindows: () => number[];
   getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;

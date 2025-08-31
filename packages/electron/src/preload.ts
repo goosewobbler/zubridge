@@ -159,7 +159,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
         // Execute the thunk directly through the thunkProcessor implementation
         // This avoids the circular reference where executeThunk calls back to preload
-        return thunkProcessor.executeThunk<S>(thunk, thunkOptions);
+        return thunkProcessor.executeThunk<S>(thunk, thunkOptions) as Promise<Action>;
       }
 
       // For string or action object types, create a standardized action object
@@ -204,13 +204,14 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
         // Set up a one-time listener for the acknowledgment of this specific action
         const ackListener = (_event: IpcRendererEvent, payload: unknown) => {
           // Check if this acknowledgment is for our action
-          if (payload && payload.actionId === actionId) {
+          const ackPayload = payload as { actionId?: string; error?: string };
+          if (ackPayload && ackPayload.actionId === actionId) {
             // Remove the listener since we got our response
             ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
 
-            if (payload.error) {
-              debug('ipc:error', `Action ${actionId} failed with error: ${payload.error}`);
-              reject(new Error(payload.error));
+            if (ackPayload.error) {
+              debug('ipc:error', `Action ${actionId} failed with error: ${ackPayload.error}`);
+              reject(new Error(ackPayload.error));
             } else {
               debug('ipc', `Action ${actionId} completed successfully`);
               resolve(actionObj);
@@ -279,7 +280,8 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
 
     // Set up thunk registration ack listener
     ipcRenderer.on(IpcChannel.REGISTER_THUNK_ACK, (_event: IpcRendererEvent, payload: unknown) => {
-      const { thunkId, success, error } = payload || {};
+      const thunkPayload = payload as { thunkId?: string; success?: boolean; error?: string };
+      const { thunkId, success, error } = thunkPayload || {};
       const entry = pendingThunkRegistrations.get(thunkId);
       if (entry) {
         if (success) {
@@ -423,7 +425,7 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
                 return false;
               }
 
-              current = current[part];
+              current = current[part] as Record<string, unknown>;
             }
 
             return true;

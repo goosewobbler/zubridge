@@ -87,7 +87,7 @@ const mockListen = async <E = unknown>(
 
 // Legacy commands for backward compatibility with tests
 const mockLegacyOptions: BackendOptions = {
-  invoke: mockInvoke,
+  invoke: mockInvoke as BackendOptions['invoke'],
   listen: mockListen,
   commands: {
     getInitialState: '__zubridge_get_initial_state',
@@ -98,7 +98,7 @@ const mockLegacyOptions: BackendOptions = {
 
 // Custom command configuration
 const mockCustomOptions: BackendOptions = {
-  invoke: mockInvoke,
+  invoke: mockInvoke as BackendOptions['invoke'],
   listen: mockListen,
   commands: {
     getInitialState: 'custom_get_state',
@@ -217,7 +217,7 @@ describe('@zubridge/tauri', () => {
       // Re-initialize with new functions
       await act(async () => {
         await initializeBridge({
-          invoke: newMockInvoke,
+          invoke: newMockInvoke as BackendOptions['invoke'],
           listen: newMockListen,
           commands: {
             getInitialState: '__zubridge_get_initial_state',
@@ -299,7 +299,7 @@ describe('@zubridge/tauri', () => {
 
       await act(async () => {
         await initializeBridge({
-          invoke: v1Invoke,
+          invoke: v1Invoke as BackendOptions['invoke'],
           listen: v1Listen as BackendOptions['listen'],
         });
       });
@@ -322,7 +322,7 @@ describe('@zubridge/tauri', () => {
 
       await act(async () => {
         await initializeBridge({
-          invoke: v2Invoke,
+          invoke: v2Invoke as BackendOptions['invoke'],
           listen: v2Listen as BackendOptions['listen'],
         });
       });
@@ -338,7 +338,7 @@ describe('@zubridge/tauri', () => {
 
       try {
         await initializeBridge({
-          invoke: mockInvokeError,
+          invoke: mockInvokeError as BackendOptions['invoke'],
           listen: mockListen,
         });
       } catch (_e) {
@@ -393,7 +393,7 @@ describe('@zubridge/tauri', () => {
 
       await act(async () => {
         await initializeBridge({
-          invoke: pluginInvoke,
+          invoke: pluginInvoke as BackendOptions['invoke'],
           listen: mockListen,
           commands: {
             getInitialState: 'plugin:zubridge|get_initial_state',
@@ -532,7 +532,7 @@ describe('@zubridge/tauri', () => {
 
     it('should dispatch an action', async () => {
       await initializeBridge({
-        invoke: mockInvoke,
+        invoke: mockInvoke as BackendOptions['invoke'],
         listen: mockListen,
       });
 
@@ -603,7 +603,7 @@ describe('@zubridge/tauri', () => {
 
       // Initialize bridge
       await initializeBridge({
-        invoke: mockInvoke,
+        invoke: mockInvoke as BackendOptions['invoke'],
         listen: mockListen,
       });
 
