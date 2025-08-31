@@ -282,14 +282,16 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
     ipcRenderer.on(IpcChannel.REGISTER_THUNK_ACK, (_event: IpcRendererEvent, payload: unknown) => {
       const thunkPayload = payload as { thunkId?: string; success?: boolean; error?: string };
       const { thunkId, success, error } = thunkPayload || {};
-      const entry = pendingThunkRegistrations.get(thunkId);
-      if (entry) {
-        if (success) {
-          entry.resolve();
-        } else {
-          entry.reject(error || new Error('Thunk registration failed'));
+      if (thunkId) {
+        const entry = pendingThunkRegistrations.get(thunkId);
+        if (entry) {
+          if (success) {
+            entry.resolve();
+          } else {
+            entry.reject(error || new Error('Thunk registration failed'));
+          }
+          pendingThunkRegistrations.delete(thunkId);
         }
-        pendingThunkRegistrations.delete(thunkId);
       }
     });
 

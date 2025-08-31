@@ -27,5 +27,5 @@ export const generateLargeState = async (options?: {
     filler,
   }));
 
-  console.log(`[Custom] ${variant} test state generated (${filler.meta.estimatedSize})`);
+  console.log(`[Custom] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`);
 };

@@ -206,7 +206,7 @@ export function stateKeyExists(state: Record<string, unknown>, key: string): boo
       return false;
     }
 
-    current = current[part];
+    current = current[part] as Record<string, unknown>;
   }
 
   return true;

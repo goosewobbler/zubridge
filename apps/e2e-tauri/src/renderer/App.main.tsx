@@ -1,5 +1,3 @@
-// @ts-expect-error: React is used for JSX transformation
-
 import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { AnyState } from '@zubridge/tauri';

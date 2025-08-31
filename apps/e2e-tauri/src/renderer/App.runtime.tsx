@@ -1,5 +1,3 @@
-// @ts-expect-error: React is used for JSX
-
 // Correct import paths for Tauri window APIs
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'; // Import WebviewWindow from correct path
 import type { AnyState } from '@zubridge/tauri'; // Import state type if needed for selectors

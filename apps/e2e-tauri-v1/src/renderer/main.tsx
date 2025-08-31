@@ -37,7 +37,11 @@ function AppWrapper() {
         }
         // Initialize Zubridge bridge
         await initializeBridge({
-          invoke,
+          invoke: invoke as <R = unknown>(
+            cmd: string,
+            args?: unknown,
+            options?: unknown,
+          ) => Promise<R>,
           listen: listen as unknown as <E = unknown>(
             event: string,
             handler: (event: E) => void,

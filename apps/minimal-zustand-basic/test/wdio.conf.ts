@@ -13,7 +13,7 @@ const config: Record<string, unknown> = {
   maxInstances: 1,
   capabilities: [
     {
-      'browserName': 'electron',
+      browserName: 'electron',
       'wdio:electronServiceOptions': {
         appEntryPoint: appEntryPoint,
       },

@@ -78,7 +78,12 @@ export function createZustandBridge<S extends AnyState>(
   // Return bridge with all functionality
   return {
     subscribe: coreBridge.subscribe,
-    unsubscribe: coreBridge.unsubscribe,
+    unsubscribe: (...args: unknown[]) => {
+      coreBridge.unsubscribe(
+        args[0] as WrapperOrWebContents[] | WrapperOrWebContents | undefined,
+        args[1] as string[] | undefined,
+      );
+    },
     getSubscribedWindows: coreBridge.getSubscribedWindows,
     getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
@@ -106,7 +111,12 @@ export function createReduxBridge<S extends AnyState>(
   // Return bridge with all functionality
   return {
     subscribe: coreBridge.subscribe,
-    unsubscribe: coreBridge.unsubscribe,
+    unsubscribe: (...args: unknown[]) => {
+      coreBridge.unsubscribe(
+        args[0] as WrapperOrWebContents[] | WrapperOrWebContents | undefined,
+        args[1] as string[] | undefined,
+      );
+    },
     getSubscribedWindows: coreBridge.getSubscribedWindows,
     getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {

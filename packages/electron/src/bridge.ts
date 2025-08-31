@@ -125,37 +125,40 @@ export function createCoreBridge<State extends AnyState>(
       debug('ipc', `Received action data from renderer ${event.sender.id}:`, data);
 
       // Extract the action from the wrapper object
-      const { action, parentId } = data || {};
+      const actionData = data as { action?: unknown; parentId?: string };
+      const { action, parentId } = actionData || {};
 
       if (!action || typeof action !== 'object') {
         debug('ipc', '[BRIDGE DEBUG] Invalid action received:', data);
         return;
       }
 
+      // Cast action to Action type after validation
+      const actionObj = action as Action;
+
       debug('ipc', `[BRIDGE DEBUG] Received action from renderer ${event.sender.id}:`, {
-        type: action.type,
-        id: action.__id,
-        payload: action.payload,
+        type: actionObj.type,
+        id: actionObj.__id,
+        payload: actionObj.payload,
         parentId: parentId,
       });
 
-      if (!action.type) {
+      if (!actionObj.type) {
         debug('ipc', '[BRIDGE DEBUG] Action missing type:', data);
         return;
       }
 
       // Add the source window ID to the action for acknowledgment purposes
       const actionWithSource: Action = {
-        ...action,
+        ...actionObj,
         __sourceWindowId: event.sender.id,
-        parentId: parentId,
       };
 
       // If this is a thunk action, ensure the thunk is registered before enqueueing
       if (parentId && !thunkManager.hasThunk(parentId)) {
         debug(
           'ipc',
-          `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${action.__id}`,
+          `[BRIDGE DEBUG] Registering thunk ${parentId} before enqueueing action ${actionObj.__id}`,
         );
         const thunkObj = new ThunkClass({
           id: parentId,
@@ -170,13 +173,13 @@ export function createCoreBridge<State extends AnyState>(
         // This callback is called when the action is completed (successfully or with error)
         debug(
           'ipc',
-          `[BRIDGE DEBUG] Action ${action.__id} completed with ${error ? 'error' : 'success'}`,
+          `[BRIDGE DEBUG] Action ${actionObj.__id} completed with ${error ? 'error' : 'success'}`,
         );
 
         if (error) {
           debug(
             'ipc:error',
-            `[BRIDGE DEBUG] Error details for action ${action.__id}: ${
+            `[BRIDGE DEBUG] Error details for action ${actionObj.__id}: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );
@@ -197,7 +200,7 @@ export function createCoreBridge<State extends AnyState>(
 
             // Send acknowledgment with thunk state and error information
             safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
-              actionId: action.__id,
+              actionId: actionObj.__id,
               thunkState,
               // Include error information if there was an error
               error: error ? (error instanceof Error ? error.message : String(error)) : null,
@@ -205,13 +208,13 @@ export function createCoreBridge<State extends AnyState>(
 
             debug(
               'ipc',
-              `[BRIDGE DEBUG] Acknowledgment sent for action ${action.__id} to window ${event.sender.id}`,
+              `[BRIDGE DEBUG] Acknowledgment sent for action ${actionObj.__id} to window ${event.sender.id}`,
             );
 
             // Track action acknowledged with middleware
-            if (middlewareCallbacks.trackActionAcknowledged) {
+            if (middlewareCallbacks.trackActionAcknowledged && actionObj.__id) {
               // Use void to indicate we're intentionally not awaiting
-              void middlewareCallbacks.trackActionAcknowledged(action.__id);
+              void middlewareCallbacks.trackActionAcknowledged(actionObj.__id);
             }
           }
         } catch (ackError) {
@@ -224,7 +227,8 @@ export function createCoreBridge<State extends AnyState>(
 
       // Even on error, we should acknowledge the action was processed
       try {
-        const { action } = data || {};
+        const actionData = data as { action?: { __id?: string } };
+        const { action } = actionData || {};
         if (action?.__id) {
           debug('ipc', `Sending acknowledgment for action ${action.__id} despite error`);
           debug(
@@ -249,21 +253,31 @@ export function createCoreBridge<State extends AnyState>(
   // Handle track_action_dispatch events from renderers
   ipcMain.on(IpcChannel.TRACK_ACTION_DISPATCH, async (event: IpcMainEvent, data: unknown) => {
     try {
-      const { action } = data || {};
-      if (!action || !action.type) {
+      const actionData = data as { action?: unknown };
+      const { action } = actionData || {};
+      if (!action || typeof action !== 'object') {
         debug('middleware:error', 'Invalid action tracking data received');
+        return;
+      }
+
+      // Cast action to Action type after validation
+      const actionObj = action as Action;
+
+      if (!actionObj.type) {
+        debug('middleware:error', 'Action missing type field');
         return;
       }
 
       debug(
         'middleware',
-        `Received action dispatch tracking for ${action.type} (ID: ${action.__id})`,
+        `Received action dispatch tracking for ${actionObj.type} (ID: ${actionObj.__id})`,
       );
 
       // Add source window ID to the action
-      const actionWithSource = {
-        ...action,
+      const actionWithSource: Action = {
+        ...actionObj,
         __sourceWindowId: event.sender.id,
+        type: actionObj.type, // Ensure type is not undefined
       };
 
       // Call middleware tracking function if available
@@ -354,7 +368,13 @@ export function createCoreBridge<State extends AnyState>(
     debug('core', '[BRIDGE DEBUG] Data received:', data);
 
     try {
-      const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = data;
+      const thunkData = data as {
+        thunkId?: string;
+        parentId?: string;
+        bypassThunkLock?: boolean;
+        bypassAccessControl?: boolean;
+      };
+      const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = thunkData;
       const sourceWindowId = event.sender.id;
 
       debug(
@@ -382,7 +402,8 @@ export function createCoreBridge<State extends AnyState>(
     } catch (error) {
       debug('core:error', '[BRIDGE DEBUG] Error handling thunk registration:', error);
       // Send failure ack
-      const { thunkId } = data || {};
+      const errorData = data as { thunkId?: string };
+      const { thunkId } = errorData || {};
       event.sender &&
         safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, {
           thunkId,
@@ -395,7 +416,8 @@ export function createCoreBridge<State extends AnyState>(
   // Handle thunk completion from renderers
   ipcMain.on(IpcChannel.COMPLETE_THUNK, (_event: IpcMainEvent, data: unknown) => {
     try {
-      const { thunkId } = data;
+      const completeData = data as { thunkId?: string };
+      const { thunkId } = completeData;
       debug('ipc', `[BRIDGE DEBUG] Received thunk completion notification for ${thunkId}`);
 
       if (!thunkId) {
@@ -423,7 +445,8 @@ export function createCoreBridge<State extends AnyState>(
   // Handle state update acknowledgments from renderers
   ipcMain.on(IpcChannel.STATE_UPDATE_ACK, (event: IpcMainEvent, data: unknown) => {
     try {
-      const { updateId, thunkId } = data || {};
+      const ackData = data as { updateId?: string; thunkId?: string };
+      const { updateId, thunkId } = ackData || {};
       debug(
         'thunk',
         `Received state update acknowledgment for ${updateId} from renderer ${event.sender.id}`,
@@ -744,7 +767,12 @@ export function createCoreBridge<State extends AnyState>(
   // Return the bridge interface
   return {
     subscribe,
-    unsubscribe,
+    unsubscribe: (...args: unknown[]) => {
+      unsubscribe(
+        args[0] as WrapperOrWebContents[] | WrapperOrWebContents | undefined,
+        args[1] as string[] | undefined,
+      );
+    },
     getSubscribedWindows,
     destroy,
     getWindowSubscriptions,

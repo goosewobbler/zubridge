@@ -22,19 +22,19 @@ import { setTheme, toggleTheme } from './features/theme/index.js';
  */
 export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionHandlers => {
   return {
-    'COUNTER:INCREMENT': incrementCounter(store),
-    'COUNTER:DECREMENT': decrementCounter(store),
-    'COUNTER:SET': setCounter(store),
-    'COUNTER:SET:SLOW': setCounterSlow(store),
-    'COUNTER:DOUBLE': doubleCounter(store),
-    'COUNTER:HALVE': halveCounter(store),
-    'COUNTER:DOUBLE:SLOW': doubleCounterSlow(store),
-    'COUNTER:HALVE:SLOW': halveCounterSlow(store),
-    'THEME:TOGGLE': toggleTheme(store),
-    'THEME:SET': setTheme(store),
-    'STATE:RESET': resetState(store),
-    'STATE:GENERATE-FILLER': generateLargeState(store),
-    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': triggerMainProcessError(),
+    'COUNTER:INCREMENT': () => incrementCounter(store)(),
+    'COUNTER:DECREMENT': () => decrementCounter(store)(),
+    'COUNTER:SET': (payload?: unknown) => setCounter(store)(payload as number),
+    'COUNTER:SET:SLOW': (payload?: unknown) => setCounterSlow(store)(payload as number),
+    'COUNTER:DOUBLE': () => doubleCounter(store)(),
+    'COUNTER:HALVE': () => halveCounter(store)(),
+    'COUNTER:DOUBLE:SLOW': () => doubleCounterSlow(store)(),
+    'COUNTER:HALVE:SLOW': () => halveCounterSlow(store)(),
+    'THEME:TOGGLE': () => toggleTheme(store)(),
+    'THEME:SET': (payload?: unknown) => setTheme(store)(payload as boolean),
+    'STATE:RESET': () => resetState(store)(),
+    'STATE:GENERATE-FILLER': (payload?: unknown) => generateLargeState(store)(payload as { variant?: 'small' | 'medium' | 'large' | 'xl' }),
+    'ERROR:TRIGGER_MAIN_PROCESS_ERROR': () => triggerMainProcessError()(),
   };
 };
 

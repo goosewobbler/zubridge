@@ -19,7 +19,7 @@ export const stateSlice = createSlice({
       return initialState;
     },
     generateLargeState: {
-      reducer: (state, action: PayloadAction<Record<string, unknown>>) => {
+      reducer: (state, action: PayloadAction<Record<string, number>>) => {
         state.filler = action.payload;
       },
       prepare: (options?: GenerateStateOptions) => {
@@ -29,10 +29,10 @@ export const stateSlice = createSlice({
         // Use the shared generateTestState function
         const filler = generateTestState(variant);
 
-        console.log(`[Redux Slice] ${variant} test state prepared (${filler.meta.estimatedSize})`);
+        console.log(`[Redux Slice] ${variant} test state prepared (${(filler.meta as { estimatedSize: string }).estimatedSize})`);
 
         return {
-          payload: filler,
+          payload: filler as Record<string, number>,
         };
       },
     },

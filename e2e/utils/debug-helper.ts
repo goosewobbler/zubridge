@@ -15,7 +15,7 @@ export function logWindowCorruption(context: string, windowIndex?: number) {
 
   const timestamp = new Date().toISOString();
   console.log(
-    `[WINDOW_CORRUPTION] ${timestamp} - ${context} ${windowIndex !== undefined ? `(Window ${windowIndex})` : ''}`
+    `[WINDOW_CORRUPTION] ${timestamp} - ${context} ${windowIndex !== undefined ? `(Window ${windowIndex})` : ''}`,
   );
 }
 
@@ -64,7 +64,11 @@ export function logHealthCheckpoint(checkpoint: string, additionalInfo?: string)
 /**
  * Track window operation sequences to identify corruption patterns
  */
-export function logWindowOperation(operation: string, windowIndex?: number, result?: 'SUCCESS' | 'FAILED') {
+export function logWindowOperation(
+  operation: string,
+  windowIndex?: number,
+  result?: 'SUCCESS' | 'FAILED',
+) {
   if (process.platform !== 'linux') {
     return;
   }
@@ -96,7 +100,7 @@ export async function trackWindowHealth(operation: string, windowIndex?: number)
     console.log(
       `[WINDOW_HEALTH] ${timestamp} - ${operation}: handles=${handles.length}, title="${title}", corrupt=${isEmpty}${
         windowIndex !== undefined ? `, targetWindow=${windowIndex}` : ''
-      }`
+      }`,
     );
 
     if (isEmpty) {
@@ -106,7 +110,9 @@ export async function trackWindowHealth(operation: string, windowIndex?: number)
 
     return false;
   } catch (err) {
-    console.log(`[WINDOW_HEALTH] ${timestamp} - ${operation}: FAILED to check - ${(err as Error).message}`);
+    console.log(
+      `[WINDOW_HEALTH] ${timestamp} - ${operation}: FAILED to check - ${(err as Error).message}`,
+    );
     logWindowCorruption(`Health check failed during ${operation}`, windowIndex);
     return true;
   }

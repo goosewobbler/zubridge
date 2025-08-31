@@ -16,12 +16,14 @@ export interface BaseState {
 export function isBaseState(state: unknown): state is BaseState {
   if (!state || typeof state !== 'object') return false;
 
-  const s = state as unknown as BaseState;
+  const s = state as Record<string, unknown>;
+  const window = s.window;
   return (
     typeof s.counter === 'number' &&
-    s.window &&
-    typeof s.window === 'object' &&
-    typeof s.window.isOpen === 'boolean'
+    Boolean(window) &&
+    typeof window === 'object' &&
+    window !== null &&
+    typeof (window as Record<string, unknown>).isOpen === 'boolean'
   );
 }
 
