@@ -1,3 +1,5 @@
+import type { ThunkProcessorOptions } from './thunkProcessor.js';
+
 /**
  * Configuration options for preload bridge
  *
@@ -13,16 +15,4 @@
  * const bridge = preloadBridge<MyState>(options);
  * ```
  */
-export interface PreloadOptions {
-  /**
-   * Maximum number of pending actions allowed in the queue (default: 100)
-   * When this limit is exceeded, new actions will throw a QueueOverflowError
-   */
-  maxQueueSize?: number;
-  /**
-   * Timeout for action completion in milliseconds
-   * Platform-specific defaults: Linux=60000ms, others=30000ms
-   */
-  actionCompletionTimeoutMs?: number;
-}
-
+export type PreloadOptions = ThunkProcessorOptions;

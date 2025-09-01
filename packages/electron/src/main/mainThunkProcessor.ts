@@ -11,8 +11,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { thunkManager } from '../lib/initThunkManager.js';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
-import type { PreloadOptions } from '../types/preload.js';
 import { QueueOverflowError } from '../types/errors.js';
+import type { ThunkProcessorOptions } from '../types/thunkProcessor.js';
+import { getThunkProcessorOptions } from '../utils/thunkProcessor.js';
 import { actionQueue } from './actionQueue.js';
 
 /**
@@ -41,9 +42,10 @@ export class MainThunkProcessor {
   // Instantiate the thunk registration queue for main thunks
   private mainThunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
 
-  constructor(options: Required<PreloadOptions>) {
-    this.actionCompletionTimeoutMs = options.actionCompletionTimeoutMs;
-    this.maxQueueSize = options.maxQueueSize;
+  constructor(options?: ThunkProcessorOptions) {
+    const config = getThunkProcessorOptions(options);
+    this.actionCompletionTimeoutMs = config.actionCompletionTimeoutMs;
+    this.maxQueueSize = config.maxQueueSize;
     debug(
       'core',
       `[MAIN_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}ms, maxQueueSize: ${this.maxQueueSize}`,
@@ -397,7 +399,7 @@ let mainThunkProcessorInstance: MainThunkProcessor | undefined;
 /**
  * Get the global MainThunkProcessor instance
  */
-export const getMainThunkProcessor = (options: Required<PreloadOptions>): MainThunkProcessor => {
+export const getMainThunkProcessor = (options?: ThunkProcessorOptions): MainThunkProcessor => {
   if (!mainThunkProcessorInstance) {
     mainThunkProcessorInstance = new MainThunkProcessor(options);
   }
