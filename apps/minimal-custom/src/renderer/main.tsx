@@ -94,7 +94,8 @@ function MinimalApp() {
 
 // Get the DOM container element
 const container = document.getElementById('root');
-const root = createRoot(container!);
+if (!container) throw new Error('Root container not found');
+const root = createRoot(container);
 
 root.render(
   <React.StrictMode>

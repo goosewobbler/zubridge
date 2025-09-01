@@ -421,7 +421,7 @@ export class ThunkManager extends EventEmitter {
         try {
           // Check if action is still part of thunk's tracked actions
           const actionSet = this.thunkActions.get(thunkId);
-          if (!actionSet || !actionSet.has(action.__id!)) {
+          if (!actionSet || !action.__id || !actionSet.has(action.__id)) {
             debug(
               'thunk-debug',
               `Action ${action.__id} no longer tracked for thunk ${thunkId}, skipping execution`,
@@ -430,7 +430,10 @@ export class ThunkManager extends EventEmitter {
           }
 
           // Process the action using the state manager
-          const result = this.stateManager!.processAction(action);
+          if (!this.stateManager) {
+            throw new Error('State manager not initialized');
+          }
+          const result = this.stateManager.processAction(action);
 
           // If the action returns a promise, await it
           if (result && typeof result === 'object' && 'completion' in result) {
@@ -552,7 +555,10 @@ export class ThunkManager extends EventEmitter {
     if (!this.thunkPendingUpdates.has(thunkId)) {
       this.thunkPendingUpdates.set(thunkId, new Set());
     }
-    this.thunkPendingUpdates.get(thunkId)!.add(updateId);
+    const thunkUpdates = this.thunkPendingUpdates.get(thunkId);
+    if (thunkUpdates) {
+      thunkUpdates.add(updateId);
+    }
   }
 
   /**
@@ -666,7 +672,7 @@ export class ThunkManager extends EventEmitter {
     if (hasPendingUpdates) {
       debug(
         'thunk',
-        `Thunk ${thunkId} execution complete but waiting for ${pendingUpdates!.size} state update acknowledgments`,
+        `Thunk ${thunkId} execution complete but waiting for ${pendingUpdates.size} state update acknowledgments`,
       );
       return false;
     }

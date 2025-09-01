@@ -32,7 +32,9 @@ function getDebugger(area: string): Debugger {
     dynamicDebuggers.set(area, debug(`zubridge:${area}`));
   }
 
-  return dynamicDebuggers.get(area)!;
+  const debugFn = dynamicDebuggers.get(area);
+  if (!debugFn) throw new Error(`Failed to create debugger for area: ${area}`);
+  return debugFn;
 }
 
 /**

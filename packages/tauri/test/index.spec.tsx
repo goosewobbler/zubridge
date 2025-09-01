@@ -111,7 +111,7 @@ const mockCustomOptions: BackendOptions = {
 function simulateStateUpdate(newState: AnyState) {
   if (stateUpdateListener) {
     act(() => {
-      stateUpdateListener!({ payload: newState });
+      stateUpdateListener({ payload: newState });
     });
   } else {
     console.warn('[TEST Mock] simulateStateUpdate called but no listener is registered.');
@@ -247,7 +247,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_ACTION' });
+        await dispatchFn({ type: 'TEST_ACTION' });
       });
 
       // Should use new function for dispatch
@@ -417,7 +417,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_PLUGIN' });
+        await dispatchFn({ type: 'TEST_PLUGIN' });
       });
 
       expect(pluginInvoke).toHaveBeenCalledWith(
@@ -473,7 +473,7 @@ describe('@zubridge/tauri', () => {
 
       // Test that dispatch uses the direct format
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_DIRECT' });
+        await dispatchFn({ type: 'TEST_DIRECT' });
       });
 
       // Verify dispatch called the direct command format
@@ -498,7 +498,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_CUSTOM' });
+        await dispatchFn({ type: 'TEST_CUSTOM' });
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('custom_dispatch', expect.anything());
@@ -544,7 +544,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({
+        await dispatchFn({
           type: 'INCREMENT',
           payload: 1,
         });
@@ -663,7 +663,7 @@ describe('@zubridge/tauri', () => {
 
       const testAction: Action = { type: 'TEST_ACTION', payload: { value: 1 } };
       await act(async () => {
-        await dispatchFn!(testAction);
+        await dispatchFn(testAction);
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('__zubridge_dispatch_action', expect.anything());
@@ -695,7 +695,7 @@ describe('@zubridge/tauri', () => {
       const testAction: Action = { type: 'FAILING_ACTION' };
       await expect(
         act(async () => {
-          await dispatchFn!(testAction);
+          await dispatchFn(testAction);
         }),
       ).rejects.toThrow(dispatchError);
     });
@@ -744,7 +744,7 @@ describe('@zubridge/tauri', () => {
       // Execute the thunk
       let result: unknown;
       await act(async () => {
-        result = await dispatchFn!(thunkMock);
+        result = await dispatchFn(thunkMock);
       });
 
       // Verify thunk was executed and dispatch was called
@@ -778,7 +778,7 @@ describe('@zubridge/tauri', () => {
       // Execute the thunk and expect it to throw
       await expect(
         act(async () => {
-          await dispatchFn!(errorThunk);
+          await dispatchFn(errorThunk);
         }),
       ).rejects.toThrow('Thunk execution failed');
     });
@@ -913,7 +913,7 @@ describe('@zubridge/tauri', () => {
       });
 
       // Dispatch while bridge is initializing (should wait for initialization)
-      const actionPromise = dispatchFn!({ type: 'TEST_WAIT' });
+      const actionPromise = dispatchFn({ type: 'TEST_WAIT' });
 
       // Complete initialization
       await act(async () => {
@@ -992,7 +992,7 @@ describe('@zubridge/tauri', () => {
       });
 
       // This should fail specifically with the updated error message that matches the implementation
-      await expect(dispatchFn!({ type: 'NO_INIT_PROMISE' })).rejects.toThrow(
+      await expect(dispatchFn({ type: 'NO_INIT_PROMISE' })).rejects.toThrow(
         'Zubridge is not initialized (missing invoke function)',
       );
     });
@@ -1041,7 +1041,7 @@ describe('@zubridge/tauri', () => {
       await expect(
         act(async () => {
           // We expect this to fail because the bridge is in error state
-          await dispatchFn!({ type: 'INIT_ERROR' });
+          await dispatchFn({ type: 'INIT_ERROR' });
         }),
       ).rejects.toThrow();
 

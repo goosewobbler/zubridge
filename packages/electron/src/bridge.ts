@@ -102,20 +102,24 @@ export function createCoreBridge<State extends AnyState>(
 
     // Register middleware callbacks if the middleware provides them
     if (options?.middleware?.trackActionDispatch) {
-      middlewareCallbacks.trackActionDispatch = (action) =>
-        options.middleware!.trackActionDispatch!(action);
+      middlewareCallbacks.trackActionDispatch = async (action) => {
+        await options.middleware?.trackActionDispatch?.(action);
+      };
     }
     if (options?.middleware?.trackActionReceived) {
-      middlewareCallbacks.trackActionReceived = (action) =>
-        options.middleware!.trackActionReceived!(action);
+      middlewareCallbacks.trackActionReceived = async (action) => {
+        await options.middleware?.trackActionReceived?.(action);
+      };
     }
     if (options?.middleware?.trackStateUpdate) {
-      middlewareCallbacks.trackStateUpdate = (action, state) =>
-        options.middleware!.trackStateUpdate!(action, state);
+      middlewareCallbacks.trackStateUpdate = async (action, state) => {
+        await options.middleware?.trackStateUpdate?.(action, state);
+      };
     }
     if (options?.middleware?.trackActionAcknowledged) {
-      middlewareCallbacks.trackActionAcknowledged = (actionId) =>
-        options.middleware!.trackActionAcknowledged!(actionId);
+      middlewareCallbacks.trackActionAcknowledged = async (actionId) => {
+        await options.middleware?.trackActionAcknowledged?.(actionId);
+      };
     }
   }
 

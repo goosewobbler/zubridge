@@ -143,7 +143,10 @@ export class MainThunkProcessor {
           // Get state function
           const getState = async (): Promise<S> => {
             debug('core', '[MAIN_THUNK] Getting state for thunk');
-            return this.stateManager!.getState() as S;
+            if (!this.stateManager) {
+              throw new Error('State manager not initialized');
+            }
+            return this.stateManager.getState() as S;
           };
 
           // Execute the thunk
@@ -330,20 +333,25 @@ export class MainThunkProcessor {
     );
 
     return new Promise((resolve, reject) => {
+      const actionId = actionObj.__id;
+      if (!actionId) {
+        throw new Error('Action ID is required but not set');
+      }
+
       // Create a promise for this action
-      this.pendingActionPromises.set(actionObj.__id!, {
+      this.pendingActionPromises.set(actionId, {
         resolve,
-        promise: Promise.resolve(actionObj.__id),
+        promise: Promise.resolve(actionId),
       });
 
       // Set up a timeout for the action
       const timeout = setTimeout(() => {
         debug(
           'core:error',
-          `[MAIN_THUNK] Action ${actionObj.__id} timed out after ${this.actionCompletionTimeoutMs}ms`,
+          `[MAIN_THUNK] Action ${actionId} timed out after ${this.actionCompletionTimeoutMs}ms`,
         );
-        this.pendingActionPromises.delete(actionObj.__id!);
-        reject(new Error(`Action ${actionObj.__id} timed out`));
+        this.pendingActionPromises.delete(actionId);
+        reject(new Error(`Action ${actionId} timed out`));
       }, this.actionCompletionTimeoutMs);
 
       // Create the completion callback that will be called when the action actually finishes
@@ -352,7 +360,9 @@ export class MainThunkProcessor {
         debug('core', `[MAIN_THUNK] Action ${actionObj.__id} completed through action queue`);
 
         // Complete the action (this will resolve our promise)
-        this.completeAction(actionObj.__id!);
+        if (actionId) {
+          this.completeAction(actionId);
+        }
       };
 
       // Enqueue through action queue with proper source window ID and completion callback

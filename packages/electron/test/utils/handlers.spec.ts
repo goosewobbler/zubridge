@@ -16,8 +16,8 @@ describe('Handler Utilities', () => {
 
       const result = findCaseInsensitiveMatch(handlers, 'TEST_ACTION');
       expect(result).toBeDefined();
-      expect(result![0]).toBe('TEST_ACTION');
-      expect(result![1]).toBe(handlers.TEST_ACTION);
+      expect(result[0]).toBe('TEST_ACTION');
+      expect(result[1]).toBe(handlers.TEST_ACTION);
     });
 
     it('should find case-insensitive matches', () => {
@@ -28,8 +28,8 @@ describe('Handler Utilities', () => {
 
       const result = findCaseInsensitiveMatch(handlers, 'test_action');
       expect(result).toBeDefined();
-      expect(result![0]).toBe('TEST_ACTION');
-      expect(result![1]).toBe(handlers.TEST_ACTION);
+      expect(result[0]).toBe('TEST_ACTION');
+      expect(result[1]).toBe(handlers.TEST_ACTION);
     });
 
     it('should return undefined for non-existent keys', () => {

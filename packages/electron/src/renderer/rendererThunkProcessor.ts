@@ -492,7 +492,10 @@ export class RendererThunkProcessor {
         'ipc',
         `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.__id})`,
       );
-      this.actionSender!(actionObj, parentId)
+      if (!this.actionSender) {
+        throw new Error('Action sender not initialized');
+      }
+      this.actionSender(actionObj, parentId)
         .then(() => {
           debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);
         })

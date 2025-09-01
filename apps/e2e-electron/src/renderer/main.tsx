@@ -189,9 +189,10 @@ function AppWrapper() {
 
 // Get the DOM container element
 const container = document.getElementById('root');
+if (!container) throw new Error('Root container not found');
 
 // Create React root and render the app
-const root = createRoot(container!);
+const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <AppWrapper />

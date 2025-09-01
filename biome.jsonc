@@ -45,7 +45,7 @@
         "useNumberNamespace": "error",
         "noInferrableTypes": "error",
         "noUselessElse": "error",
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "error"
       },
       "suspicious": {
         "noConsole": {

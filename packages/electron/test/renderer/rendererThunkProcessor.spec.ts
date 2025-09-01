@@ -89,7 +89,9 @@ describe('RendererThunkProcessor', () => {
       // Simulate a slight delay
       await new Promise((resolve) => setTimeout(resolve, 10));
       // Complete the action
-      processor.completeAction(action.__id!, { result: 'action-completed' });
+      if (action.__id) {
+        processor.completeAction(action.__id, { result: 'action-completed' });
+      }
       return undefined;
     });
 
@@ -116,7 +118,9 @@ describe('RendererThunkProcessor', () => {
       // Simulate a slight delay
       await new Promise((resolve) => setTimeout(resolve, 10));
       // Complete the action with the nested thunk result
-      processor.completeAction(action.__id!, { result: 99 });
+      if (action.__id) {
+        processor.completeAction(action.__id, { result: 99 });
+      }
       return undefined;
     });
 
@@ -167,7 +171,9 @@ describe('RendererThunkProcessor', () => {
   it('should dispatchAction and resolve when action completes', async () => {
     mockActionSender.mockImplementation(async (action: Action) => {
       setTimeout(() => {
-        processor.completeAction(action.__id!, {});
+        if (action.__id) {
+          processor.completeAction(action.__id, {});
+        }
       }, 10);
       return undefined;
     });
