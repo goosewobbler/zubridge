@@ -51,7 +51,7 @@ export function findNestedHandler<T>(obj: Record<string, unknown>, path: string)
         return undefined;
       }
 
-      current = current[matchingKey];
+      current = current[matchingKey] as Record<string, unknown>;
       debug('store', `Resolved part '${part}' to '${matchingKey}', continuing resolution`);
     }
 
