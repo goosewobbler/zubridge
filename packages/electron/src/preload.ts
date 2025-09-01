@@ -12,6 +12,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
+import type { PreloadOptions } from './types/preload.js';
+import { getPreloadOptions } from './utils/preloadOptions.js';
 
 // Return type for preload bridge function
 export interface PreloadZustandBridgeReturn<S extends AnyState> {
@@ -23,20 +25,22 @@ export interface PreloadZustandBridgeReturn<S extends AnyState> {
  * Creates and returns handlers that the window.zubridge object will expose
  * This uses the Electron IPC bridge to communicate with the main process
  */
-export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<S> => {
+export const preloadBridge = <S extends AnyState>(
+  options?: PreloadOptions,
+): PreloadZustandBridgeReturn<S> => {
   const listeners = new Set<(state: S) => void>();
   let initialized = false;
 
+  // Resolve options once at the start
+  const resolvedOptions = getPreloadOptions(options);
+  
   // Get or create the thunk processor
   const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
-    // Platform-specific timeout for action completion
-    const actionCompletionTimeoutMs = process.platform === 'linux' ? 60000 : 30000;
-
     debug(
       'core',
-      `Creating thunk processor with timeout: ${actionCompletionTimeoutMs}ms for platform ${process.platform}`,
+      `Creating thunk processor with timeout: ${resolvedOptions.actionCompletionTimeoutMs}ms, maxQueueSize: ${resolvedOptions.maxQueueSize} for platform ${process.platform}`,
     );
-    return new RendererThunkProcessor(actionCompletionTimeoutMs);
+    return new RendererThunkProcessor(resolvedOptions);
   };
 
   // Get a properly configured thunk processor
@@ -121,12 +125,16 @@ export const preloadBridge = <S extends AnyState>(): PreloadZustandBridgeReturn<
       debug('ipc', 'Dispatch called with:', { action, payloadOrOptions, options });
 
       // Extract options or default to empty object
-      const dispatchOptions =
+      let dispatchOptions: DispatchOptions;
+      if (
         typeof payloadOrOptions === 'object' &&
         !Array.isArray(payloadOrOptions) &&
         payloadOrOptions !== null
-          ? (payloadOrOptions as DispatchOptions)
-          : options || {};
+      ) {
+        dispatchOptions = payloadOrOptions as DispatchOptions;
+      } else {
+        dispatchOptions = options || {};
+      }
 
       // Extract bypass flags
       const bypassAccessControl = dispatchOptions.bypassAccessControl;

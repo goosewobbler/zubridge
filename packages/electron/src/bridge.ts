@@ -15,8 +15,8 @@ import type { ReduxOptions } from './adapters/redux.js';
 import type { ZustandOptions } from './adapters/zustand.js';
 import { IpcChannel } from './constants.js';
 import { actionScheduler, thunkManager } from './lib/initThunkManager.js';
-import { getPartialState, SubscriptionManager } from './lib/SubscriptionManager.js';
 import { getStateManager } from './lib/stateManagerRegistry.js';
+import { getPartialState, SubscriptionManager } from './lib/SubscriptionManager.js';
 import { Thunk as ThunkClass } from './lib/Thunk.js';
 import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 import { actionQueue, initActionQueue } from './main/actionQueue.js';
@@ -184,10 +184,12 @@ class BridgeResourceManager<State extends AnyState> {
       try {
         // Import Electron synchronously (should be available in main process)
         const electron = require('electron');
-        
+
         const allWebContents = electron.webContents.getAllWebContents();
         const activeWindowIds = new Set(
-          allWebContents.filter((wc: any) => !wc.isDestroyed()).map((wc: any) => wc.id),
+          allWebContents
+            .filter((wc: WebContents) => !wc.isDestroyed())
+            .map((wc: WebContents) => wc.id),
         );
 
         for (const [windowId] of this.subscriptionManagers.entries()) {
@@ -232,7 +234,11 @@ class BridgeResourceManager<State extends AnyState> {
     }
   }
 
-  getMetrics(): { subscriptionManagers: number; destroyListeners: number; middlewareCallbacks: number } {
+  getMetrics(): {
+    subscriptionManagers: number;
+    destroyListeners: number;
+    middlewareCallbacks: number;
+  } {
     return {
       subscriptionManagers: this.subscriptionManagers.size,
       destroyListeners: this.destroyListenerSet.size,

@@ -11,14 +11,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { thunkManager } from '../lib/initThunkManager.js';
 import { Thunk as ThunkClass } from '../lib/Thunk.js';
 import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
+import type { PreloadOptions } from '../types/preload.js';
+import { QueueOverflowError } from '../types/errors.js';
 import { actionQueue } from './actionQueue.js';
-
-// Platform-specific timeout for action completion
-const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
-debug(
-  'core',
-  `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`,
-);
 
 /**
  * Handles thunk execution in the main process
@@ -38,6 +33,7 @@ export class MainThunkProcessor {
 
   // Configuration options
   private actionCompletionTimeoutMs: number;
+  private maxQueueSize: number;
 
   // Set to track first action for each thunk
   private sentFirstActionForThunk = new Set<string>();
@@ -45,9 +41,13 @@ export class MainThunkProcessor {
   // Instantiate the thunk registration queue for main thunks
   private mainThunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
 
-  constructor(actionCompletionTimeoutMs?: number) {
-    this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
-    debug('core', `[MAIN_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}`);
+  constructor(options: Required<PreloadOptions>) {
+    this.actionCompletionTimeoutMs = options.actionCompletionTimeoutMs;
+    this.maxQueueSize = options.maxQueueSize;
+    debug(
+      'core',
+      `[MAIN_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}ms, maxQueueSize: ${this.maxQueueSize}`,
+    );
   }
 
   /**
@@ -338,11 +338,24 @@ export class MainThunkProcessor {
         throw new Error('Action ID is required but not set');
       }
 
+      // Check queue size before adding
+      if (this.pendingActionPromises.size >= this.maxQueueSize) {
+        const error = new QueueOverflowError(this.pendingActionPromises.size, this.maxQueueSize);
+        debug('core:error', `[MAIN_THUNK] Action queue overflow: ${error.message}`);
+        reject(error);
+        return;
+      }
+
       // Create a promise for this action
       this.pendingActionPromises.set(actionId, {
         resolve,
         promise: Promise.resolve(actionId),
       });
+
+      debug(
+        'core',
+        `[MAIN_THUNK] Added action ${actionId} to pending queue, now pending: ${this.pendingActionPromises.size}/${this.maxQueueSize}`,
+      );
 
       // Set up a timeout for the action
       const timeout = setTimeout(() => {
@@ -384,9 +397,9 @@ let mainThunkProcessorInstance: MainThunkProcessor | undefined;
 /**
  * Get the global MainThunkProcessor instance
  */
-export const getMainThunkProcessor = (): MainThunkProcessor => {
+export const getMainThunkProcessor = (options: Required<PreloadOptions>): MainThunkProcessor => {
   if (!mainThunkProcessorInstance) {
-    mainThunkProcessorInstance = new MainThunkProcessor();
+    mainThunkProcessorInstance = new MainThunkProcessor(options);
   }
   return mainThunkProcessorInstance;
 };

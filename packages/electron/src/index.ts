@@ -122,5 +122,8 @@ export {
   validateStateAccess,
   validateStateAccessWithExistence,
 } from './renderer/subscriptionValidator.js';
+// Export preload configuration types and options
+export { QueueOverflowError } from './types/errors.js';
+export type { PreloadOptions } from './types/preload.js';
 // Export environment utilities
 export * from './utils/environment.js';

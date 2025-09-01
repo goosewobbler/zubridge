@@ -4,13 +4,8 @@ import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from 
 import type {} from '@zubridge/types/internal';
 import { v4 as uuidv4 } from 'uuid';
 import { Thunk } from '../lib/Thunk.js';
-
-// Platform-specific timeout for action completion
-const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
-debug(
-  'ipc',
-  `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`,
-);
+import { QueueOverflowError } from '../types/errors.js';
+import type { PreloadOptions } from '../types/preload.js';
 
 /**
  * Handles thunk execution in the renderer process
@@ -47,10 +42,15 @@ export class RendererThunkProcessor {
 
   // Configuration options
   private actionCompletionTimeoutMs: number;
+  private maxQueueSize: number;
 
-  constructor(actionCompletionTimeoutMs?: number) {
-    this.actionCompletionTimeoutMs = actionCompletionTimeoutMs || DEFAULT_ACTION_COMPLETION_TIMEOUT;
-    debug('ipc', '[RENDERER_THUNK] Initialized with timeout:', this.actionCompletionTimeoutMs);
+  constructor(options: Required<PreloadOptions>) {
+    this.actionCompletionTimeoutMs = options.actionCompletionTimeoutMs;
+    this.maxQueueSize = options.maxQueueSize;
+    debug(
+      'ipc',
+      `[RENDERER_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}ms, maxQueueSize: ${this.maxQueueSize}`,
+    );
   }
 
   /**
@@ -261,12 +261,19 @@ export class RendererThunkProcessor {
           isFirstAction = false;
         }
 
+        // Check queue size before adding
+        if (this.pendingDispatches.size >= this.maxQueueSize) {
+          const error = new QueueOverflowError(this.pendingDispatches.size, this.maxQueueSize);
+          debug('ipc:error', `[RENDERER_THUNK] Queue overflow: ${error.message}`);
+          throw error;
+        }
+
         // Add to pending dispatches BEFORE creating the promise to ensure
         // getState can find it immediately
         this.pendingDispatches.add(actionId);
         debug(
           'ipc',
-          `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}`,
+          `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}/${this.maxQueueSize}`,
         );
 
         // Create a promise that will resolve when this action completes
@@ -414,11 +421,19 @@ export class RendererThunkProcessor {
 
     // Create a promise that will resolve when the action completes
     return new Promise<void>((resolve, reject) => {
+      // Check queue size before adding
+      if (this.pendingDispatches.size >= this.maxQueueSize) {
+        const error = new QueueOverflowError(this.pendingDispatches.size, this.maxQueueSize);
+        debug('ipc:error', `[RENDERER_THUNK] dispatchAction queue overflow: ${error.message}`);
+        reject(error);
+        return;
+      }
+
       // Add to pending dispatches
       this.pendingDispatches.add(actionId);
       debug(
         'ipc',
-        `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}`,
+        `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}/${this.maxQueueSize}`,
       );
 
       // Store the callback to be called when action acknowledgment is received
@@ -488,9 +503,9 @@ let globalThunkProcessor: RendererThunkProcessor | undefined;
 /**
  * Get the singleton instance of the RendererThunkProcessor
  */
-export const getThunkProcessor = (): RendererThunkProcessor => {
+export const getThunkProcessor = (options: Required<PreloadOptions>): RendererThunkProcessor => {
   if (!globalThunkProcessor) {
-    globalThunkProcessor = new RendererThunkProcessor();
+    globalThunkProcessor = new RendererThunkProcessor(options);
     debug('ipc', '[RENDERER_THUNK] Created new RendererThunkProcessor instance (global)');
   }
   return globalThunkProcessor;
