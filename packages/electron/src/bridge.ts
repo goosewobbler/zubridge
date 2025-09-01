@@ -918,7 +918,20 @@ export function createCoreBridge<State extends AnyState>(
       // ThunkManager extends EventEmitter, so remove all listeners
       if (thunkManager && typeof thunkManager.removeAllListeners === 'function') {
         thunkManager.removeAllListeners();
-        debug('core', 'ThunkManager listeners cleaned up');
+        // Also force cleanup of completed thunks to prevent memory leaks
+        if (typeof thunkManager.forceCleanupCompletedThunks === 'function') {
+          thunkManager.forceCleanupCompletedThunks();
+        }
+        debug('core', 'ThunkManager listeners and completed thunks cleaned up');
+      }
+
+      // Force cleanup of thunk processors to prevent memory leaks
+      try {
+        const { resetMainThunkProcessor } = await import('./main/mainThunkProcessor.js');
+        resetMainThunkProcessor();
+        debug('core', 'MainThunkProcessor cleaned up');
+      } catch (error) {
+        debug('core', 'MainThunkProcessor cleanup skipped (not imported):', error);
       }
 
       // ActionScheduler may have timers or listeners

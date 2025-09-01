@@ -391,6 +391,36 @@ export class MainThunkProcessor {
   public isFirstActionForThunk(thunkId: string): boolean {
     return !this.sentFirstActionForThunk.has(thunkId);
   }
+
+  /**
+   * Force cleanup of expired actions and tracking data
+   * This prevents memory leaks from stale actions
+   */
+  public forceCleanupExpiredActions(): void {
+    debug('core', '[MAIN_THUNK] Force cleaning up expired actions and tracking');
+    
+    const clearedPromises = this.pendingActionPromises.size;
+    const clearedThunks = this.sentFirstActionForThunk.size;
+    
+    // Clear all pending action promises
+    for (const [actionId, { resolve }] of this.pendingActionPromises) {
+      debug('core', `[MAIN_THUNK] Force completing pending action ${actionId}`);
+      try {
+        resolve('Force cleanup');
+      } catch (error) {
+        debug('core:error', `[MAIN_THUNK] Error completing action ${actionId}:`, error);
+      }
+    }
+    
+    this.pendingActionPromises.clear();
+    this.sentFirstActionForThunk.clear();
+    
+    debug(
+      'core',
+      `[MAIN_THUNK] Force cleaned up ${clearedPromises} pending promises, ${clearedThunks} thunk tracking entries`,
+    );
+  }
+
 }
 
 // Singleton instance
@@ -404,4 +434,15 @@ export const getMainThunkProcessor = (options?: ThunkProcessorOptions): MainThun
     mainThunkProcessorInstance = new MainThunkProcessor(options);
   }
   return mainThunkProcessorInstance;
+};
+
+/**
+ * Reset the global main thunk processor (for cleanup or testing)
+ */
+export const resetMainThunkProcessor = (): void => {
+  if (mainThunkProcessorInstance) {
+    debug('core', '[MAIN_THUNK] Cleaning up existing global thunk processor');
+    mainThunkProcessorInstance.forceCleanupExpiredActions();
+  }
+  mainThunkProcessorInstance = undefined;
 };

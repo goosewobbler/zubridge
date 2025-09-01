@@ -445,6 +445,13 @@ export class RendererThunkProcessor {
           result,
         );
 
+        // CRITICAL: Clear timeout when callback executes
+        const timeout = this.actionTimeouts.get(actionId);
+        if (timeout) {
+          clearTimeout(timeout);
+          this.actionTimeouts.delete(actionId);
+        }
+
         // Check if the result contains an error
         if (errorString) {
           debug(
@@ -495,6 +502,35 @@ export class RendererThunkProcessor {
         });
     });
   }
+
+  /**
+   * Force cleanup of expired timeouts and callbacks
+   * This prevents memory leaks from stale actions
+   */
+  public forceCleanupExpiredActions(): void {
+    debug('ipc', '[RENDERER_THUNK] Force cleaning up expired actions and timeouts');
+    
+    // Clear all pending timeouts
+    for (const [actionId, timeout] of this.actionTimeouts) {
+      debug('ipc', `[RENDERER_THUNK] Force clearing timeout for action ${actionId}`);
+      clearTimeout(timeout);
+    }
+    
+    // Clear all maps
+    const clearedTimeouts = this.actionTimeouts.size;
+    const clearedCallbacks = this.actionCompletionCallbacks.size;
+    const clearedDispatches = this.pendingDispatches.size;
+    
+    this.actionTimeouts.clear();
+    this.actionCompletionCallbacks.clear();
+    this.pendingDispatches.clear();
+    
+    debug(
+      'ipc',
+      `[RENDERER_THUNK] Force cleaned up ${clearedTimeouts} timeouts, ${clearedCallbacks} callbacks, ${clearedDispatches} dispatches`,
+    );
+  }
+
 }
 
 // Singleton instance of the thunk processor
@@ -509,4 +545,15 @@ export const getThunkProcessor = (options: Required<PreloadOptions>): RendererTh
     debug('ipc', '[RENDERER_THUNK] Created new RendererThunkProcessor instance (global)');
   }
   return globalThunkProcessor;
+};
+
+/**
+ * Reset the global thunk processor (for cleanup or testing)
+ */
+export const resetThunkProcessor = (): void => {
+  if (globalThunkProcessor) {
+    debug('ipc', '[RENDERER_THUNK] Cleaning up existing global thunk processor');
+    globalThunkProcessor.forceCleanupExpiredActions();
+  }
+  globalThunkProcessor = undefined;
 };

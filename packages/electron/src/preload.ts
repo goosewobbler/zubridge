@@ -453,6 +453,23 @@ export const preloadBridge = <S extends AnyState>(
         thunkProcessor.setStateProvider((opts) => handlers.getState(opts));
 
         debug('ipc', 'Preload script initialized successfully');
+        
+        // Set up cleanup on page unload to prevent memory leaks
+        if (typeof window !== 'undefined') {
+          window.addEventListener('beforeunload', () => {
+            debug('ipc', 'Page unloading, cleaning up thunk processor');
+            thunkProcessor.forceCleanupExpiredActions();
+          });
+          
+          // Also cleanup on visibility change (page might be cached)
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+              debug('ipc', 'Page hidden, cleaning up expired thunk processor actions');
+              thunkProcessor.forceCleanupExpiredActions();
+            }
+          });
+        }
+        
       } catch (error) {
         debug('core:error', 'Error initializing preload script:', error);
       }

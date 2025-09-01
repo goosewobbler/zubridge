@@ -1,6 +1,6 @@
-import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { EventEmitter } from 'node:events';
 import { ThunkPriority } from '../constants.js';
 import type { ThunkAction, ThunkTask } from '../types/thunk.js';
 import { type Thunk, ThunkState } from './Thunk.js';
@@ -232,8 +232,14 @@ export class ThunkManager extends EventEmitter {
     thunk.complete();
 
     // Clean up thunk tracking
+    this.thunks.delete(thunkId);
     this.thunkActions.delete(thunkId);
     this.thunkTasks.delete(thunkId);
+    this.thunkResults.delete(thunkId);
+    this.thunkErrors.delete(thunkId);
+
+    // Clean up any pending state updates for this thunk
+    this.thunkPendingUpdates.delete(thunkId);
 
     // Remove the task from scheduler
     this.scheduler.removeTasks(thunkId);
@@ -269,9 +275,15 @@ export class ThunkManager extends EventEmitter {
     // Store the error
     this.thunkErrors.set(thunkId, error);
 
-    // Clean up thunk tracking
+    // Clean up ALL thunk tracking to prevent memory leaks
+    this.thunks.delete(thunkId);
     this.thunkActions.delete(thunkId);
     this.thunkTasks.delete(thunkId);
+    this.thunkResults.delete(thunkId);
+    // Note: Keep thunkErrors for a bit longer for error reporting
+
+    // Clean up any pending state updates for this thunk
+    this.thunkPendingUpdates.delete(thunkId);
 
     // Emit failed event
     this.emit(ThunkManagerEvent.THUNK_FAILED, thunk);
@@ -734,6 +746,36 @@ export class ThunkManager extends EventEmitter {
         }
       }
     }
+  }
+
+  /**
+   * Force cleanup of completed thunks for memory management
+   * This is a safety method to prevent unbounded growth
+   */
+  forceCleanupCompletedThunks(): void {
+    debug('thunk', 'Force cleaning up completed thunks to prevent memory leaks');
+
+    const completedThunkIds: string[] = [];
+
+    // Find all completed thunks
+    for (const [thunkId, thunk] of this.thunks) {
+      if (thunk.state === ThunkState.COMPLETED || thunk.state === ThunkState.FAILED) {
+        completedThunkIds.push(thunkId);
+      }
+    }
+
+    // Clean up completed thunks
+    for (const thunkId of completedThunkIds) {
+      debug('thunk', `Force cleaning up completed thunk: ${thunkId}`);
+      this.thunks.delete(thunkId);
+      this.thunkActions.delete(thunkId);
+      this.thunkTasks.delete(thunkId);
+      this.thunkResults.delete(thunkId);
+      this.thunkErrors.delete(thunkId);
+      this.thunkPendingUpdates.delete(thunkId);
+    }
+
+    debug('thunk', `Force cleaned up ${completedThunkIds.length} completed thunks`);
   }
 }
 
