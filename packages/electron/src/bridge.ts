@@ -92,7 +92,7 @@ class BridgeResourceManager<State extends AnyState> {
     const cleanupInterval = options?.cleanupIntervalMs ?? 10 * 60 * 1000; // Default: 10 minutes (conservative)
     this.MAX_SUBSCRIPTION_MANAGERS = options?.maxSubscriptionManagers ?? 1000;
 
-    // Enable periodic cleanup by default for better memory management
+    // Enable periodic cleanup only if we have a reliable windowTracker
     if (cleanupEnabled && windowTracker) {
       debug(
         'bridge:memory',
@@ -101,16 +101,15 @@ class BridgeResourceManager<State extends AnyState> {
       this.cleanupTimer = setInterval(() => {
         this.performPeriodicCleanup(this.windowTracker);
       }, cleanupInterval);
-    } else if (cleanupEnabled && !windowTracker) {
-      debug(
-        'bridge:memory',
-        'Periodic cleanup enabled but no windowTracker provided - using fallback method',
-      );
-      this.cleanupTimer = setInterval(() => {
-        this.performPeriodicCleanup();
-      }, cleanupInterval);
     } else {
-      debug('bridge:memory', 'Periodic cleanup disabled (enablePeriodicCleanup: false)');
+      if (cleanupEnabled && !windowTracker) {
+        debug(
+          'bridge:memory',
+          'Periodic cleanup disabled - no windowTracker provided (required for safe cleanup)',
+        );
+      } else {
+        debug('bridge:memory', 'Periodic cleanup disabled (enablePeriodicCleanup: false)');
+      }
     }
   }
 
