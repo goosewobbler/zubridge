@@ -28,7 +28,10 @@ interface SerializationOptions {
  * @param options Serialization options
  * @returns A new state object with functions and non-serializable parts removed
  */
-export const sanitizeState = (state: AnyState, options?: SerializationOptions): Record<string, unknown> => {
+export const sanitizeState = (
+  state: AnyState,
+  options?: SerializationOptions,
+): Record<string, unknown> => {
   const opts: SerializationOptions = options || {};
 
   const { maxDepth = 10, replacer, filterKeys, includeNonEnumerable = false } = opts;
@@ -122,7 +125,9 @@ export const sanitizeState = (state: AnyState, options?: SerializationOptions): 
 
       // Handle arrays
       if (Array.isArray(value)) {
-        return value.map((item, index) => serialize(item, currentDepth + 1, `${currentKey}[${index}]`));
+        return value.map((item, index) =>
+          serialize(item, currentDepth + 1, `${currentKey}[${index}]`),
+        );
       }
 
       // Handle plain objects
@@ -149,7 +154,8 @@ export const sanitizeState = (state: AnyState, options?: SerializationOptions): 
             result[key] = serialize(valueToSerialize, currentDepth + 1, keyPath);
           }
         } catch (error) {
-          result[key] = `[Error accessing property: ${error instanceof Error ? error.message : String(error)}]`;
+          result[key] =
+            `[Error accessing property: ${error instanceof Error ? error.message : String(error)}]`;
         }
       }
 
