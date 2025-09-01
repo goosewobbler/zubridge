@@ -215,6 +215,9 @@
       "dependsOn": ["@zubridge/types#build"],
       "outputs": ["dist/**"],
       "cache": false
+    },
+    "typecheck": {
+      "cache": false
     }
   }
 }

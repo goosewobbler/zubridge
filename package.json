@@ -40,6 +40,7 @@
     "test:package:redux": "pnpx tsx scripts/run-package-e2e.ts redux",
     "test:package:zustand-handlers": "pnpx tsx scripts/run-package-e2e.ts zustand-handlers",
     "test:package:zustand-reducers": "pnpx tsx scripts/run-package-e2e.ts zustand-reducers",
+    "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
     "clean:cache": "turbo run clean:cache && pnpm dlx shx rm -rf .turbo",
     "clean:output": "turbo run clean:output"
