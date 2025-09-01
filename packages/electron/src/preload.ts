@@ -33,7 +33,7 @@ export const preloadBridge = <S extends AnyState>(
 
   // Resolve options once at the start
   const resolvedOptions = getPreloadOptions(options);
-  
+
   // Get or create the thunk processor
   const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
     debug(
