@@ -23,7 +23,8 @@
       "!**/.electron-user-data-*",
       "!**/electron-builder-output",
       // ignore NAPI-RS generated files
-      "!packages/middleware/node/index.js"
+      "!packages/middleware/node/index.js",
+      "!packages/middleware/node/index.d.ts"
     ]
   },
   "linter": {
