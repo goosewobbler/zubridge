@@ -113,10 +113,10 @@ export class RendererThunkProcessor {
     }
 
     // Check if there was an error in the result
-    if (result && typeof result === 'object' && 'error' in result) {
+    if (result?.error) {
       debug(
         'ipc:error',
-        `[RENDERER_THUNK] Action ${actionId} completed with error: ${(result as { error: string }).error}`,
+        `[RENDERER_THUNK] Action ${actionId} completed with error: ${result.error}`,
       );
     }
 
@@ -216,7 +216,7 @@ export class RendererThunkProcessor {
 
       // Create a dispatch function for this thunk that tracks each action
       const dispatch: Dispatch<S> = async (
-        action: string | Action | InternalThunk<S>,
+        action: string | Action | Thunk<S>,
         payload?: unknown,
       ) => {
         debug(
@@ -279,15 +279,14 @@ export class RendererThunkProcessor {
             );
 
             // Check if the result contains an error
-            if (result && typeof result === 'object' && 'error' in result) {
-              const errorResult = result as { error: string };
+            if (result?.error) {
               debug(
                 'ipc:error',
-                `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorResult.error}`,
+                `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,
               );
 
               // Create a proper error object
-              const error = new Error(errorResult.error);
+              const error = new Error(result.error);
 
               // CRITICAL: Don't wrap in Promise.reject here as we're already in a promise context
               // Instead, directly throw the error which will be caught by the promise
@@ -429,13 +428,12 @@ export class RendererThunkProcessor {
         );
 
         // Check if the result contains an error
-        if (result && typeof result === 'object' && 'error' in result) {
-          const errorResult = result as { error: string };
+        if (result?.error) {
           debug(
             'ipc:error',
-            `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorResult.error}`,
+            `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,
           );
-          reject(new Error(errorResult.error));
+          reject(new Error(result.error));
         } else {
           resolve();
         }
@@ -460,7 +458,7 @@ export class RendererThunkProcessor {
         'ipc',
         `[RENDERER_THUNK] dispatchAction: Sending action ${actionObj.type} (${actionObj.__id})`,
       );
-      this.actionSender?.(actionObj, parentId)
+      this.actionSender!(actionObj, parentId)
         .then(() => {
           debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);
         })
