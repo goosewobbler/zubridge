@@ -49,6 +49,16 @@ export interface CoreBridgeOptions {
   beforeStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   afterStateChange?: (state: AnyState, windowId?: number) => Promise<void> | void;
   onBridgeDestroy?: () => Promise<void> | void;
+
+  // Resource management options
+  resourceManagement?: {
+    /** Enable periodic cleanup of destroyed window subscription managers (default: true) */
+    enablePeriodicCleanup?: boolean;
+    /** Cleanup interval in milliseconds (default: 10 minutes) */
+    cleanupIntervalMs?: number;
+    /** Maximum number of subscription managers before forcing cleanup (default: 1000) */
+    maxSubscriptionManagers?: number;
+  };
 }
 
 // Middleware callback functions
@@ -59,13 +69,176 @@ interface MiddlewareCallbacks {
   trackActionAcknowledged?: (actionId: string) => Promise<void>;
 }
 
-// Global middleware callbacks
-let middlewareCallbacks: MiddlewareCallbacks = {};
+/**
+ * Resource manager to prevent memory leaks in bridge components
+ */
+class BridgeResourceManager<State extends AnyState> {
+  private subscriptionManagers = new Map<number, SubscriptionManager<State>>();
+  private destroyListenerSet = new Set<number>();
+  private middlewareCallbacks: MiddlewareCallbacks = {};
+  private MAX_SUBSCRIPTION_MANAGERS = 1000; // Prevent unbounded growth (configurable)
+  private cleanupTimer?: NodeJS.Timeout;
 
-// Export function to set middleware callbacks
-export function setMiddlewareCallbacks(callbacks: MiddlewareCallbacks) {
-  middlewareCallbacks = callbacks;
-  debug('core', 'Middleware callbacks set:', Object.keys(callbacks).join(', '));
+  private windowTracker?: { getActiveWebContents(): { id: number }[] };
+
+  constructor(
+    windowTracker?: { getActiveWebContents(): { id: number }[] },
+    options?: CoreBridgeOptions['resourceManagement'],
+  ) {
+    this.windowTracker = windowTracker;
+
+    // Override defaults with user options
+    const cleanupEnabled = options?.enablePeriodicCleanup ?? true; // Default: enabled
+    const cleanupInterval = options?.cleanupIntervalMs ?? 10 * 60 * 1000; // Default: 10 minutes (conservative)
+    this.MAX_SUBSCRIPTION_MANAGERS = options?.maxSubscriptionManagers ?? 1000;
+
+    // Enable periodic cleanup by default for better memory management
+    if (cleanupEnabled && windowTracker) {
+      debug(
+        'bridge:memory',
+        `Enabling periodic cleanup every ${cleanupInterval}ms (default: enabled)`,
+      );
+      this.cleanupTimer = setInterval(() => {
+        this.performPeriodicCleanup(this.windowTracker);
+      }, cleanupInterval);
+    } else if (cleanupEnabled && !windowTracker) {
+      debug(
+        'bridge:memory',
+        'Periodic cleanup enabled but no windowTracker provided - using fallback method',
+      );
+      this.cleanupTimer = setInterval(() => {
+        this.performPeriodicCleanup();
+      }, cleanupInterval);
+    } else {
+      debug('bridge:memory', 'Periodic cleanup disabled (enablePeriodicCleanup: false)');
+    }
+  }
+
+  addSubscriptionManager(windowId: number, manager: SubscriptionManager<State>): void {
+    // Prevent unbounded growth by removing oldest entries
+    if (this.subscriptionManagers.size >= this.MAX_SUBSCRIPTION_MANAGERS) {
+      const oldestEntry = this.subscriptionManagers.entries().next().value;
+      if (oldestEntry) {
+        debug(
+          'bridge:memory',
+          `Removing oldest subscription manager for window ${oldestEntry[0]} to prevent memory leak`,
+        );
+        this.removeSubscriptionManager(oldestEntry[0]);
+      }
+    }
+    this.subscriptionManagers.set(windowId, manager);
+  }
+
+  getSubscriptionManager(windowId: number): SubscriptionManager<State> | undefined {
+    return this.subscriptionManagers.get(windowId);
+  }
+
+  removeSubscriptionManager(windowId: number): void {
+    this.subscriptionManagers.delete(windowId);
+    this.destroyListenerSet.delete(windowId);
+  }
+
+  hasDestroyListener(windowId: number): boolean {
+    return this.destroyListenerSet.has(windowId);
+  }
+
+  addDestroyListener(windowId: number): void {
+    this.destroyListenerSet.add(windowId);
+  }
+
+  setMiddlewareCallbacks(callbacks: MiddlewareCallbacks): void {
+    this.middlewareCallbacks = { ...callbacks };
+    debug('core', 'Middleware callbacks set:', Object.keys(callbacks).join(', '));
+  }
+
+  getMiddlewareCallbacks(): MiddlewareCallbacks {
+    return this.middlewareCallbacks;
+  }
+
+  private performPeriodicCleanup(windowTracker?: {
+    getActiveWebContents(): { id: number }[];
+  }): void {
+    debug(
+      'bridge:memory',
+      `Performing periodic cleanup of ${this.subscriptionManagers.size} subscription managers`,
+    );
+
+    // Only clean up subscription managers for windows that no longer exist
+    let cleanedCount = 0;
+
+    if (windowTracker) {
+      // Get currently active window IDs from the window tracker
+      const activeWindowIds = new Set(windowTracker.getActiveWebContents().map((wc) => wc.id));
+
+      // Remove subscription managers for windows that are no longer active
+      for (const [windowId] of this.subscriptionManagers.entries()) {
+        if (!activeWindowIds.has(windowId)) {
+          debug('bridge:memory', `Removing subscription manager for destroyed window ${windowId}`);
+          this.removeSubscriptionManager(windowId);
+          cleanedCount++;
+        }
+      }
+    } else {
+      // Fallback: Only remove if we can verify the WebContents is destroyed
+      // This is safer but less efficient than using windowTracker
+      try {
+        // Import Electron synchronously (should be available in main process)
+        const electron = require('electron');
+        
+        const allWebContents = electron.webContents.getAllWebContents();
+        const activeWindowIds = new Set(
+          allWebContents.filter((wc: any) => !wc.isDestroyed()).map((wc: any) => wc.id),
+        );
+
+        for (const [windowId] of this.subscriptionManagers.entries()) {
+          if (!activeWindowIds.has(windowId)) {
+            debug(
+              'bridge:memory',
+              `Removing subscription manager for destroyed window ${windowId}`,
+            );
+            this.removeSubscriptionManager(windowId);
+            cleanedCount++;
+          }
+        }
+      } catch (error) {
+        debug('bridge:memory', 'Error during fallback cleanup, skipping:', error);
+        // Don't remove anything on error - be conservative
+      }
+    }
+
+    if (cleanedCount > 0) {
+      debug(
+        'bridge:memory',
+        `Cleaned up ${cleanedCount} subscription managers for destroyed windows`,
+      );
+    } else {
+      debug('bridge:memory', 'No stale subscription managers found');
+    }
+  }
+
+  getAllSubscriptionManagers(): Map<number, SubscriptionManager<State>> {
+    return new Map(this.subscriptionManagers);
+  }
+
+  clearAll(): void {
+    debug('bridge:memory', 'Clearing all subscription managers and callbacks');
+    this.subscriptionManagers.clear();
+    this.destroyListenerSet.clear();
+    this.middlewareCallbacks = {};
+
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+    }
+  }
+
+  getMetrics(): { subscriptionManagers: number; destroyListeners: number; middlewareCallbacks: number } {
+    return {
+      subscriptionManagers: this.subscriptionManagers.size,
+      destroyListeners: this.destroyListenerSet.size,
+      middlewareCallbacks: Object.keys(this.middlewareCallbacks).length,
+    };
+  }
 }
 
 /**
@@ -84,11 +257,11 @@ export function createCoreBridge<State extends AnyState>(
   // Tracker for WebContents using WeakMap for automatic garbage collection
   const windowTracker: WebContentsTracker = createWebContentsTracker();
 
-  // Map of windowId to SubscriptionManager
-  const subscriptionManagers = new Map<number, SubscriptionManager<State>>();
-
-  // Track which window IDs have a destroy listener set up
-  const destroyListenerSet = new Set<number>();
+  // Create resource manager to prevent memory leaks, passing windowTracker for proper cleanup
+  const resourceManager = new BridgeResourceManager<State>(
+    windowTracker,
+    options?.resourceManagement,
+  );
 
   // Process options with middleware if provided
   let processedOptions = options;
@@ -100,27 +273,29 @@ export function createCoreBridge<State extends AnyState>(
       ...middlewareOptions,
     };
 
-    // Register middleware callbacks if the middleware provides them
+    // Register middleware callbacks using resource manager
+    const callbacks: MiddlewareCallbacks = {};
     if (options?.middleware?.trackActionDispatch) {
-      middlewareCallbacks.trackActionDispatch = async (action) => {
+      callbacks.trackActionDispatch = async (action) => {
         await options.middleware?.trackActionDispatch?.(action);
       };
     }
     if (options?.middleware?.trackActionReceived) {
-      middlewareCallbacks.trackActionReceived = async (action) => {
+      callbacks.trackActionReceived = async (action) => {
         await options.middleware?.trackActionReceived?.(action);
       };
     }
     if (options?.middleware?.trackStateUpdate) {
-      middlewareCallbacks.trackStateUpdate = async (action, state) => {
+      callbacks.trackStateUpdate = async (action, state) => {
         await options.middleware?.trackStateUpdate?.(action, state);
       };
     }
     if (options?.middleware?.trackActionAcknowledged) {
-      middlewareCallbacks.trackActionAcknowledged = async (actionId) => {
+      callbacks.trackActionAcknowledged = async (actionId) => {
         await options.middleware?.trackActionAcknowledged?.(actionId);
       };
     }
+    resourceManager.setMiddlewareCallbacks(callbacks);
   }
 
   // Handle dispatch events from renderers
@@ -216,6 +391,7 @@ export function createCoreBridge<State extends AnyState>(
             );
 
             // Track action acknowledged with middleware
+            const middlewareCallbacks = resourceManager.getMiddlewareCallbacks();
             if (middlewareCallbacks.trackActionAcknowledged && actionObj.__id) {
               // Use void to indicate we're intentionally not awaiting
               void middlewareCallbacks.trackActionAcknowledged(actionObj.__id);
@@ -285,6 +461,7 @@ export function createCoreBridge<State extends AnyState>(
       };
 
       // Call middleware tracking function if available
+      const middlewareCallbacks = resourceManager.getMiddlewareCallbacks();
       if (middlewareCallbacks.trackActionDispatch) {
         // Ensure payload is a string for Rust middleware
         if (
@@ -325,7 +502,7 @@ export function createCoreBridge<State extends AnyState>(
 
       // Get window ID and subscriptions
       const windowId = event.sender.id;
-      const subManager = subscriptionManagers.get(windowId);
+      const subManager = resourceManager.getSubscriptionManager(windowId);
       const subscriptions = subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
 
       // Check for bypassAccessControl in options or '*' subscription
@@ -486,7 +663,7 @@ export function createCoreBridge<State extends AnyState>(
 
     for (const webContents of activeWebContents) {
       const windowId = webContents.id;
-      const subManager = subscriptionManagers.get(windowId);
+      const subManager = resourceManager.getSubscriptionManager(windowId);
       if (!subManager) {
         debug('core', `No subscription manager for window ${windowId}, skipping`);
         continue;
@@ -528,24 +705,23 @@ export function createCoreBridge<State extends AnyState>(
       if (!webContents || isDestroyed(webContents)) continue;
       const tracked = windowTracker.track(webContents);
       subscribedWebContents.push(webContents);
-      let subManager = subscriptionManagers.get(webContents.id);
+      let subManager = resourceManager.getSubscriptionManager(webContents.id);
       if (!subManager) {
         subManager = new SubscriptionManager<State>();
-        subscriptionManagers.set(webContents.id, subManager);
+        resourceManager.addSubscriptionManager(webContents.id, subManager);
       }
       // Set up a destroy listener to clean up subscriptions when the window is closed
-      if (!destroyListenerSet.has(webContents.id)) {
+      if (!resourceManager.hasDestroyListener(webContents.id)) {
         setupDestroyListener(webContents, () => {
           debug(
             'thunk',
             `Window ${webContents.id} destroyed, cleaning up subscriptions and pending state updates`,
           );
-          subscriptionManagers.delete(webContents.id);
-          destroyListenerSet.delete(webContents.id);
+          resourceManager.removeSubscriptionManager(webContents.id);
           // Clean up dead renderer from pending state updates to prevent hanging acknowledgments
           thunkManager.cleanupDeadRenderer(webContents.id);
         });
-        destroyListenerSet.add(webContents.id);
+        resourceManager.addDestroyListener(webContents.id);
       }
       // Register a subscription for the keys with an actual callback that sends state updates
       const unsubscribe = subManager.subscribe(
@@ -647,7 +823,7 @@ export function createCoreBridge<State extends AnyState>(
   ): void {
     // If windows is not provided, unsubscribe all windows
     if (!windows) {
-      subscriptionManagers.clear();
+      resourceManager.clearAll();
       windowTracker.cleanup();
       return;
     }
@@ -656,11 +832,11 @@ export function createCoreBridge<State extends AnyState>(
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents) continue;
-      const subManager = subscriptionManagers.get(webContents.id);
+      const subManager = resourceManager.getSubscriptionManager(webContents.id);
       if (subManager) {
         subManager.unsubscribe(keys, () => {}, webContents.id);
         if (subManager.getCurrentSubscriptionKeys(webContents.id).length === 0) {
-          subscriptionManagers.delete(webContents.id);
+          resourceManager.removeSubscriptionManager(webContents.id);
         }
       }
       windowTracker.untrack(webContents);
@@ -675,7 +851,7 @@ export function createCoreBridge<State extends AnyState>(
   };
 
   const getWindowSubscriptions = (windowId: number): string[] => {
-    const subManager = subscriptionManagers.get(windowId);
+    const subManager = resourceManager.getSubscriptionManager(windowId);
     return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
   };
 
@@ -762,8 +938,8 @@ export function createCoreBridge<State extends AnyState>(
     debug('core', 'Cleaning up tracked WebContents');
     windowTracker.cleanup();
 
-    debug('core', 'Clearing subscription managers');
-    subscriptionManagers.clear();
+    debug('core', 'Clearing subscription managers and resource manager');
+    resourceManager.clearAll();
 
     debug('core', 'CoreBridge destroyed');
   };
