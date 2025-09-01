@@ -33,7 +33,8 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
     'THEME:TOGGLE': () => toggleTheme(store)(),
     'THEME:SET': (payload?: unknown) => setTheme(store)(payload as boolean),
     'STATE:RESET': () => resetState(store)(),
-    'STATE:GENERATE-FILLER': (payload?: unknown) => generateLargeState(store)(payload as { variant?: 'small' | 'medium' | 'large' | 'xl' }),
+    'STATE:GENERATE-FILLER': (payload?: unknown) =>
+      generateLargeState(store)(payload as { variant?: 'small' | 'medium' | 'large' | 'xl' }),
     'ERROR:TRIGGER_MAIN_PROCESS_ERROR': () => triggerMainProcessError()(),
   };
 };

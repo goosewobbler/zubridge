@@ -1,12 +1,25 @@
 import { debug } from '@zubridge/core';
-import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from '@zubridge/types';
+import type {
+  Action,
+  AnyState,
+  Dispatch,
+  DispatchOptions,
+  InternalThunk,
+  Thunk,
+} from '@zubridge/types';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
 import { v4 as uuidv4 } from 'uuid';
-import { Thunk } from '../lib/Thunk.js';
+import { Thunk as ThunkClass } from '../lib/Thunk.js';
 
 // Platform-specific timeout for action completion
 const DEFAULT_ACTION_COMPLETION_TIMEOUT = process.platform === 'linux' ? 20000 : 10000;
+
+// Type for action results that may contain errors
+interface ActionResult {
+  error?: string;
+  [key: string]: unknown;
+}
 debug(
   'ipc',
   `Using platform-specific action timeout: ${DEFAULT_ACTION_COMPLETION_TIMEOUT}ms for ${process.platform}`,
@@ -113,10 +126,11 @@ export class RendererThunkProcessor {
     }
 
     // Check if there was an error in the result
-    if (result?.error) {
+    if (result && typeof result === 'object' && 'error' in result) {
+      const errorResult = result as ActionResult;
       debug(
         'ipc:error',
-        `[RENDERER_THUNK] Action ${actionId} completed with error: ${result.error}`,
+        `[RENDERER_THUNK] Action ${actionId} completed with error: ${errorResult.error}`,
       );
     }
 
@@ -163,7 +177,7 @@ export class RendererThunkProcessor {
     parentId?: string,
   ): Promise<unknown> {
     // Create a Thunk instance
-    const thunk = new Thunk({
+    const thunk = new ThunkClass({
       sourceWindowId: this.currentWindowId ?? 0,
       source: 'renderer',
       parentId,
@@ -215,9 +229,10 @@ export class RendererThunkProcessor {
       };
 
       // Create a dispatch function for this thunk that tracks each action
-      const dispatch: Dispatch<S> = async (
-        action: string | Action | Thunk<S>,
-        payload?: unknown,
+      const dispatch: Dispatch<Partial<S>> = async (
+        action: string | Action | Thunk<Partial<S>>,
+        payloadOrOptions?: unknown | DispatchOptions,
+        options?: DispatchOptions,
       ) => {
         debug(
           'ipc',
@@ -225,18 +240,35 @@ export class RendererThunkProcessor {
           action,
         );
 
+        // Handle different parameter signatures
+        let payload: unknown;
+        let dispatchOptions: DispatchOptions | undefined;
+
         // Handle nested thunks
         if (typeof action === 'function') {
           debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunk.id}`);
           // For nested thunks, we use the current thunk ID as the parent
-          return this.executeThunk(action, options, thunk.id);
+          dispatchOptions = payloadOrOptions as DispatchOptions | undefined;
+          return this.executeThunk(action, dispatchOptions, thunk.id);
+        }
+
+        if (typeof action === 'string') {
+          // String action signature: (action, payload?, options?)
+          payload = payloadOrOptions;
+          dispatchOptions = options;
+        } else {
+          // Action/Thunk signature: (action, options?)
+          payload = undefined;
+          dispatchOptions = payloadOrOptions as DispatchOptions | undefined;
         }
 
         // Handle string actions by converting to action objects
         const actionObj: Action =
           typeof action === 'string'
             ? { type: action, payload, __id: uuidv4() }
-            : { ...action, __id: action.__id || uuidv4() };
+            : 'type' in action
+              ? { ...action, __id: action.__id || uuidv4() }
+              : ({ type: 'THUNK', __id: uuidv4() } as Action);
 
         // Pass through bypass flags from the thunk to the action
         if (thunk.bypassThunkLock) {
@@ -279,14 +311,15 @@ export class RendererThunkProcessor {
             );
 
             // Check if the result contains an error
-            if (result?.error) {
+            if (result && typeof result === 'object' && 'error' in result) {
+              const errorResult = result as ActionResult;
               debug(
                 'ipc:error',
-                `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,
+                `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorResult.error}`,
               );
 
               // Create a proper error object
-              const error = new Error(result.error);
+              const error = new Error(errorResult.error);
 
               // CRITICAL: Don't wrap in Promise.reject here as we're already in a promise context
               // Instead, directly throw the error which will be caught by the promise
@@ -428,12 +461,13 @@ export class RendererThunkProcessor {
         );
 
         // Check if the result contains an error
-        if (result?.error) {
+        if (result && typeof result === 'object' && 'error' in result) {
+          const errorResult = result as ActionResult;
           debug(
             'ipc:error',
-            `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${result.error}`,
+            `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorResult.error}`,
           );
-          reject(new Error(result.error));
+          reject(new Error(errorResult.error));
         } else {
           resolve();
         }

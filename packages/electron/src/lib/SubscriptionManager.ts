@@ -61,10 +61,10 @@ export function getPartialState<S>(state: S, keys?: string[]): Partial<S> {
   if (normalized.length === 0) return {};
   const result: Partial<S> = {};
   for (const key of normalized) {
-    const value = deepGet(state, key);
+    const value = deepGet(state as Record<string, unknown>, key);
     if (value !== undefined) {
       // Set deep value in result (lodash.set is not used to avoid extra dep)
-      setDeep(result, key, value);
+      setDeep(result as Record<string, unknown>, key, value);
     }
   }
   return result;
@@ -78,7 +78,7 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
   let curr = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     if (!curr[keys[i]]) curr[keys[i]] = {};
-    curr = curr[keys[i]];
+    curr = curr[keys[i]] as Record<string, unknown>;
   }
   curr[keys[keys.length - 1]] = value;
 }
@@ -106,8 +106,8 @@ function hasRelevantChange<S>(prev: S, next: S, keys?: string[]): boolean {
 
   // Compare actual values
   return normalized.some((key) => {
-    const prevValue = deepGet(prev, key);
-    const nextValue = deepGet(next, key);
+    const prevValue = deepGet(prev as Record<string, unknown> & ({} | null), key);
+    const nextValue = deepGet(next as Record<string, unknown>, key);
     const changed = !dequal(prevValue, nextValue);
     debug('subscription', `[hasRelevantChange] Comparing key ${key}:`, {
       prevValue,

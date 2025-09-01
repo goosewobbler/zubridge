@@ -29,7 +29,9 @@ export const stateSlice = createSlice({
         // Use the shared generateTestState function
         const filler = generateTestState(variant);
 
-        console.log(`[Redux Slice] ${variant} test state prepared (${(filler.meta as { estimatedSize: string }).estimatedSize})`);
+        console.log(
+          `[Redux Slice] ${variant} test state prepared (${(filler.meta as { estimatedSize: string }).estimatedSize})`,
+        );
 
         return {
           payload: filler as Record<string, number>,

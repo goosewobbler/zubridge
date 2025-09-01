@@ -416,7 +416,7 @@ export class ThunkManager extends EventEmitter {
       priority: ThunkPriority.NORMAL, // Default priority
       canRunConcurrently: canRunConcurrently,
       createdAt: Date.now(),
-      handler: async () => {
+      handler: async (): Promise<void> => {
         debug('thunk-task', `Executing task ${taskId} for action ${action.type}`);
         try {
           // Check if action is still part of thunk's tracked actions
@@ -426,15 +426,21 @@ export class ThunkManager extends EventEmitter {
               'thunk-debug',
               `Action ${action.__id} no longer tracked for thunk ${thunkId}, skipping execution`,
             );
-            return null;
+            return;
           }
 
           // Process the action using the state manager
           const result = this.stateManager!.processAction(action);
 
           // If the action returns a promise, await it
-          if (result?.completion && typeof result.completion.then === 'function') {
-            await result.completion;
+          if (result && typeof result === 'object' && 'completion' in result) {
+            const completableResult = result as { completion?: Promise<unknown> };
+            if (
+              completableResult.completion &&
+              typeof completableResult.completion.then === 'function'
+            ) {
+              await completableResult.completion;
+            }
           }
 
           debug('thunk-task', `Task ${taskId} completed successfully`);
@@ -442,7 +448,6 @@ export class ThunkManager extends EventEmitter {
           if (action.__id) {
             this.handleActionComplete(action.__id);
           }
-          return result;
         } catch (error) {
           debug('thunk-task', `Task ${taskId} failed: ${error}`);
           throw error;

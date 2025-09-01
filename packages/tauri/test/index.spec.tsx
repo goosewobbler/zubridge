@@ -358,7 +358,7 @@ describe('@zubridge/tauri', () => {
       await expect(
         act(async () => {
           await initializeBridge({
-            invoke: mockInvoke,
+            invoke: mockInvoke as BackendOptions['invoke'],
             listen: failingMockListen as BackendOptions['listen'],
           });
         }),
@@ -440,7 +440,7 @@ describe('@zubridge/tauri', () => {
       // Initialize with our custom invoke function
       await act(async () => {
         await initializeBridge({
-          invoke: mockPluginFailInvoke,
+          invoke: mockPluginFailInvoke as BackendOptions['invoke'],
           listen: mockListen,
         });
       });
@@ -515,7 +515,7 @@ describe('@zubridge/tauri', () => {
       // Attempt to initialize with failing invoke
       await expect(
         initializeBridge({
-          invoke: failingInvoke,
+          invoke: failingInvoke as BackendOptions['invoke'],
           listen: mockListen,
         }),
       ).rejects.toThrow('Failed to connect to backend');

@@ -17,7 +17,7 @@ export enum IpcChannel {
 }
 
 export class ThunkRegistrationQueue {
-  private thunkRegistrationQueue: QueuedThunk[] = [];
+  private thunkRegistrationQueue: QueuedThunk<unknown>[] = [];
   private processingThunkRegistration = false;
   private thunkManager: ThunkManager;
 
@@ -59,7 +59,7 @@ export class ThunkRegistrationQueue {
         thunk,
         mainThunkCallback,
         rendererCallback,
-        resolve,
+        resolve: resolve as (value: unknown) => void,
         reject,
       });
 
@@ -151,7 +151,7 @@ export class ThunkRegistrationQueue {
 
       if (!canRegister) {
         debug('queue', `[THUNK-QUEUE] Thunk ${thunk.id} cannot register, queueing for later`);
-        this.thunkRegistrationQueue.unshift(registration);
+        this.thunkRegistrationQueue.unshift(registration as QueuedThunk<unknown>);
         this.processingThunkRegistration = false;
         return;
       }
@@ -197,7 +197,7 @@ export class ThunkRegistrationQueue {
             this.thunkManager.markThunkFailed(thunk.id, error as Error);
 
             // Handle error
-            this.handleError(registration, error);
+            this.handleError(registration as QueuedThunk<unknown>, error);
           }
         });
       } else if (thunk.source === 'renderer' && rendererCallback) {
@@ -216,7 +216,7 @@ export class ThunkRegistrationQueue {
             this.thunkManager.completeThunk(thunk.id);
 
             // Handle completion with null result (renderer callbacks don't return anything)
-            this.handleCompletion(registration, null as unknown as T);
+            this.handleCompletion(registration as QueuedThunk<unknown>, null as unknown);
           } catch (error) {
             debug('queue-debug', `[DEBUG] Renderer thunk ${thunk.id} failed with error: ${error}`);
 
@@ -224,7 +224,7 @@ export class ThunkRegistrationQueue {
             this.thunkManager.markThunkFailed(thunk.id, error as Error);
 
             // Handle error
-            this.handleError(registration, error);
+            this.handleError(registration as QueuedThunk<unknown>, error);
           }
         });
       } else {
@@ -239,13 +239,13 @@ export class ThunkRegistrationQueue {
 
         // Handle completion with undefined result, but don't complete the thunk yet
         // The thunk will be completed when all its actions are processed
-        this.handleCompletion(registration, null as unknown as T);
+        this.handleCompletion(registration as QueuedThunk<unknown>, null as unknown);
       }
     } catch (error) {
       debug('queue', `[THUNK-QUEUE] Error processing thunk ${thunk.id}: ${error}`);
 
       // Handle error
-      this.handleError(registration, error);
+      this.handleError(registration as QueuedThunk<unknown>, error);
     }
   }
 }

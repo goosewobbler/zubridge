@@ -31,7 +31,9 @@ export const attachStateHandlers = <S extends BaseState>(store: StoreApi<S>) => 
         filler,
       }));
 
-      console.log(`[Basic] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`);
+      console.log(
+        `[Basic] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`,
+      );
     },
   }));
 };

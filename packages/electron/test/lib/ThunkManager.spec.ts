@@ -66,7 +66,7 @@ describe('ThunkManager', () => {
       processAction: vi.fn().mockReturnValue({ counter: 0 }),
     };
 
-    thunkManager = new ThunkManager(mockScheduler as ThunkScheduler);
+    thunkManager = new ThunkManager(mockScheduler as unknown as ThunkScheduler);
     thunkManager.setStateManager(mockStateManager);
     vi.clearAllMocks();
   });

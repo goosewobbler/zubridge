@@ -26,7 +26,9 @@ export const reducer: Reducer<typeof initialState> = (state, action: Action) => 
       // Use the shared generateTestState function
       const filler = generateTestState(variant);
 
-      console.log(`[Reducer] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`);
+      console.log(
+        `[Reducer] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`,
+      );
 
       return {
         ...state,

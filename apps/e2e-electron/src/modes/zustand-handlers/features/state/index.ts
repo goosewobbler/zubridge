@@ -31,5 +31,7 @@ export const generateLargeState =
       filler,
     } as S);
 
-    console.log(`[Handler] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`);
+    console.log(
+      `[Handler] ${variant} test state generated (${(filler.meta as { estimatedSize: string }).estimatedSize})`,
+    );
   };

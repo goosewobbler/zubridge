@@ -86,10 +86,10 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
       createdAt: Date.now(),
       priority: 0, // Default priority
       canRunConcurrently: !!action.__bypassThunkLock, // Map bypass flag to canRunConcurrently
-      handler: async () => {
+      handler: async (): Promise<void> => {
         // Execute the action directly through the executor
         // This avoids recursion since we're not going through processAction again
-        return this.actionExecutor.executeAction(action);
+        await this.actionExecutor.executeAction(action);
       },
     };
 

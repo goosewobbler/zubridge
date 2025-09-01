@@ -51,7 +51,13 @@ export function findNestedHandler<T>(obj: Record<string, unknown>, path: string)
         return undefined;
       }
 
-      current = current[matchingKey];
+      const nextValue = (current as Record<string, unknown>)[matchingKey];
+      if (typeof nextValue === 'object' && nextValue !== null) {
+        current = nextValue as Record<string, unknown>;
+      } else {
+        // If it's not an object, we can't continue the path resolution
+        current = nextValue as Record<string, unknown>;
+      }
       debug('store', `Resolved part '${part}' to '${matchingKey}', continuing resolution`);
     }
 
