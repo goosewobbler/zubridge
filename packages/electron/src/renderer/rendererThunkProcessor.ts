@@ -102,7 +102,11 @@ export class RendererThunkProcessor {
    */
   public completeAction(actionId: string, result: unknown): void {
     debug('ipc', `[RENDERER_THUNK] Action completed: ${actionId}`);
-    debug('ipc', `[RENDERER_THUNK] Result: ${JSON.stringify(result)}`);
+    try {
+      debug('ipc', `[RENDERER_THUNK] Result: ${JSON.stringify(result)}`);
+    } catch {
+      debug('ipc', '[RENDERER_THUNK] Result: [Non-serializable result]');
+    }
     const { error: errorString } = result as { error: string };
 
     // Clear any pending timeout for this action
@@ -531,6 +535,25 @@ export class RendererThunkProcessor {
     );
   }
 
+  /**
+   * Destroy the processor and cleanup all resources
+   */
+  public destroy(): void {
+    debug('ipc', '[RENDERER_THUNK] Destroying RendererThunkProcessor instance');
+    
+    // Clean up all resources first
+    this.forceCleanupExpiredActions();
+    
+    // Clear function references
+    this.actionSender = undefined;
+    this.thunkRegistrar = undefined;
+    this.thunkCompleter = undefined;
+    this.stateProvider = undefined;
+    this.currentWindowId = undefined;
+    
+    debug('ipc', '[RENDERER_THUNK] RendererThunkProcessor instance destroyed');
+  }
+
 }
 
 // Singleton instance of the thunk processor
@@ -552,8 +575,8 @@ export const getThunkProcessor = (options: Required<PreloadOptions>): RendererTh
  */
 export const resetThunkProcessor = (): void => {
   if (globalThunkProcessor) {
-    debug('ipc', '[RENDERER_THUNK] Cleaning up existing global thunk processor');
-    globalThunkProcessor.forceCleanupExpiredActions();
+    debug('ipc', '[RENDERER_THUNK] Resetting global thunk processor');
+    globalThunkProcessor.destroy();
   }
   globalThunkProcessor = undefined;
 };

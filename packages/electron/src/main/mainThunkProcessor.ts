@@ -421,6 +421,21 @@ export class MainThunkProcessor {
     );
   }
 
+  /**
+   * Destroy the processor and cleanup all resources
+   */
+  public destroy(): void {
+    debug('core', '[MAIN_THUNK] Destroying MainThunkProcessor instance');
+    
+    // Clean up pending actions first
+    this.forceCleanupExpiredActions();
+    
+    // Clear the state manager reference
+    this.stateManager = undefined;
+    
+    debug('core', '[MAIN_THUNK] MainThunkProcessor instance destroyed');
+  }
+
 }
 
 // Singleton instance
@@ -441,8 +456,8 @@ export const getMainThunkProcessor = (options?: ThunkProcessorOptions): MainThun
  */
 export const resetMainThunkProcessor = (): void => {
   if (mainThunkProcessorInstance) {
-    debug('core', '[MAIN_THUNK] Cleaning up existing global thunk processor');
-    mainThunkProcessorInstance.forceCleanupExpiredActions();
+    debug('core', '[MAIN_THUNK] Resetting global thunk processor');
+    mainThunkProcessorInstance.destroy();
   }
   mainThunkProcessorInstance = undefined;
 };
