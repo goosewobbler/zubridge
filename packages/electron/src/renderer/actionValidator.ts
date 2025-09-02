@@ -28,7 +28,8 @@ export function registerActionMappings(mappings: Record<string, string[]>): void
   Object.entries(mappings).forEach(([actionType, stateKeys]) => {
     registerActionMapping(actionType, stateKeys);
   });
-  debug('action-validator', `Registered ${Object.keys(mappings).length} action mappings`);
+  const mappingCount = Object.keys(mappings).length;
+  debug('action-validator', `Registered ${mappingCount} action mappings`);
 }
 
 /**

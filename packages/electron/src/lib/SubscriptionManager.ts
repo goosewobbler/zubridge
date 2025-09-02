@@ -154,7 +154,7 @@ export class SubscriptionManager<S> {
     }
 
     const normalized = normalizeKeys(keys);
-    debug('subscription', `[subscribe] Normalized keys: ${JSON.stringify(normalized)}`);
+    debug('subscription', '[subscribe] Normalized keys:', normalized);
 
     const subscriptionKey = getSubscriptionKey(windowId);
     debug('subscription', `[subscribe] Using subscription key: ${subscriptionKey}`);

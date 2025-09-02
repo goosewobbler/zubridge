@@ -41,12 +41,13 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
       'scheduler',
       `Enqueuing task ${task.id} for thunk ${task.thunkId} (priority: ${task.priority}, canRunConcurrently: ${task.canRunConcurrently})`,
     );
-    debug('scheduler', `Task details: ${JSON.stringify(task)}`);
+    debug('scheduler', 'Task details:', task);
     debug(
       'scheduler',
-      `Current running tasks: [${Array.from(this.runningTasks.values())
-        .map((t) => `${t.id} (thunk: ${t.thunkId}, canRunConcurrently: ${t.canRunConcurrently})`)
-        .join(', ')}]`,
+      'Current running tasks:',
+      Array.from(this.runningTasks.values()).map(
+        (t) => `${t.id} (thunk: ${t.thunkId}, canRunConcurrently: ${t.canRunConcurrently})`,
+      ),
     );
 
     // Add task to queue
