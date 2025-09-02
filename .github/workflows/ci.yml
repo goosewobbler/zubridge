@@ -60,6 +60,12 @@ jobs:
         with:
           node-version: "20.x"
 
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
       - name: 🔍 Run Linting
         run: pnpm run lint
 
