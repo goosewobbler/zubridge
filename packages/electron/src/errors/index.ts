@@ -119,12 +119,12 @@ export class SubscriptionError extends ZubridgeError {
  */
 export class ResourceManagementError extends ZubridgeError {
   public readonly resourceType: string;
-  public readonly operation: 'create' | 'cleanup' | 'destroy';
+  public readonly operation: 'create' | 'cleanup' | 'destroy' | 'enqueue' | 'overflow';
 
   constructor(
     message: string,
     resourceType: string,
-    operation: 'create' | 'cleanup' | 'destroy',
+    operation: 'create' | 'cleanup' | 'destroy' | 'enqueue' | 'overflow',
     context?: Record<string, unknown>,
   ) {
     super(message, context);

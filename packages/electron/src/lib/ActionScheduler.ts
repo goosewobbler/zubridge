@@ -1,7 +1,8 @@
-import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { EventEmitter } from 'node:events';
 import { v4 as uuid } from 'uuid';
+import { ResourceManagementError } from '../errors/index.js';
 import type { ThunkManager } from './ThunkManager.js';
 import type { ThunkScheduler } from './ThunkScheduler.js';
 
@@ -40,6 +41,16 @@ export class ActionScheduler extends EventEmitter {
    * Queue of actions waiting to be processed
    */
   private queue: QueuedAction[] = [];
+
+  /**
+   * Maximum queue size before overflow handling
+   */
+  private maxQueueSize = 1000;
+
+  /**
+   * Number of actions dropped due to overflow
+   */
+  private droppedActionsCount = 0;
 
   /**
    * Set of action IDs currently being processed
@@ -116,6 +127,22 @@ export class ActionScheduler extends EventEmitter {
       debug('scheduler', `Action ${action.type} (${action.__id}) can execute immediately`);
       this.executeAction(action, sourceWindowId, onComplete);
       return true;
+    }
+
+    // Check for queue overflow before adding
+    if (this.queue.length >= this.maxQueueSize) {
+      if (!this.handleQueueOverflow(action)) {
+        // Action was rejected due to overflow
+        debug('scheduler', `Action ${action.type} (${action.__id}) rejected due to queue overflow`);
+        onComplete?.(
+          new ResourceManagementError('Action queue overflow', 'action_queue', 'enqueue', {
+            queueSize: this.queue.length,
+            maxSize: this.maxQueueSize,
+            actionType: action.type,
+          }),
+        );
+        return false;
+      }
     }
 
     // Add to queue for later execution
@@ -437,6 +464,110 @@ export class ActionScheduler extends EventEmitter {
 
     // Default priority for regular actions
     return 0;
+  }
+
+  /**
+   * Handle queue overflow by dropping low-priority actions
+   * Returns true if the new action should be accepted, false if rejected
+   */
+  private handleQueueOverflow(newAction: Action): boolean {
+    debug(
+      'scheduler:overflow',
+      `Queue overflow detected (${this.queue.length}/${this.maxQueueSize})`,
+    );
+
+    // Determine priority of new action
+    const newPriority = this.getPriorityForAction(newAction);
+
+    // Find low-priority actions that can be dropped (priority < 50)
+    const droppableActions = this.queue
+      .filter((queuedAction) => queuedAction.priority < 50)
+      .sort((a, b) => a.priority - b.priority || a.receivedTime - b.receivedTime); // Lowest priority and oldest first
+
+    if (droppableActions.length === 0) {
+      // No low-priority actions to drop
+      if (newPriority < 50) {
+        // New action is also low priority, reject it
+        debug(
+          'scheduler:overflow',
+          'No droppable actions found and new action is low priority, rejecting',
+        );
+        return false;
+      }
+      // New action is high priority but no space available
+      debug(
+        'scheduler:overflow',
+        'No droppable actions found but new action is high priority, forcing acceptance',
+      );
+      // Drop the oldest action regardless of priority
+      const oldestAction = this.queue.reduce((oldest, current) =>
+        current.receivedTime < oldest.receivedTime ? current : oldest,
+      );
+      this.removeActionFromQueue(oldestAction);
+      this.droppedActionsCount++;
+      return true;
+    }
+
+    // Drop the lowest priority action
+    const actionToDrop = droppableActions[0];
+    this.removeActionFromQueue(actionToDrop);
+    this.droppedActionsCount++;
+
+    debug(
+      'scheduler:overflow',
+      `Dropped action ${actionToDrop.action.type} (priority ${actionToDrop.priority}) to make room`,
+    );
+
+    // Call the dropped action's completion callback with an error
+    actionToDrop.onComplete?.(
+      new ResourceManagementError(
+        'Action dropped due to queue overflow',
+        'action_queue',
+        'overflow',
+        {
+          droppedActionType: actionToDrop.action.type,
+          newActionType: newAction.type,
+          queueSize: this.queue.length,
+        },
+      ),
+    );
+
+    return true;
+  }
+
+  /**
+   * Remove an action from the queue
+   */
+  private removeActionFromQueue(actionToRemove: QueuedAction): void {
+    const index = this.queue.indexOf(actionToRemove);
+    if (index !== -1) {
+      this.queue.splice(index, 1);
+    }
+  }
+
+  /**
+   * Get queue statistics
+   */
+  public getQueueStats(): {
+    currentSize: number;
+    maxSize: number;
+    droppedActionsCount: number;
+    priorityDistribution: Record<string, number>;
+  } {
+    const priorityDistribution: Record<string, number> = {};
+
+    for (const queuedAction of this.queue) {
+      const priority = queuedAction.priority;
+      const priorityName = priority >= 80 ? 'High' : priority >= 50 ? 'Normal' : 'Low';
+      priorityDistribution[priorityName] = (priorityDistribution[priorityName] || 0) + 1;
+    }
+
+    return {
+      currentSize: this.queue.length,
+      maxSize: this.maxQueueSize,
+      droppedActionsCount: this.droppedActionsCount,
+      priorityDistribution,
+    };
   }
 
   /**
