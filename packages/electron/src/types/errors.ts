@@ -12,7 +12,7 @@
  *   await dispatch(someAction);
  * } catch (error) {
  *   if (error instanceof QueueOverflowError) {
- *     console.error('Action queue is full:', error.message);
+ *     debug('queue:error', 'Action queue is full:', error.message);
  *     // Handle overflow - maybe wait and retry, or warn user
  *   }
  * }

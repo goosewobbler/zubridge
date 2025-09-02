@@ -198,7 +198,7 @@ export class RendererThunkProcessor {
           options?.bypassAccessControl,
         );
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
-      } catch (error) {
+      } catch (error: unknown) {
         debug('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
       }
     }
@@ -335,7 +335,7 @@ export class RendererThunkProcessor {
             debug('ipc', `[RENDERER_THUNK] Sending action ${actionId} to main process`);
             await this.actionSender(actionObj, thunk.id);
             debug('ipc', `[RENDERER_THUNK] Action ${actionId} sent to main process`);
-          } catch (error) {
+          } catch (error: unknown) {
             // If sending fails, clear any pending timeout
             const timeout = this.actionTimeouts.get(actionId);
             if (timeout) {
@@ -365,7 +365,7 @@ export class RendererThunkProcessor {
       const result = await thunkFn(getState, dispatch);
       debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} execution completed, result:`, result);
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunk.id}:`, error);
       throw error; // Rethrow to be caught by caller
     } finally {
@@ -402,7 +402,7 @@ export class RendererThunkProcessor {
           await window.zubridge.dispatch(action);
         }
         return;
-      } catch (error) {
+      } catch (error: unknown) {
         debug('ipc:error', '[RENDERER_THUNK] Error dispatching through window.zubridge:', error);
       }
     }
@@ -513,22 +513,22 @@ export class RendererThunkProcessor {
    */
   public forceCleanupExpiredActions(): void {
     debug('ipc', '[RENDERER_THUNK] Force cleaning up expired actions and timeouts');
-    
+
     // Clear all pending timeouts
     for (const [actionId, timeout] of this.actionTimeouts) {
       debug('ipc', `[RENDERER_THUNK] Force clearing timeout for action ${actionId}`);
       clearTimeout(timeout);
     }
-    
+
     // Clear all maps
     const clearedTimeouts = this.actionTimeouts.size;
     const clearedCallbacks = this.actionCompletionCallbacks.size;
     const clearedDispatches = this.pendingDispatches.size;
-    
+
     this.actionTimeouts.clear();
     this.actionCompletionCallbacks.clear();
     this.pendingDispatches.clear();
-    
+
     debug(
       'ipc',
       `[RENDERER_THUNK] Force cleaned up ${clearedTimeouts} timeouts, ${clearedCallbacks} callbacks, ${clearedDispatches} dispatches`,
@@ -540,20 +540,19 @@ export class RendererThunkProcessor {
    */
   public destroy(): void {
     debug('ipc', '[RENDERER_THUNK] Destroying RendererThunkProcessor instance');
-    
+
     // Clean up all resources first
     this.forceCleanupExpiredActions();
-    
+
     // Clear function references
     this.actionSender = undefined;
     this.thunkRegistrar = undefined;
     this.thunkCompleter = undefined;
     this.stateProvider = undefined;
     this.currentWindowId = undefined;
-    
+
     debug('ipc', '[RENDERER_THUNK] RendererThunkProcessor instance destroyed');
   }
-
 }
 
 // Singleton instance of the thunk processor

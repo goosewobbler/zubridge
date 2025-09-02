@@ -398,10 +398,10 @@ export class MainThunkProcessor {
    */
   public forceCleanupExpiredActions(): void {
     debug('core', '[MAIN_THUNK] Force cleaning up expired actions and tracking');
-    
+
     const clearedPromises = this.pendingActionPromises.size;
     const clearedThunks = this.sentFirstActionForThunk.size;
-    
+
     // Clear all pending action promises
     for (const [actionId, { resolve }] of this.pendingActionPromises) {
       debug('core', `[MAIN_THUNK] Force completing pending action ${actionId}`);
@@ -411,10 +411,10 @@ export class MainThunkProcessor {
         debug('core:error', `[MAIN_THUNK] Error completing action ${actionId}:`, error);
       }
     }
-    
+
     this.pendingActionPromises.clear();
     this.sentFirstActionForThunk.clear();
-    
+
     debug(
       'core',
       `[MAIN_THUNK] Force cleaned up ${clearedPromises} pending promises, ${clearedThunks} thunk tracking entries`,
@@ -426,16 +426,15 @@ export class MainThunkProcessor {
    */
   public destroy(): void {
     debug('core', '[MAIN_THUNK] Destroying MainThunkProcessor instance');
-    
+
     // Clean up pending actions first
     this.forceCleanupExpiredActions();
-    
+
     // Clear the state manager reference
     this.stateManager = undefined;
-    
+
     debug('core', '[MAIN_THUNK] MainThunkProcessor instance destroyed');
   }
-
 }
 
 // Singleton instance

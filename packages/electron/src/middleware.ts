@@ -96,7 +96,7 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
 
         // The middleware.processAction expects an Action where payload is string | undefined
         await middleware.processAction(napiCompliantAction);
-      } catch (error) {
+      } catch (error: unknown) {
         debug('core:error', 'Error in zubridge middleware processAction:', error);
       }
       return action; // Return the original action for further processing by the bridge
@@ -119,7 +119,7 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
           stateJson = JSON.stringify({ error: 'State stringification failed' });
         }
         await middleware.setState(stateJson);
-      } catch (error) {
+      } catch (error: unknown) {
         debug('core:error', 'Error in zubridge middleware setState:', error);
       }
     },
@@ -130,7 +130,7 @@ export function createMiddlewareOptions(middleware: ZubridgeMiddleware) {
         try {
           debug('core', 'Destroying middleware instance');
           await middleware.destroy();
-        } catch (error) {
+        } catch (error: unknown) {
           debug('core:error', 'Error destroying zubridge middleware:', error);
         }
       }

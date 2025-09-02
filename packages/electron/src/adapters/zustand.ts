@@ -1,31 +1,11 @@
 import { debug } from '@zubridge/core';
 import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/types';
 import type { StoreApi } from 'zustand/vanilla';
+import { ActionProcessingError } from '../errors/index.js';
 import type { ZubridgeMiddleware } from '../middleware.js';
+import { logZubridgeError } from '../utils/errorHandling.js';
 import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
-
-/**
- * Helper to check if a value is a Promise
- */
-function isPromise(value: unknown): value is Promise<unknown> {
-  return (
-    !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function'
-  );
-}
-
-/**
- * Converts any promise to a Promise<void>
- * This helps guarantee type compatibility with ProcessResult.completion
- */
-function toVoidPromise<T>(promise: Promise<T>): Promise<void> {
-  return promise
-    .then(() => undefined)
-    .catch((error) => {
-      debug('adapters:error', '[PROMISE_ERROR] Error in promise:', error);
-      // Re-throw to ensure errors are propagated
-      throw error;
-    });
-}
+import { isPromise } from '../utils/serialization.js';
 
 /**
  * Options for the Zustand bridge and adapter
@@ -81,9 +61,9 @@ export function createZustandAdapter<S extends AnyState>(
                 `[ADAPTER_DEBUG] [${promiseId}] Creating async handler promise wrapper for action: ${action.type}`,
               );
 
-              // Transform the result promise to ensure it returns void
-              const voidPromise = toVoidPromise(
-                result.then(() => {
+              // Create a single promise chain with proper error handling
+              const completion = result
+                .then(() => {
                   const endTime = Date.now();
                   debug(
                     'adapters',
@@ -97,13 +77,32 @@ export function createZustandAdapter<S extends AnyState>(
                     'adapters',
                     `[ADAPTER_DEBUG] [${promiseId}] STATE IS NOW UPDATED for ${action.type}`,
                   );
-                }),
-              );
+                  return undefined;
+                })
+                .catch((error: unknown) => {
+                  const endTime = Date.now();
 
-              // Return both the async status and the void completion promise
+                  const actionError = new ActionProcessingError(
+                    `Async handler execution failed for action ${action.type}`,
+                    action.type,
+                    'zustand',
+                    {
+                      promiseId,
+                      duration: endTime - startTime,
+                      handlerName: 'async_handler',
+                      originalError: error,
+                    },
+                  );
+
+                  logZubridgeError(actionError);
+                  // For IPC communication, serialize the error
+                  return { error: actionError.message };
+                });
+
+              // Return both the async status and the completion promise
               return {
                 isSync: false,
-                completion: voidPromise,
+                completion,
               };
             }
             const endTime = Date.now();
@@ -152,11 +151,25 @@ export function createZustandAdapter<S extends AnyState>(
             // Return both the async status and the completion promise
             return {
               isSync: false,
-              completion: toVoidPromise(
-                result.then(() => {
+              completion: result
+                .then(() => {
                   debug('adapters', `Async method ${methodMatch[0]} completed`);
+                  return undefined;
+                })
+                .catch((error: unknown) => {
+                  const actionError = new ActionProcessingError(
+                    `Async method execution failed for ${methodMatch[0]}`,
+                    action.type,
+                    'zustand',
+                    {
+                      methodName: methodMatch[0],
+                      originalError: error,
+                    },
+                  );
+
+                  logZubridgeError(actionError);
+                  return { error: actionError.message };
                 }),
-              ),
             };
           }
           return { isSync: true }; // Sync action
@@ -177,11 +190,25 @@ export function createZustandAdapter<S extends AnyState>(
             // Return both the async status and the completion promise
             return {
               isSync: false,
-              completion: toVoidPromise(
-                result.then(() => {
+              completion: result
+                .then(() => {
                   debug('adapters', `Async nested handler for ${action.type} completed`);
+                  return undefined;
+                })
+                .catch((error: unknown) => {
+                  const actionError = new ActionProcessingError(
+                    `Async nested handler execution failed for action ${action.type}`,
+                    action.type,
+                    'zustand',
+                    {
+                      handlerName: 'nested_handler',
+                      originalError: error,
+                    },
+                  );
+
+                  logZubridgeError(actionError);
+                  return { error: actionError.message };
                 }),
-              ),
             };
           }
           return { isSync: true }; // Sync action
@@ -190,25 +217,23 @@ export function createZustandAdapter<S extends AnyState>(
         debug('adapters', `No handler found for action type: ${action.type}`);
         return { isSync: true }; // Default to sync if no handler found
       } catch (error) {
-        debug('adapters:error', 'Error processing action:', error);
-        debug(
-          'adapters:error',
-          `Error type: ${typeof error}, instanceof Error: ${error instanceof Error}`,
-        );
-        debug(
-          'adapters:error',
-          `Error message: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        debug(
-          'adapters:error',
-          `Stack trace: ${error instanceof Error ? error.stack : 'No stack available'}`,
+        const actionError = new ActionProcessingError(
+          `Synchronous action processing failed for action ${action.type}`,
+          action.type,
+          'zustand',
+          {
+            context: 'sync_process_action',
+            originalError: error,
+          },
         );
 
-        // Return the error so it can be propagated to the renderer
+        logZubridgeError(actionError);
+
+        // Return standardized error so it can be propagated to the renderer
         return {
           isSync: true,
-          error: error,
-        }; // Include the error with the result
+          error: actionError.message, // Keep consistent with async error format
+        };
       }
     },
   };

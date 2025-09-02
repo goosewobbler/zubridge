@@ -1,17 +1,11 @@
 import { debug } from '@zubridge/core';
 import type { Action, AnyState, Handler, StateManager } from '@zubridge/types';
 import type { Store } from 'redux';
+import { ActionProcessingError } from '../errors/index.js';
 import type { ZubridgeMiddleware } from '../middleware.js';
+import { logZubridgeError } from '../utils/errorHandling.js';
 import { resolveHandler } from '../utils/handlers.js';
-
-/**
- * Helper to check if a value is a Promise
- */
-function isPromise(value: unknown): value is Promise<unknown> {
-  return (
-    !!value && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function'
-  );
-}
+import { isPromise } from '../utils/serialization.js';
 
 /**
  * Options for the Redux adapter
@@ -60,22 +54,42 @@ export function createReduxAdapter<S extends AnyState>(
                 'adapters',
                 `Handler for ${action.type} returned a Promise, it will complete asynchronously`,
               );
+
+              // Create a single promise chain with proper error handling
+              const completion = result
+                .then(() => {
+                  const endTime = Date.now();
+                  debug(
+                    'adapters',
+                    `Async handler for ${action.type} completed in ${
+                      endTime - startTime
+                    }ms, time: ${new Date().toISOString()}`,
+                  );
+                  return undefined;
+                })
+                .catch((error: unknown) => {
+                  const endTime = Date.now();
+
+                  const actionError = new ActionProcessingError(
+                    `Async handler execution failed for action ${action.type}`,
+                    action.type,
+                    'redux',
+                    {
+                      duration: endTime - startTime,
+                      handlerName: 'async_handler',
+                      originalError: error,
+                    },
+                  );
+
+                  logZubridgeError(actionError);
+                  // Return standardized error in result rather than throwing to prevent unhandled rejections
+                  return { error: actionError.message };
+                });
+
               // Return both the async status and the completion promise
               return {
                 isSync: false,
-                completion: result
-                  .then(() => {
-                    const endTime = Date.now();
-                    debug(
-                      'adapters',
-                      `Async handler for ${action.type} completed in ${
-                        endTime - startTime
-                      }ms, time: ${new Date().toISOString()}`,
-                    );
-                  })
-                  .catch((error) => {
-                    debug('adapters:error', `Error in async handler for ${action.type}:`, error);
-                  }),
+                completion,
               };
             }
             const endTime = Date.now();
@@ -93,8 +107,22 @@ export function createReduxAdapter<S extends AnyState>(
         store.dispatch(action);
         return { isSync: true }; // Redux dispatch is synchronous
       } catch (error) {
-        debug('adapters:error', 'Error processing Redux action:', error);
-        return { isSync: true }; // Default to sync if error occurred
+        const actionError = new ActionProcessingError(
+          `Synchronous action processing failed for action ${action.type}`,
+          action.type,
+          'redux',
+          {
+            context: 'sync_process_action',
+            originalError: error,
+          },
+        );
+
+        logZubridgeError(actionError);
+
+        return {
+          isSync: true,
+          error: actionError.message, // Keep consistent with async error format
+        };
       }
     },
   };

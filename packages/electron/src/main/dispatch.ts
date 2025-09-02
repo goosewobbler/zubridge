@@ -118,12 +118,12 @@ export function createDispatch<S extends AnyState>(
 
           // Return the action object
           return actionObj;
-        } catch (error) {
+        } catch (error: unknown) {
           debug('core', 'Error dispatching action:', error);
           throw error;
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debug('core', 'Error in internalDispatch:', error);
       throw error;
     }

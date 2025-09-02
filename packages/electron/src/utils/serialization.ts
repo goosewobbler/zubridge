@@ -1,4 +1,13 @@
+import { debug } from '@zubridge/core';
 import type { AnyState } from '@zubridge/types';
+
+/**
+ * Type guard to check if a value is a Promise
+ */
+export const isPromise = (value: unknown): value is Promise<unknown> =>
+  value !== null &&
+  typeof value === 'object' &&
+  typeof (value as { then: unknown }).then === 'function';
 
 /**
  * Options for state serialization
@@ -153,14 +162,14 @@ export const sanitizeState = (
           if (valueToSerialize !== undefined) {
             result[key] = serialize(valueToSerialize, currentDepth + 1, keyPath);
           }
-        } catch (error) {
+        } catch (error: unknown) {
           result[key] =
             `[Error accessing property: ${error instanceof Error ? error.message : String(error)}]`;
         }
       }
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       return `[Serialization Error: ${error instanceof Error ? error.message : String(error)}]`;
     } finally {
       // Remove from seen set to allow the same object at different paths
@@ -174,8 +183,8 @@ export const sanitizeState = (
     }
 
     return serialize(state) as Record<string, unknown>;
-  } catch (error) {
-    console.error('Critical serialization error:', error);
+  } catch (error: unknown) {
+    debug('serialization:error', 'Critical serialization error:', error);
     return {
       __serializationError: true,
       message: error instanceof Error ? error.message : String(error),

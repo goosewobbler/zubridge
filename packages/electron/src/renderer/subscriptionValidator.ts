@@ -42,7 +42,7 @@ export async function getWindowSubscriptions(): Promise<string[]> {
     }
     debug('subscription:error', 'Subscription validator API not available');
     return [];
-  } catch (error) {
+  } catch (error: unknown) {
     debug('subscription:error', 'Error getting window subscriptions:', error);
     return [];
   }

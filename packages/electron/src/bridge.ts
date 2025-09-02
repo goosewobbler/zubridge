@@ -14,6 +14,7 @@ import type { StoreApi } from 'zustand';
 import type { ReduxOptions } from './adapters/redux.js';
 import type { ZustandOptions } from './adapters/zustand.js';
 import { IpcChannel } from './constants.js';
+import { IpcCommunicationError, ResourceManagementError } from './errors/index.js';
 import { actionScheduler, thunkManager } from './lib/initThunkManager.js';
 import { getStateManager } from './lib/stateManagerRegistry.js';
 import { getPartialState, SubscriptionManager } from './lib/SubscriptionManager.js';
@@ -21,6 +22,8 @@ import { Thunk as ThunkClass } from './lib/Thunk.js';
 import { ThunkRegistrationQueue } from './lib/ThunkRegistrationQueue.js';
 import { actionQueue, initActionQueue } from './main/actionQueue.js';
 import { createMiddlewareOptions, type ZubridgeMiddleware } from './middleware.js';
+import { logZubridgeError, serializeError } from './utils/errorHandling.js';
+import { setupMainProcessErrorHandlers } from './utils/globalErrorHandlers.js';
 import { sanitizeState } from './utils/serialization.js';
 import {
   createWebContentsTracker,
@@ -147,7 +150,8 @@ class BridgeResourceManager<State extends AnyState> {
 
   setMiddlewareCallbacks(callbacks: MiddlewareCallbacks): void {
     this.middlewareCallbacks = { ...callbacks };
-    debug('core', 'Middleware callbacks set:', Object.keys(callbacks).join(', '));
+    const callbackKeys = Object.keys(callbacks);
+    debug('core', `Middleware callbacks set (${callbackKeys.length}): ${callbackKeys.join(', ')}`);
   }
 
   getMiddlewareCallbacks(): MiddlewareCallbacks {
@@ -202,7 +206,13 @@ class BridgeResourceManager<State extends AnyState> {
           }
         }
       } catch (error) {
-        debug('bridge:memory', 'Error during fallback cleanup, skipping:', error);
+        const cleanupError = new ResourceManagementError(
+          'Error during fallback window cleanup',
+          'window_subscriptions',
+          'cleanup',
+          { originalError: error },
+        );
+        logZubridgeError(cleanupError);
         // Don't remove anything on error - be conservative
       }
     }
@@ -255,6 +265,9 @@ export function createCoreBridge<State extends AnyState>(
   options?: CoreBridgeOptions,
 ): BackendBridge<number> {
   debug('core', 'Creating CoreBridge with options:', options);
+
+  // Setup global error handlers for the main process
+  setupMainProcessErrorHandlers();
 
   // Initialize action queue with the state manager
   initActionQueue(stateManager);
@@ -403,12 +416,21 @@ export function createCoreBridge<State extends AnyState>(
             }
           }
         } catch (ackError) {
-          debug('ipc:error', '[BRIDGE DEBUG] Error sending acknowledgment:', ackError);
+          const ipcError = new IpcCommunicationError('Failed to send action acknowledgment', {
+            channel: IpcChannel.DISPATCH_ACK,
+            windowId: event.sender.id,
+            originalError: ackError,
+          });
+          logZubridgeError(ipcError);
         }
       });
     } catch (error) {
-      debug('core:error', 'Error handling dispatch:', error);
-      debug('core:error', '[BRIDGE DEBUG] Error handling dispatch:', error);
+      const ipcError = new IpcCommunicationError('Error handling IPC dispatch', {
+        channel: IpcChannel.DISPATCH,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
 
       // Even on error, we should acknowledge the action was processed
       try {
@@ -424,13 +446,18 @@ export function createCoreBridge<State extends AnyState>(
             safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
               actionId: action.__id,
               thunkState: { version: 0, thunks: [] },
-              error: error instanceof Error ? error.message : String(error),
+              error: serializeError(ipcError),
             });
             debug('ipc', `[BRIDGE DEBUG] Error acknowledgment sent for action ${action.__id}`);
           }
         }
       } catch (ackError) {
-        debug('ipc:error', '[BRIDGE DEBUG] Error sending error acknowledgment:', ackError);
+        const ackIpcError = new IpcCommunicationError('Failed to send error acknowledgment', {
+          channel: IpcChannel.DISPATCH_ACK,
+          windowId: event.sender.id,
+          originalError: ackError,
+        });
+        logZubridgeError(ackIpcError);
       }
     }
   });
@@ -478,7 +505,12 @@ export function createCoreBridge<State extends AnyState>(
         await middlewareCallbacks.trackActionDispatch(actionWithSource);
       }
     } catch (error) {
-      debug('middleware:error', 'Error handling action dispatch tracking:', error);
+      const ipcError = new IpcCommunicationError('Error handling action dispatch tracking', {
+        channel: IpcChannel.TRACK_ACTION_DISPATCH,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
     }
   });
 
@@ -541,8 +573,12 @@ export function createCoreBridge<State extends AnyState>(
       );
       return filteredState;
     } catch (error) {
-      debug('core:error', 'Error handling getState:', error);
-      debug('core:error', '[BRIDGE DEBUG] Error handling getState:', error);
+      const ipcError = new IpcCommunicationError('Error handling getState request', {
+        channel: IpcChannel.GET_STATE,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
       return {};
     }
   });
@@ -586,7 +622,13 @@ export function createCoreBridge<State extends AnyState>(
       event.sender &&
         safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, { thunkId, success: true });
     } catch (error) {
-      debug('core:error', '[BRIDGE DEBUG] Error handling thunk registration:', error);
+      const ipcError = new IpcCommunicationError('Error handling thunk registration', {
+        channel: IpcChannel.REGISTER_THUNK,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
+
       // Send failure ack
       const errorData = data as { thunkId?: string };
       const { thunkId } = errorData || {};
@@ -594,7 +636,7 @@ export function createCoreBridge<State extends AnyState>(
         safelySendToWindow(event.sender, IpcChannel.REGISTER_THUNK_ACK, {
           thunkId,
           success: false,
-          error: String(error),
+          error: serializeError(ipcError),
         });
     }
   });
@@ -624,7 +666,11 @@ export function createCoreBridge<State extends AnyState>(
         '[BRIDGE DEBUG] ActionQueue will be notified via ThunkTracker state change listener',
       );
     } catch (error) {
-      debug('core:error', '[BRIDGE DEBUG] Error handling thunk completion:', error);
+      const ipcError = new IpcCommunicationError('Error handling thunk completion', {
+        channel: IpcChannel.COMPLETE_THUNK,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
     }
   });
 
@@ -651,7 +697,12 @@ export function createCoreBridge<State extends AnyState>(
         // The thunk completion will be checked by MainThunkProcessor polling
       }
     } catch (error) {
-      debug('core:error', 'Error handling state update acknowledgment:', error);
+      const ipcError = new IpcCommunicationError('Error handling state update acknowledgment', {
+        channel: IpcChannel.STATE_UPDATE_ACK,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
     }
   });
 
