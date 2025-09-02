@@ -231,20 +231,16 @@ export class ThunkManager extends EventEmitter {
     // Now set the state to COMPLETED
     thunk.complete();
 
-    // Clean up thunk tracking
-    this.thunks.delete(thunkId);
+    // Only clean up action tracking, but keep the thunk itself until all state updates are acknowledged
     this.thunkActions.delete(thunkId);
     this.thunkTasks.delete(thunkId);
-    this.thunkResults.delete(thunkId);
-    this.thunkErrors.delete(thunkId);
 
-    // Clean up any pending state updates for this thunk
-    this.thunkPendingUpdates.delete(thunkId);
+    // Don't delete thunk, results, errors, or pending updates yet - they may be needed for state propagation tracking
 
     // Remove the task from scheduler
     this.scheduler.removeTasks(thunkId);
 
-    // Emit completed event
+    // Emit events immediately (synchronously) for backward compatibility
     this.emit(ThunkManagerEvent.THUNK_COMPLETED, thunk);
 
     // Update root thunk if needed
@@ -253,8 +249,35 @@ export class ThunkManager extends EventEmitter {
       this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, thunk);
     }
 
-    // Schedule queue processing to make sure any pending tasks are handled
+    // Schedule queue processing
     this.scheduler.processQueue();
+
+    // Don't do cleanup yet - wait to see if state updates are tracked
+  }
+
+  /**
+   * Try to do final cleanup of a completed thunk if it has no pending state updates
+   */
+  private tryFinalCleanup(thunkId: string): void {
+    const thunk = this.thunks.get(thunkId);
+    if (!thunk || thunk.state !== ThunkState.COMPLETED) {
+      return;
+    }
+
+    // Check if there are any pending state updates
+    const pendingUpdates = this.thunkPendingUpdates.get(thunkId);
+    const hasPendingUpdates = pendingUpdates && pendingUpdates.size > 0;
+
+    if (!hasPendingUpdates) {
+      debug('thunk', `Thunk ${thunkId} fully complete, doing final cleanup`);
+      // Final cleanup now that execution is complete and no state updates are pending
+      this.thunks.delete(thunkId);
+      this.thunkResults.delete(thunkId);
+      this.thunkErrors.delete(thunkId);
+      this.thunkPendingUpdates.delete(thunkId);
+
+      // Events were already emitted in finalizeThunkCompletion - don't emit again
+    }
   }
 
   /**
@@ -554,6 +577,13 @@ export class ThunkManager extends EventEmitter {
       `Tracking state update ${updateId} for thunk ${thunkId}, renderers: [${subscribedRenderers.join(', ')}]`,
     );
 
+    // Get or restore thunk if it was completed but still exists
+    const thunk = this.thunks.get(thunkId);
+    if (!thunk) {
+      debug('thunk:warn', `Cannot track state update ${updateId} for unknown thunk ${thunkId}`);
+      return;
+    }
+
     // Create pending update record
     this.pendingStateUpdates.set(updateId, {
       updateId,
@@ -612,6 +642,9 @@ export class ThunkManager extends EventEmitter {
         thunkUpdates.delete(updateId);
         if (thunkUpdates.size === 0) {
           this.thunkPendingUpdates.delete(update.thunkId);
+
+          // Schedule final cleanup to happen after current execution, allowing callers to check completion status
+          setTimeout(() => this.tryFinalCleanup(update.thunkId), 0);
         }
       }
 

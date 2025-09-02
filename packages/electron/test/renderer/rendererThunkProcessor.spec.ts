@@ -16,12 +16,17 @@ const defaultInitOptions = {
   thunkCompleter: mockThunkCompleter,
 };
 
+const defaultPreloadOptions = {
+  actionCompletionTimeoutMs: 5000,
+  maxQueueSize: 100,
+};
+
 describe('RendererThunkProcessor', () => {
   let processor: RendererThunkProcessor;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    processor = new RendererThunkProcessor();
+    processor = new RendererThunkProcessor(defaultPreloadOptions);
     processor.initialize(defaultInitOptions);
   });
 
@@ -35,14 +40,20 @@ describe('RendererThunkProcessor', () => {
 
   it('should initialize with custom timeout', () => {
     const customTimeout = 5000;
-    const customProcessor = new RendererThunkProcessor(customTimeout);
+    const customProcessor = new RendererThunkProcessor({
+      actionCompletionTimeoutMs: customTimeout,
+      maxQueueSize: 100,
+    });
     // @ts-expect-error private
     expect(customProcessor.actionCompletionTimeoutMs).toBe(customTimeout);
   });
 
   it('should update timeout when provided in initialize options', () => {
     const customTimeout = 15000;
-    const customProcessor = new RendererThunkProcessor();
+    const customProcessor = new RendererThunkProcessor({
+      actionCompletionTimeoutMs: 10000,
+      maxQueueSize: 50,
+    });
     customProcessor.initialize({
       ...defaultInitOptions,
       actionCompletionTimeoutMs: customTimeout,
@@ -211,7 +222,7 @@ describe('RendererThunkProcessor', () => {
 
   it('should throw if no actionSender is configured', () => {
     // Create a processor with no actionSender
-    const p = new RendererThunkProcessor();
+    const p = new RendererThunkProcessor(defaultPreloadOptions);
 
     // Use a direct function reference to test
     const dispatchFn = () => {
@@ -234,7 +245,7 @@ describe('RendererThunkProcessor', () => {
     const mockSender = vi.fn().mockResolvedValue(undefined);
 
     // Create a fresh processor with our mock
-    const testProcessor = new RendererThunkProcessor();
+    const testProcessor = new RendererThunkProcessor(defaultPreloadOptions);
     testProcessor.initialize({
       ...defaultInitOptions,
       actionSender: mockSender,
@@ -302,8 +313,8 @@ describe('RendererThunkProcessor', () => {
   });
 
   it('should get the global singleton instance', () => {
-    const instance1 = getThunkProcessor();
-    const instance2 = getThunkProcessor();
+    const instance1 = getThunkProcessor(defaultPreloadOptions);
+    const instance2 = getThunkProcessor(defaultPreloadOptions);
     expect(instance1).toBe(instance2);
     expect(instance1).toBeInstanceOf(RendererThunkProcessor);
   });

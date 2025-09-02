@@ -72,7 +72,7 @@ export const sanitizeState = (
     }
 
     if (typeof value === 'function') {
-      return `[Function: ${value.name || 'anonymous'}]`;
+      return undefined; // Remove functions completely
     }
 
     if (typeof value !== 'object') {
@@ -160,7 +160,11 @@ export const sanitizeState = (
           const valueToSerialize = replacer ? replacer(key, propValue) : propValue;
 
           if (valueToSerialize !== undefined) {
-            result[key] = serialize(valueToSerialize, currentDepth + 1, keyPath);
+            const serializedValue = serialize(valueToSerialize, currentDepth + 1, keyPath);
+            // Only add the property if the serialized value is not undefined
+            if (serializedValue !== undefined) {
+              result[key] = serializedValue;
+            }
           }
         } catch (error: unknown) {
           result[key] =

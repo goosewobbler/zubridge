@@ -32,10 +32,30 @@ describe('actionValidator', () => {
     // Clear action mappings before each test
     _actionToStateKeyMap = new Map<string, string[]>();
 
+    // Mock window.zubridge for state access
+    Object.defineProperty(global, 'window', {
+      value: {
+        zubridge: {
+          getState: vi.fn().mockResolvedValue({
+            user: { name: 'Test User', email: 'test@example.com', profile: {}, data: {} },
+            counter: 0,
+            'user.name': 'Test User',
+            'user.email': 'test@example.com',
+            'user.profile': {},
+            'user.data': {},
+          }),
+        },
+      },
+      writable: true,
+    });
+
     // Reset the mocks with default values
     vi.mocked(subscriptionValidator.getWindowSubscriptions).mockResolvedValue([]);
     vi.mocked(subscriptionValidator.isSubscribedToKey).mockResolvedValue(false);
-    vi.mocked(subscriptionValidator.stateKeyExists).mockReturnValue(true);
+    vi.mocked(subscriptionValidator.stateKeyExists).mockImplementation((_state, _key) => {
+      // Return true for all keys by default in tests
+      return true;
+    });
   });
 
   afterEach(() => {
@@ -314,7 +334,7 @@ describe('actionValidator', () => {
 
       // Make validateStateAccessWithExistence throw for non-existent key
       vi.mocked(subscriptionValidator.validateStateAccessWithExistence).mockImplementation(
-        async (_state, key) => {
+        async (_state, key: string) => {
           if (key === 'nonexistent.key') {
             throw new Error(`State key '${key}' does not exist in the store`);
           }

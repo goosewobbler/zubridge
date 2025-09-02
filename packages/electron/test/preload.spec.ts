@@ -25,8 +25,18 @@ vi.mock('electron', () => {
 });
 
 beforeEach(() => {
-  // @ts-expect-error - mocking window properties
   window.__zubridge_windowId = '123';
+
+  // Mock window DOM event methods
+  Object.defineProperty(window, 'addEventListener', {
+    value: vi.fn(),
+    writable: true,
+  });
+
+  Object.defineProperty(window, 'removeEventListener', {
+    value: vi.fn(),
+    writable: true,
+  });
 
   // Mock IPC invoke for window ID and state
   vi.mocked(electron.ipcRenderer.invoke).mockImplementation((channel) => {
@@ -41,9 +51,19 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // @ts-expect-error - cleanup mocks
+  const window = global.window as {
+    __zubridge_windowId?: string;
+    __zubridge_subscriptionValidator?: unknown;
+    addEventListener?: unknown;
+    removeEventListener?: unknown;
+  };
   delete window.__zubridge_windowId;
   delete window.__zubridge_subscriptionValidator;
+
+  // Clean up window mocks by setting to undefined
+  window.addEventListener = undefined;
+  window.removeEventListener = undefined;
+
   vi.clearAllMocks();
 });
 
@@ -64,7 +84,7 @@ describe('preloadBridge', () => {
       let ipcCallback: (event: unknown, data: unknown) => void = () => {};
       mockedIpcRenderer.on.mockImplementation((channel, cb) => {
         if (channel === IpcChannel.STATE_UPDATE) {
-          ipcCallback = cb;
+          ipcCallback = cb as (event: unknown, data: unknown) => void;
         }
         return mockedIpcRenderer;
       });
@@ -81,22 +101,36 @@ describe('preloadBridge', () => {
 
     it('should return unsubscribe function that removes the listener', () => {
       const callback = vi.fn();
-      const bridge = preloadBridge();
-      const unsubscribe = bridge.handlers.subscribe(callback);
-      unsubscribe();
       const callback2 = vi.fn();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      // Track the most recent callback
+      let ipcCallback: (event: unknown, data: unknown) => void = () => {};
+      mockedIpcRenderer.on.mockImplementation((channel, cb) => {
+        if (channel === IpcChannel.STATE_UPDATE) {
+          ipcCallback = cb as (event: unknown, data: unknown) => void;
+        }
+        return mockedIpcRenderer;
+      });
+
+      const bridge = preloadBridge();
+
+      // Subscribe first callback
+      const unsubscribe = bridge.handlers.subscribe(callback);
+
+      // Unsubscribe first callback
+      unsubscribe();
+
+      // Subscribe second callback (should set up IPC listener again since listeners.size was 0)
       bridge.handlers.subscribe(callback2);
-      const ipcCallbacks = vi
-        .mocked(electron.ipcRenderer.on)
-        .mock.calls.filter(([channel]) => channel === IpcChannel.STATE_UPDATE)
-        .map(([, cb]) => cb);
-      if (ipcCallbacks.length > 0) {
-        ipcCallbacks[0]({} as unknown, {
-          updateId: 'test-id',
-          state: { counter: 42 },
-          thunkId: null,
-        });
-      }
+
+      // Trigger the IPC callback with state data - should only call callback2
+      ipcCallback({} as unknown, {
+        updateId: 'test-id',
+        state: { counter: 42 },
+        thunkId: null,
+      });
+
       expect(callback).not.toHaveBeenCalled();
       expect(callback2).toHaveBeenCalledWith({ counter: 42 });
     });
@@ -126,7 +160,7 @@ describe('preloadBridge', () => {
       const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
 
       mockedIpcRenderer.on.mockImplementation((channel, callback) => {
-        callbacks[channel] = callback;
+        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
         return mockedIpcRenderer;
       });
 
@@ -146,7 +180,8 @@ describe('preloadBridge', () => {
       );
 
       // Extract the action ID from the send call
-      const sentAction = mockedIpcRenderer.send.mock.calls[0][1].action;
+      const sentData = mockedIpcRenderer.send.mock.calls[0][1];
+      const sentAction = sentData.action;
       const actionId = sentAction.__id;
 
       // Manually trigger the acknowledgment callback
@@ -172,7 +207,7 @@ describe('preloadBridge', () => {
       const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
 
       mockedIpcRenderer.on.mockImplementation((channel, callback) => {
-        callbacks[channel] = callback;
+        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
         return mockedIpcRenderer;
       });
 
@@ -193,7 +228,8 @@ describe('preloadBridge', () => {
       );
 
       // Extract the action ID from the send call
-      const sentAction = mockedIpcRenderer.send.mock.calls[0][1].action;
+      const sentData = mockedIpcRenderer.send.mock.calls[0][1];
+      const sentAction = sentData.action;
       const actionId = sentAction.__id;
 
       // Manually trigger the acknowledgment callback

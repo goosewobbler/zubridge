@@ -1,5 +1,11 @@
-import type { Action, AnyState, StateManager, WebContentsWrapper } from '@zubridge/types';
-import type { WebContents } from 'electron';
+import type {
+  Action,
+  AnyState,
+  StateManager,
+  WebContentsWrapper,
+  WrapperOrWebContents,
+} from '@zubridge/types';
+import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import { ipcMain } from 'electron';
 import type { Store } from 'redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -344,9 +350,9 @@ describe('bridge.ts', () => {
       if (getStateHandler) {
         // Expect this path to be taken, error to be handled internally by debug log
         expect(() =>
-          (getStateHandler as unknown as (event: IpcMainInvokeEvent) => unknown)(
-            {} as unknown as IpcMainInvokeEvent,
-          ),
+          (getStateHandler as unknown as (event: IpcMainInvokeEvent) => unknown)({
+            sender: { id: 1 },
+          } as unknown as IpcMainInvokeEvent),
         ).not.toThrow();
       }
     });

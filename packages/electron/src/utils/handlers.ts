@@ -188,4 +188,3 @@ export function resolveHandler(
 
   return resolvedHandler;
 }
-
