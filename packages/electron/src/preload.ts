@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
+import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getPreloadOptions } from './utils/preloadOptions.js';
 
 // Return type for preload bridge function
@@ -28,6 +29,9 @@ export interface PreloadZustandBridgeReturn<S extends AnyState> {
 export const preloadBridge = <S extends AnyState>(
   options?: PreloadOptions,
 ): PreloadZustandBridgeReturn<S> => {
+  // Setup global error handlers for the renderer process
+  setupRendererErrorHandlers();
+
   const listeners = new Set<(state: S) => void>();
   let initialized = false;
 
@@ -51,6 +55,65 @@ export const preloadBridge = <S extends AnyState>(
     string,
     { resolve: () => void; reject: (err: unknown) => void }
   >();
+
+  // Cleanup registry for different types of resources
+  class CleanupRegistry {
+    private cleanups: Array<() => void | Promise<void>> = [];
+
+    add(cleanup: () => void | Promise<void>): void {
+      this.cleanups.push(cleanup);
+    }
+
+    async cleanupAll(): Promise<void> {
+      const results = await Promise.allSettled(this.cleanups.map((cleanup) => cleanup()));
+
+      // Log any failures but don't throw
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          debug('cleanup:error', `Cleanup ${index} failed:`, result.reason);
+        }
+      });
+
+      this.cleanups.length = 0; // Clear array
+    }
+  }
+
+  const cleanupRegistry = {
+    ipc: new CleanupRegistry(),
+    dom: new CleanupRegistry(),
+    thunks: new CleanupRegistry(),
+
+    async cleanupAll() {
+      await Promise.all([this.ipc.cleanupAll(), this.dom.cleanupAll(), this.thunks.cleanupAll()]);
+    },
+  };
+
+  const ipcListeners = new Map<
+    string,
+    (event: Electron.IpcRendererEvent, ...args: unknown[]) => void
+  >();
+
+  // Helper function to register IPC listeners with cleanup tracking
+  const registerIpcListener = (
+    channel: string,
+    listener: (event: Electron.IpcRendererEvent, ...args: unknown[]) => void,
+  ) => {
+    // Remove any existing listener for this channel
+    const existingListener = ipcListeners.get(channel);
+    if (existingListener) {
+      ipcRenderer.removeListener(channel, existingListener);
+    }
+
+    // Register new listener
+    ipcRenderer.on(channel, listener);
+    ipcListeners.set(channel, listener);
+
+    // Add IPC cleanup to registry
+    cleanupRegistry.ipc.add(() => {
+      ipcRenderer.removeListener(channel, listener);
+      ipcListeners.delete(channel);
+    });
+  };
 
   // Helper function to track action dispatch
   const trackActionDispatch = (action: Action) => {
@@ -77,8 +140,12 @@ export const preloadBridge = <S extends AnyState>(
         debug('ipc', 'First subscriber - setting up state update listener');
 
         // Set up state update tracking listener (now handles ALL state updates)
-        ipcRenderer.on(IpcChannel.STATE_UPDATE, async (_event, payload) => {
-          const { updateId, state, thunkId } = payload;
+        registerIpcListener(IpcChannel.STATE_UPDATE, async (_event, payload) => {
+          const { updateId, state, thunkId } = payload as {
+            updateId: string;
+            state: S;
+            thunkId?: string;
+          };
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
           // Notify all subscribers of the state change
@@ -209,31 +276,6 @@ export const preloadBridge = <S extends AnyState>(
       return new Promise<Action>((resolve, reject) => {
         const actionId = actionObj.__id as string;
 
-        // Set up a one-time listener for the acknowledgment of this specific action
-        const ackListener = (_event: IpcRendererEvent, payload: unknown) => {
-          // Check if this acknowledgment is for our action
-          const ackPayload = payload as { actionId?: string; error?: string };
-          if (ackPayload && ackPayload.actionId === actionId) {
-            // Remove the listener since we got our response
-            ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
-
-            if (ackPayload.error) {
-              debug('ipc:error', `Action ${actionId} failed with error: ${ackPayload.error}`);
-              reject(new Error(ackPayload.error));
-            } else {
-              debug('ipc', `Action ${actionId} completed successfully`);
-              resolve(actionObj);
-            }
-          }
-        };
-
-        // Register the acknowledgment listener
-        ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
-
-        // Send the action to the main process
-        debug('ipc', `Sending action ${actionId} to main process`);
-        ipcRenderer.send(IpcChannel.DISPATCH, { action: actionObj });
-
         // Set up a timeout in case we don't get an acknowledgment
         const timeoutMs = process.platform === 'linux' ? 60000 : 30000; // Platform-specific timeout
         debug(
@@ -247,15 +289,40 @@ export const preloadBridge = <S extends AnyState>(
           reject(new Error(`Timeout waiting for acknowledgment of action ${actionId}`));
         }, timeoutMs);
 
-        // Make sure to clear the timeout when the promise settles
-        const _safeResolve = (value: Action) => {
+        // Safe resolve/reject functions that always clear the timeout
+        const safeResolve = (value: Action) => {
           clearTimeout(timeoutId);
           resolve(value);
         };
-        const _safeReject = (error: unknown) => {
+        const safeReject = (error: unknown) => {
           clearTimeout(timeoutId);
           reject(error);
         };
+
+        // Set up a one-time listener for the acknowledgment of this specific action
+        const ackListener = (_event: IpcRendererEvent, payload: unknown) => {
+          // Check if this acknowledgment is for our action
+          const ackPayload = payload as { actionId?: string; error?: string };
+          if (ackPayload && ackPayload.actionId === actionId) {
+            // Remove the listener since we got our response
+            ipcRenderer.removeListener(IpcChannel.DISPATCH_ACK, ackListener);
+
+            if (ackPayload.error) {
+              debug('ipc:error', `Action ${actionId} failed with error: ${ackPayload.error}`);
+              safeReject(new Error(ackPayload.error));
+            } else {
+              debug('ipc', `Action ${actionId} completed successfully`);
+              safeResolve(actionObj);
+            }
+          }
+        };
+
+        // Register the acknowledgment listener
+        ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
+
+        // Send the action to the main process
+        debug('ipc', `Sending action ${actionId} to main process`);
+        ipcRenderer.send(IpcChannel.DISPATCH, { action: actionObj });
       });
     },
   };
@@ -266,7 +333,7 @@ export const preloadBridge = <S extends AnyState>(
 
     // Set up acknowledgment listener for the thunk processor
     debug('ipc', 'Set up IPC acknowledgement listener for thunk processor');
-    ipcRenderer.on(IpcChannel.DISPATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
+    registerIpcListener(IpcChannel.DISPATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
       const { actionId, thunkState } =
         (payload as { actionId?: string; thunkState?: unknown }) || {};
 
@@ -287,21 +354,24 @@ export const preloadBridge = <S extends AnyState>(
     });
 
     // Set up thunk registration ack listener
-    ipcRenderer.on(IpcChannel.REGISTER_THUNK_ACK, (_event: IpcRendererEvent, payload: unknown) => {
-      const thunkPayload = payload as { thunkId?: string; success?: boolean; error?: string };
-      const { thunkId, success, error } = thunkPayload || {};
-      if (thunkId) {
-        const entry = pendingThunkRegistrations.get(thunkId);
-        if (entry) {
-          if (success) {
-            entry.resolve();
-          } else {
-            entry.reject(error || new Error('Thunk registration failed'));
+    registerIpcListener(
+      IpcChannel.REGISTER_THUNK_ACK,
+      (_event: IpcRendererEvent, payload: unknown) => {
+        const thunkPayload = payload as { thunkId?: string; success?: boolean; error?: string };
+        const { thunkId, success, error } = thunkPayload || {};
+        if (thunkId) {
+          const entry = pendingThunkRegistrations.get(thunkId);
+          if (entry) {
+            if (success) {
+              entry.resolve();
+            } else {
+              entry.reject(error || new Error('Thunk registration failed'));
+            }
+            pendingThunkRegistrations.delete(thunkId);
           }
-          pendingThunkRegistrations.delete(thunkId);
         }
-      }
-    });
+      },
+    );
 
     // Setup the thunk processor with window ID and functions
     void (async () => {
@@ -453,28 +523,122 @@ export const preloadBridge = <S extends AnyState>(
         thunkProcessor.setStateProvider((opts) => handlers.getState(opts));
 
         debug('ipc', 'Preload script initialized successfully');
-        
+
         // Set up cleanup on page unload to prevent memory leaks
         if (typeof window !== 'undefined') {
-          window.addEventListener('beforeunload', () => {
-            debug('ipc', 'Page unloading, cleaning up thunk processor');
-            thunkProcessor.forceCleanupExpiredActions();
-          });
-          
-          // Also cleanup on visibility change (page might be cached)
-          document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-              debug('ipc', 'Page hidden, cleaning up expired thunk processor actions');
-              thunkProcessor.forceCleanupExpiredActions();
+          // Critical synchronous cleanup for beforeunload
+          const beforeUnloadHandler = () => {
+            debug('ipc', 'Page unloading, performing critical synchronous cleanup');
+            performCriticalCleanup();
+          };
+
+          // Full async cleanup for pagehide
+          const pagehideHandler = async (event: PageTransitionEvent) => {
+            if (event.persisted) {
+              // Page is being cached, do minimal cleanup
+              debug('ipc', 'Page cached, performing partial cleanup');
+              await performPartialCleanup();
+            } else {
+              // Page is being unloaded, do complete cleanup
+              debug('ipc', 'Page unloading, performing complete cleanup');
+              await performCompleteCleanup();
             }
+          };
+
+          const visibilityChangeHandler = () => {
+            if (document.visibilityState === 'hidden') {
+              debug('ipc', 'Page hidden, cleaning up expired resources');
+              performPartialCleanup().catch((error) => {
+                debug('cleanup:error', 'Error during visibility cleanup:', error);
+              });
+            }
+          };
+
+          window.addEventListener('beforeunload', beforeUnloadHandler);
+          window.addEventListener('pagehide', pagehideHandler);
+          document.addEventListener('visibilitychange', visibilityChangeHandler);
+
+          // Track DOM event listeners for cleanup
+          cleanupRegistry.dom.add(() => {
+            window.removeEventListener('beforeunload', beforeUnloadHandler);
+            window.removeEventListener('pagehide', pagehideHandler);
+            document.removeEventListener('visibilitychange', visibilityChangeHandler);
           });
         }
-        
       } catch (error) {
         debug('core:error', 'Error initializing preload script:', error);
       }
     })();
   }
+
+  // Cleanup functions for resource management
+  const performPartialCleanup = async (): Promise<void> => {
+    debug('ipc', 'Performing partial cleanup of expired resources');
+
+    // Clean up expired thunk processor actions
+    cleanupRegistry.thunks.add(async () => {
+      thunkProcessor.forceCleanupExpiredActions();
+    });
+
+    await cleanupRegistry.thunks.cleanupAll();
+
+    if (pendingThunkRegistrations.size > 0) {
+      debug(
+        'ipc',
+        `Found ${pendingThunkRegistrations.size} pending thunk registrations during partial cleanup`,
+      );
+    }
+  };
+
+  // Critical synchronous cleanup for beforeunload
+  const performCriticalCleanup = (): void => {
+    debug('ipc', 'Performing critical synchronous cleanup');
+
+    // Only essential synchronous cleanup here
+    listeners.clear();
+
+    // Cancel pending registrations immediately
+    for (const [thunkId, { reject }] of pendingThunkRegistrations) {
+      try {
+        reject(new Error('Page unload - thunk registration cancelled'));
+      } catch (error: unknown) {
+        // Can't use debug here as it might be async
+        console.error(`Error rejecting thunk registration ${thunkId}:`, error);
+      }
+    }
+    pendingThunkRegistrations.clear();
+  };
+
+  const performCompleteCleanup = async (): Promise<void> => {
+    debug('ipc', 'Performing complete cleanup of all resources');
+
+    // Add thunk cleanup
+    cleanupRegistry.thunks.add(async () => {
+      thunkProcessor.destroy();
+    });
+
+    // Add pending registrations cleanup
+    cleanupRegistry.thunks.add(async () => {
+      const pendingCount = pendingThunkRegistrations.size;
+      for (const [thunkId, { reject }] of pendingThunkRegistrations) {
+        try {
+          reject(new Error('Complete cleanup - thunk registration cancelled'));
+        } catch (error: unknown) {
+          debug('ipc:error', `Error rejecting pending thunk registration ${thunkId}:`, error);
+        }
+      }
+      pendingThunkRegistrations.clear();
+      debug('ipc', `Cleaned up ${pendingCount} pending registrations`);
+    });
+
+    // Perform all cleanups
+    await cleanupRegistry.cleanupAll();
+
+    // Clear listeners set
+    listeners.clear();
+
+    debug('ipc', 'Complete cleanup finished successfully');
+  };
 
   return {
     handlers,
