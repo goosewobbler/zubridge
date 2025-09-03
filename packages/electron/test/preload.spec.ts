@@ -958,6 +958,342 @@ describe('preloadBridge', () => {
       expect(bridge.handlers).toBeDefined();
     });
   });
+
+  describe('error handling and edge cases', () => {
+    it('should handle IPC listener registration errors gracefully', () => {
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+      const originalOn = mockedIpcRenderer.on;
+
+      mockedIpcRenderer.on.mockImplementationOnce(() => {
+        throw new Error('IPC registration error');
+      });
+
+      // Should not throw even if IPC registration fails
+      expect(() => preloadBridge()).not.toThrow();
+
+      // Restore original implementation
+      mockedIpcRenderer.on.mockImplementation(originalOn);
+    });
+
+    it('should handle action tracking errors gracefully', async () => {
+      const bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      // Mock ipcRenderer.send to throw an error for tracking
+      const originalSend = mockedIpcRenderer.send;
+      mockedIpcRenderer.send.mockImplementation((channel, data) => {
+        if (channel === IpcChannel.TRACK_ACTION_DISPATCH) {
+          throw new Error('Tracking error');
+        }
+        return originalSend.call(mockedIpcRenderer, channel, data);
+      });
+
+      // Action dispatch should still work even if tracking fails
+      expect(() => bridge.handlers.dispatch('TEST_ACTION')).not.toThrow();
+
+      // Restore original implementation
+      mockedIpcRenderer.send.mockImplementation(originalSend);
+    });
+
+    it('should handle state update acknowledgment errors gracefully', async () => {
+      const bridge = preloadBridge();
+      const callback = vi.fn();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      let ipcCallback: (event: unknown, data: unknown) => void = () => {};
+      mockedIpcRenderer.on.mockImplementation((channel, cb) => {
+        if (channel === IpcChannel.STATE_UPDATE) {
+          ipcCallback = cb as (event: unknown, data: unknown) => void;
+        }
+        return mockedIpcRenderer;
+      });
+
+      // Mock invoke to throw error when getting window ID
+      mockedIpcRenderer.invoke.mockImplementation((channel) => {
+        if (channel === IpcChannel.GET_WINDOW_ID) {
+          return Promise.reject(new Error('Window ID error'));
+        }
+        return Promise.resolve(undefined);
+      });
+
+      bridge.handlers.subscribe(callback);
+
+      // Trigger state update - should handle acknowledgment error gracefully
+      await expect(async () => {
+        ipcCallback({} as unknown, {
+          updateId: 'test-id',
+          state: { counter: 42 },
+          thunkId: null,
+        });
+        // Wait for async acknowledgment to complete
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }).not.toThrow();
+
+      expect(callback).toHaveBeenCalledWith({ counter: 42 });
+    });
+
+    it('should handle dispatch timeout scenarios correctly', async () => {
+      const bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      // Don't set up the ACK listener, so dispatch will timeout
+      mockedIpcRenderer.on.mockImplementation(() => mockedIpcRenderer);
+
+      // Mock platform-specific timeouts
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'linux' });
+
+      try {
+        await bridge.handlers.dispatch('TIMEOUT_ACTION');
+        expect.fail('Should have thrown timeout error');
+      } catch (error) {
+        expect((error as Error).message).toContain('Timeout waiting for acknowledgment');
+      }
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+    });
+
+    it('should handle dispatch acknowledgment error responses', async () => {
+      const bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
+      mockedIpcRenderer.on.mockImplementation((channel, callback) => {
+        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
+        return mockedIpcRenderer;
+      });
+
+      // Start dispatch
+      const dispatchPromise = bridge.handlers.dispatch('ERROR_ACTION');
+
+      // Get the action ID from the send call
+      const sentData = mockedIpcRenderer.send.mock.calls[0][1];
+      const actionId = sentData.action.__id;
+
+      // Send error acknowledgment
+      const ackCallback = callbacks[IpcChannel.DISPATCH_ACK];
+      if (ackCallback) {
+        ackCallback({} as IpcRendererEvent, {
+          actionId,
+          error: 'Action processing failed',
+        });
+      }
+
+      // Should reject with the error
+      try {
+        await dispatchPromise;
+        expect.fail('Should have thrown action error');
+      } catch (error) {
+        expect((error as Error).message).toBe('Action processing failed');
+      }
+    });
+
+    it('should handle thunk registration acknowledgment with errors', () => {
+      const _bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      let ackCallback: (event: unknown, data: unknown) => void = () => {};
+      mockedIpcRenderer.on.mockImplementation((channel, cb) => {
+        if (channel === IpcChannel.REGISTER_THUNK_ACK) {
+          ackCallback = cb as (event: unknown, data: unknown) => void;
+        }
+        return mockedIpcRenderer;
+      });
+
+      // Test failed thunk registration ACK
+      expect(() => {
+        ackCallback({} as IpcRendererEvent, {
+          thunkId: 'non-existent-thunk',
+          success: false,
+          error: 'Thunk registration failed',
+        });
+      }).not.toThrow();
+    });
+
+    it('should handle missing thunkId in registration acknowledgment', () => {
+      const _bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      let ackCallback: (event: unknown, data: unknown) => void = () => {};
+      mockedIpcRenderer.on.mockImplementation((channel, cb) => {
+        if (channel === IpcChannel.REGISTER_THUNK_ACK) {
+          ackCallback = cb as (event: unknown, data: unknown) => void;
+        }
+        return mockedIpcRenderer;
+      });
+
+      // Test with missing thunkId
+      expect(() => {
+        ackCallback({} as IpcRendererEvent, {
+          success: true,
+          // thunkId missing
+        });
+      }).not.toThrow();
+    });
+
+    it('should handle dispatch with bypass flags correctly', async () => {
+      const bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
+      mockedIpcRenderer.on.mockImplementation((channel, callback) => {
+        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
+        return mockedIpcRenderer;
+      });
+
+      // Test dispatch with both bypass flags
+      const dispatchPromise = bridge.handlers.dispatch('BYPASS_ACTION', undefined, {
+        bypassAccessControl: true,
+        bypassThunkLock: true,
+      });
+
+      // Verify the action was sent with bypass flags
+      expect(mockedIpcRenderer.send).toHaveBeenCalledWith(
+        IpcChannel.DISPATCH,
+        expect.objectContaining({
+          action: expect.objectContaining({
+            type: 'BYPASS_ACTION',
+            __bypassAccessControl: true,
+            __bypassThunkLock: true,
+          }),
+        }),
+      );
+
+      // Complete the dispatch
+      const sentData = mockedIpcRenderer.send.mock.calls[0][1];
+      const actionId = sentData.action.__id;
+      const ackCallback = callbacks[IpcChannel.DISPATCH_ACK];
+      if (ackCallback) {
+        ackCallback({} as IpcRendererEvent, { actionId, success: true });
+      }
+
+      await dispatchPromise;
+    });
+
+    it('should handle thunk dispatch with bypass flags', async () => {
+      const bridge = preloadBridge();
+
+      // Mock thunk processor to verify bypass flags are passed
+      const mockThunk = vi.fn().mockResolvedValue({ type: 'THUNK_RESULT' });
+
+      const result = await bridge.handlers.dispatch(mockThunk, {
+        bypassAccessControl: true,
+        bypassThunkLock: true,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          type: 'THUNK_RESULT',
+          __id: expect.any(String),
+        }),
+      );
+    });
+
+    it('should handle options parameter parsing edge cases', async () => {
+      const bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
+      mockedIpcRenderer.on.mockImplementation((channel, callback) => {
+        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
+        return mockedIpcRenderer;
+      });
+
+      // Test with payload as object but not options
+      const dispatchPromise = bridge.handlers.dispatch('TEST_ACTION', { data: 'payload' });
+
+      const sentData = mockedIpcRenderer.send.mock.calls[0][1];
+      expect(sentData.action.payload).toEqual({ data: 'payload' });
+
+      // Complete dispatch
+      const ackCallback = callbacks[IpcChannel.DISPATCH_ACK];
+      if (ackCallback) {
+        ackCallback({} as IpcRendererEvent, { actionId: sentData.action.__id, success: true });
+      }
+
+      await dispatchPromise;
+    });
+
+    it('should handle beforeunload event cleanup', () => {
+      const bridge = preloadBridge();
+      expect(bridge.handlers).toBeDefined();
+
+      // Simulate beforeunload event
+      const beforeUnloadEvent = new Event('beforeunload');
+      window.dispatchEvent(beforeUnloadEvent);
+
+      // Bridge should still be functional after critical cleanup
+      expect(typeof bridge.handlers.dispatch).toBe('function');
+    });
+
+    it('should handle pagehide event with persisted=true (partial cleanup)', async () => {
+      const bridge = preloadBridge();
+      expect(bridge.handlers).toBeDefined();
+
+      // Create a proper PageTransitionEvent-like object
+      const pagehideEvent = new Event('pagehide') as Event & { persisted: boolean };
+      pagehideEvent.persisted = true;
+
+      window.dispatchEvent(pagehideEvent);
+
+      // Wait for async cleanup
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(typeof bridge.handlers.dispatch).toBe('function');
+    });
+
+    it('should handle pagehide event with persisted=false (complete cleanup)', async () => {
+      const bridge = preloadBridge();
+      expect(bridge.handlers).toBeDefined();
+
+      // Create a proper PageTransitionEvent-like object
+      const pagehideEvent = new Event('pagehide') as Event & { persisted: boolean };
+      pagehideEvent.persisted = false;
+
+      window.dispatchEvent(pagehideEvent);
+
+      // Wait for async cleanup
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(typeof bridge.handlers.dispatch).toBe('function');
+    });
+
+    it('should handle IPC listener removal during cleanup', () => {
+      const bridge = preloadBridge();
+      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      // Create subscriptions to trigger IPC listener setup
+      const unsubscribe1 = bridge.handlers.subscribe(() => {});
+      const unsubscribe2 = bridge.handlers.subscribe(() => {});
+
+      // Unsubscribe all
+      unsubscribe1();
+      unsubscribe2();
+
+      // Verify removeListener was called
+      expect(mockedIpcRenderer.removeListener).toHaveBeenCalled();
+    });
+
+    it('should handle cleanup registry failures gracefully', async () => {
+      const bridge = preloadBridge();
+
+      // Mock document.visibilityState for visibility change test
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'hidden',
+        writable: true,
+      });
+
+      const visibilityEvent = new Event('visibilitychange');
+      document.dispatchEvent(visibilityEvent);
+
+      // Wait for cleanup to complete
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Bridge should remain functional
+      expect(bridge.handlers).toBeDefined();
+    });
+  });
 });
 
 describe('preloadZustandBridge', () => {

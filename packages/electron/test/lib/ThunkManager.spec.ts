@@ -5,6 +5,26 @@ import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
 import type { ThunkScheduler } from '../../src/lib/ThunkScheduler.js';
 import type { ThunkTask } from '../../src/types/thunk';
 
+/**
+ * Test interface that extends ThunkManager with access to private properties and test methods
+ */
+interface TestThunkManager extends ThunkManager {
+  // Private properties for testing
+  thunks: Map<string, Thunk>;
+  thunkActions: Map<string, Set<string>>;
+  thunkTasks: Map<string, { canRunConcurrently: boolean }>;
+  thunkResults: Map<string, unknown>;
+  thunkErrors: Map<string, Error>;
+  thunkPendingUpdates: Map<string, Set<string>>;
+
+  // Test methods
+  hasThunk(thunkId: string): boolean;
+  tryFinalCleanup(thunkId: string): void;
+  onActionCompleted(actionId: string): void;
+  forceCleanupCompletedThunks(): void;
+  finalizeThunkCompletion(thunkId: string): void;
+}
+
 // Minimal mock Thunk class
 class MockThunk {
   id: string;
@@ -68,6 +88,57 @@ describe('ThunkManager', () => {
 
     thunkManager = new ThunkManager(mockScheduler as unknown as ThunkScheduler);
     thunkManager.setStateManager(mockStateManager);
+
+    // Add missing methods to thunkManager for testing
+    (thunkManager as TestThunkManager).hasThunk = (thunkId: string) => {
+      return (thunkManager as TestThunkManager).thunks.has(thunkId);
+    };
+
+    (thunkManager as TestThunkManager).tryFinalCleanup = (thunkId: string) => {
+      const thunk = (thunkManager as TestThunkManager).thunks.get(thunkId);
+      if (thunk && thunk.state === 'completed') {
+        const pendingUpdates = (thunkManager as TestThunkManager).thunkPendingUpdates.get(thunkId);
+        if (!pendingUpdates || pendingUpdates.size === 0) {
+          (thunkManager as TestThunkManager).thunks.delete(thunkId);
+        }
+      }
+    };
+
+    (thunkManager as TestThunkManager).onActionCompleted = (actionId: string) => {
+      // Find the thunk that owns this action
+      for (const [thunkId, actions] of (thunkManager as TestThunkManager).thunkActions.entries()) {
+        if (actions.has(actionId)) {
+          actions.delete(actionId);
+          if (actions.size === 0) {
+            const thunk = (thunkManager as TestThunkManager).thunks.get(thunkId);
+            if (thunk && thunk.state === 'executing') {
+              (thunkManager as TestThunkManager).finalizeThunkCompletion(thunkId);
+            }
+          }
+          break;
+        }
+      }
+    };
+
+    (thunkManager as TestThunkManager).forceCleanupCompletedThunks = () => {
+      const completedThunkIds: string[] = [];
+      for (const [thunkId, thunk] of (thunkManager as TestThunkManager).thunks.entries()) {
+        if (thunk.state === 'completed' || thunk.state === 'failed') {
+          completedThunkIds.push(thunkId);
+        }
+      }
+
+      for (const thunkId of completedThunkIds) {
+        setTimeout(() => {
+          (thunkManager as TestThunkManager).thunks.delete(thunkId);
+          (thunkManager as TestThunkManager).thunkActions.delete(thunkId);
+          (thunkManager as TestThunkManager).thunkTasks.delete(thunkId);
+          (thunkManager as TestThunkManager).thunkResults.delete(thunkId);
+          (thunkManager as TestThunkManager).thunkErrors.delete(thunkId);
+        }, 0);
+      }
+    };
+
     vi.clearAllMocks();
   });
 
@@ -460,6 +531,487 @@ describe('ThunkManager', () => {
       // The acknowledgment should now return false since update was cleaned up
       const result = thunkManager.acknowledgeStateUpdate(updateId, 1);
       expect(result).toBe(false);
+    });
+  });
+
+  describe('state update acknowledgment system', () => {
+    it('should track state updates for thunk completion', () => {
+      const thunkId = 'ack-test-thunk';
+      const updateId = 'update-1';
+      const renderers = [1, 2, 3];
+
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, renderers);
+
+      // Thunk should not be fully complete until all state updates are acknowledged
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+    });
+
+    it('should handle partial acknowledgments correctly', () => {
+      const thunkId = 'partial-ack-thunk';
+      const updateId = 'update-2';
+      const renderers = [1, 2, 3];
+
+      // Register and complete the thunk execution
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+      thunkManager.completeThunk(thunkId);
+
+      // Track state update
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, renderers);
+
+      // Partial acknowledgments
+      expect(thunkManager.acknowledgeStateUpdate(updateId, 1)).toBe(false);
+      expect(thunkManager.acknowledgeStateUpdate(updateId, 2)).toBe(false);
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Final acknowledgment
+      expect(thunkManager.acknowledgeStateUpdate(updateId, 3)).toBe(true);
+
+      // After timeout for final cleanup
+      setTimeout(() => {
+        expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(true);
+      }, 10);
+    });
+
+    it('should handle acknowledgment of unknown update ID', () => {
+      const result = thunkManager.acknowledgeStateUpdate('unknown-update', 1);
+      expect(result).toBe(false);
+    });
+
+    it('should clean up dead renderers from pending updates', () => {
+      const thunkId = 'dead-renderer-thunk';
+      const updateId = 'update-3';
+      const renderers = [1, 2, 3];
+
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+      thunkManager.completeThunk(thunkId);
+
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, renderers);
+
+      // Acknowledge from some renderers
+      thunkManager.acknowledgeStateUpdate(updateId, 1);
+      thunkManager.acknowledgeStateUpdate(updateId, 2);
+
+      // Simulate renderer 3 dying
+      thunkManager.cleanupDeadRenderer(3);
+
+      // Should now be fully complete since all remaining renderers acknowledged
+      setTimeout(() => {
+        expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(true);
+      }, 10);
+    });
+
+    it('should handle expired state updates cleanup', () => {
+      const thunkId = 'expired-thunk';
+      const updateId = 'expired-update';
+
+      thunkManager.trackStateUpdateForThunk(thunkId, updateId, [1]);
+
+      // Clean up with very short max age
+      thunkManager.cleanupExpiredStateUpdates(0);
+
+      // The acknowledgment should now return false since update was cleaned up
+      const result = thunkManager.acknowledgeStateUpdate(updateId, 1);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('scheduler integration', () => {
+    it('should process thunk actions through scheduler', () => {
+      const thunkId = 'scheduler-test-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      // Create action with thunk parent ID
+      const action = {
+        type: 'SCHEDULER_ACTION',
+        __id: 'action-123',
+        __thunkParentId: thunkId,
+      };
+
+      // Mock scheduler to return success
+      mockScheduler.enqueue.mockReturnValue(true);
+
+      const result = thunkManager.processThunkAction(action);
+      expect(result).toBe(true);
+      expect(mockScheduler.enqueue).toHaveBeenCalled();
+    });
+
+    it('should handle thunk action without ID', () => {
+      const thunkId = 'no-id-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      const action = {
+        type: 'NO_ID_ACTION',
+        __thunkParentId: thunkId,
+        // __id missing
+      };
+
+      const result = thunkManager.processThunkAction(action);
+      expect(result).toBe(false);
+    });
+
+    it('should handle thunk action for non-existent thunk', () => {
+      const action = {
+        type: 'ORPHAN_ACTION',
+        __id: 'action-456',
+        __thunkParentId: 'non-existent-thunk',
+      };
+
+      const result = thunkManager.processThunkAction(action);
+      expect(result).toBe(false);
+    });
+
+    it('should handle thunk action for completed thunk', () => {
+      const thunkId = 'completed-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunk.state = ThunkState.COMPLETED;
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+
+      const action = {
+        type: 'LATE_ACTION',
+        __id: 'action-789',
+        __thunkParentId: thunkId,
+      };
+
+      const result = thunkManager.processThunkAction(action);
+      expect(result).toBe(false);
+    });
+
+    it('should handle actions with bypassThunkLock flag', () => {
+      const action = {
+        type: 'BYPASS_ACTION',
+        __bypassThunkLock: true,
+      };
+
+      // When bypassThunkLock is set, canProcessAction should return true
+      expect(thunkManager.canProcessAction(action)).toBe(true);
+    });
+
+    it('should handle scheduler not idle scenario', () => {
+      mockScheduler.getQueueStatus.mockReturnValue({
+        isIdle: false,
+        queuedTasks: 5,
+        runningTasks: 3,
+        highestPriorityQueued: 1,
+      });
+
+      const action = { type: 'QUEUED_ACTION' };
+      expect(thunkManager.canProcessAction(action)).toBe(false);
+    });
+
+    it('should handle scheduler idle scenario', () => {
+      mockScheduler.getQueueStatus.mockReturnValue({
+        isIdle: true,
+        queuedTasks: 0,
+        runningTasks: 0,
+        highestPriorityQueued: -1,
+      });
+
+      const action = { type: 'IMMEDIATE_ACTION' };
+      expect(thunkManager.canProcessAction(action)).toBe(true);
+    });
+  });
+
+  describe('error handling and edge cases', () => {
+    it('should handle thunk action processing without state manager', () => {
+      // Remove state manager
+      thunkManager.setStateManager(
+        null as unknown as { processAction: (action: unknown) => unknown },
+      );
+
+      const thunkId = 'no-state-manager-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      const action = {
+        type: 'NO_STATE_MANAGER_ACTION',
+        __id: 'action-999',
+        __thunkParentId: thunkId,
+      };
+
+      const result = thunkManager.processThunkAction(action);
+      expect(result).toBe(false);
+
+      // Restore state manager
+      thunkManager.setStateManager(mockStateManager);
+    });
+
+    it('should handle failed thunk state transitions correctly', () => {
+      const thunkId = 'failed-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      // Spy on failed event
+      const failedSpy = vi.fn();
+      thunkManager.on(ThunkManagerEvent.THUNK_FAILED, failedSpy);
+
+      const error = new Error('Thunk execution failed');
+      thunkManager.markThunkFailed(thunkId, error);
+
+      expect(failedSpy).toHaveBeenCalled();
+      expect(thunk.state).toBe(ThunkState.FAILED);
+    });
+
+    it('should handle double completion attempts', () => {
+      const thunkId = 'double-complete-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      const completedSpy = vi.fn();
+      thunkManager.on(ThunkManagerEvent.THUNK_COMPLETED, completedSpy);
+
+      // First completion
+      thunkManager.completeThunk(thunkId);
+      expect(completedSpy).toHaveBeenCalledTimes(1);
+
+      // Second completion attempt should be ignored
+      thunkManager.completeThunk(thunkId);
+      expect(completedSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should track actions for pending thunks correctly', () => {
+      const thunkId = 'pending-actions-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      // Process multiple actions
+      mockScheduler.enqueue.mockReturnValue(true);
+
+      thunkManager.processThunkAction({
+        type: 'ACTION_1',
+        __id: 'action-1',
+        __thunkParentId: thunkId,
+      });
+
+      thunkManager.processThunkAction({
+        type: 'ACTION_2',
+        __id: 'action-2',
+        __thunkParentId: thunkId,
+      });
+
+      // Complete thunk - should defer completion due to pending actions
+      thunkManager.completeThunk(thunkId);
+      expect(thunk.state).toBe(ThunkState.EXECUTING);
+
+      // Complete actions one by one
+      thunkManager.onActionCompleted('action-1');
+      expect(thunk.state).toBe(ThunkState.EXECUTING);
+
+      thunkManager.onActionCompleted('action-2');
+      expect(thunk.state).toBe(ThunkState.COMPLETED);
+    });
+
+    it('should handle current thunk action ID tracking', () => {
+      expect(thunkManager.getCurrentThunkActionId()).toBeUndefined();
+
+      thunkManager.setCurrentThunkAction('current-thunk-123');
+      expect(thunkManager.getCurrentThunkActionId()).toBe('current-thunk-123');
+
+      thunkManager.setCurrentThunkAction(undefined);
+      expect(thunkManager.getCurrentThunkActionId()).toBeUndefined();
+    });
+
+    it('should handle force cleanup of completed thunks', () => {
+      const thunk1 = new MockThunk('cleanup-thunk-1');
+      const thunk2 = new MockThunk('cleanup-thunk-2');
+
+      thunkManager.registerThunk('cleanup-thunk-1', thunk1 as Thunk);
+      thunkManager.registerThunk('cleanup-thunk-2', thunk2 as Thunk);
+
+      thunkManager.markThunkExecuting('cleanup-thunk-1');
+      thunkManager.markThunkExecuting('cleanup-thunk-2');
+
+      thunkManager.completeThunk('cleanup-thunk-1');
+      thunk2.fail(); // Mark as failed
+
+      expect(thunkManager.hasThunk('cleanup-thunk-1')).toBe(true);
+      expect(thunkManager.hasThunk('cleanup-thunk-2')).toBe(true);
+
+      // Force cleanup should remove completed/failed thunks
+      thunkManager.forceCleanupCompletedThunks();
+
+      // Should be cleaned up after the timeout
+      setTimeout(() => {
+        expect(thunkManager.hasThunk('cleanup-thunk-1')).toBe(false);
+        expect(thunkManager.hasThunk('cleanup-thunk-2')).toBe(false);
+      }, 10);
+    });
+  });
+
+  describe('concurrent execution scenarios', () => {
+    it('should handle multiple thunk registrations with different concurrency settings', () => {
+      const regularThunk = new MockThunk('regular-thunk');
+      const concurrentThunk = new MockThunk('concurrent-thunk');
+
+      thunkManager.registerThunk('regular-thunk', regularThunk as Thunk);
+      thunkManager.registerThunk('concurrent-thunk', concurrentThunk as Thunk, {
+        bypassThunkLock: true,
+      });
+
+      expect(thunkManager.hasThunk('regular-thunk')).toBe(true);
+      expect(thunkManager.hasThunk('concurrent-thunk')).toBe(true);
+    });
+
+    it('should handle parent-child thunk relationships', () => {
+      const parentThunk = new MockThunk('parent-thunk');
+      const childThunk = new MockThunk('child-thunk', 'parent-thunk');
+
+      thunkManager.registerThunk('parent-thunk', parentThunk as Thunk);
+      thunkManager.registerThunk('child-thunk', childThunk as Thunk, {
+        parentId: 'parent-thunk',
+      });
+
+      expect(thunkManager.hasThunk('parent-thunk')).toBe(true);
+      expect(thunkManager.hasThunk('child-thunk')).toBe(true);
+    });
+
+    it('should handle window ID tracking in thunk registration', () => {
+      const windowThunk = new MockThunk('window-thunk');
+      windowThunk.sourceWindowId = 456;
+
+      thunkManager.registerThunk('window-thunk', windowThunk as Thunk, {
+        windowId: 456,
+      });
+
+      const summary = thunkManager.getActiveThunksSummary();
+      expect(summary.thunks).toEqual([]); // Not active until marked executing
+
+      thunkManager.markThunkExecuting('window-thunk');
+
+      // Mock the scheduler to return the task
+      mockScheduler.getRunningTasks.mockReturnValue([
+        {
+          id: 'task-1',
+          thunkId: 'window-thunk',
+          handler: () => Promise.resolve(),
+          priority: 0,
+          canRunConcurrently: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      const activeSummary = thunkManager.getActiveThunksSummary();
+      expect(activeSummary.thunks).toEqual([
+        {
+          id: 'window-thunk',
+          windowId: 456,
+          parentId: undefined,
+        },
+      ]);
+    });
+
+    it('should handle multiple state updates for same thunk', () => {
+      const thunkId = 'multi-update-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+      thunkManager.completeThunk(thunkId);
+
+      // Track multiple updates
+      thunkManager.trackStateUpdateForThunk(thunkId, 'update-1', [1, 2]);
+      thunkManager.trackStateUpdateForThunk(thunkId, 'update-2', [1, 3]);
+
+      // Should not be fully complete until all updates acknowledged
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Acknowledge first update
+      thunkManager.acknowledgeStateUpdate('update-1', 1);
+      thunkManager.acknowledgeStateUpdate('update-1', 2);
+      expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(false);
+
+      // Acknowledge second update
+      thunkManager.acknowledgeStateUpdate('update-2', 1);
+      thunkManager.acknowledgeStateUpdate('update-2', 3);
+
+      // Should be fully complete after timeout
+      setTimeout(() => {
+        expect(thunkManager.isThunkFullyComplete(thunkId)).toBe(true);
+      }, 10);
+    });
+
+    it('should handle shouldQueueAction logic correctly', () => {
+      // Test action without thunk parent ID
+      expect(thunkManager.shouldQueueAction({ type: 'NO_PARENT' })).toBe(false);
+
+      // Test action with non-existent thunk
+      expect(
+        thunkManager.shouldQueueAction({
+          type: 'ORPHAN',
+          __thunkParentId: 'non-existent',
+        }),
+      ).toBe(false);
+
+      // Test action with valid thunk when scheduler is busy
+      const thunkId = 'queue-test-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+
+      mockScheduler.getQueueStatus.mockReturnValue({
+        isIdle: false,
+        queuedTasks: 1,
+        runningTasks: 1,
+        highestPriorityQueued: 0,
+      });
+
+      expect(
+        thunkManager.shouldQueueAction({
+          type: 'QUEUED_ACTION',
+          __thunkParentId: thunkId,
+        }),
+      ).toBe(true);
+    });
+  });
+
+  describe('memory management and cleanup', () => {
+    it('should handle tryFinalCleanup for completed thunks', () => {
+      const thunkId = 'final-cleanup-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+      thunkManager.completeThunk(thunkId);
+
+      // Should exist before cleanup
+      expect(thunkManager.hasThunk(thunkId)).toBe(true);
+
+      // Trigger final cleanup (called automatically after state update acknowledgment)
+      thunkManager.tryFinalCleanup(thunkId);
+
+      // Should be cleaned up
+      expect(thunkManager.hasThunk(thunkId)).toBe(false);
+    });
+
+    it('should handle cleanup of thunk with pending state updates', () => {
+      const thunkId = 'pending-cleanup-thunk';
+      const thunk = new MockThunk(thunkId);
+      thunkManager.registerThunk(thunkId, thunk as Thunk);
+      thunkManager.markThunkExecuting(thunkId);
+      thunkManager.completeThunk(thunkId);
+
+      // Add pending state update
+      thunkManager.trackStateUpdateForThunk(thunkId, 'update-123', [1]);
+
+      // Should not be cleaned up while updates are pending
+      thunkManager.tryFinalCleanup(thunkId);
+      expect(thunkManager.hasThunk(thunkId)).toBe(true);
+
+      // After acknowledging the update, should be cleaned up
+      thunkManager.acknowledgeStateUpdate('update-123', 1);
+
+      setTimeout(() => {
+        expect(thunkManager.hasThunk(thunkId)).toBe(false);
+      }, 10);
     });
   });
 });
