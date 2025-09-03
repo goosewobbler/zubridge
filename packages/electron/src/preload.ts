@@ -234,7 +234,29 @@ export const preloadBridge = <S extends AnyState>(
 
         // Execute the thunk directly through the thunkProcessor implementation
         // This avoids the circular reference where executeThunk calls back to preload
-        return thunkProcessor.executeThunk<S>(thunk, thunkOptions) as Promise<Action>;
+        const thunkResult = (await thunkProcessor.executeThunk<S>(thunk, thunkOptions)) as Action;
+
+        // Ensure we always return a valid Action object
+        if (thunkResult && typeof thunkResult === 'object' && 'type' in thunkResult) {
+          // If thunk returns a valid action, ensure it has an ID
+          return {
+            ...thunkResult,
+            __id: thunkResult.__id || uuidv4(),
+          };
+        }
+        if (typeof thunkResult === 'string') {
+          // If thunk returns a string, convert to action
+          return {
+            type: thunkResult,
+            __id: uuidv4(),
+          };
+        }
+        // If thunk returns undefined, null, or invalid result, create a default action
+        return {
+          type: 'THUNK_RESULT',
+          payload: thunkResult,
+          __id: uuidv4(),
+        };
       }
 
       // For string or action object types, create a standardized action object
