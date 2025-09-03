@@ -4,7 +4,7 @@ import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import { createReduxAdapter, type ReduxOptions } from '../adapters/redux.js';
 import { createZustandAdapter, type ZustandOptions } from '../adapters/zustand.js';
-import type { CoreBridgeOptions } from '../bridge.js';
+import type { CoreBridgeOptions } from '../types/bridge.js';
 
 type CombinedOptions<S extends AnyState> = (ZustandOptions<S> | ReduxOptions<S>) &
   Partial<CoreBridgeOptions>;

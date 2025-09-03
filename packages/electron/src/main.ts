@@ -3,18 +3,18 @@ import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import type { ReduxOptions } from './adapters/redux.js';
 import type { ZustandOptions } from './adapters/zustand.js';
-import { type CoreBridgeOptions, createBridgeFromStore } from './bridge.js';
+import { type CoreBridgeOptions, createBridgeFromStore } from './bridge/index.js';
 import { removeStateManager } from './lib/stateManagerRegistry.js';
 import { createDispatch } from './main/dispatch.js';
 
 export type { ReduxOptions } from './adapters/redux.js';
 // Export types
 export type { ZustandOptions } from './adapters/zustand.js';
-export type { CoreBridgeOptions } from './bridge.js';
+export type { CoreBridgeOptions } from './bridge/index.js';
 /**
  * Re-export main process functionality
  */
-export { createBridgeFromStore, createCoreBridge } from './bridge.js';
+export { createBridgeFromStore, createCoreBridge } from './bridge/index.js';
 export { createDispatch } from './main/dispatch.js';
 export type { ZubridgeMiddleware } from './middleware.js';
 export { createMiddlewareOptions } from './middleware.js';

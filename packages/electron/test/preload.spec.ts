@@ -961,120 +961,167 @@ describe('preloadBridge', () => {
 
   describe('error handling and edge cases', () => {
     it('should handle IPC listener registration errors gracefully', () => {
-      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
-      const originalOn = mockedIpcRenderer.on;
-
-      mockedIpcRenderer.on.mockImplementationOnce(() => {
+      // Create a fresh mock for this test
+      const originalOn = electron.ipcRenderer.on;
+      const mockOn = vi.fn().mockImplementationOnce(() => {
         throw new Error('IPC registration error');
       });
 
-      // Should not throw even if IPC registration fails
-      expect(() => preloadBridge()).not.toThrow();
+      // Replace the on method temporarily
+      (electron.ipcRenderer as unknown as { on: typeof mockOn }).on = mockOn;
 
-      // Restore original implementation
-      mockedIpcRenderer.on.mockImplementation(originalOn);
+      try {
+        // Should not throw even if IPC registration fails
+        expect(() => preloadBridge()).not.toThrow();
+      } finally {
+        // Restore original on method
+        (electron.ipcRenderer as unknown as { on: typeof originalOn }).on = originalOn;
+      }
     });
 
     it('should handle action tracking errors gracefully', async () => {
       const bridge = preloadBridge();
-      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
-      // Mock ipcRenderer.send to throw an error for tracking
-      const originalSend = mockedIpcRenderer.send;
-      mockedIpcRenderer.send.mockImplementation((channel, data) => {
+      // Create a fresh mock for this test
+      const originalSend = electron.ipcRenderer.send;
+      const mockSend = vi.fn().mockImplementation((channel, _data) => {
         if (channel === IpcChannel.TRACK_ACTION_DISPATCH) {
           throw new Error('Tracking error');
         }
-        return originalSend.call(mockedIpcRenderer, channel, data);
+        return undefined;
       });
 
-      // Action dispatch should still work even if tracking fails
-      expect(() => bridge.handlers.dispatch('TEST_ACTION')).not.toThrow();
+      // Replace the send method temporarily
+      (electron.ipcRenderer as unknown as { send: typeof mockSend }).send = mockSend;
 
-      // Restore original implementation
-      mockedIpcRenderer.send.mockImplementation(originalSend);
+      try {
+        // Action dispatch should still work even if tracking fails
+        expect(() => bridge.handlers.dispatch('TEST_ACTION')).not.toThrow();
+      } finally {
+        // Restore original send method
+        (electron.ipcRenderer as unknown as { send: typeof originalSend }).send = originalSend;
+      }
     });
 
     it('should handle state update acknowledgment errors gracefully', async () => {
       const bridge = preloadBridge();
       const callback = vi.fn();
-      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
+
+      // Create fresh mocks for this test
+      const originalOn = electron.ipcRenderer.on;
+      const originalInvoke = electron.ipcRenderer.invoke;
 
       let ipcCallback: (event: unknown, data: unknown) => void = () => {};
-      mockedIpcRenderer.on.mockImplementation((channel, cb) => {
+      const mockOn = vi.fn().mockImplementation((channel, cb) => {
         if (channel === IpcChannel.STATE_UPDATE) {
           ipcCallback = cb as (event: unknown, data: unknown) => void;
         }
-        return mockedIpcRenderer;
+        return electron.ipcRenderer;
       });
 
-      // Mock invoke to throw error when getting window ID
-      mockedIpcRenderer.invoke.mockImplementation((channel) => {
+      const mockInvoke = vi.fn().mockImplementation((channel) => {
         if (channel === IpcChannel.GET_WINDOW_ID) {
           return Promise.reject(new Error('Window ID error'));
         }
         return Promise.resolve(undefined);
       });
 
-      bridge.handlers.subscribe(callback);
+      // Replace methods temporarily
+      (electron.ipcRenderer as unknown as { on: typeof mockOn }).on = mockOn;
+      (electron.ipcRenderer as unknown as { invoke: typeof mockInvoke }).invoke = mockInvoke;
 
-      // Trigger state update - should handle acknowledgment error gracefully
-      await expect(async () => {
-        ipcCallback({} as unknown, {
-          updateId: 'test-id',
-          state: { counter: 42 },
-          thunkId: null,
-        });
-        // Wait for async acknowledgment to complete
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }).not.toThrow();
+      try {
+        bridge.handlers.subscribe(callback);
 
-      expect(callback).toHaveBeenCalledWith({ counter: 42 });
+        // Trigger state update - should handle acknowledgment error gracefully
+        await expect(async () => {
+          ipcCallback({} as unknown, {
+            updateId: 'test-id',
+            state: { counter: 42 },
+            thunkId: null,
+          });
+          // Wait for async acknowledgment to complete
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }).not.toThrow();
+
+        expect(callback).toHaveBeenCalledWith({ counter: 42 });
+      } finally {
+        // Restore original methods
+        (electron.ipcRenderer as unknown as { on: typeof originalOn }).on = originalOn;
+        (electron.ipcRenderer as unknown as { invoke: typeof originalInvoke }).invoke =
+          originalInvoke;
+      }
     });
 
     it('should handle dispatch timeout scenarios correctly', async () => {
       const bridge = preloadBridge();
-      const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
-      // Don't set up the ACK listener, so dispatch will timeout
-      mockedIpcRenderer.on.mockImplementation(() => mockedIpcRenderer);
-
-      // Mock platform-specific timeouts
+      // Create fresh mocks for this test
+      const originalOn = electron.ipcRenderer.on;
+      const originalSend = electron.ipcRenderer.send;
       const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'linux' });
+
+      // Don't set up any ACK listeners, just register without response
+      const mockOn = vi.fn().mockImplementation(() => electron.ipcRenderer);
+      const mockSend = vi.fn().mockImplementation(() => {});
+
+      // Replace methods temporarily
+      (electron.ipcRenderer as unknown as { on: typeof mockOn }).on = mockOn;
+      (electron.ipcRenderer as unknown as { send: typeof mockSend }).send = mockSend;
+
+      // Use shorter timeout for testing
+      vi.useFakeTimers();
+      Object.defineProperty(process, 'platform', { value: 'darwin' }); // 30s timeout
+
+      const promise = bridge.handlers.dispatch('TIMEOUT_ACTION');
+
+      // Fast-forward time to trigger timeout
+      vi.advanceTimersByTime(31000); // 31 seconds
 
       try {
-        await bridge.handlers.dispatch('TIMEOUT_ACTION');
+        await promise;
         expect.fail('Should have thrown timeout error');
       } catch (error) {
         expect((error as Error).message).toContain('Timeout waiting for acknowledgment');
+      } finally {
+        // Restore
+        vi.useRealTimers();
+        Object.defineProperty(process, 'platform', { value: originalPlatform });
+        // Restore original IPC methods
+        (electron.ipcRenderer as unknown as { on: typeof originalOn }).on = originalOn;
+        (electron.ipcRenderer as unknown as { send: typeof originalSend }).send = originalSend;
       }
-
-      // Restore original platform
-      Object.defineProperty(process, 'platform', { value: originalPlatform });
     });
 
     it('should handle dispatch acknowledgment error responses', async () => {
       const bridge = preloadBridge();
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
-      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
+      let ackCallback: ((event: unknown, data: unknown) => void) | undefined;
+
+      // Capture the ACK listener
       mockedIpcRenderer.on.mockImplementation((channel, callback) => {
-        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
+        if (channel === IpcChannel.DISPATCH_ACK) {
+          ackCallback = callback as (event: unknown, data: unknown) => void;
+        }
         return mockedIpcRenderer;
       });
 
       // Start dispatch
       const dispatchPromise = bridge.handlers.dispatch('ERROR_ACTION');
 
+      // Wait for the listeners to be set up
+      await vi.waitFor(() => {
+        expect(ackCallback).toBeDefined();
+      });
+
       // Get the action ID from the send call
       const sentData = mockedIpcRenderer.send.mock.calls[0][1];
       const actionId = sentData.action.__id;
 
       // Send error acknowledgment
-      const ackCallback = callbacks[IpcChannel.DISPATCH_ACK];
       if (ackCallback) {
-        ackCallback({} as IpcRendererEvent, {
+        ackCallback({} as Electron.IpcRendererEvent, {
           actionId,
           error: 'Action processing failed',
         });
@@ -1136,9 +1183,13 @@ describe('preloadBridge', () => {
       const bridge = preloadBridge();
       const mockedIpcRenderer = vi.mocked(electron.ipcRenderer);
 
-      const callbacks: Record<string, (event: unknown, data: unknown) => void> = {};
+      let ackCallback: ((event: unknown, data: unknown) => void) | undefined;
+
+      // Capture the ACK listener
       mockedIpcRenderer.on.mockImplementation((channel, callback) => {
-        callbacks[channel] = callback as (event: unknown, data: unknown) => void;
+        if (channel === IpcChannel.DISPATCH_ACK) {
+          ackCallback = callback as (event: unknown, data: unknown) => void;
+        }
         return mockedIpcRenderer;
       });
 
@@ -1146,6 +1197,11 @@ describe('preloadBridge', () => {
       const dispatchPromise = bridge.handlers.dispatch('BYPASS_ACTION', undefined, {
         bypassAccessControl: true,
         bypassThunkLock: true,
+      });
+
+      // Wait for listener to be set up
+      await vi.waitFor(() => {
+        expect(ackCallback).toBeDefined();
       });
 
       // Verify the action was sent with bypass flags
@@ -1163,9 +1219,9 @@ describe('preloadBridge', () => {
       // Complete the dispatch
       const sentData = mockedIpcRenderer.send.mock.calls[0][1];
       const actionId = sentData.action.__id;
-      const ackCallback = callbacks[IpcChannel.DISPATCH_ACK];
+
       if (ackCallback) {
-        ackCallback({} as IpcRendererEvent, { actionId, success: true });
+        ackCallback({} as Electron.IpcRendererEvent, { actionId, success: true });
       }
 
       await dispatchPromise;
@@ -1216,47 +1272,99 @@ describe('preloadBridge', () => {
     });
 
     it('should handle beforeunload event cleanup', () => {
+      let beforeunloadHandler: ((event: Event) => void) | undefined;
+
+      // Mock addEventListener to capture the beforeunload handler
+      const originalAddEventListener = window.addEventListener;
+      window.addEventListener = vi
+        .fn()
+        .mockImplementation((event: string, handler: EventListener) => {
+          if (event === 'beforeunload') {
+            beforeunloadHandler = handler;
+          }
+          return originalAddEventListener.call(window, event, handler);
+        });
+
       const bridge = preloadBridge();
       expect(bridge.handlers).toBeDefined();
 
-      // Simulate beforeunload event
-      const beforeUnloadEvent = new Event('beforeunload');
-      window.dispatchEvent(beforeUnloadEvent);
+      // Manually trigger the beforeunload handler if it exists
+      if (beforeunloadHandler) {
+        const beforeUnloadEvent = new Event('beforeunload');
+        beforeunloadHandler(beforeUnloadEvent);
+      }
 
       // Bridge should still be functional after critical cleanup
       expect(typeof bridge.handlers.dispatch).toBe('function');
+
+      // Restore original addEventListener
+      window.addEventListener = originalAddEventListener;
     });
 
     it('should handle pagehide event with persisted=true (partial cleanup)', async () => {
+      let pagehideHandler: ((event: Event & { persisted: boolean }) => void) | undefined;
+
+      // Mock addEventListener to capture the pagehide handler
+      const originalAddEventListener = window.addEventListener;
+      window.addEventListener = vi
+        .fn()
+        .mockImplementation((event: string, handler: EventListener) => {
+          if (event === 'pagehide') {
+            pagehideHandler = handler;
+          }
+          return originalAddEventListener.call(window, event, handler);
+        });
+
       const bridge = preloadBridge();
       expect(bridge.handlers).toBeDefined();
 
-      // Create a proper PageTransitionEvent-like object
-      const pagehideEvent = new Event('pagehide') as Event & { persisted: boolean };
-      pagehideEvent.persisted = true;
+      // Manually trigger the pagehide handler if it exists
+      if (pagehideHandler) {
+        const pagehideEvent = new Event('pagehide') as Event & { persisted: boolean };
+        pagehideEvent.persisted = true;
+        pagehideHandler(pagehideEvent);
 
-      window.dispatchEvent(pagehideEvent);
-
-      // Wait for async cleanup
-      await new Promise((resolve) => setTimeout(resolve, 10));
+        // Wait for async cleanup
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
 
       expect(typeof bridge.handlers.dispatch).toBe('function');
+
+      // Restore original addEventListener
+      window.addEventListener = originalAddEventListener;
     });
 
     it('should handle pagehide event with persisted=false (complete cleanup)', async () => {
+      let pagehideHandler: ((event: Event & { persisted: boolean }) => void) | undefined;
+
+      // Mock addEventListener to capture the pagehide handler
+      const originalAddEventListener = window.addEventListener;
+      window.addEventListener = vi
+        .fn()
+        .mockImplementation((event: string, handler: EventListener) => {
+          if (event === 'pagehide') {
+            pagehideHandler = handler;
+          }
+          return originalAddEventListener.call(window, event, handler);
+        });
+
       const bridge = preloadBridge();
       expect(bridge.handlers).toBeDefined();
 
-      // Create a proper PageTransitionEvent-like object
-      const pagehideEvent = new Event('pagehide') as Event & { persisted: boolean };
-      pagehideEvent.persisted = false;
+      // Manually trigger the pagehide handler if it exists
+      if (pagehideHandler) {
+        const pagehideEvent = new Event('pagehide') as Event & { persisted: boolean };
+        pagehideEvent.persisted = false;
+        pagehideHandler(pagehideEvent);
 
-      window.dispatchEvent(pagehideEvent);
-
-      // Wait for async cleanup
-      await new Promise((resolve) => setTimeout(resolve, 10));
+        // Wait for async cleanup
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
 
       expect(typeof bridge.handlers.dispatch).toBe('function');
+
+      // Restore original addEventListener
+      window.addEventListener = originalAddEventListener;
     });
 
     it('should handle IPC listener removal during cleanup', () => {
@@ -1276,6 +1384,19 @@ describe('preloadBridge', () => {
     });
 
     it('should handle cleanup registry failures gracefully', async () => {
+      let visibilityHandler: ((event: Event) => void) | undefined;
+
+      // Mock addEventListener to capture the visibilitychange handler
+      const originalAddEventListener = document.addEventListener;
+      document.addEventListener = vi
+        .fn()
+        .mockImplementation((event: string, handler: EventListener) => {
+          if (event === 'visibilitychange') {
+            visibilityHandler = handler;
+          }
+          return originalAddEventListener.call(document, event, handler);
+        });
+
       const bridge = preloadBridge();
 
       // Mock document.visibilityState for visibility change test
@@ -1284,14 +1405,20 @@ describe('preloadBridge', () => {
         writable: true,
       });
 
-      const visibilityEvent = new Event('visibilitychange');
-      document.dispatchEvent(visibilityEvent);
+      // Manually trigger the visibilitychange handler if it exists
+      if (visibilityHandler) {
+        const visibilityEvent = new Event('visibilitychange');
+        visibilityHandler(visibilityEvent);
 
-      // Wait for cleanup to complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
+        // Wait for cleanup to complete
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
 
       // Bridge should remain functional
       expect(bridge.handlers).toBeDefined();
+
+      // Restore original addEventListener
+      document.addEventListener = originalAddEventListener;
     });
   });
 });

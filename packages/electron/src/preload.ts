@@ -98,21 +98,25 @@ export const preloadBridge = <S extends AnyState>(
     channel: string,
     listener: (event: Electron.IpcRendererEvent, ...args: unknown[]) => void,
   ) => {
-    // Remove any existing listener for this channel
-    const existingListener = ipcListeners.get(channel);
-    if (existingListener) {
-      ipcRenderer.removeListener(channel, existingListener);
+    try {
+      // Remove any existing listener for this channel
+      const existingListener = ipcListeners.get(channel);
+      if (existingListener) {
+        ipcRenderer.removeListener(channel, existingListener);
+      }
+
+      // Register new listener
+      ipcRenderer.on(channel, listener);
+      ipcListeners.set(channel, listener);
+
+      // Add IPC cleanup to registry
+      cleanupRegistry.ipc.add(() => {
+        ipcRenderer.removeListener(channel, listener);
+        ipcListeners.delete(channel);
+      });
+    } catch (error) {
+      debug('ipc:error', `Failed to register IPC listener for channel ${channel}:`, error);
     }
-
-    // Register new listener
-    ipcRenderer.on(channel, listener);
-    ipcListeners.set(channel, listener);
-
-    // Add IPC cleanup to registry
-    cleanupRegistry.ipc.add(() => {
-      ipcRenderer.removeListener(channel, listener);
-      ipcListeners.delete(channel);
-    });
   };
 
   // Helper function to track action dispatch
@@ -174,6 +178,16 @@ export const preloadBridge = <S extends AnyState>(
       return () => {
         debug('ipc', 'Unsubscribing from state changes');
         listeners.delete(callback);
+
+        // If no more listeners, clean up IPC listener
+        if (listeners.size === 0) {
+          debug('ipc', 'Last subscriber removed - cleaning up IPC listeners');
+          const stateUpdateListener = ipcListeners.get(IpcChannel.STATE_UPDATE);
+          if (stateUpdateListener) {
+            ipcRenderer.removeListener(IpcChannel.STATE_UPDATE, stateUpdateListener);
+            ipcListeners.delete(IpcChannel.STATE_UPDATE);
+          }
+        }
       };
     },
 
@@ -193,11 +207,14 @@ export const preloadBridge = <S extends AnyState>(
 
       // Extract options or default to empty object
       let dispatchOptions: DispatchOptions;
-      if (
+      // Check if payloadOrOptions has DispatchOptions properties
+      const isOptions =
+        payloadOrOptions &&
         typeof payloadOrOptions === 'object' &&
         !Array.isArray(payloadOrOptions) &&
-        payloadOrOptions !== null
-      ) {
+        ('bypassAccessControl' in payloadOrOptions || 'bypassThunkLock' in payloadOrOptions);
+
+      if (isOptions) {
         dispatchOptions = payloadOrOptions as DispatchOptions;
       } else {
         dispatchOptions = options || {};
@@ -264,10 +281,7 @@ export const preloadBridge = <S extends AnyState>(
         typeof action === 'string'
           ? {
               type: action,
-              payload:
-                payloadOrOptions !== undefined && typeof payloadOrOptions !== 'object'
-                  ? payloadOrOptions
-                  : undefined,
+              payload: !isOptions ? payloadOrOptions : undefined,
               __id: uuidv4(),
             }
           : {

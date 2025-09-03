@@ -13,6 +13,9 @@ Object.defineProperty(global, 'window', {
   value: {
     zubridge: mockZubridge,
     __zubridge_windowId: undefined,
+    dispatchEvent: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   },
   writable: true,
 });
