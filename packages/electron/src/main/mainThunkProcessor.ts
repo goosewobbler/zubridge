@@ -8,9 +8,9 @@ import type {
   Thunk,
 } from '@zubridge/types';
 import { v4 as uuidv4 } from 'uuid';
-import { thunkManager } from '../lib/initThunkManager.js';
-import { Thunk as ThunkClass } from '../lib/Thunk.js';
-import { ThunkRegistrationQueue } from '../lib/ThunkRegistrationQueue.js';
+import { thunkManager } from '../thunk/init.js';
+import { Thunk as ThunkClass } from '../thunk/Thunk.js';
+import { ThunkRegistrationQueue } from '../thunk/registration/ThunkRegistrationQueue.js';
 import { QueueOverflowError } from '../types/errors.js';
 import type { ThunkProcessorOptions } from '../types/thunkProcessor.js';
 import { getThunkProcessorOptions } from '../utils/thunkProcessor.js';

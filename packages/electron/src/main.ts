@@ -4,7 +4,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { ReduxOptions } from './adapters/redux.js';
 import type { ZustandOptions } from './adapters/zustand.js';
 import { type CoreBridgeOptions, createBridgeFromStore } from './bridge/index.js';
-import { removeStateManager } from './lib/stateManagerRegistry.js';
+import { removeStateManager } from './registry/stateManagerRegistry.js';
 import { createDispatch } from './main/dispatch.js';
 
 export type { ReduxOptions } from './adapters/redux.js';

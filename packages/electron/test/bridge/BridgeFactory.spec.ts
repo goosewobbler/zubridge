@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { createCoreBridge } from '../../src/bridge/index.js';
 import type { IpcHandler } from '../../src/bridge/ipc/IpcHandler.js';
 import type { ResourceManager } from '../../src/bridge/resources/ResourceManager.js';
-import { thunkManager } from '../../src/lib/initThunkManager.js';
+import { thunkManager } from '../../src/thunk/init.js';
 import type { CoreBridgeOptions } from '../../src/types/bridge.js';
 import type { WebContentsTracker } from '../../src/utils/windows.js';
 
@@ -18,7 +18,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('../../src/lib/initThunkManager.js', () => ({
+vi.mock('../../src/thunk/init.js', () => ({
   thunkManager: {
     removeAllListeners: vi.fn(),
     forceCleanupCompletedThunks: vi.fn(),

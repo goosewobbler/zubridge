@@ -6,7 +6,7 @@ import type {
   StateManager,
   WrapperOrWebContents,
 } from '@zubridge/types';
-import { actionScheduler, thunkManager } from '../lib/initThunkManager.js';
+import { actionScheduler, thunkManager } from '../thunk/init.js';
 import { initActionQueue } from '../main/actionQueue.js';
 import { createMiddlewareOptions } from '../middleware.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';

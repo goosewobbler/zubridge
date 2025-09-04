@@ -20,7 +20,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('../../../src/lib/initThunkManager.js', () => ({
+vi.mock('../../../src/thunk/init.js', () => ({
   thunkManager: {
     cleanupDeadRenderer: vi.fn(),
   },

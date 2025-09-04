@@ -4,7 +4,7 @@ import type { Store } from 'redux';
 import type { StoreApi } from 'zustand';
 import type { ReduxOptions } from '../adapters/redux.js';
 import type { ZustandOptions } from '../adapters/zustand.js';
-import { getStateManager } from '../lib/stateManagerRegistry.js';
+import { getStateManager } from '../registry/stateManagerRegistry.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
 import { createCoreBridge as createCoreBridgeImpl } from './core.js';
 

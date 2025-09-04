@@ -1,10 +1,10 @@
 import type { AnyState } from '@zubridge/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResourceManager } from '../../../src/bridge/resources/ResourceManager.js';
-import { SubscriptionManager } from '../../../src/lib/SubscriptionManager.js';
+import { SubscriptionManager } from '../../../src/subscription/SubscriptionManager.js';
 
 // Mock dependencies
-vi.mock('../../../src/lib/SubscriptionManager.js', () => ({
+vi.mock('../../../src/subscription/SubscriptionManager.js', () => ({
   SubscriptionManager: vi.fn().mockImplementation(() => ({
     subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
     unsubscribe: vi.fn(),

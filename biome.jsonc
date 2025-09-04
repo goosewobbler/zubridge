@@ -22,6 +22,7 @@
       "!**/*.log",
       "!**/.electron-user-data-*",
       "!**/electron-builder-output",
+      "!**/dist*",
       // ignore NAPI-RS generated files
       "!packages/middleware/node/index.js",
       "!packages/middleware/node/index.d.ts"

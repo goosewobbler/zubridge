@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SubscriptionManager } from '../../src/lib/SubscriptionManager.js';
+import { SubscriptionManager } from '../../src/subscription/SubscriptionManager.js';
 
 describe('SubscriptionManager', () => {
   let subscriptionManager: SubscriptionManager<Record<string, unknown>>;

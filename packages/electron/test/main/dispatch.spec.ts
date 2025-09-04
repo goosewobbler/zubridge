@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand/vanilla';
 
 // Mock dependencies
-vi.mock('../../src/lib/stateManagerRegistry.js', () => ({
+vi.mock('../../src/registry/stateManagerRegistry.js', () => ({
   getStateManager: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ vi.mock('../../src/main/mainThunkProcessor.js', () => {
   };
 });
 
-import { getStateManager } from '../../src/lib/stateManagerRegistry.js';
+import { getStateManager } from '../../src/registry/stateManagerRegistry.js';
 // Now import the tested modules
 import { createDispatch } from '../../src/main/dispatch.js';
 import { getMainThunkProcessor } from '../../src/main/mainThunkProcessor.js';

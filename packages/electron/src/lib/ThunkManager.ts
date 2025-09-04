@@ -3,8 +3,8 @@ import type { Action } from '@zubridge/types';
 import { EventEmitter } from 'node:events';
 import { ThunkPriority } from '../constants.js';
 import type { ThunkAction, ThunkTask } from '../types/thunk.js';
-import { type Thunk, ThunkState } from './Thunk.js';
-import { ThunkScheduler } from './ThunkScheduler.js';
+import { type Thunk, ThunkState } from '../thunk/Thunk.js';
+import { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
 
 /**
  * Thunk action type enum

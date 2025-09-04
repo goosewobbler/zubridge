@@ -8,10 +8,10 @@ import type {
   ResourceManager,
 } from '../../../src/bridge/resources/ResourceManager.js';
 import { IpcChannel } from '../../../src/constants.js';
-import { thunkManager } from '../../../src/lib/initThunkManager.js';
-import { getPartialState } from '../../../src/lib/SubscriptionManager.js';
-import { Thunk } from '../../../src/lib/Thunk.js';
-import { ThunkRegistrationQueue } from '../../../src/lib/ThunkRegistrationQueue.js';
+import { thunkManager } from '../../../src/thunk/init.js';
+import { getPartialState } from '../../../src/subscription/SubscriptionManager.js';
+import { Thunk } from '../../../src/thunk/Thunk.js';
+import { ThunkRegistrationQueue } from '../../../src/thunk/registration/ThunkRegistrationQueue.js';
 import { actionQueue } from '../../../src/main/actionQueue.js';
 import { safelySendToWindow } from '../../../src/utils/windows.js';
 
@@ -25,7 +25,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('../../../src/lib/initThunkManager.js', () => ({
+vi.mock('../../../src/thunk/init.js', () => ({
   thunkManager: {
     hasThunk: vi.fn(),
     getActiveThunksSummary: vi.fn(() => ({ version: 1, thunks: [] })),
@@ -47,7 +47,7 @@ vi.mock('../../../src/main/actionQueue.js', () => ({
   },
 }));
 
-vi.mock('../../../src/lib/Thunk.js', () => ({
+vi.mock('../../../src/thunk/Thunk.js', () => ({
   Thunk: vi.fn().mockImplementation((config) => ({
     id: config.id,
     sourceWindowId: config.sourceWindowId,
@@ -55,7 +55,7 @@ vi.mock('../../../src/lib/Thunk.js', () => ({
   })),
 }));
 
-vi.mock('../../../src/lib/ThunkRegistrationQueue.js', () => ({
+vi.mock('../../../src/thunk/registration/ThunkRegistrationQueue.js', () => ({
   ThunkRegistrationQueue: vi.fn().mockImplementation(() => ({
     registerThunk: vi.fn(),
   })),
@@ -66,7 +66,7 @@ vi.mock('../../../src/utils/windows.js', () => ({
   isDestroyed: vi.fn(() => false),
 }));
 
-vi.mock('../../../src/lib/SubscriptionManager.js', () => ({
+vi.mock('../../../src/subscription/SubscriptionManager.js', () => ({
   getPartialState: vi.fn(),
 }));
 

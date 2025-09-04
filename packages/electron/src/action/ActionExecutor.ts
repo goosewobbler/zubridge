@@ -1,6 +1,6 @@
 import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
-import { thunkManager } from './initThunkManager.js';
+import { thunkManager } from '../thunk/init.js';
 
 /**
  * Responsible for executing actions through state managers

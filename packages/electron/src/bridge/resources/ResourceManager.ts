@@ -2,7 +2,7 @@ import { debug } from '@zubridge/core';
 import type { Action, AnyState } from '@zubridge/types';
 import type { WebContents } from 'electron';
 import { ResourceManagementError } from '../../errors/index.js';
-import type { SubscriptionManager } from '../../lib/SubscriptionManager.js';
+import type { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import type { CoreBridgeOptions } from '../../types/bridge.js';
 import { logZubridgeError } from '../../utils/errorHandling.js';
 

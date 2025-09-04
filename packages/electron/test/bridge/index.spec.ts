@@ -13,7 +13,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { ZustandOptions } from '../../src/adapters/zustand.js';
 import { createBridgeFromStore, createCoreBridge } from '../../src/bridge/index.js';
 import { IpcChannel } from '../../src/constants.js';
-import { getStateManager } from '../../src/lib/stateManagerRegistry.js';
+import { getStateManager } from '../../src/registry/stateManagerRegistry.js';
 import type { CoreBridgeOptions } from '../../src/types/bridge.js';
 import {
   createWebContentsTracker,
@@ -38,7 +38,7 @@ vi.mock('electron', () => {
 });
 
 // Mock the stateManagerRegistry module
-vi.mock('../../src/lib/stateManagerRegistry.js', () => {
+vi.mock('../../src/registry/stateManagerRegistry.js', () => {
   return {
     getStateManager: vi.fn(),
   };
@@ -1280,7 +1280,7 @@ describe('bridge.ts', () => {
       const stateManager = createMockStateManager();
 
       // Mock thunkManager to throw an error
-      vi.doMock('../../src/lib/initThunkManager.js', () => ({
+      vi.doMock('../../src/thunk/init.js', () => ({
         thunkManager: {
           getActiveThunksSummary: vi.fn().mockImplementation(() => {
             throw new Error('Thunk state error');
@@ -1309,7 +1309,7 @@ describe('bridge.ts', () => {
       const stateManager = createMockStateManager();
 
       // Mock subscription manager to throw an error
-      vi.doMock('../../src/lib/SubscriptionManager.js', () => ({
+      vi.doMock('../../src/subscription/SubscriptionManager.js', () => ({
         SubscriptionManager: class {
           constructor() {
             throw new Error('Subscription manager error');
@@ -1342,7 +1342,7 @@ describe('bridge.ts', () => {
       const stateManager = createMockStateManager();
 
       // Mock thunkManager to throw errors during cleanup
-      vi.doMock('../../src/lib/initThunkManager.js', () => ({
+      vi.doMock('../../src/thunk/init.js', () => ({
         thunkManager: {
           removeAllListeners: vi.fn().mockImplementation(() => {
             throw new Error('Cleanup error');
@@ -1378,7 +1378,7 @@ describe('bridge.ts', () => {
       const stateManager = createMockStateManager();
 
       // Mock actionScheduler to throw errors during cleanup
-      vi.doMock('../../src/lib/initThunkManager.js', () => ({
+      vi.doMock('../../src/thunk/init.js', () => ({
         thunkManager: {
           removeAllListeners: vi.fn(),
           forceCleanupCompletedThunks: vi.fn(),

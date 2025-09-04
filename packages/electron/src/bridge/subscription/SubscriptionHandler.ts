@@ -3,8 +3,8 @@ import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/typ
 import type { WebContents } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from '../../constants.js';
-import { thunkManager } from '../../lib/initThunkManager.js';
-import { SubscriptionManager } from '../../lib/SubscriptionManager.js';
+import { thunkManager } from '../../thunk/init.js';
+import { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import {
   getWebContents,

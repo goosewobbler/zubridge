@@ -3,7 +3,7 @@ import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from 
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
 import { v4 as uuidv4 } from 'uuid';
-import { Thunk } from '../lib/Thunk.js';
+import { Thunk } from '../thunk/Thunk.js';
 import { QueueOverflowError } from '../types/errors.js';
 import type { PreloadOptions } from '../types/preload.js';
 

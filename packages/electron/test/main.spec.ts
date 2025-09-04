@@ -20,7 +20,7 @@ vi.mock('../src/main/dispatch.js', () => ({
   createDispatch: vi.fn().mockReturnValue(vi.fn()),
 }));
 
-vi.mock('../src/lib/stateManagerRegistry', () => ({
+vi.mock('../src/registry/stateManagerRegistry', () => ({
   getStateManager: vi.fn(),
   removeStateManager: vi.fn(),
 }));
@@ -32,7 +32,7 @@ import type { Store } from 'redux';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { StoreApi } from 'zustand/vanilla';
 import * as bridge from '../src/bridge';
-import { removeStateManager } from '../src/lib/stateManagerRegistry';
+import { removeStateManager } from '../src/registry/stateManagerRegistry';
 import * as main from '../src/main';
 import { createDispatch } from '../src/main/dispatch.js';
 

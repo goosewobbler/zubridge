@@ -1,8 +1,8 @@
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Thunk, ThunkState } from '../../src/lib/Thunk.js';
+import { type Thunk, ThunkState } from '../../src/thunk/Thunk.js';
 import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
-import type { ThunkScheduler } from '../../src/lib/ThunkScheduler.js';
+import type { ThunkScheduler } from '../../src/thunk/scheduling/ThunkScheduler.js';
 import type { ThunkTask } from '../../src/types/thunk';
 
 // Test utilities for accessing private properties and methods

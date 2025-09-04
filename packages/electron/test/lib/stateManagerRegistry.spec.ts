@@ -8,7 +8,7 @@ import {
   clearStateManagers,
   getStateManager,
   removeStateManager,
-} from '../../src/lib/stateManagerRegistry.js';
+} from '../../src/registry/stateManagerRegistry.js';
 
 // Helper to create a mock Zustand store
 function createMockZustandStore() {

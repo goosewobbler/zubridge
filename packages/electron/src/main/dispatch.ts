@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { StoreApi } from 'zustand/vanilla';
 import type { ReduxOptions } from '../adapters/redux.js';
 import type { ZustandOptions } from '../adapters/zustand.js';
-import { getStateManager } from '../lib/stateManagerRegistry.js';
+import { getStateManager } from '../registry/stateManagerRegistry.js';
 import { getMainThunkProcessor } from './mainThunkProcessor.js';
 
 // Get the main process thunk processor
