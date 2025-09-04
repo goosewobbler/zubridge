@@ -73,31 +73,74 @@
       "cache": false
     },
     "test:e2e:electron-zustand-reducers": {
-      "dependsOn": ["e2e-electron#build:zustand-reducers"],
+      "dependsOn": [
+        "e2e-electron#build:zustand-reducers"
+        // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
+        // "e2e-tauri#build",
+        // "e2e-tauri-v1#build"
+      ],
       "cache": false
     },
     "test:e2e:electron-zustand-handlers": {
-      "dependsOn": ["e2e-electron#build:zustand-handlers"],
+      "dependsOn": [
+        "e2e-electron#build:zustand-handlers"
+        // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
+        // "e2e-tauri#build",
+        // "e2e-tauri-v1#build"
+      ],
       "cache": false
     },
     "test:e2e:electron-zustand-basic": {
-      "dependsOn": ["e2e-electron#build:zustand-basic"],
+      "dependsOn": [
+        "e2e-electron#build:zustand-basic"
+        // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
+        // "e2e-tauri#build",
+        // "e2e-tauri-v1#build"
+      ],
       "cache": false
     },
     "test:e2e:electron-redux": {
-      "dependsOn": ["e2e-electron#build:redux"],
+      "dependsOn": [
+        "e2e-electron#build:redux"
+        // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
+        // "e2e-tauri#build",
+        // "e2e-tauri-v1#build"
+      ],
       "cache": false
     },
     "test:e2e:electron-custom": {
-      "dependsOn": ["e2e-electron#build:custom"],
+      "dependsOn": [
+        "e2e-electron#build:custom"
+        // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
+        // "e2e-tauri#build",
+        // "e2e-tauri-v1#build"
+      ],
       "cache": false
     },
     "test:e2e:tauri": {
-      "dependsOn": ["e2e-tauri#build"],
+      "dependsOn": [
+        "e2e-tauri#build",
+        // NOTE: Tauri tests wait for Electron E2E tests to ensure Electron stability
+        // During Tauri development, remove these AND uncomment inverse dependencies in electron tasks
+        "test:e2e:electron-zustand-basic",
+        "test:e2e:electron-zustand-reducers",
+        "test:e2e:electron-zustand-handlers",
+        "test:e2e:electron-redux",
+        "test:e2e:electron-custom"
+      ],
       "cache": false
     },
     "test:e2e:tauri-v1": {
-      "dependsOn": ["e2e-tauri-v1#build"],
+      "dependsOn": [
+        "e2e-tauri-v1#build",
+        // NOTE: Tauri tests wait for Electron E2E tests to ensure Electron stability
+        // During Tauri development, remove these AND uncomment inverse dependencies in electron tasks
+        "test:e2e:electron-zustand-basic",
+        "test:e2e:electron-zustand-reducers",
+        "test:e2e:electron-zustand-handlers",
+        "test:e2e:electron-redux",
+        "test:e2e:electron-custom"
+      ],
       "cache": false
     },
     "@zubridge/middleware#build": {
@@ -190,7 +233,16 @@
       "cache": false
     },
     "e2e-tauri#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build",
+        // NOTE: Tauri builds wait for Electron E2E tests to ensure Electron stability
+        // During Tauri development, remove these OR uncomment inverse dependencies in electron tasks
+        "test:e2e:electron-zustand-basic",
+        "test:e2e:electron-zustand-reducers",
+        "test:e2e:electron-zustand-handlers",
+        "test:e2e:electron-redux",
+        "test:e2e:electron-custom"
+      ],
       "inputs": [
         "packages/electron/dist/**",
         "packages/ui/dist/**",
@@ -201,7 +253,16 @@
       "cache": false
     },
     "e2e-tauri-v1#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build",
+        // NOTE: Tauri builds wait for Electron E2E tests to ensure Electron stability
+        // During Tauri development, remove these OR uncomment inverse dependencies in electron tasks
+        "test:e2e:electron-zustand-basic",
+        "test:e2e:electron-zustand-reducers",
+        "test:e2e:electron-zustand-handlers",
+        "test:e2e:electron-redux",
+        "test:e2e:electron-custom"
+      ],
       "inputs": [
         "packages/electron/dist/**",
         "packages/ui/dist/**",

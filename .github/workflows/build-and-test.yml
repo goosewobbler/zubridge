@@ -118,7 +118,7 @@ jobs:
           PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
+            turbo run build:${{ inputs.mode }} --filter=$PACKAGE_NAME -l
           else
 
             # Run Vite build first
@@ -235,7 +235,7 @@ jobs:
           PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
+            turbo run build:${{ inputs.mode }} --filter=$PACKAGE_NAME -m
           else
 
             # Run Vite build first
@@ -346,7 +346,7 @@ jobs:
           PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
-            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
+            turbo run build:${{ inputs.mode }} --filter=$PACKAGE_NAME -w
           else
 
             # Run Vite build first
