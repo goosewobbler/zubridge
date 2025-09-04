@@ -6,7 +6,7 @@ import type { ReduxOptions } from '../adapters/redux.js';
 import type { ZustandOptions } from '../adapters/zustand.js';
 import { getStateManager } from '../registry/stateManagerRegistry.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
-import { createCoreBridge as createCoreBridgeImpl } from './core.js';
+import { createCoreBridge as createCoreBridgeImpl } from './BridgeFactory.js';
 
 // Re-export types for external use
 export type { CoreBridgeOptions };
