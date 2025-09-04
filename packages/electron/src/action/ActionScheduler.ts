@@ -3,7 +3,7 @@ import type { Action } from '@zubridge/types';
 import { EventEmitter } from 'node:events';
 import { v4 as uuid } from 'uuid';
 import { ResourceManagementError } from '../errors/index.js';
-import type { ThunkManager } from '../lib/ThunkManager.js';
+import type { ThunkManager } from '../thunk/ThunkManager.js';
 import type { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
 
 /**

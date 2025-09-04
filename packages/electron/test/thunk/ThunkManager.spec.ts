@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Thunk, ThunkState } from '../../src/thunk/Thunk.js';
-import { ThunkManager, ThunkManagerEvent } from '../../src/lib/ThunkManager.js';
+import { ThunkManager, ThunkManagerEvent } from '../../src/thunk/ThunkManager.js';
 import type { ThunkScheduler } from '../../src/thunk/scheduling/ThunkScheduler.js';
 import type { ThunkTask } from '../../src/types/thunk';
 

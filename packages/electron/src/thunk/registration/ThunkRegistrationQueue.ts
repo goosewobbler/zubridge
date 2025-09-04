@@ -1,5 +1,5 @@
 import { debug } from '@zubridge/core';
-import { type ThunkManager, ThunkManagerEvent } from '../../lib/ThunkManager.js';
+import { type ThunkManager, ThunkManagerEvent } from '../ThunkManager.js';
 import type { Thunk } from '../Thunk.js';
 
 // Type for queued thunk registration
