@@ -1,6 +1,6 @@
 import { debug } from '@zubridge/core';
-import { type ThunkManager, ThunkManagerEvent } from '../ThunkManager.js';
 import type { Thunk } from '../Thunk.js';
+import { type ThunkManager, ThunkManagerEvent } from '../ThunkManager.js';
 
 // Type for queued thunk registration
 interface QueuedThunk<T = unknown> {
@@ -162,12 +162,8 @@ export class ThunkRegistrationQueue {
         `Registering thunk: id=${thunk.id}, parentId=${thunk.parentId}, bypassThunkLock=${thunk.bypassThunkLock}`,
       );
 
-      // Register the thunk with the manager
-      this.thunkManager.registerThunk(thunk.id, thunk, {
-        parentId: thunk.parentId,
-        windowId: thunk.sourceWindowId,
-        bypassThunkLock: thunk.bypassThunkLock,
-      });
+      // Register the thunk with the manager using the old signature for compatibility
+      this.thunkManager.registerThunk(thunk.id, thunk);
 
       // Execute the thunk based on its source type
       if (thunk.source === 'main' && mainThunkCallback) {
@@ -177,7 +173,7 @@ export class ThunkRegistrationQueue {
         );
 
         // Mark the thunk as executing (starts it in the scheduler)
-        this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
+        this.thunkManager.markThunkExecuting(thunk.id);
 
         // Run the callback directly
         Promise.resolve().then(async () => {
@@ -204,7 +200,7 @@ export class ThunkRegistrationQueue {
         debug('queue-debug', `[DEBUG] Executing renderer callback for thunk ${thunk.id}`);
 
         // Mark the thunk as executing (starts it in the scheduler)
-        this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
+        this.thunkManager.markThunkExecuting(thunk.id);
 
         // Run the callback directly
         Promise.resolve().then(async () => {
@@ -235,7 +231,7 @@ export class ThunkRegistrationQueue {
 
         // For renderer thunks, only mark them as executing
         // They will be completed when the renderer calls completeThunk
-        this.thunkManager.markThunkExecuting(thunk.id, thunk.sourceWindowId);
+        this.thunkManager.markThunkExecuting(thunk.id);
 
         // Handle completion with undefined result, but don't complete the thunk yet
         // The thunk will be completed when all its actions are processed

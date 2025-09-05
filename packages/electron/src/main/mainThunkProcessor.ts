@@ -9,22 +9,22 @@ import type {
 } from '@zubridge/types';
 import { v4 as uuidv4 } from 'uuid';
 import { thunkManager } from '../thunk/init.js';
-import { Thunk as ThunkClass } from '../thunk/Thunk.js';
 import { ThunkRegistrationQueue } from '../thunk/registration/ThunkRegistrationQueue.js';
-import { QueueOverflowError } from '../types/errors.js';
-import type { ThunkProcessorOptions } from '../types/thunkProcessor.js';
-import { getThunkProcessorOptions } from '../utils/thunkProcessor.js';
+import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';
+import { Thunk as ThunkClass } from '../thunk/Thunk.js';
+import type { ThunkProcessorOptions } from '../types/thunk.js';
+import { getThunkProcessorOptions } from '../utils/configuration.js';
 import { actionQueue } from './actionQueue.js';
 
 /**
  * Handles thunk execution in the main process
  */
-export class MainThunkProcessor {
+export class MainThunkProcessor extends BaseThunkProcessor {
   // State manager to process actions
   private stateManager?: StateManager<AnyState>;
 
   // Map to track action promises for potentially async actions
-  private pendingActionPromises = new Map<
+  protected pendingActionPromises = new Map<
     string,
     {
       resolve: (value: unknown) => void;
@@ -32,24 +32,15 @@ export class MainThunkProcessor {
     }
   >();
 
-  // Configuration options
-  private actionCompletionTimeoutMs: number;
-  private maxQueueSize: number;
-
   // Set to track first action for each thunk
-  private sentFirstActionForThunk = new Set<string>();
+  protected sentFirstActionForThunk = new Set<string>();
 
   // Instantiate the thunk registration queue for main thunks
   private mainThunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
 
   constructor(options?: ThunkProcessorOptions) {
     const config = getThunkProcessorOptions(options);
-    this.actionCompletionTimeoutMs = config.actionCompletionTimeoutMs;
-    this.maxQueueSize = config.maxQueueSize;
-    debug(
-      'core',
-      `[MAIN_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}ms, maxQueueSize: ${this.maxQueueSize}`,
-    );
+    super(config, 'MAIN_THUNK');
   }
 
   /**
@@ -66,6 +57,10 @@ export class MainThunkProcessor {
    * Completes a pending action and sends acknowledgment
    */
   public completeAction(actionId: string): void {
+    // Call base implementation first for common cleanup
+    super.completeAction(actionId, actionId);
+
+    // Handle main-process specific pending promises
     const pendingAction = this.pendingActionPromises.get(actionId);
     if (pendingAction) {
       debug('core', `[MAIN_THUNK] Completing pending action ${actionId}`);
@@ -95,7 +90,7 @@ export class MainThunkProcessor {
 
     // Register the thunk using the mainThunkRegistrationQueue (returns a promise that resolves when lock is acquired and registered)
     const MAIN_PROCESS_WINDOW_ID = 0;
-    const currentActiveRootThunk = thunkManager.getRootThunkId();
+    const currentActiveRootThunk = thunkManager.getCurrentRootThunkId();
     const activeThunksSummary = thunkManager.getActiveThunksSummary();
 
     const thunkObj = new ThunkClass({
@@ -177,7 +172,7 @@ export class MainThunkProcessor {
     debug('core', '[MAIN_THUNK] Thunk execution complete, waiting for state propagation');
 
     // Clean up expired state updates before checking completion
-    thunkManager.cleanupExpiredStateUpdates(30000); // 30 second max age
+    thunkManager.cleanupExpiredUpdates(30000); // 30 second max age
 
     // Check immediate completion first (in case there were no state changes)
     if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
@@ -192,7 +187,7 @@ export class MainThunkProcessor {
       const startTime = Date.now();
       const checkCompletion = () => {
         // Clean up expired updates on each check
-        thunkManager.cleanupExpiredStateUpdates(30000);
+        thunkManager.cleanupExpiredUpdates(30000);
 
         if (thunkManager.isThunkFullyComplete(thunkObj.id)) {
           const elapsed = Date.now() - startTime;
@@ -277,16 +272,8 @@ export class MainThunkProcessor {
     // Track if this is the first action for a particular parentId
     const isFirstActionForThunk = parentId && !this.sentFirstActionForThunk.has(parentId);
 
-    // Convert string actions to object form
-    const actionObj: Action =
-      typeof action === 'string'
-        ? { type: action, payload, __id: uuidv4() }
-        : { ...action, __id: action.__id || uuidv4() };
-
-    // Ensure action has an ID
-    if (!actionObj.__id) {
-      actionObj.__id = uuidv4();
-    }
+    // Use base class to ensure action ID
+    const actionObj = this.ensureActionId(action, payload);
 
     // Add metadata for thunks
     if (parentId) {
@@ -341,9 +328,9 @@ export class MainThunkProcessor {
       }
 
       // Check queue size before adding
-      if (this.pendingActionPromises.size >= this.maxQueueSize) {
-        const error = new QueueOverflowError(this.pendingActionPromises.size, this.maxQueueSize);
-        debug('core:error', `[MAIN_THUNK] Action queue overflow: ${error.message}`);
+      try {
+        this.checkQueueCapacity(this.pendingActionPromises.size);
+      } catch (error) {
         reject(error);
         return;
       }
@@ -399,6 +386,9 @@ export class MainThunkProcessor {
   public forceCleanupExpiredActions(): void {
     debug('core', '[MAIN_THUNK] Force cleaning up expired actions and tracking');
 
+    // Call base cleanup for common timeout/callback cleanup
+    super.forceCleanupExpiredActions();
+
     const clearedPromises = this.pendingActionPromises.size;
     const clearedThunks = this.sentFirstActionForThunk.size;
 
@@ -433,7 +423,8 @@ export class MainThunkProcessor {
     // Clear the state manager reference
     this.stateManager = undefined;
 
-    debug('core', '[MAIN_THUNK] MainThunkProcessor instance destroyed');
+    // Call base destroy for remaining cleanup
+    super.destroy();
   }
 }
 
@@ -460,3 +451,19 @@ export const resetMainThunkProcessor = (): void => {
   }
   mainThunkProcessorInstance = undefined;
 };
+
+// Test methods to expose private properties for testing
+export class TestMainThunkProcessor extends MainThunkProcessor {
+  public getPendingActionPromises() {
+    return this.pendingActionPromises;
+  }
+
+  public getSentFirstActionForThunk() {
+    return this.sentFirstActionForThunk;
+  }
+
+  public setStateManagerForTest(stateManager?: StateManager<AnyState>) {
+    // biome-ignore lint/suspicious/noExplicitAny: Test utility needs access to private property
+    (this as any).stateManager = stateManager;
+  }
+}

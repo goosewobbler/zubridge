@@ -19,6 +19,9 @@ export interface ThunkOptions {
   contextId?: string; // Optional linked execution context ID
 }
 
+// Re-export from types for convenience
+export type { ThunkProcessorOptions } from '../types/thunk.js';
+
 /**
  * Base Thunk class that works in both main and renderer processes
  */

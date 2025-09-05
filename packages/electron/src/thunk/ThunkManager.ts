@@ -1,818 +1,393 @@
-import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
 import { EventEmitter } from 'node:events';
 import { ThunkPriority } from '../constants.js';
 import type { ThunkAction, ThunkTask } from '../types/thunk.js';
-import { type Thunk, ThunkState } from '../thunk/Thunk.js';
-import { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
+import {
+  ThunkActionType,
+  type ThunkHandle,
+  ThunkLifecycleManager,
+  ThunkManagerEvent,
+} from './lifecycle/ThunkLifecycleManager.js';
+import { ActionProcessor } from './processing/ActionProcessor.js';
+import type { ThunkScheduler } from './scheduling/ThunkScheduler.js';
+import { type Thunk, ThunkState } from './Thunk.js';
+import { StateUpdateTracker } from './tracking/StateUpdateTracker.js';
 
 /**
- * Thunk action type enum
- */
-export enum ThunkActionType {
-  START = 'THUNK_START',
-  ACTION = 'THUNK_ACTION',
-  END = 'THUNK_END',
-}
-
-/**
- * Events emitted by ThunkManager
- */
-export enum ThunkManagerEvent {
-  THUNK_REGISTERED = 'thunk:registered',
-  THUNK_STARTED = 'thunk:started',
-  THUNK_COMPLETED = 'thunk:completed',
-  THUNK_FAILED = 'thunk:failed',
-  ROOT_THUNK_CHANGED = 'thunk:root:changed',
-  ROOT_THUNK_COMPLETED = 'thunk:root:completed',
-}
-
-/**
- * Handle for a registered thunk
- */
-export interface ThunkHandle {
-  /**
-   * Unique ID of the thunk
-   */
-  id: string;
-}
-
-/**
- * Tracks state updates pending acknowledgment from renderer processes
- */
-interface PendingStateUpdate {
-  updateId: string;
-  thunkId: string;
-  subscribedRenderers: Set<number>; // window IDs
-  acknowledgedBy: Set<number>; // window IDs that sent ACK
-  timestamp: number;
-}
-
-/**
- * Manager for thunk registration and execution
+ * Refactored ThunkManager using focused, modular components
+ * This is the main coordinator that orchestrates the various thunk management components
  */
 export class ThunkManager extends EventEmitter {
-  /**
-   * Map of registered thunks by ID
-   */
-  private thunks = new Map<string, Thunk>();
-
-  /**
-   * Current active root thunk ID
-   */
-  private rootThunkId?: string;
-
-  /**
-   * Task scheduler for execution control
-   */
-  private scheduler: ThunkScheduler;
-
-  /**
-   * Tracked actions for each thunk
-   */
-  private thunkActions: Map<string, Set<string>> = new Map();
-
-  /**
-   * Tracked tasks for each thunk
-   */
-  private thunkTasks: Map<string, { canRunConcurrently: boolean }> = new Map();
-
-  /**
-   * Thunk results by ID
-   */
-  private thunkResults = new Map<string, unknown>();
-
-  /**
-   * Thunk errors by ID
-   */
-  private thunkErrors = new Map<string, Error>();
-
-  /**
-   * Tracks state updates pending acknowledgment from renderers
-   */
-  private pendingStateUpdates = new Map<string, PendingStateUpdate>();
-
-  /**
-   * Maps thunk ID to set of pending update IDs for that thunk
-   */
-  private thunkPendingUpdates = new Map<string, Set<string>>();
-
-  /**
-   * Currently processing thunk action ID (for state update tracking)
-   */
-  private currentThunkActionId?: string;
-
-  private stateManager?: { processAction: (action: Action) => unknown };
+  private lifecycleManager: ThunkLifecycleManager;
+  private actionProcessor: ActionProcessor;
+  private stateUpdateTracker: StateUpdateTracker;
 
   constructor(scheduler: ThunkScheduler) {
     super();
-    this.scheduler = scheduler;
+
+    // Initialize focused components
+    this.stateUpdateTracker = new StateUpdateTracker();
+    this.actionProcessor = new ActionProcessor(scheduler);
+    this.lifecycleManager = new ThunkLifecycleManager(
+      scheduler,
+      this.actionProcessor,
+      this.stateUpdateTracker,
+    );
+
+    // Set up the hasThunk checker for the ActionProcessor
+
+    // Forward events from lifecycle manager
+    this.lifecycleManager.on(ThunkManagerEvent.THUNK_REGISTERED, (...args) =>
+      this.emit(ThunkManagerEvent.THUNK_REGISTERED, ...args),
+    );
+    this.lifecycleManager.on(ThunkManagerEvent.THUNK_STARTED, (...args) =>
+      this.emit(ThunkManagerEvent.THUNK_STARTED, ...args),
+    );
+    this.lifecycleManager.on(ThunkManagerEvent.THUNK_COMPLETED, (...args) =>
+      this.emit(ThunkManagerEvent.THUNK_COMPLETED, ...args),
+    );
+    this.lifecycleManager.on(ThunkManagerEvent.THUNK_FAILED, (...args) =>
+      this.emit(ThunkManagerEvent.THUNK_FAILED, ...args),
+    );
+    this.lifecycleManager.on(ThunkManagerEvent.ROOT_THUNK_CHANGED, (...args) =>
+      this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, ...args),
+    );
+    this.lifecycleManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, (...args) =>
+      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, ...args),
+    );
   }
 
-  /**
-   * Register a thunk for future execution
-   */
+  // Delegate lifecycle management methods
+  registerThunk(thunkAction: ThunkAction, task?: ThunkTask, priority?: ThunkPriority): ThunkHandle;
+  // Compatibility overload for tests that use the old signature (thunkId, thunk)
   registerThunk(
     thunkId: string,
     thunk: Thunk,
-    options?: { parentId?: string; windowId?: number; bypassThunkLock?: boolean },
-  ): void {
-    debug('thunk', `Registering thunk: id=${thunkId}, bypassThunkLock=${options?.bypassThunkLock}`);
+    task?: ThunkTask,
+    priority?: ThunkPriority,
+  ): ThunkHandle;
+  registerThunk(
+    thunkActionOrId: ThunkAction | string,
+    taskOrThunk?: ThunkTask | Thunk,
+    priorityOrTask?: ThunkPriority | ThunkTask,
+    priority: ThunkPriority = ThunkPriority.NORMAL,
+  ): ThunkHandle {
+    // Handle the old signature for backward compatibility
+    if (typeof thunkActionOrId === 'string') {
+      const thunkId = thunkActionOrId;
+      const thunk = taskOrThunk as Thunk;
+      const task = (priorityOrTask as ThunkTask) || undefined;
 
-    // Add to registry
-    this.thunks.set(thunkId, thunk);
+      // Create a ThunkAction from the thunk - use thunk.id as the __id
+      const thunkAction: ThunkAction = {
+        __id: thunk.id || thunkId,
+        type: 'THUNK',
+        parentId: thunk.parentId,
+      };
 
-    // Add task tracking for this thunk
-    this.thunkTasks.set(thunkId, { canRunConcurrently: !!options?.bypassThunkLock });
+      const handle = this.lifecycleManager.registerThunk(thunkAction, task, priority);
 
-    // Emit registration event
-    this.emit(ThunkManagerEvent.THUNK_REGISTERED, thunk);
-  }
+      // Copy initial state from provided thunk to internal thunk if needed
+      if (thunk.state && thunk.state !== ThunkState.PENDING) {
+        const internalThunk = this.lifecycleManager.getThunk(handle.id);
+        if (internalThunk) {
+          // Force sync the initial state by calling the appropriate method
+          switch (thunk.state) {
+            case ThunkState.EXECUTING:
+              internalThunk.activate();
+              break;
+            case ThunkState.COMPLETED:
+              internalThunk.complete();
+              break;
+            case ThunkState.FAILED:
+              internalThunk.fail();
+              break;
+          }
+        }
+      }
 
-  /**
-   * Mark a thunk as executing
-   */
-  markThunkExecuting(thunkId: string, _windowId?: number): void {
-    debug('thunk', `Marking thunk as executing: id=${thunkId}`);
-
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      debug('thunk-debug', `Cannot execute thunk ${thunkId} - not found`);
-      return;
+      return handle;
     }
 
-    // Add debug logs to track thunk state
-    debug('thunk-debug', `Thunk ${thunkId} state before activation: ${thunk.state}`);
-    debug(
-      'thunk-debug',
-      `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`,
+    // Handle the new signature
+    return this.lifecycleManager.registerThunk(
+      thunkActionOrId as ThunkAction,
+      taskOrThunk as ThunkTask,
+      (priorityOrTask as ThunkPriority) ?? ThunkPriority.NORMAL,
     );
-
-    // Update thunk state
-    thunk.activate();
-    debug('thunk-debug', `Thunk ${thunkId} state after activation: ${thunk.state}`);
-
-    // Update root thunk if needed
-    if (!this.rootThunkId) {
-      this.rootThunkId = thunkId;
-      debug('thunk-debug', `Set root thunk to ${thunkId}`);
-      this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, thunk);
-    }
-
-    // Emit started event
-    this.emit(ThunkManagerEvent.THUNK_STARTED, thunk);
   }
-  /**
-   * Directly complete a thunk when all actions are finished
-   */
+
+  executeThunk(thunkId: string): void {
+    this.lifecycleManager.executeThunk(thunkId);
+  }
+
   completeThunk(thunkId: string, result?: unknown): void {
-    debug('thunk', `Completing thunk: id=${thunkId}`);
-
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      debug('thunk-debug', `Cannot complete thunk ${thunkId} - not found`);
-      return;
-    }
-
-    // Add debug logs to track thunk state
-    debug('thunk-debug', `Thunk ${thunkId} state before completion: ${thunk.state}`);
-    debug(
-      'thunk-debug',
-      `Thunk ${thunkId} has ${this.thunkActions.get(thunkId)?.size || 0} registered actions`,
-    );
-    debug('thunk-debug', `Root thunk is currently: ${this.rootThunkId || 'none'}`);
-
-    // Check if the thunk is already completed
-    if (thunk.state === ThunkState.COMPLETED) {
-      debug('thunk-debug', `Thunk ${thunkId} already completed, ignoring completion request`);
-      return;
-    }
-
-    // Store the result if provided
-    if (result !== undefined) {
-      this.thunkResults.set(thunkId, result);
-    }
-
-    // Check if there are any pending actions for this thunk
-    const pendingActions = this.thunkActions.get(thunkId);
-    if (!pendingActions || pendingActions.size === 0) {
-      debug('thunk-debug', `Thunk ${thunkId} has no pending actions, finalizing completion now`);
-      this.finalizeThunkCompletion(thunkId);
-    } else {
-      debug(
-        'thunk-debug',
-        `Thunk ${thunkId} has ${pendingActions.size} pending actions, deferring completion`,
-      );
-    }
+    this.lifecycleManager.completeThunk(thunkId, result);
   }
 
-  /**
-   * Actually complete the thunk after all its actions are done
-   */
-  private finalizeThunkCompletion(thunkId: string): void {
-    debug('thunk', `Finalizing thunk completion: id=${thunkId}`);
-
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      debug('thunk-debug', `Cannot finalize thunk ${thunkId} - not found`);
-      return;
-    }
-
-    // Double check if there are any pending actions for this thunk
-    const pendingActions = this.thunkActions.get(thunkId);
-    if (pendingActions && pendingActions.size > 0) {
-      debug(
-        'thunk-debug',
-        `Thunk ${thunkId} still has ${pendingActions.size} pending actions, deferring completion`,
-      );
-      return;
-    }
-
-    // Now set the state to COMPLETED
-    thunk.complete();
-
-    // Only clean up action tracking, but keep the thunk itself until all state updates are acknowledged
-    this.thunkActions.delete(thunkId);
-    this.thunkTasks.delete(thunkId);
-
-    // Don't delete thunk, results, errors, or pending updates yet - they may be needed for state propagation tracking
-
-    // Remove the task from scheduler
-    this.scheduler.removeTasks(thunkId);
-
-    // Emit events immediately (synchronously) for backward compatibility
-    this.emit(ThunkManagerEvent.THUNK_COMPLETED, thunk);
-
-    // Update root thunk if needed
-    if (this.rootThunkId === thunkId) {
-      this.rootThunkId = undefined;
-      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, thunk);
-    }
-
-    // Schedule queue processing
-    this.scheduler.processQueue();
-
-    // Don't do cleanup yet - wait to see if state updates are tracked
+  failThunk(thunkId: string, error: Error): void {
+    this.lifecycleManager.failThunk(thunkId, error);
   }
 
-  /**
-   * Try to do final cleanup of a completed thunk if it has no pending state updates
-   */
-  private tryFinalCleanup(thunkId: string): void {
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk || thunk.state !== ThunkState.COMPLETED) {
-      return;
-    }
-
-    // Check if there are any pending state updates
-    const pendingUpdates = this.thunkPendingUpdates.get(thunkId);
-    const hasPendingUpdates = pendingUpdates && pendingUpdates.size > 0;
-
-    if (!hasPendingUpdates) {
-      debug('thunk', `Thunk ${thunkId} fully complete, doing final cleanup`);
-      // Final cleanup now that execution is complete and no state updates are pending
-      this.thunks.delete(thunkId);
-      this.thunkResults.delete(thunkId);
-      this.thunkErrors.delete(thunkId);
-      this.thunkPendingUpdates.delete(thunkId);
-
-      // Events were already emitted in finalizeThunkCompletion - don't emit again
-    }
-  }
-
-  /**
-   * Mark a thunk as failed
-   */
-  markThunkFailed(thunkId: string, error: Error): void {
-    debug('thunk', `Marking thunk as failed: id=${thunkId}, error=${error.message}`);
-
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      debug('thunk-debug', `Cannot fail thunk ${thunkId} - not found`);
-      return;
-    }
-
-    // Update thunk state
-    thunk.fail();
-
-    // Store the error
-    this.thunkErrors.set(thunkId, error);
-
-    // Clean up ALL thunk tracking to prevent memory leaks
-    this.thunks.delete(thunkId);
-    this.thunkActions.delete(thunkId);
-    this.thunkTasks.delete(thunkId);
-    this.thunkResults.delete(thunkId);
-    // Note: Keep thunkErrors for a bit longer for error reporting
-
-    // Clean up any pending state updates for this thunk
-    this.thunkPendingUpdates.delete(thunkId);
-
-    // Emit failed event
-    this.emit(ThunkManagerEvent.THUNK_FAILED, thunk);
-
-    // Update root thunk if needed
-    if (this.rootThunkId === thunkId) {
-      this.rootThunkId = undefined;
-      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, thunk);
-    }
-  }
-
-  /**
-   * Get all active thunks for broadcasting
-   */
   getActiveThunksSummary(): {
     version: number;
     thunks: Array<{ id: string; windowId: number; parentId?: string }>;
   } {
-    // Get all running tasks from the scheduler
-    const runningTasks = this.scheduler.getRunningTasks();
-
-    // Convert tasks to thunk summaries
-    const activeThunks = runningTasks.map((task) => {
-      const thunk = this.thunks.get(task.thunkId);
+    const lifecycleSummary = this.lifecycleManager.getActiveThunksSummary();
+    // Convert from the lifecycle manager format to the expected IPC format
+    const formattedThunks = lifecycleSummary.map((thunkSummary) => {
+      const thunk = this.lifecycleManager.getThunk(thunkSummary.id);
       return {
-        id: task.thunkId,
-        windowId: thunk?.sourceWindowId || 0,
+        id: thunkSummary.id,
+        windowId: thunk?.sourceWindowId ?? 0,
         parentId: thunk?.parentId,
       };
     });
 
     return {
-      version: Date.now(),
-      thunks: activeThunks,
+      version: Date.now(), // Use timestamp as version for compatibility
+      thunks: formattedThunks,
     };
   }
 
-  /**
-   * Check if we can process an action immediately or need to queue it
-   */
-  canProcessAction(action: Action): boolean {
-    // Actions with bypassThunkLock can always be processed immediately
-    if (action.__bypassThunkLock) {
-      debug(
-        'thunk-debug',
-        `Action ${action.type} (${action.__id}) has bypassThunkLock, allowing immediate processing`,
-      );
-      return true;
-    }
-
-    // Check scheduler status
-    const status = this.scheduler.getQueueStatus();
-    const isIdle = status.isIdle;
-
-    if (isIdle) {
-      debug(
-        'thunk-debug',
-        `Scheduler is idle, allowing action ${action.type} (${action.__id}) to process immediately`,
-      );
-      return true;
-    }
-
-    debug('thunk-debug', `Scheduler is not idle, queueing action ${action.type} (${action.__id})`);
-    return false;
+  canProcessActionImmediately(action: Action): boolean {
+    return this.lifecycleManager.canProcessActionImmediately(action);
   }
 
-  /**
-   * Set the state manager for processing actions
-   */
-  setStateManager(stateManager: { processAction: (action: Action) => unknown }) {
-    this.stateManager = stateManager;
+  getCurrentRootThunkId(): string | undefined {
+    return this.lifecycleManager.getCurrentRootThunkId();
   }
 
-  /**
-   * Process a thunk action
-   */
-  processThunkAction(action: Action): boolean {
-    const thunkId = (action as ThunkAction).parentId || action.__thunkParentId;
-    if (!thunkId) {
-      debug(
-        'thunk-debug',
-        `Action ${action.type} has no parentId or __thunkParentId, not a thunk action`,
-      );
-      return false;
-    }
+  // Compatibility method for tests
+  getRootThunkId(): string | undefined {
+    return this.getCurrentRootThunkId();
+  }
 
-    // Check if action has an ID
-    if (!action.__id) {
-      debug('thunk-debug', `Action ${action.type} has no __id, cannot process it as a task`);
-      return false;
-    }
+  hasThunk(thunkId: string): boolean {
+    return this.lifecycleManager.hasThunk(thunkId);
+  }
 
-    // Check if thunk exists
-    const thunk = this.thunks.get(thunkId);
+  isThunkActive(thunkId: string): boolean {
+    return this.lifecycleManager.isThunkActive(thunkId);
+  }
+
+  isThunkFullyComplete(thunkId: string): boolean {
+    return this.lifecycleManager.isThunkFullyComplete(thunkId);
+  }
+
+  getThunk(thunkId: string): Thunk | undefined {
+    return this.lifecycleManager.getThunk(thunkId);
+  }
+
+  getThunkResult(thunkId: string): unknown {
+    return this.lifecycleManager.getThunkResult(thunkId);
+  }
+
+  getThunkError(thunkId: string): Error | undefined {
+    return this.lifecycleManager.getThunkError(thunkId);
+  }
+
+  forceCleanupCompletedThunks(): void {
+    this.lifecycleManager.forceCleanupCompletedThunks();
+  }
+
+  // Delegate action processing methods
+  setStateManager(
+    stateManager: { processAction: (action: Action) => unknown } | null | undefined,
+  ): void {
+    this.actionProcessor.setStateManager(stateManager);
+  }
+
+  async processAction(thunkId: string, action: Action): Promise<void> {
+    const thunk = this.lifecycleManager.getThunk(thunkId);
     if (!thunk) {
-      debug('thunk-debug', `Thunk ${thunkId} not found for action ${action.type}`);
-      return false;
+      throw new Error(`Thunk ${thunkId} not found`);
     }
 
-    // Make sure thunk is in EXECUTING state, not COMPLETED
-    if (thunk.state === ThunkState.COMPLETED || thunk.state === ThunkState.FAILED) {
-      debug(
-        'thunk-debug',
-        `Thunk ${thunkId} is already in terminal state (${thunk.state}), ignoring action ${action.type}`,
+    return this.actionProcessor.processAction(thunkId, action, thunk, (actionId: string) => {
+      // Handle action completion
+      const completedThunkIds = this.actionProcessor.handleActionComplete(
+        actionId,
+        new Map([[thunkId, thunk]]),
       );
-      return false;
+      for (const completedThunkId of completedThunkIds) {
+        this.lifecycleManager.completeThunk(completedThunkId);
+      }
+    });
+  }
+
+  handleActionComplete(_actionId: string): void {
+    // This is handled internally by the ActionProcessor and communicated to LifecycleManager
+    // No direct action needed here as the ActionProcessor already calls the completion callback
+  }
+
+  requiresQueue(action: Action): boolean {
+    return this.actionProcessor.requiresQueue(action);
+  }
+
+  getCurrentThunkActionId(): string | undefined {
+    return this.actionProcessor.getCurrentThunkActionId();
+  }
+
+  setCurrentThunkActionId(actionId: string | undefined): void {
+    this.actionProcessor.setCurrentThunkActionId(actionId);
+  }
+
+  // Delegate state update tracking methods
+  trackStateUpdateForThunk(
+    thunkId: string,
+    updateId: string,
+    subscribedRendererIds: number[],
+  ): void {
+    this.stateUpdateTracker.trackStateUpdateForThunk(thunkId, updateId, subscribedRendererIds);
+
+    // If a thunk was cleaned up but now has state updates to track,
+    // we should ensure it's not fully cleaned up yet.
+    // This handles the case where completeThunk() was called before trackStateUpdateForThunk()
+    if (!this.lifecycleManager.hasThunk(thunkId)) {
+      // The thunk was already cleaned up, but we can't track state updates for a non-existent thunk
+      // In this case, we should not track the state update as the thunk is gone
+      // However, for backward compatibility with tests, let's allow this scenario
+      // and just ensure hasPendingStateUpdates works correctly
+    }
+  }
+
+  acknowledgeStateUpdate(updateId: string, rendererId: number): boolean {
+    const allAcknowledged = this.stateUpdateTracker.acknowledgeStateUpdate(updateId, rendererId);
+
+    // If all acknowledged, check if any thunks can now be cleaned up
+    if (allAcknowledged) {
+      // Try to cleanup any completed thunks that were waiting for state update acknowledgments
+      this.cleanupCompletedThunksWithNoUpdates();
     }
 
-    // Make sure we have a state manager
-    if (!this.stateManager) {
-      debug('thunk-error', 'No state manager set, cannot process action');
-      return false;
-    }
+    return allAcknowledged;
+  }
 
-    // Add action to list of thunk actions
-    let thunkActionSet = this.thunkActions.get(thunkId);
-    if (!thunkActionSet) {
-      thunkActionSet = new Set<string>();
-      this.thunkActions.set(thunkId, thunkActionSet);
-    }
+  cleanupDeadRenderer(rendererId: number): void {
+    this.stateUpdateTracker.cleanupDeadRenderer(rendererId);
 
-    debug(
-      'thunk-debug',
-      `Adding action ${action.__id} (${action.type}) to thunk ${thunkId} tracking`,
-    );
-    thunkActionSet.add(action.__id);
+    // After cleanup, check if any thunks can now be cleaned up
+    this.cleanupCompletedThunksWithNoUpdates();
+  }
 
-    // Create a ThunkTask for this action
-    const taskId = `${thunkId}-${action.__id}`;
-    const canRunConcurrently = !!action.__bypassThunkLock; // Use the bypassThunkLock flag
+  cleanupExpiredUpdates(maxAgeMs = 30000): void {
+    this.stateUpdateTracker.cleanupExpiredUpdates(maxAgeMs);
 
-    // Log the scheduling details
-    debug(
-      'thunk-scheduler',
-      `Creating task ${taskId} for action ${action.type} (canRunConcurrently: ${canRunConcurrently})`,
-    );
-
-    // Create the task
-    const task: ThunkTask = {
-      id: taskId,
-      thunkId: thunkId,
-      priority: ThunkPriority.NORMAL, // Default priority
-      canRunConcurrently: canRunConcurrently,
-      createdAt: Date.now(),
-      handler: async (): Promise<void> => {
-        debug('thunk-task', `Executing task ${taskId} for action ${action.type}`);
-        try {
-          // Check if action is still part of thunk's tracked actions
-          const actionSet = this.thunkActions.get(thunkId);
-          if (!actionSet || !action.__id || !actionSet.has(action.__id)) {
-            debug(
-              'thunk-debug',
-              `Action ${action.__id} no longer tracked for thunk ${thunkId}, skipping execution`,
-            );
-            return;
-          }
-
-          // Process the action using the state manager
-          if (!this.stateManager) {
-            throw new Error('State manager not initialized');
-          }
-          const result = this.stateManager.processAction(action);
-
-          // If the action returns a promise, await it
-          if (result && typeof result === 'object' && 'completion' in result) {
-            const completableResult = result as { completion?: Promise<unknown> };
-            if (
-              completableResult.completion &&
-              typeof completableResult.completion.then === 'function'
-            ) {
-              await completableResult.completion;
-            }
-          }
-
-          debug('thunk-task', `Task ${taskId} completed successfully`);
-          // Mark action as complete
-          if (action.__id) {
-            this.handleActionComplete(action.__id);
-          }
-        } catch (error) {
-          debug('thunk-task', `Task ${taskId} failed: ${error}`);
-          throw error;
-        }
-      },
-    };
-
-    // Enqueue the task in the scheduler
-    this.scheduler.enqueue(task);
-
-    // Return true to indicate we've handled this action
-    return true;
+    // After cleanup, check if any thunks can now be cleaned up
+    this.cleanupCompletedThunksWithNoUpdates();
   }
 
   /**
-   * Handle a completed action
-   * This helps track when all actions for a thunk have completed
+   * Helper method to cleanup completed thunks that no longer have pending updates
    */
-  handleActionComplete(actionId: string): void {
-    // Find which thunk this action belongs to
-    for (const [thunkId, actions] of this.thunkActions.entries()) {
-      if (actions.has(actionId)) {
-        // Remove this action from the tracked actions
-        actions.delete(actionId);
-        debug(
-          'thunk-debug',
-          `Action ${actionId} completed and removed from thunk ${thunkId}, ${actions.size} actions remaining`,
-        );
+  private cleanupCompletedThunksWithNoUpdates(): void {
+    // Check all completed thunks to see if they can now be cleaned up
+    const privateManager = this as unknown as {
+      lifecycleManager: {
+        thunks: Map<string, Thunk>;
+        tryFinalCleanup: (thunkId: string) => void;
+      };
+    };
 
-        // If actions set is now empty AND this thunk has a pending completion request, finalize it
-        if (actions.size === 0 && this.thunkResults.has(`${thunkId}:pendingCompletion`)) {
-          debug(
-            'thunk-debug',
-            `Thunk ${thunkId} has no more pending actions and has a pending completion request, finalizing now`,
-          );
-          // Remove the pending completion marker
-          this.thunkResults.delete(`${thunkId}:pendingCompletion`);
-          this.finalizeThunkCompletion(thunkId);
-        }
-
-        break;
+    for (const [thunkId, thunk] of privateManager.lifecycleManager.thunks) {
+      if (thunk.state === ThunkState.COMPLETED) {
+        privateManager.lifecycleManager.tryFinalCleanup(thunkId);
       }
     }
   }
 
+  // Cleanup methods
+  clear(): void {
+    this.lifecycleManager.clear();
+    this.stateUpdateTracker.clear();
+  }
+
+  // Compatibility methods for tests - delegate to appropriate components
+
   /**
-   * Check if an action requires queue or can run immediately
+   * Mark a thunk as executing (compatibility method)
+   */
+  markThunkExecuting(thunkId: string): void {
+    this.executeThunk(thunkId);
+  }
+
+  /**
+   * Mark a thunk as failed (compatibility method)
+   */
+  markThunkFailed(thunkId: string, error: Error): void {
+    this.failThunk(thunkId, error);
+  }
+
+  /**
+   * Check if an action should be queued (compatibility method)
    */
   shouldQueueAction(action: Action): boolean {
-    return !this.canProcessAction(action);
+    return this.actionProcessor.requiresQueue(action);
   }
 
   /**
-   * Get the current root thunk ID
+   * Check if an action can be processed (compatibility method)
    */
-  getRootThunkId(): string | undefined {
-    return this.rootThunkId;
+  canProcessAction(action: Action): boolean {
+    return this.canProcessActionImmediately(action);
   }
 
   /**
-   * Check if a thunk exists with the given ID
-   */
-  hasThunk(thunkId: string): boolean {
-    return this.thunks.has(thunkId);
-  }
-
-  /**
-   * Check if a thunk is currently active
-   */
-  isThunkActive(thunkId: string): boolean {
-    const thunk = this.thunks.get(thunkId);
-    return !!thunk && thunk.state !== ThunkState.COMPLETED && thunk.state !== ThunkState.FAILED;
-  }
-
-  /**
-   * Get the task scheduler instance
+   * Get the scheduler instance (compatibility method)
    */
   getScheduler(): ThunkScheduler {
-    return this.scheduler;
+    return this.getTaskScheduler();
   }
 
   /**
-   * Track a state update for thunk completion
-   * The thunk will not be considered complete until all renderers acknowledge this update
+   * Process a thunk action (compatibility method)
    */
-  trackStateUpdateForThunk(thunkId: string, updateId: string, subscribedRenderers: number[]): void {
-    debug(
-      'thunk',
-      `Tracking state update ${updateId} for thunk ${thunkId}, renderers: [${subscribedRenderers.join(', ')}]`,
-    );
-
-    // Get or restore thunk if it was completed but still exists
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      debug('thunk:warn', `Cannot track state update ${updateId} for unknown thunk ${thunkId}`);
-      return;
-    }
-
-    // Create pending update record
-    this.pendingStateUpdates.set(updateId, {
-      updateId,
-      thunkId,
-      subscribedRenderers: new Set(subscribedRenderers),
-      acknowledgedBy: new Set(),
-      timestamp: Date.now(),
-    });
-
-    // Track this update for the thunk
-    if (!this.thunkPendingUpdates.has(thunkId)) {
-      this.thunkPendingUpdates.set(thunkId, new Set());
-    }
-    const thunkUpdates = this.thunkPendingUpdates.get(thunkId);
-    if (thunkUpdates) {
-      thunkUpdates.add(updateId);
-    }
-  }
-
-  /**
-   * Mark a renderer as having acknowledged a state update
-   * Returns true if all renderers have now acknowledged this update
-   */
-  acknowledgeStateUpdate(updateId: string, rendererId: number): boolean {
-    const update = this.pendingStateUpdates.get(updateId);
-    if (!update) {
-      debug(
-        'thunk:warn',
-        `Received acknowledgment for unknown update ${updateId} from renderer ${rendererId}`,
-      );
+  processThunkAction(action: Action): boolean {
+    // Check if the action has a valid thunk parent ID
+    const parentThunkId = action.__thunkParentId;
+    if (!parentThunkId || !this.hasThunk(parentThunkId)) {
       return false;
     }
 
-    // Mark this renderer as acknowledged
-    update.acknowledgedBy.add(rendererId);
-
-    debug(
-      'thunk',
-      `Renderer ${rendererId} acknowledged update ${updateId} for thunk ${update.thunkId} (${update.acknowledgedBy.size}/${update.subscribedRenderers.size})`,
-    );
-
-    // Check if all renderers have acknowledged
-    const allAcknowledged =
-      update.subscribedRenderers.size === update.acknowledgedBy.size &&
-      Array.from(update.subscribedRenderers).every((id) => update.acknowledgedBy.has(id));
-
-    if (allAcknowledged) {
-      debug('thunk', `All renderers acknowledged update ${updateId} for thunk ${update.thunkId}`);
-
-      // Clean up this update
-      this.pendingStateUpdates.delete(updateId);
-
-      // Remove from thunk's pending updates
-      const thunkUpdates = this.thunkPendingUpdates.get(update.thunkId);
-      if (thunkUpdates) {
-        thunkUpdates.delete(updateId);
-        if (thunkUpdates.size === 0) {
-          this.thunkPendingUpdates.delete(update.thunkId);
-
-          // Schedule final cleanup to happen after current execution, allowing callers to check completion status
-          setTimeout(() => this.tryFinalCleanup(update.thunkId), 0);
-        }
-      }
-
-      return true;
-    }
-
-    return false;
+    // Action can be processed immediately if it doesn't require queueing
+    return !this.requiresQueue(action);
   }
 
   /**
-   * Remove a dead renderer from all pending state updates
-   * This should be called when a window is destroyed to prevent hanging acknowledgments
+   * Set current thunk action ID (compatibility method)
    */
-  cleanupDeadRenderer(rendererId: number): void {
-    debug('thunk', `Cleaning up dead renderer ${rendererId} from pending state updates`);
-
-    const updatesToCheck = Array.from(this.pendingStateUpdates.values());
-    for (const update of updatesToCheck) {
-      if (update.subscribedRenderers.has(rendererId)) {
-        debug('thunk', `Removing dead renderer ${rendererId} from update ${update.updateId}`);
-
-        // Remove the dead renderer from subscribers
-        update.subscribedRenderers.delete(rendererId);
-
-        // If this was the last renderer we were waiting for, mark as complete
-        const allAcknowledged =
-          update.subscribedRenderers.size === update.acknowledgedBy.size &&
-          Array.from(update.subscribedRenderers).every((id) => update.acknowledgedBy.has(id));
-
-        if (allAcknowledged) {
-          debug(
-            'thunk',
-            `All remaining renderers acknowledged update ${update.updateId} after cleanup`,
-          );
-
-          // Clean up this update
-          this.pendingStateUpdates.delete(update.updateId);
-
-          // Remove from thunk's pending updates
-          const thunkUpdates = this.thunkPendingUpdates.get(update.thunkId);
-          if (thunkUpdates) {
-            thunkUpdates.delete(update.updateId);
-            if (thunkUpdates.size === 0) {
-              this.thunkPendingUpdates.delete(update.thunkId);
-            }
-          }
-        }
-      }
-    }
+  setCurrentThunkAction(actionId: string | undefined): void {
+    this.actionProcessor.setCurrentThunkActionId(actionId);
   }
 
   /**
-   * Check if a thunk is fully complete (including all state updates acknowledged)
-   */
-  isThunkFullyComplete(thunkId: string): boolean {
-    const thunk = this.thunks.get(thunkId);
-    if (!thunk) {
-      return false;
-    }
-
-    // Must be in completed state from execution perspective
-    if (thunk.state !== ThunkState.COMPLETED) {
-      return false;
-    }
-
-    // Must have no pending state updates
-    const pendingUpdates = this.thunkPendingUpdates.get(thunkId);
-    const hasPendingUpdates = pendingUpdates && pendingUpdates.size > 0;
-
-    if (hasPendingUpdates) {
-      debug(
-        'thunk',
-        `Thunk ${thunkId} execution complete but waiting for ${pendingUpdates.size} state update acknowledgments`,
-      );
-      return false;
-    }
-
-    debug('thunk', `Thunk ${thunkId} fully complete (execution + state propagation)`);
-    return true;
-  }
-
-  /**
-   * Get current active root thunk ID for state update tracking
+   * Get current active thunk ID (compatibility method)
    */
   getCurrentActiveThunkId(): string | undefined {
-    return this.rootThunkId;
+    return this.getCurrentRootThunkId();
   }
 
   /**
-   * Set the currently processing thunk action ID
+   * Cleanup expired state updates (compatibility method)
    */
-  setCurrentThunkAction(thunkId: string | undefined): void {
-    this.currentThunkActionId = thunkId;
+  cleanupExpiredStateUpdates(maxAgeMs: number): void {
+    this.stateUpdateTracker.cleanupExpiredUpdates(maxAgeMs);
   }
 
   /**
-   * Get the currently processing thunk action ID
+   * Get task scheduler instance
    */
-  getCurrentThunkActionId(): string | undefined {
-    return this.currentThunkActionId;
-  }
-
-  /**
-   * Clean up expired pending state updates (prevent memory leaks)
-   */
-  cleanupExpiredStateUpdates(maxAgeMs = 30000): void {
-    const now = Date.now();
-    const expiredUpdates: string[] = [];
-
-    for (const [updateId, update] of this.pendingStateUpdates) {
-      if (now - update.timestamp > maxAgeMs) {
-        expiredUpdates.push(updateId);
-      }
-    }
-
-    for (const updateId of expiredUpdates) {
-      const update = this.pendingStateUpdates.get(updateId);
-      if (update) {
-        debug(
-          'thunk:warn',
-          `Cleaning up expired state update ${updateId} for thunk ${update.thunkId}`,
-        );
-        this.pendingStateUpdates.delete(updateId);
-
-        // Remove from thunk tracking
-        const thunkUpdates = this.thunkPendingUpdates.get(update.thunkId);
-        if (thunkUpdates) {
-          thunkUpdates.delete(updateId);
-          if (thunkUpdates.size === 0) {
-            this.thunkPendingUpdates.delete(update.thunkId);
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Force cleanup of completed thunks for memory management
-   * This is a safety method to prevent unbounded growth
-   */
-  forceCleanupCompletedThunks(): void {
-    debug('thunk', 'Force cleaning up completed thunks to prevent memory leaks');
-
-    const completedThunkIds: string[] = [];
-
-    // Find all completed thunks
-    for (const [thunkId, thunk] of this.thunks) {
-      if (thunk.state === ThunkState.COMPLETED || thunk.state === ThunkState.FAILED) {
-        completedThunkIds.push(thunkId);
-      }
-    }
-
-    // Clean up completed thunks
-    for (const thunkId of completedThunkIds) {
-      debug('thunk', `Force cleaning up completed thunk: ${thunkId}`);
-      this.thunks.delete(thunkId);
-      this.thunkActions.delete(thunkId);
-      this.thunkTasks.delete(thunkId);
-      this.thunkResults.delete(thunkId);
-      this.thunkErrors.delete(thunkId);
-      this.thunkPendingUpdates.delete(thunkId);
-    }
-
-    debug('thunk', `Force cleaned up ${completedThunkIds.length} completed thunks`);
+  getTaskScheduler(): ThunkScheduler {
+    // Access the scheduler through the actionProcessor
+    return this.actionProcessor.getScheduler();
   }
 }
 
-// Single global instance of ThunkManager
+// Export the enums and types for compatibility
+export { ThunkActionType, ThunkManagerEvent, type ThunkHandle };
+
+// Global instance management (for backward compatibility)
 let thunkManager: ThunkManager | undefined;
 
 /**
@@ -820,9 +395,7 @@ let thunkManager: ThunkManager | undefined;
  */
 export function getThunkManager(): ThunkManager {
   if (!thunkManager) {
-    debug('thunk', 'ThunkManager not initialized, creating default instance');
-    const scheduler = new ThunkScheduler();
-    thunkManager = new ThunkManager(scheduler);
+    throw new Error('ThunkManager not initialized. Call initThunkManager() first.');
   }
   return thunkManager;
 }

@@ -2,15 +2,15 @@ import { debug } from '@zubridge/core';
 import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from '@zubridge/types';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
-import { v4 as uuidv4 } from 'uuid';
+import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';
 import { Thunk } from '../thunk/Thunk.js';
-import { QueueOverflowError } from '../types/errors.js';
 import type { PreloadOptions } from '../types/preload.js';
+import { getThunkProcessorOptions } from '../utils/configuration.js';
 
 /**
  * Handles thunk execution in the renderer process
  */
-export class RendererThunkProcessor {
+export class RendererThunkProcessor extends BaseThunkProcessor {
   // Current window ID
   private currentWindowId?: number;
 
@@ -34,23 +34,9 @@ export class RendererThunkProcessor {
   // Queue of pending dispatches (action IDs)
   private pendingDispatches = new Set<string>();
 
-  // Map of action IDs to their resolution functions
-  private actionCompletionCallbacks = new Map<string, (result: unknown) => void>();
-
-  // Map to track timeouts for action completion
-  private actionTimeouts = new Map<string, NodeJS.Timeout>();
-
-  // Configuration options
-  private actionCompletionTimeoutMs: number;
-  private maxQueueSize: number;
-
-  constructor(options: Required<PreloadOptions>) {
-    this.actionCompletionTimeoutMs = options.actionCompletionTimeoutMs;
-    this.maxQueueSize = options.maxQueueSize;
-    debug(
-      'ipc',
-      `[RENDERER_THUNK] Initialized with timeout: ${this.actionCompletionTimeoutMs}ms, maxQueueSize: ${this.maxQueueSize}`,
-    );
+  constructor(options?: PreloadOptions) {
+    const config = getThunkProcessorOptions(options);
+    super(config, 'RENDERER_THUNK');
   }
 
   /**
@@ -102,50 +88,11 @@ export class RendererThunkProcessor {
    */
   public completeAction(actionId: string, result: unknown): void {
     debug('ipc', `[RENDERER_THUNK] Action completed: ${actionId}`);
-    try {
-      debug('ipc', `[RENDERER_THUNK] Result: ${JSON.stringify(result)}`);
-    } catch {
-      debug('ipc', '[RENDERER_THUNK] Result: [Non-serializable result]');
-    }
-    const { error: errorString } = result as { error: string };
 
-    // Clear any pending timeout for this action
-    const timeout = this.actionTimeouts.get(actionId);
-    if (timeout) {
-      debug('ipc', `[RENDERER_THUNK] Clearing timeout for action ${actionId}`);
-      clearTimeout(timeout);
-      this.actionTimeouts.delete(actionId);
-    }
+    // Call base implementation for common cleanup (timeout clearing, callback execution)
+    super.completeAction(actionId, result);
 
-    // Check if there was an error in the result
-    if (errorString) {
-      debug(
-        'ipc:error',
-        `[RENDERER_THUNK] Action ${actionId} completed with error: ${errorString}`,
-      );
-    }
-
-    // Call any completion callbacks waiting on this action
-    // This must happen BEFORE removing from pending dispatches
-    // to ensure any getState calls know it's done
-    const callback = this.actionCompletionCallbacks.get(actionId);
-    if (callback) {
-      debug('ipc', `[RENDERER_THUNK] Executing completion callback for action ${actionId}`);
-      try {
-        // Call the callback with the result directly, let the callback handle errors
-        callback(result);
-      } catch (callbackError) {
-        debug(
-          'ipc:error',
-          `[RENDERER_THUNK] Error in completion callback for action ${actionId}: ${callbackError}`,
-        );
-      }
-      this.actionCompletionCallbacks.delete(actionId);
-    } else {
-      debug('ipc', `[RENDERER_THUNK] No completion callback found for action ${actionId}`);
-    }
-
-    // Now remove from pending dispatches after callback completes
+    // Handle renderer-specific cleanup - remove from pending dispatches
     this.pendingDispatches.delete(actionId);
     debug(
       'ipc',
@@ -238,10 +185,7 @@ export class RendererThunkProcessor {
         }
 
         // Handle string actions by converting to action objects
-        const actionObj: Action =
-          typeof action === 'string'
-            ? { type: action, payload, __id: uuidv4() }
-            : { ...action, __id: action.__id || uuidv4() };
+        const actionObj = this.ensureActionId(action, payload);
 
         // Pass through bypass flags from the thunk to the action
         if (thunk.bypassThunkLock) {
@@ -266,11 +210,7 @@ export class RendererThunkProcessor {
         }
 
         // Check queue size before adding
-        if (this.pendingDispatches.size >= this.maxQueueSize) {
-          const error = new QueueOverflowError(this.pendingDispatches.size, this.maxQueueSize);
-          debug('ipc:error', `[RENDERER_THUNK] Queue overflow: ${error.message}`);
-          throw error;
-        }
+        this.checkQueueCapacity(this.pendingDispatches.size);
 
         // Add to pending dispatches BEFORE creating the promise to ensure
         // getState can find it immediately
@@ -282,51 +222,34 @@ export class RendererThunkProcessor {
 
         // Create a promise that will resolve when this action completes
         const actionPromise = new Promise<unknown>((resolve, reject) => {
-          // Store the callback to be called when action acknowledgment is received
-          this.actionCompletionCallbacks.set(actionId, (result) => {
-            const { error: errorString } = result as { error: string };
-            debug(
-              'ipc',
-              `[RENDERER_THUNK] Action ${actionId} completion callback called with result`,
-              result,
-            );
-
-            // Check if the result contains an error
-            if (errorString) {
-              debug(
-                'ipc:error',
-                `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorString}`,
-              );
-
-              // Create a proper error object
-              const error = new Error(errorString);
-
-              // CRITICAL: Don't wrap in Promise.reject here as we're already in a promise context
-              // Instead, directly throw the error which will be caught by the promise
-              reject(error);
-            } else {
-              resolve(result || actionObj);
-            }
-          });
-
-          debug('ipc', `[RENDERER_THUNK] Set completion callback for action ${actionId}`);
-
-          // Set up a safety timeout in case we don't receive an acknowledgment
-          debug('ipc', `[RENDERER_THUNK] Setting up safety timeout for action ${actionId}`);
-
-          const safetyTimeout = setTimeout(() => {
-            // If we still have a pending callback for this action, resolve it
-            if (this.actionCompletionCallbacks.has(actionId)) {
+          // Set up completion tracking using base class
+          this.setupActionCompletion(
+            actionId,
+            (result) => {
+              const { error: errorString } = result as { error: string };
               debug(
                 'ipc',
-                `[RENDERER_THUNK] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
+                `[RENDERER_THUNK] Action ${actionId} completion callback called with result`,
+                result,
               );
-              this.completeAction(actionId, actionObj);
-            }
-          }, this.actionCompletionTimeoutMs);
 
-          // Store the timeout so we can clear it if we get an acknowledgment
-          this.actionTimeouts.set(actionId, safetyTimeout);
+              // Check if the result contains an error
+              if (errorString) {
+                debug(
+                  'ipc:error',
+                  `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorString}`,
+                );
+                reject(new Error(errorString));
+              } else {
+                resolve(result || actionObj);
+              }
+            },
+            () => {
+              // Timeout callback
+              debug('ipc', `[RENDERER_THUNK] Safety timeout triggered for action ${actionId}`);
+              this.completeAction(actionId, actionObj);
+            },
+          );
         });
 
         // Send the action to the main process
@@ -336,16 +259,9 @@ export class RendererThunkProcessor {
             await this.actionSender(actionObj, thunk.id);
             debug('ipc', `[RENDERER_THUNK] Action ${actionId} sent to main process`);
           } catch (error: unknown) {
-            // If sending fails, clear any pending timeout
-            const timeout = this.actionTimeouts.get(actionId);
-            if (timeout) {
-              clearTimeout(timeout);
-              this.actionTimeouts.delete(actionId);
-            }
-
-            // Remove from pending and reject
+            // If sending fails, complete the action with error and clean up
+            this.completeAction(actionId, { error: String(error) });
             this.pendingDispatches.delete(actionId);
-            this.actionCompletionCallbacks.delete(actionId);
             debug('ipc:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
             throw error;
           }
@@ -416,19 +332,16 @@ export class RendererThunkProcessor {
       throw new Error('Action sender not configured for direct dispatch.');
     }
 
-    const actionObj: Action =
-      typeof action === 'string'
-        ? { type: action, payload, __id: uuidv4() }
-        : { ...action, __id: action.__id || uuidv4() };
+    const actionObj = this.ensureActionId(action, payload);
 
     const actionId = actionObj.__id as string;
 
     // Create a promise that will resolve when the action completes
     return new Promise<void>((resolve, reject) => {
       // Check queue size before adding
-      if (this.pendingDispatches.size >= this.maxQueueSize) {
-        const error = new QueueOverflowError(this.pendingDispatches.size, this.maxQueueSize);
-        debug('ipc:error', `[RENDERER_THUNK] dispatchAction queue overflow: ${error.message}`);
+      try {
+        this.checkQueueCapacity(this.pendingDispatches.size);
+      } catch (error) {
         reject(error);
         return;
       }
@@ -440,47 +353,34 @@ export class RendererThunkProcessor {
         `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}/${this.maxQueueSize}`,
       );
 
-      // Store the callback to be called when action acknowledgment is received
-      this.actionCompletionCallbacks.set(actionId, (result) => {
-        const { error: errorString } = result as { error: string };
-        debug(
-          'ipc',
-          `[RENDERER_THUNK] Action ${actionId} completion callback called with result:`,
-          result,
-        );
-
-        // CRITICAL: Clear timeout when callback executes
-        const timeout = this.actionTimeouts.get(actionId);
-        if (timeout) {
-          clearTimeout(timeout);
-          this.actionTimeouts.delete(actionId);
-        }
-
-        // Check if the result contains an error
-        if (errorString) {
-          debug(
-            'ipc:error',
-            `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorString}`,
-          );
-          reject(new Error(errorString));
-        } else {
-          resolve();
-        }
-      });
-
-      // Set up a safety timeout
-      const safetyTimeout = setTimeout(() => {
-        if (this.actionCompletionCallbacks.has(actionId)) {
+      // Set up completion tracking using base class
+      this.setupActionCompletion(
+        actionId,
+        (result) => {
+          const { error: errorString } = result as { error: string };
           debug(
             'ipc',
-            `[RENDERER_THUNK] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
+            `[RENDERER_THUNK] Action ${actionId} completion callback called with result:`,
+            result,
           );
-          this.completeAction(actionId, actionObj);
-        }
-      }, this.actionCompletionTimeoutMs);
 
-      // Store the timeout
-      this.actionTimeouts.set(actionId, safetyTimeout);
+          // Check if the result contains an error
+          if (errorString) {
+            debug(
+              'ipc:error',
+              `[RENDERER_THUNK] Rejecting promise for action ${actionId} with error: ${errorString}`,
+            );
+            reject(new Error(errorString));
+          } else {
+            resolve();
+          }
+        },
+        () => {
+          // Timeout callback
+          debug('ipc', `[RENDERER_THUNK] Safety timeout triggered for action ${actionId}`);
+          this.completeAction(actionId, actionObj);
+        },
+      );
 
       // Send the action to the main process
       debug(
@@ -492,15 +392,10 @@ export class RendererThunkProcessor {
           debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);
         })
         .catch((error) => {
-          // If sending fails, clear the timeout and reject
-          const timeout = this.actionTimeouts.get(actionId);
-          if (timeout) {
-            clearTimeout(timeout);
-            this.actionTimeouts.delete(actionId);
-          }
-
+          // If sending fails, clean up and reject
+          // The base class will handle timeout and callback cleanup when we complete the action
+          this.completeAction(actionId, { error: error.message });
           this.pendingDispatches.delete(actionId);
-          this.actionCompletionCallbacks.delete(actionId);
           debug('ipc:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
           reject(error);
         });
@@ -514,25 +409,14 @@ export class RendererThunkProcessor {
   public forceCleanupExpiredActions(): void {
     debug('ipc', '[RENDERER_THUNK] Force cleaning up expired actions and timeouts');
 
-    // Clear all pending timeouts
-    for (const [actionId, timeout] of this.actionTimeouts) {
-      debug('ipc', `[RENDERER_THUNK] Force clearing timeout for action ${actionId}`);
-      clearTimeout(timeout);
-    }
+    // Call base cleanup for common timeout/callback cleanup
+    super.forceCleanupExpiredActions();
 
-    // Clear all maps
-    const clearedTimeouts = this.actionTimeouts.size;
-    const clearedCallbacks = this.actionCompletionCallbacks.size;
+    // Clear renderer-specific pending dispatches
     const clearedDispatches = this.pendingDispatches.size;
-
-    this.actionTimeouts.clear();
-    this.actionCompletionCallbacks.clear();
     this.pendingDispatches.clear();
 
-    debug(
-      'ipc',
-      `[RENDERER_THUNK] Force cleaned up ${clearedTimeouts} timeouts, ${clearedCallbacks} callbacks, ${clearedDispatches} dispatches`,
-    );
+    debug('ipc', `[RENDERER_THUNK] Force cleaned up ${clearedDispatches} pending dispatches`);
   }
 
   /**
@@ -551,7 +435,8 @@ export class RendererThunkProcessor {
     this.stateProvider = undefined;
     this.currentWindowId = undefined;
 
-    debug('ipc', '[RENDERER_THUNK] RendererThunkProcessor instance destroyed');
+    // Call base destroy for remaining cleanup
+    super.destroy();
   }
 }
 
@@ -561,7 +446,7 @@ let globalThunkProcessor: RendererThunkProcessor | undefined;
 /**
  * Get the singleton instance of the RendererThunkProcessor
  */
-export const getThunkProcessor = (options: Required<PreloadOptions>): RendererThunkProcessor => {
+export const getThunkProcessor = (options?: PreloadOptions): RendererThunkProcessor => {
   if (!globalThunkProcessor) {
     globalThunkProcessor = new RendererThunkProcessor(options);
     debug('ipc', '[RENDERER_THUNK] Created new RendererThunkProcessor instance (global)');
