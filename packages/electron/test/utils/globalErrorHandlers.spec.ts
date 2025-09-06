@@ -172,7 +172,7 @@ describe('Global Error Handlers', () => {
       global.window = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as Window & typeof globalThis;
+      } as unknown as Window & typeof globalThis;
     });
 
     it('should set up unhandled rejection handler for renderer', () => {
@@ -201,7 +201,7 @@ describe('Global Error Handlers', () => {
       global.window = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as Window & typeof globalThis;
+      } as unknown as Window & typeof globalThis;
 
       setupRendererErrorHandlers();
 
@@ -239,7 +239,7 @@ describe('Global Error Handlers', () => {
       global.window = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as Window & typeof globalThis;
+      } as unknown as Window & typeof globalThis;
 
       setupRendererErrorHandlers();
 
@@ -284,7 +284,7 @@ describe('Global Error Handlers', () => {
       global.window = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as Window & typeof globalThis;
+      } as unknown as Window & typeof globalThis;
 
       setupRendererErrorHandlers();
 
@@ -321,7 +321,7 @@ describe('Global Error Handlers', () => {
       global.window = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as Window & typeof globalThis;
+      } as unknown as Window & typeof globalThis;
 
       setupRendererErrorHandlers();
 
