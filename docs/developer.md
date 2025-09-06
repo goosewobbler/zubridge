@@ -62,9 +62,9 @@ The Zubridge architecture separates concerns between different layers:
 │                    Renderer Process                         │
 ├─────────────────────────────────────────────────────────────┤
 │  React Components / UI Framework                            │
-│  └── useDispatch() / useStore()                            │
-│      └── Zubridge Renderer Handlers                        │
-│          └── IPC Communication                             │
+│  └── useDispatch() / useStore()                             │
+│      └── Zubridge Renderer Handlers                         │
+│          └── IPC Communication                              │
 └─────────────────────────────────────────────────────────────┘
                               │
                               │ Electron IPC
@@ -73,12 +73,12 @@ The Zubridge architecture separates concerns between different layers:
 │                     Main Process                            │
 ├─────────────────────────────────────────────────────────────┤
 │  Bridge Factory (createZustandBridge/createReduxBridge)     │
-│  ├── IPC Handler (manages communication)                   │
-│  ├── Resource Manager (cleanup & lifecycle)                │
-│  ├── Subscription Handler (window management)              │
-│  └── Action Queue (sequencing & thunk coordination)        │
+│  ├── IPC Handler (manages communication)                    │
+│  ├── Resource Manager (cleanup & lifecycle)                 │
+│  ├── Subscription Handler (window management)               │
+│  └── Action Queue (sequencing & thunk coordination)         │
 │                              │                              │
-│  Thunk Manager ──────────────┼──────────── State Manager   │
+│  Thunk Manager ──────────────┼──────────── State Manager    │
 │  (coordination)              │              (Zustand/Redux) │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -118,12 +118,12 @@ The Thunk Manager system coordinates thunk execution across processes:
 
 ```
 ┌─────────────┐    register()    ┌─────────────┐
-│ Thunk       │ ──────────────► │ Registered  │
-│ Created     │                 │ (Pending)   │
-└─────────────┘                 └─────────────┘
+│ Thunk       │ ──────────────►  │ Registered  │
+│ Created     │                  │ (Pending)   │
+└─────────────┘                  └─────────────┘
                                        │ start()
                                        ▼
-┌─────────────┐                 ┌─────────────┐
+┌─────────────┐                  ┌─────────────┐
 │ Completed/  │ ◄─────────────── │ Executing   │
 │ Failed      │    complete()    │ (Active)    │
 └─────────────┘    or fail()     └─────────────┘
@@ -161,39 +161,39 @@ ThunkManager extends EventEmitter with these events:
 
 ```
 Renderer A          Main Process           Renderer B
-    │                     │                     │
-    │── dispatch(thunk) ──►│                     │
-    │                     │ (lock acquired)     │
-    │                     │                     │
-    │                     │◄── dispatch(action) ──│
-    │                     │   (deferred)        │
-    │                     │                     │
-    │◄─── state update ───│                     │
-    │                     │                     │
-    │── acknowledge ─────►│                     │
-    │                     │ (lock released)     │
-    │                     │                     │
-    │                     │── process deferred ──►│
-    │                     │                     │
+    │                      │                       │
+    │── dispatch(thunk) ──►│                       │
+    │                      │ (lock acquired)       │
+    │                      │                       │
+    │                      │◄── dispatch(action) ──│
+    │                      │   (deferred)          │
+    │                      │                       │
+    │◄─── state update ─── │                       │
+    │                      │                       │
+    │── acknowledge ─────► │                       │
+    │                      │ (lock released)       │
+    │                      │                       │
+    │                      │── process deferred ──►│
+    │                      │                       │
 ```
 
 ### IPC Communication Flow
 
 ```
 Renderer                 Preload               Main Process
-    │                       │                       │
+    │                        │                       │
     │ dispatch('ACTION') ───►│                       │
-    │                       │ ipc.invoke() ────────►│
-    │                       │                       │ processAction()
-    │                       │                       │ └── State Update
-    │                       │                       │ └── Notify Windows
-    │                       │◄───── ipc.handle ─────│
-    │◄─── Promise resolve ──│                       │
-    │                       │                       │
-    │                       │◄─ 'state-update' ────│
-    │ callback(newState) ◄──│                       │
-    │                       │ 'state-ack' ────────►│
-    │                       │                       │
+    │                        │ ipc.invoke() ────────►│
+    │                        │                       │ processAction()
+    │                        │                       │ └── State Update
+    │                        │                       │ └── Notify Windows
+    │                        │◄───── ipc.handle ──── │
+    │◄─── Promise resolve ── │                       │
+    │                        │                       │
+    │                        │◄─ 'state-update' ──── │
+    │ callback(newState) ◄── │                       │
+    │                        │ 'state-ack' ────────► │
+    │                        │                       │
 ```
 
 ## Development Setup
