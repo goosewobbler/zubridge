@@ -278,15 +278,6 @@ describe('BridgeCore', () => {
         // We can't easily test the internal calls, so we'll skip this assertion
         expect(bridge).toBeDefined();
       });
-
-      it.skip('should handle undefined windows parameter', () => {
-        (mockWebContentsTracker.getActiveWebContents as Mock).mockReturnValue([]);
-
-        bridge.subscribe(undefined as unknown as WrapperOrWebContents[]);
-
-        // When windows is undefined, it should get active windows
-        expect(mockWebContentsTracker.getActiveWebContents).toHaveBeenCalled();
-      });
     });
 
     describe('unsubscribe', () => {
@@ -303,13 +294,6 @@ describe('BridgeCore', () => {
         bridge.unsubscribe(undefined, undefined);
 
         expect(bridge).toBeDefined();
-      });
-
-      it.skip('should clear all resources when called without parameters', () => {
-        bridge.unsubscribe();
-
-        expect(mockResourceManager.clearAll).toHaveBeenCalled();
-        expect(mockWebContentsTracker.cleanup).toHaveBeenCalled();
       });
     });
 

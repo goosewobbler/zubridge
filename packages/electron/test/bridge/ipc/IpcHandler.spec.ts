@@ -275,21 +275,6 @@ describe('IpcHandler', () => {
         error: 'serialized error',
       });
     });
-
-    it.skip('should track action acknowledged with middleware', async () => {
-      const actionData = {
-        action: { type: 'MIDDLEWARE_TEST', __id: 'middleware-123' },
-      };
-
-      const trackActionAcknowledgedSpy = vi.fn();
-      (mockResourceManager.getMiddlewareCallbacks as Mock).mockReturnValue({
-        trackActionAcknowledged: trackActionAcknowledgedSpy,
-      });
-
-      await ipcHandler.handleDispatch(mockEvent, actionData);
-
-      expect(trackActionAcknowledgedSpy).toHaveBeenCalledWith('middleware-123');
-    });
   });
 
   describe('handleTrackActionDispatch', () => {

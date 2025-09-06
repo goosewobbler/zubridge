@@ -130,13 +130,25 @@ export function createDispatch<S extends AnyState>(
   };
 
   // Create the public dispatch function with the standard interface
-  const dispatch: Dispatch<S> = (
+  const dispatch: Dispatch<S> = ((
     actionOrThunk: Thunk<S> | Action | string,
-    payload?: unknown,
+    payloadOrOptions?: unknown | DispatchOptions,
     options?: DispatchOptions,
   ): Promise<unknown> => {
-    return internalDispatch(actionOrThunk, payload, undefined, options);
-  };
+    if (typeof actionOrThunk === 'function') {
+      // Thunk overload: (thunk: Thunk<S>, options?: DispatchOptions)
+      const thunkOptions = payloadOrOptions as DispatchOptions | undefined;
+      return internalDispatch(actionOrThunk, undefined, undefined, thunkOptions);
+    }
+    if (typeof actionOrThunk === 'object') {
+      // Action object overload: (action: Action, options?: DispatchOptions)
+      const actionOptions = payloadOrOptions as DispatchOptions | undefined;
+      return internalDispatch(actionOrThunk, undefined, undefined, actionOptions);
+    }
+
+    // String action overload: (action: string, payload?: unknown, options?: DispatchOptions)
+    return internalDispatch(actionOrThunk, payloadOrOptions, undefined, options);
+  }) as Dispatch<S>;
 
   return dispatch;
 }

@@ -238,34 +238,6 @@ describe('RendererThunkProcessor', () => {
     expect(dispatchFn).toThrow('Action sender not configured for direct dispatch.');
   });
 
-  // Skip this test for now as it's causing issues
-  it.skip('should handle string actions in dispatchAction', () => {
-    // Skip the async part and just test that the action is properly formatted
-
-    // Create a new mock for this test to avoid interference
-    const mockSender = vi.fn().mockResolvedValue(undefined);
-
-    // Create a fresh processor with our mock
-    const testProcessor = new RendererThunkProcessor(defaultPreloadOptions);
-    testProcessor.initialize({
-      ...defaultInitOptions,
-      actionSender: mockSender,
-    });
-
-    // Start the dispatch but don't await it
-    testProcessor.dispatchAction('INCREMENT', 5);
-
-    // Check that the mock was called with the correct action object
-    expect(mockSender).toHaveBeenCalledTimes(1);
-    const actionArg = mockSender.mock.calls[0][0];
-
-    // Verify the action was converted from a string to an object
-    expect(actionArg).toBeDefined();
-    expect(actionArg.type).toBe('INCREMENT');
-    expect(actionArg.payload).toBe(5);
-    expect(actionArg.__id).toBeDefined();
-  });
-
   it('should handle thunk execution errors', async () => {
     const errorThunk = vi.fn(async () => {
       throw new Error('Thunk error');

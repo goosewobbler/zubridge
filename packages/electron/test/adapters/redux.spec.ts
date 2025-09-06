@@ -272,5 +272,119 @@ describe('Redux Adapter', () => {
       expect(errorHandler).toHaveBeenCalled();
       expect(errorStore.dispatch).not.toHaveBeenCalled();
     });
+
+    it('should handle async handlers that resolve successfully', async () => {
+      const asyncHandler = vi.fn().mockResolvedValue('async-result');
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          ASYNC_SUCCESS_ACTION: asyncHandler,
+        },
+      });
+
+      const action: Action = { type: 'ASYNC_SUCCESS_ACTION', payload: 'test-data' };
+      const result = adapter.processAction(action);
+
+      expect(asyncHandler).toHaveBeenCalledWith('test-data');
+      expect(result).toEqual({
+        isSync: false,
+        completion: expect.any(Promise),
+      });
+
+      // Wait for the async completion
+      await result.completion;
+      expect(asyncHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle async handler errors', async () => {
+      const asyncHandler = vi.fn().mockRejectedValue(new Error('Async handler failed'));
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          ASYNC_ERROR_ACTION: asyncHandler,
+        },
+      });
+
+      const action: Action = { type: 'ASYNC_ERROR_ACTION', payload: 'test-data' };
+      const result = adapter.processAction(action);
+
+      expect(asyncHandler).toHaveBeenCalledWith('test-data');
+      expect(result).toEqual({
+        isSync: false,
+        completion: expect.any(Promise),
+      });
+
+      // Wait for the async completion and check error handling
+      const completionResult = await result.completion;
+      expect(completionResult).toEqual({
+        error: expect.stringContaining('Async handler execution failed'),
+      });
+    });
+
+    it('should handle sync handlers that complete successfully', () => {
+      const syncHandler = vi.fn().mockReturnValue('sync-result');
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          SYNC_SUCCESS_ACTION: syncHandler,
+        },
+      });
+
+      const action: Action = { type: 'SYNC_SUCCESS_ACTION', payload: 'test-data' };
+      const result = adapter.processAction(action);
+
+      expect(syncHandler).toHaveBeenCalledWith('test-data');
+      expect(result).toEqual({ isSync: true });
+      expect(store.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('should handle middleware option', () => {
+      const mockMiddleware = vi.fn();
+
+      const adapter = createReduxAdapter(store, {
+        middleware: mockMiddleware,
+      });
+
+      // The middleware should be passed through but not directly tested here
+      // since it's more of an integration concern
+      expect(adapter).toBeDefined();
+    });
+
+    it('should handle actions with no custom handlers by dispatching to Redux', () => {
+      const action: Action = { type: 'NO_HANDLER_ACTION', payload: 'test-data' };
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          // No handlers defined
+        },
+      });
+
+      const result = adapter.processAction(action);
+
+      expect(store.dispatch).toHaveBeenCalledWith(action);
+      expect(result).toEqual({ isSync: true });
+    });
+
+    it('should handle undefined options gracefully', () => {
+      const action: Action = { type: 'UNDEFINED_OPTIONS_ACTION', payload: 'test-data' };
+
+      const adapter = createReduxAdapter(store, undefined);
+
+      const result = adapter.processAction(action);
+
+      expect(store.dispatch).toHaveBeenCalledWith(action);
+      expect(result).toEqual({ isSync: true });
+    });
+
+    it('should handle empty handlers object', () => {
+      const action: Action = { type: 'EMPTY_HANDLERS_ACTION', payload: 'test-data' };
+
+      const adapter = createReduxAdapter(store, { handlers: {} });
+
+      const result = adapter.processAction(action);
+
+      expect(store.dispatch).toHaveBeenCalledWith(action);
+      expect(result).toEqual({ isSync: true });
+    });
   });
 });

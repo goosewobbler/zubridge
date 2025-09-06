@@ -1,4 +1,4 @@
-import type { AnyState, DispatchFunc, Handlers, Thunk } from '@zubridge/types';
+import type { AnyState, DispatchFunc, Handlers } from '@zubridge/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Import from source
@@ -112,7 +112,7 @@ describe('createUseStore', () => {
 describe('useDispatch', () => {
   let mockHandlers: Handlers<TestState>;
   let dispatch: DispatchFunc<TestState, Record<string, unknown>>;
-  let actionCompletionResolver: (value?: unknown) => void;
+  let _actionCompletionResolver: (value?: unknown) => void;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -131,107 +131,5 @@ describe('useDispatch', () => {
   it('should return a dispatch function', () => {
     expect(dispatch).toBeDefined();
     expect(typeof dispatch).toBe('function');
-  });
-
-  it.skip('should handle string action types and return a promise', async () => {
-    // Skipping this test in the interim build
-    // Setup a special implementation to test resolution
-    mockHandlers.dispatch = vi.fn().mockImplementation((_action, _payload) => {
-      return new Promise((resolve) => {
-        // Store the resolver for later manual resolution
-        actionCompletionResolver = resolve;
-      });
-    });
-
-    // Dispatch an action without awaiting
-    const promise = dispatch('INCREMENT', 5);
-
-    // Verify it returns a promise that hasn't resolved yet
-    expect(promise).toBeInstanceOf(Promise);
-
-    // We need to flush the microtask queue to ensure our promise is processed
-    await Promise.resolve();
-
-    // Ensure dispatch was called with the right arguments
-    expect(mockHandlers.dispatch).toHaveBeenCalledWith(expect.stringContaining('INCREMENT'), 5);
-
-    // Manually resolve the promise to simulate acknowledgment
-    actionCompletionResolver();
-
-    // Now await the promise to confirm it resolves
-    await promise;
-  });
-
-  it.skip('should handle action objects and return a promise', async () => {
-    // Skipping this test in the interim build
-    const action = { type: 'SET_COUNTER', payload: 42 };
-
-    // Setup controlled promise resolution
-    let promiseResolved = false;
-    mockHandlers.dispatch = vi.fn().mockImplementation(() => {
-      return new Promise((resolve) => {
-        // Store the resolver for later manual resolution
-        actionCompletionResolver = () => {
-          promiseResolved = true;
-          resolve(undefined);
-        };
-      });
-    });
-
-    // Dispatch and start awaiting
-    const awaitPromise = dispatch(action).then(() => {
-      expect(promiseResolved).toBe(true);
-    });
-
-    // We need to flush the microtask queue to ensure our promise is processed
-    await Promise.resolve();
-
-    // Verify dispatch was called with the normalized action
-    expect(mockHandlers.dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'SET_COUNTER',
-        payload: 42,
-      }),
-    );
-
-    // Simulate the action being processed and acknowledged
-    actionCompletionResolver();
-
-    // Wait for the promise to resolve
-    await awaitPromise;
-  });
-
-  it.skip('should execute thunks locally and return their result', async () => {
-    // Skipping this test in the interim build as thunk execution has changed
-    // Test implementation omitted for brevity
-  });
-
-  it.skip('should guarantee sequential execution of async dispatches within thunks', async () => {
-    // Skipping this test in the interim build as thunk execution has changed
-    // Test implementation omitted for brevity
-  });
-
-  it.skip('should properly handle errors in dispatch promises', async () => {
-    // Skipping this test in the interim build
-    // Mock a dispatch that fails
-    mockHandlers.dispatch = vi
-      .fn()
-      .mockImplementation(() => Promise.reject(new Error('Action failed')));
-
-    // Expect the dispatch to throw when awaited
-    await expect(dispatch('FAILING_ACTION')).rejects.toThrow('Action failed');
-  });
-
-  it.skip('should properly handle errors in thunks', async () => {
-    // Skipping this test in the interim build
-    // Create a thunk that throws an error
-    const errorThunk = vi.fn(() => {
-      throw new Error('Thunk execution failed');
-    });
-
-    // Expect the thunk dispatch to throw
-    await expect(dispatch(errorThunk as unknown as Thunk<TestState>)).rejects.toThrow(
-      'Thunk execution failed',
-    );
   });
 });

@@ -3,8 +3,8 @@ import type { Action } from '@zubridge/types';
 import { EventEmitter } from 'node:events';
 import { v4 as uuid } from 'uuid';
 import { ResourceManagementError } from '../errors/index.js';
-import type { ThunkManager } from '../thunk/ThunkManager.js';
 import type { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
+import type { ThunkManager } from '../thunk/ThunkManager.js';
 
 /**
  * Prioritized action in the queue
@@ -367,7 +367,11 @@ export class ActionScheduler extends EventEmitter {
       }
 
       // Call completion callback
-      onComplete?.(null);
+      try {
+        onComplete?.(null);
+      } catch (callbackError) {
+        debug('scheduler', `Error in action completion callback: ${callbackError}`);
+      }
 
       // Emit event
       this.emit(ActionSchedulerEvents.ACTION_COMPLETED, action, result);
@@ -381,7 +385,11 @@ export class ActionScheduler extends EventEmitter {
       this.runningActions.delete(actionId);
 
       // Call completion callback with error
-      onComplete?.(error instanceof Error ? error : new Error(String(error)));
+      try {
+        onComplete?.(error instanceof Error ? error : new Error(String(error)));
+      } catch (callbackError) {
+        debug('scheduler', `Error in action error callback: ${callbackError}`);
+      }
 
       // Emit event
       this.emit(ActionSchedulerEvents.ACTION_FAILED, action, error);

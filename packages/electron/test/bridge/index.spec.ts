@@ -210,7 +210,7 @@ describe('bridge.ts', () => {
       }
     });
 
-    it.skip('should handle getState requests through IPC', () => {
+    it('should handle getState requests through IPC', () => {
       // Skipping this test in the interim build as state retrieval has changed
       const stateManager = createMockStateManager();
       createCoreBridge(stateManager);
@@ -221,7 +221,10 @@ describe('bridge.ts', () => {
       expect(getStateHandler).toBeDefined();
 
       if (getStateHandler) {
-        const result = getStateHandler({} as unknown as IpcMainInvokeEvent);
+        const mockEvent = {
+          sender: { id: 123 },
+        } as unknown as IpcMainInvokeEvent;
+        const result = getStateHandler(mockEvent);
         expect(stateManager.getState).toHaveBeenCalled();
         expect(result).toEqual({ counter: 0 });
       }

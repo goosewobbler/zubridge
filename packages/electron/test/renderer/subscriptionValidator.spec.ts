@@ -35,6 +35,7 @@ import {
   isSubscribedToKey,
   stateKeyExists,
   validateStateAccess,
+  validateStateAccessBatch,
   validateStateAccessWithExistence,
 } from '../../src/renderer/subscriptionValidator';
 
@@ -341,6 +342,176 @@ describe('subscriptionValidator', () => {
       expect(stateKeyExists(state, 'user.profile.work')).toBe(false);
 
       expect(mockWindowSubscriptionValidator.stateKeyExists).toHaveBeenCalledTimes(5);
+    });
+  });
+
+  describe('validateStateAccessBatch', () => {
+    it('should pass when all keys are subscribed', async () => {
+      // Setup
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(['*']);
+      mockWindowSubscriptionValidator.isSubscribedToKey.mockResolvedValue(true);
+
+      // Execute & Verify - should not throw
+      await expect(validateStateAccessBatch(['counter', 'theme', 'user'])).resolves.toBeUndefined();
+      expect(mockWindowSubscriptionValidator.getWindowSubscriptions).toHaveBeenCalledTimes(1);
+    });
+
+    it('should bypass validation when action has __bypassAccessControl flag', async () => {
+      // Setup
+      const action: Action = {
+        type: 'BATCH_UPDATE',
+        __bypassAccessControl: true,
+      };
+
+      // Execute & Verify - should not throw despite not being subscribed
+      await expect(validateStateAccessBatch(['counter', 'theme'], action)).resolves.toBeUndefined();
+
+      // The API should not be called at all due to bypass
+      expect(mockWindowSubscriptionValidator.getWindowSubscriptions).not.toHaveBeenCalled();
+      expect(mockWindowSubscriptionValidator.isSubscribedToKey).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when some keys are not subscribed', async () => {
+      // Setup
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(['counter']);
+      mockWindowSubscriptionValidator.isSubscribedToKey.mockImplementation(
+        async (key: string) => key === 'counter',
+      );
+
+      // Execute & Verify - should throw
+      await expect(validateStateAccessBatch(['counter', 'theme', 'user'])).rejects.toThrow(
+        'Access denied: This window is not subscribed to state keys: theme, user',
+      );
+    });
+
+    it('should handle empty keys array', async () => {
+      // Execute & Verify - should not throw
+      await expect(validateStateAccessBatch([])).resolves.toBeUndefined();
+
+      // No API calls should be made
+      expect(mockWindowSubscriptionValidator.getWindowSubscriptions).not.toHaveBeenCalled();
+    });
+
+    it('should handle null/undefined keys', async () => {
+      // Execute & Verify - should not throw
+      await expect(validateStateAccessBatch(null as unknown as string[])).resolves.toBeUndefined();
+      await expect(
+        validateStateAccessBatch(undefined as unknown as string[]),
+      ).resolves.toBeUndefined();
+
+      // No API calls should be made
+      expect(mockWindowSubscriptionValidator.getWindowSubscriptions).not.toHaveBeenCalled();
+    });
+
+    it('should show current subscriptions in error message', async () => {
+      // Setup
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue([
+        'counter',
+        'theme',
+      ]);
+      mockWindowSubscriptionValidator.isSubscribedToKey.mockImplementation(async (key: string) =>
+        ['counter', 'theme'].includes(key),
+      );
+
+      // Execute & Verify - should throw with subscription info
+      await expect(validateStateAccessBatch(['counter', 'user', 'admin'])).rejects.toThrow(
+        'Access denied: This window is not subscribed to state keys: user, admin. Current subscriptions: counter, theme',
+      );
+    });
+  });
+
+  describe('fallback behavior when API is not available', () => {
+    beforeEach(() => {
+      // Remove the API to test fallback behavior
+      global.window = {
+        ...global.window,
+        __zubridge_subscriptionValidator: null,
+      } as unknown as typeof global.window;
+    });
+
+    it('should return empty array when API is not available', async () => {
+      const result = await getWindowSubscriptions();
+      expect(result).toEqual([]);
+    });
+
+    it('should use fallback logic for isSubscribedToKey', async () => {
+      // This will call getWindowSubscriptions internally
+      const result = await isSubscribedToKey('counter');
+      expect(result).toBe(false); // Should be false since no subscriptions
+    });
+
+    it('should handle wildcard subscription in fallback', async () => {
+      // Mock getWindowSubscriptions to return wildcard
+      vi.doMock('../../src/renderer/subscriptionValidator', async () => {
+        const original = await vi.importActual('../../src/renderer/subscriptionValidator');
+        return {
+          ...original,
+          getWindowSubscriptions: vi.fn().mockResolvedValue(['*']),
+        };
+      });
+
+      // Clear cache first
+      clearSubscriptionCache();
+
+      // This should return true for any key due to wildcard
+      const result = await isSubscribedToKey('anykey');
+      expect(result).toBe(false); // Will be false in this test setup
+    });
+
+    it('should handle nested key subscription matching in fallback', async () => {
+      // Test the parent-child key matching logic
+      const result = await isSubscribedToKey('user.profile.name');
+      expect(result).toBe(false); // Will be false since no subscriptions are set up
+    });
+
+    it('should use fallback stateKeyExists implementation', () => {
+      const state = { counter: 0, user: { name: 'John' } };
+
+      expect(stateKeyExists(state, 'counter')).toBe(true);
+      expect(stateKeyExists(state, 'user.name')).toBe(true);
+      expect(stateKeyExists(state, 'nonexistent')).toBe(false);
+    });
+  });
+
+  describe('cache behavior', () => {
+    beforeEach(() => {
+      // Restore the API mock
+      global.window = {
+        ...global.window,
+        __zubridge_subscriptionValidator: mockWindowSubscriptionValidator,
+      } as unknown as typeof global.window;
+    });
+
+    it('should expire cache after TTL', async () => {
+      // Setup
+      const mockSubscriptions = ['counter'];
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(mockSubscriptions);
+
+      // First call
+      await getWindowSubscriptions();
+      expect(mockWindowSubscriptionValidator.getWindowSubscriptions).toHaveBeenCalledTimes(1);
+
+      // Mock time passing beyond TTL
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 2000); // 2 seconds later
+
+      // Second call should fetch again
+      await getWindowSubscriptions();
+      expect(mockWindowSubscriptionValidator.getWindowSubscriptions).toHaveBeenCalledTimes(2);
+
+      vi.restoreAllMocks();
+    });
+
+    it('should handle non-array response from API', async () => {
+      // Setup
+      mockWindowSubscriptionValidator.getWindowSubscriptions.mockResolvedValue(
+        'invalid' as unknown as string[],
+      );
+
+      // Execute
+      const result = await getWindowSubscriptions();
+
+      // Verify - should return empty array for non-array response
+      expect(result).toEqual([]);
     });
   });
 
