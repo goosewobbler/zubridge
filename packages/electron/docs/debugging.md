@@ -53,10 +53,15 @@ Zubridge's debug utility organizes logs into several namespaces:
 | ------------------------ | ------------------------------------------------------- |
 | `zubridge:core`          | Core bridge functionality, initialization and lifecycle |
 | `zubridge:ipc`           | IPC communication between renderer and main processes   |
-| `zubridge:store`         | State management and store operations                   |
-| `zubridge:adapters`      | Zustand and Redux adapter-specific operations           |
+| `zubridge:middleware`    | Middleware execution and tracking                        |
+| `zubridge:thunk`         | Thunk processing, sequencing, and lifecycle management |
 | `zubridge:windows`       | Window tracking and management                          |
-| `zubridge:serialization` | State serialization and deserialization                 |
+| `zubridge:adapters`      | Zustand and Redux adapter-specific operations           |
+| `zubridge:subscription`  | State subscription management                           |
+| `zubridge:queue`         | Action queue processing and management                  |
+| `zubridge:store`         | Handler resolution and store operations                 |
+| `zubridge:scheduler`     | Action scheduling and priority management               |
+| `zubridge:renderer`      | Renderer process operations                             |
 
 ## Direct Debugging
 
@@ -115,13 +120,55 @@ Debugging can impact performance, especially in production environments. We reco
 
 1. Disabling debug mode in production
 2. Enabling only specific areas when diagnosing issues
-3. For persistent logging needs, consider using the middleware system which has been optimized for production use
 
 ## Troubleshooting with Debug Output
 
 Common troubleshooting patterns:
 
-1. **Action not being processed**: Enable `zubridge:ipc` and `zubridge:store` debug areas to trace action flow
+1. **Action not being processed**: Enable `zubridge:ipc` and `zubridge:core` debug areas to trace action flow
 2. **Windows not receiving updates**: Enable `zubridge:windows` debug area to see window tracking
-3. **Unexpected state behavior**: Enable `zubridge:store` and `zubridge:serialization` to see state changes and transformations
+3. **Handler resolution issues**: Enable `zubridge:store` to see action-to-handler matching
 4. **Performance issues**: Enable `zubridge:core` with performance middleware to identify bottlenecks
+5. **Thunk sequencing issues**: Enable `zubridge:thunk` and `zubridge:core` to see action deferral and thunk completion
+6. **Middleware problems**: Enable `zubridge:middleware` to trace middleware execution and errors
+7. **Resource management issues**: Enable `zubridge:ipc`, `zubridge:windows`, and `zubridge:core` to monitor cleanup and destruction
+
+## Debugging Features
+
+Here are some examples of enabling debugging for specific Zubridge features:
+
+### Action Sequencing Debug
+
+```bash
+# Debug action deferral and thunk locking
+DEBUG=zubridge:core,zubridge:ipc electron .
+```
+
+Look for log messages about:
+- Action deferral when thunks are running
+- Thunk registration and completion
+- Action queue processing
+
+### Async Action Debug
+
+```bash
+# Debug promise-based actions and error propagation
+DEBUG=zubridge:ipc,zubridge:middleware electron .
+```
+
+Monitor:
+- Action acknowledgments and completions
+- Error propagation from main to renderer
+- Timeout handling
+
+### Bypass Flags Debug
+
+```bash
+# Debug bypass flag usage
+DEBUG=zubridge:core electron .
+```
+
+Watch for:
+- Actions bypassing thunk locks
+- Access control overrides
+- Security-related warnings

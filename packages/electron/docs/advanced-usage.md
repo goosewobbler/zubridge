@@ -17,8 +17,11 @@ const mainWindow = new BrowserWindow({
   /* ... */
 });
 
-// instantiate bridge with initial window
-const { unsubscribe, subscribe } = createZustandBridge(store, [mainWindow]);
+// instantiate bridge
+const bridge = createZustandBridge(store);
+
+// subscribe the initial window
+const mainSubscription = bridge.subscribe([mainWindow]);
 
 // Later, create a new window
 const secondWindow = new BrowserWindow({
@@ -26,15 +29,17 @@ const secondWindow = new BrowserWindow({
 });
 
 // Subscribe the new window
-const subscription = subscribe([secondWindow]);
+const secondSubscription = bridge.subscribe([secondWindow]);
 
 // Unsubscribe specific window when it's closed
 secondWindow.on('closed', () => {
-  subscription.unsubscribe();
+  secondSubscription.unsubscribe();
 });
 
 // unsubscribe all windows on quit
-app.on('quit', unsubscribe);
+app.on('quit', () => {
+  bridge.unsubscribe(); // unsubscribes all windows
+});
 ```
 
 ## Using Custom Handler Names
@@ -106,47 +111,6 @@ export function App() {
 
 This approach gives you maximum flexibility to integrate Zubridge with your existing architecture and naming conventions.
 
-## Middleware and Hooks
-
-Zubridge provides several middleware hooks that allow you to intercept and modify state updates and actions:
-
-```ts
-// in main process
-import { createZustandBridge } from '@zubridge/electron/main';
-import { store } from './store.js';
-
-const { unsubscribe } = createZustandBridge(store, [mainWindow], {
-  // Called before an action is processed
-  beforeProcessAction: (action, windowId) => {
-    console.log(`Action ${action.type} from window ${windowId}`);
-    // You can modify the action before it's processed
-    return action;
-  },
-
-  // Called after an action is processed
-  afterProcessAction: (action, processingTime, windowId) => {
-    console.log(`Action ${action.type} took ${processingTime}ms to process`);
-  },
-
-  // Called before state is sent to renderers
-  beforeStateChange: (state, windowId) => {
-    console.log(`State update for window ${windowId}`);
-    // You can perform validation or logging here
-  },
-
-  // Called after state is sent to renderers
-  afterStateChange: (state, windowId) => {
-    console.log(`State updated in window ${windowId}`);
-  },
-
-  // Called when the bridge is destroyed
-  onBridgeDestroy: () => {
-    console.log('Bridge is being destroyed');
-    // Clean up any resources
-  },
-});
-```
-
 ## Advanced TypeScript Usage
 
 You can leverage TypeScript to create strongly-typed actions:
@@ -192,48 +156,57 @@ dispatch({ type: 'unknown/action' }); // ❌ Unknown action type
 
 ## Working with Thunks
 
-You can use thunk-style actions for complex logic:
+Zubridge provides comprehensive thunk support for complex asynchronous logic. For detailed information about thunk patterns, see the [Thunks guide](./thunks.md) which covers:
 
-```tsx
-// Define a thunk
-const fetchUserData = (userId: string) => {
-  return async (getState, dispatch) => {
-    // Get current state
-    const state = getState();
+- Basic and advanced thunk usage
+- Action sequencing and deferred actions
+- Promise-based patterns and error handling
+- Cross-window coordination
+- Bypass flags and completion acknowledgement
 
-    // Dispatch loading action
-    dispatch({ type: 'user/fetchStart' });
+## Middleware Integration
 
-    try {
-      // Make API call
-      const response = await fetch(`/api/users/${userId}`);
-      const userData = await response.json();
+> **⚠️ Coming Soon**: The `@zubridge/middleware` package is not yet released. This section documents the planned middleware integration for future reference.
 
-      // Dispatch success action with data
-      dispatch({ type: 'user/fetchSuccess', payload: userData });
+Zubridge will support integration with external middleware systems through the upcoming `@zubridge/middleware` package. The middleware will provide logging, performance tracking, and action monitoring capabilities:
 
-      return userData;
-    } catch (error) {
-      // Dispatch error action
-      dispatch({ type: 'user/fetchError', payload: error.message });
+```ts
+// in main process
+import { createZustandBridge } from '@zubridge/electron/main';
+import { initZubridgeMiddleware } from '@zubridge/middleware'; // Not yet available
+import { store } from './store.js';
 
-      return null;
-    }
-  };
-};
+// Initialize middleware with configuration
+const middleware = initZubridgeMiddleware({
+  logging: { 
+    enabled: true,
+    console: true,
+    pretty_print: true
+  },
+  performance: {
+    measure_performance: true
+  }
+});
 
-// Usage in component
-function UserProfile({ userId }) {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    // Dispatch the thunk
-    dispatch(fetchUserData(userId));
-  }, [userId, dispatch]);
-
-  // Rest of component...
-}
+// Create bridge with middleware
+const bridge = createZustandBridge(store, [mainWindow], {
+  middleware: middleware,
+  
+  // Bridge lifecycle hook (currently available)
+  onBridgeDestroy: () => {
+    console.log('Bridge is being destroyed');
+    // Clean up any resources
+  },
+});
 ```
+
+The planned middleware will automatically handle:
+- **Action processing** - Logs actions before they're sent to the store
+- **State updates** - Tracks state changes and updates
+- **Performance monitoring** - Measures action processing times  
+- **Resource cleanup** - Automatically destroys middleware when bridge is destroyed
+
+**Currently Available**: The `onBridgeDestroy` hook is available now and can be used for custom cleanup logic when the bridge is destroyed.
 
 ## Testing with Zubridge
 
@@ -274,11 +247,55 @@ test('Counter component increments when button is clicked', () => {
 });
 ```
 
+
+
+## Selective Subscriptions
+
+Zubridge supports selective subscriptions using keys, this is useful for separation of concerns - restricting the state access of a given renderer process to just the section of state that it needs to function.  Note that performance testing shows no significant improvement over full state updates.
+
+### Key-Based Subscriptions
+
+Subscribe windows to specific state keys:
+
+```typescript
+// Subscribe with specific keys
+const subscription = bridge.subscribe([mainWindow], ['user', 'settings']);
+
+// Only state changes to 'user' or 'settings' will be sent to this window
+dispatch('UPDATE_USER', newUser);        // ✅ Sent to window
+dispatch('UPDATE_THEME', newTheme);      // ❌ Not sent (theme not in keys)
+dispatch('UPDATE_SETTINGS', settings);  // ✅ Sent to window
+```
+
+### Dispatch with Key Targeting
+
+Target specific subscribers when dispatching actions:
+
+```typescript
+// Only send to subscribers with 'admin' key
+dispatch('ADMIN_UPDATE', payload, { keys: ['admin'] });
+
+// Send to multiple key groups
+dispatch('NOTIFICATION', message, { keys: ['user', 'admin'] });
+```
+
+### Performance Considerations
+
+While selective subscriptions work correctly, performance testing reveals:
+
+- **Full state transmission** performs equally well due to efficient serialization
+- **Network overhead** is minimal for typical application state sizes
+- **Complexity** of key management may not justify the implementation cost
+
+**Recommendation**: Use full state updates unless you have specific separation of concerns / security or bandwidth requirements.
+
+
 ## Next Steps
 
 For more detailed information:
 
 - [Getting Started](./getting-started.md) - Basic setup and usage patterns
+- [Thunks](./thunks.md) - Complete thunk guide including advanced patterns, error handling, and async actions
 - [How It Works](./how-it-works.md) - Detailed explanation of how Zubridge manages state synchronization
 - [API Reference](./api-reference.md) - Complete reference for all API functions and types
 - [Main Process](./main-process.md) - Detailed guide for using Zubridge in the main process

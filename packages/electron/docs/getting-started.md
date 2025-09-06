@@ -153,7 +153,7 @@ export const store = createStore<AppState>()(() => initialState);
 
 ### Initialize Bridge in Main Process
 
-In the main process, instantiate the bridge with your store and an array of window objects:
+In the main process, create the bridge and subscribe your windows:
 
 ```ts
 // `src/main/index.ts`
@@ -171,7 +171,10 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe } = createZustandBridge(store, [mainWindow]);
+const bridge = createZustandBridge(store);
+
+// subscribe the window to state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
@@ -208,7 +211,7 @@ export type RootState = ReturnType<typeof store.getState>;
 
 ### Initialize Bridge in Main Process
 
-In the main process, instantiate the bridge with your Redux store:
+In the main process, create the bridge and subscribe your windows:
 
 ```ts
 // `src/main/index.ts`
@@ -226,10 +229,13 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe, dispatch } = createReduxBridge(store, [mainWindow]);
+const bridge = createReduxBridge(store);
+
+// subscribe the window to state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // you can dispatch actions directly from the main process
-dispatch({ type: 'counter/initialize', payload: 5 });
+bridge.dispatch({ type: 'counter/initialize', payload: 5 });
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
@@ -317,7 +323,10 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe } = createCoreBridge(stateManager, [mainWindow]);
+const bridge = createCoreBridge(stateManager);
+
+// subscribe the window to state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
