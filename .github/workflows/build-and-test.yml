@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
           PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
-          APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'electron/e2e' || inputs.app == 'tauri' && 'tauri/e2e' || 'tauri-v1/e2e' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
           else
@@ -233,7 +233,7 @@ jobs:
         shell: bash
         run: |
           PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
-          APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'electron/e2e' || inputs.app == 'tauri' && 'tauri/e2e' || 'tauri-v1/e2e' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
           else
@@ -344,7 +344,7 @@ jobs:
         shell: bash
         run: |
           PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
-          APP_DIR_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'electron/e2e' || inputs.app == 'tauri' && 'tauri/e2e' || 'tauri-v1/e2e' }}"
           if [ "${{ inputs.app }}" == "electron" ]; then
             pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
           else
