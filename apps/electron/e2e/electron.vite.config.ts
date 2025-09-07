@@ -68,7 +68,7 @@ const externalCssResolverPlugin = (): Plugin => {
           // Try to find in node_modules first
           resolve(__dirname, 'node_modules/@zubridge/ui/dist/styles.css'),
           // Then in workspace package
-          resolve(__dirname, '../../packages/ui/dist/styles.css'),
+          resolve(__dirname, '../../../packages/ui/dist/styles.css'),
         ];
 
         // Debug each path
@@ -170,10 +170,10 @@ export default defineConfig({
       alias: {
         '@': resolve('src/renderer'),
         // Add aliases of core packages to use browser-safe versions
-        '@zubridge/core': resolve(__dirname, '../../packages/core/dist/index.js'),
-        '@zubridge/electron': resolve(__dirname, '../../packages/electron/dist/renderer.js'),
-        '@zubridge/middleware': resolve(__dirname, '../../packages/middleware/dist/index.js'),
-        '@zubridge/types': resolve(__dirname, '../../packages/types/dist/index.js'),
+        '@zubridge/core': resolve(__dirname, '../../../packages/core/dist/index.js'),
+        '@zubridge/electron': resolve(__dirname, '../../../packages/electron/dist/renderer.js'),
+        '@zubridge/middleware': resolve(__dirname, '../../../packages/middleware/dist/index.js'),
+        '@zubridge/types': resolve(__dirname, '../../../packages/types/dist/index.js'),
       },
     },
     plugins: await getRendererPlugins(),
