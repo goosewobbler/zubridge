@@ -1,36 +1,38 @@
-# ZuBridge Examples
+# Zubridge Examples
 
-This directory contains examples demonstrating different state management patterns with ZuBridge.
+This directory contains examples demonstrating different state management patterns with Zubridge. Currently, all examples are for Electron applications, with additional platform examples planned for future releases.
 
 ## Available Examples
 
-### [electron-minimal-zustand-basic](./electron/zustand-basic)
+### Electron Examples
+
+### [zustand-basic](./electron/zustand-basic)
 
 The simplest Zustand implementation with basic store setup and state synchronization.
 
-### [electron-minimal-zustand-handlers](./electron/zustand-handlers)
+### [zustand-handlers](./electron/zustand-handlers)
 
 Zustand pattern using handlers detached from the store definition for improved separation of concerns.
 
-### [electron-minimal-zustand-reducers](./electron/zustand-reducers)
+### [zustand-reducers](./electron/zustand-reducers)
 
 Zustand implementation with Redux-style reducers for predictable state updates.
 
-### [electron-minimal-redux](./electron/redux)
+### [redux](./electron/redux)
 
-Redux integration showing how to use ZuBridge with Redux state management.
+Redux integration showing how to use Zubridge with Redux state management.
 
-### [electron-minimal-custom](./electron/custom)
+### [custom](./electron/custom)
 
-Custom state management implementation demonstrating ZuBridge's flexibility.
+Custom state management implementation demonstrating Zubridge's flexibility.
 
 ## Getting Started
 
-Each example is a complete Electron application that you can run independently:
+Each example is a complete application that you can run independently:
 
 ```bash
 # Navigate to any example
-cd examples/electron-zustand-basic
+cd examples/electron/zustand-basic
 
 # Install dependencies
 pnpm install
@@ -49,7 +51,7 @@ pnpm test
 
 All examples follow the same basic structure:
 
-- `src/main/` - Main process code with ZuBridge integration
+- `src/main/` - Main process code with Zubridge integration
 - `src/renderer/` - Renderer process React components
 - `src/preload/` - Preload script for secure IPC
 - `src/features/` - State management and business logic

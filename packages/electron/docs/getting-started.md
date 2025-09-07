@@ -344,7 +344,7 @@ Now that you've got the basics set up, you might want to explore:
 
 ## Example Applications
 
-The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron-example) demonstrates the different approaches to state management with Zubridge:
+The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron/e2e) demonstrates the different approaches to state management with Zubridge:
 
 - **Basic Mode**: Zustand with direct store mutations using `createZustandBridge`
 - **Handlers Mode**: Zustand with dedicated action handler functions using `createZustandBridge`

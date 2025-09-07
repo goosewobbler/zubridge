@@ -177,7 +177,7 @@ For more detailed documentation, see:
 
 A complete example application demonstrating the use of `tauri-plugin-zubridge` with a simple counter state:
 
-- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-example)
+- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri/e2e)
 
 ## Plugin Architecture
 

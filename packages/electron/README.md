@@ -80,14 +80,13 @@ Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
 
 ## Example Applications
 
-The example app demonstrates all three approaches of using zubridge with Electron:
+The example apps demonstrate different approaches to using zubridge with Electron:
 
-- [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron-example)
-  - **Basic Mode**: Zustand with direct store mutations using `createZustandBridge`
-  - **Handlers Mode**: Zustand with dedicated action handler functions using `createZustandBridge`
-  - **Reducers Mode**: Zustand with Redux-style reducers using `createZustandBridge`
-  - **Redux Mode**: Redux with Redux Toolkit using `createReduxBridge`
-  - **Custom Mode**: Custom state manager implementation using `createCoreBridge`
+- [Custom Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/custom) - Custom state manager implementation using `createCoreBridge`
+- [Redux Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/redux) - Redux with Redux Toolkit using `createReduxBridge`
+- [Zustand Basic Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-basic) - Zustand with direct store mutations using `createZustandBridge`
+- [Zustand Handlers Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-handlers) - Zustand with dedicated action handler functions using `createZustandBridge`
+- [Zustand Reducers Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-reducers) - Zustand with Redux-style reducers using `createZustandBridge`
 
 ## Debugging
 
@@ -151,6 +150,10 @@ localStorage.debug = ''; // Disable debugging
 ```
 
 For more detailed information, see the [Debugging documentation](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/debugging.md).
+
+## Development
+
+For information about contributing to this project, see the [Developer Guide](https://github.com/goosewobbler/zubridge/blob/main/docs/developer.md).
 
 ## License
 

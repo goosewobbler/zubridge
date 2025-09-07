@@ -201,19 +201,20 @@ const multiStepOperation = async (getState, dispatch) => {
 
 Zubridge implements a specialized thunk processing mechanism to ensure proper execution order when actions are dispatched from different windows or processes.
 
-### Action Deferral
+### Action and Thunk Queueing
 
-When a thunk is being processed, non-thunk actions dispatched to the same state store are deferred until the thunk completes. This ensures that:
+When a thunk is being processed, both regular actions and other thunks dispatched to the same state store are queued until the current thunk completes. This ensures that:
 
 1. Thunks run to completion without interference
 2. State remains consistent during complex operations
-3. Actions from different windows are properly sequenced
+3. Actions and thunks from different windows are properly sequenced
+4. Only one thunk executes at a time per store
 
-This behavior prevents race conditions and ensures that state updates occur in the intended order.
+This queueing behavior prevents race conditions and ensures that state updates occur in the intended order. Note that while the queueing and management of thunks happens in the main process, the actual processing of thunks occurs in the process where the thunk was dispatched - thunks do not cross the IPC boundary.
 
-### Example of Cross-Window Thunk Processing
+### Example of Cross-Window Thunk and Action Processing
 
-Consider a scenario with two windows, where Window A dispatches a thunk and Window B attempts to dispatch a regular action:
+Consider a scenario with two windows, where Window A dispatches a thunk and Window B attempts to dispatch a regular action and another thunk:
 
 ```typescript
 // In Window A:
@@ -237,27 +238,55 @@ dispatch(async (getState, dispatch) => {
 });
 
 // In Window B (during thunk execution):
-dispatch('SET_VALUE', 10); // This will be deferred
+dispatch('SET_VALUE', 10); // This action will be queued
+
+// Also in Window B (during thunk execution):
+dispatch(async (getState, dispatch) => {
+  dispatch('SET_VALUE', 20);
+}); // This thunk will also be queued
 ```
 
 In this scenario:
 
 1. Window A's thunk starts executing
 2. The state changes to 2, then 4, then 8 as the thunk progresses
-3. Window B's attempt to set the value to 10 is queued
-4. The thunk completes, setting the value to 4
-5. Only after the thunk completes, Window B's action is processed, setting the value to 10
+3. Window B's action to set the value to 10 is queued
+4. Window B's thunk to set the value to 20 is also queued
+5. Window A's thunk completes, setting the value to 4
+6. Window B's queued action is processed first, setting the value to 10
+7. Finally, Window B's queued thunk is processed, setting the value to 20
 
 ### Implementation Details
 
-The deferral mechanism works by:
+The queueing mechanism works by:
 
-1. Tracking active thunks in the bridge
-2. Queueing non-thunk actions that arrive during thunk execution
-3. Processing queued actions after the thunk completes
-4. Maintaining the correct ordering of actions across windows
+1. Tracking active thunks in the bridge (main process)
+2. Queueing both actions and thunks that arrive during thunk execution
+3. Processing queued items in order after the current thunk completes
+4. Maintaining the correct ordering of actions and thunks across windows
+5. Executing each thunk in its originating process (no IPC boundary crossing)
 
 This ensures predictable state updates and prevents race conditions in multi-window applications.
+
+### Bypassing Thunk Queueing
+
+Use the `bypassThunkLock` flag to override the default queueing behavior:
+
+```typescript
+// Bypass thunk locking - allows actions to skip the queue
+// and be processed immediately, even during thunk execution
+bridge.dispatch('URGENT_ACTION', payload, {
+  bypassThunkLock: true
+});
+
+// This also works for thunks - they will execute immediately
+// instead of being queued
+bridge.dispatch(async (getState, dispatch) => {
+  dispatch('IMMEDIATE_UPDATE', 'urgent');
+}, {
+  bypassThunkLock: true
+});
+```
 
 ## Error Handling in Thunks
 
@@ -359,24 +388,6 @@ const fetchData =
   };
 ```
 
-## Action Sequencing and Deferred Actions
-
-Zubridge v2.x introduces advanced thunk features for complex scenarios. When a thunk is executing, regular actions dispatched from any window are automatically deferred until the thunk completes. This ensures consistent state updates and prevents race conditions:
-
-```typescript
-// In Window A: Start a long-running thunk
-bridge.dispatch(async (getState, dispatch) => {
-  dispatch('SET_LOADING', true);
-  await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate work
-  dispatch('SET_DATA', 'processed');
-  dispatch('SET_LOADING', false);
-});
-
-// In Window B: This action will be deferred until the thunk above completes
-bridge.dispatch('UPDATE_COUNTER', 5);
-```
-
-The `UPDATE_COUNTER` action will wait until the thunk in Window A finishes, ensuring predictable state updates.
 
 ## Thunk Completion Acknowledgement
 
@@ -392,158 +403,6 @@ const myThunk = async (getState, dispatch) => {
 
 const result = await bridge.dispatch(myThunk);
 console.log('All windows have received the final state update');
-```
-
-## Bypass Flags
-
-Use bypass flags to override default thunk behavior for specific actions:
-
-```typescript
-// Bypass thunk locking - allows actions during thunk execution
-bridge.dispatch('URGENT_ACTION', payload, {
-  bypassThunkLock: true
-});
-
-// Bypass access control - skip permission checks
-bridge.dispatch('ADMIN_ACTION', payload, {
-  bypassAccessControl: true
-});
-
-// Combine both flags
-bridge.dispatch('EMERGENCY_ACTION', payload, {
-  bypassThunkLock: true,
-  bypassAccessControl: true
-});
-```
-
-## Promise-Based Action Dispatching
-
-Zubridge v2.x provides enhanced support for asynchronous actions with promise-based patterns. All dispatch calls return promises that resolve when the action is fully processed:
-
-```typescript
-// Wait for action completion
-try {
-  const result = await dispatch('FETCH_USER', userId);
-  console.log('User fetched:', result);
-} catch (error) {
-  console.error('Action failed:', error);
-}
-
-// Handle multiple async actions
-const [userData, settingsData] = await Promise.all([
-  dispatch('FETCH_USER', userId),
-  dispatch('FETCH_SETTINGS', userId)
-]);
-```
-
-### Timeout and Retry Patterns
-
-Implement robust error handling with timeouts:
-
-```typescript
-const fetchWithRetry = async (action, payload, maxRetries = 3) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await Promise.race([
-        dispatch(action, payload),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        )
-      ]);
-      return result;
-    } catch (error) {
-      console.warn(`Attempt ${attempt} failed:`, error);
-      if (attempt === maxRetries) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-    }
-  }
-};
-```
-
-## Comprehensive Error Handling
-
-### Cross-Process Error Propagation
-
-Errors thrown in main process handlers are automatically caught and sent back to the renderer:
-
-```typescript
-// Main process - handler that might fail
-const bridge = createZustandBridge(store, {
-  handlers: {
-    VALIDATE_DATA: (payload) => {
-      if (!payload.isValid) {
-        throw new Error('Data validation failed');
-      }
-      return { success: true };
-    }
-  }
-});
-
-// Renderer process - automatic error propagation
-try {
-  const result = await dispatch('VALIDATE_DATA', { isValid: false });
-} catch (error) {
-  // Receives the error from main process
-  console.error('Validation error:', error.message);
-  showNotification('Please check your data and try again');
-}
-```
-
-### Error Context Preservation
-
-Error details, stack traces, and custom properties are preserved:
-
-```typescript
-// Main process - throw detailed error
-const processPayment = (payload) => {
-  const error = new Error('Payment failed');
-  error.code = 'PAYMENT_DECLINED';
-  error.details = { cardNumber: '**** 1234', reason: 'insufficient_funds' };
-  throw error;
-};
-
-// Renderer process - access full error context
-try {
-  await dispatch('PROCESS_PAYMENT', paymentData);
-} catch (error) {
-  console.error('Payment error:', error.message);
-  console.error('Error code:', error.code);
-  console.error('Details:', error.details);
-
-  // Handle specific error types
-  if (error.code === 'PAYMENT_DECLINED') {
-    showPaymentErrorDialog(error.details);
-  }
-}
-```
-
-### Thunk-Specific Error Handling
-
-Thunk errors are handled differently - they remain local to the process where the thunk executes:
-
-```typescript
-// Main process thunk - errors stay in main process
-const mainThunk = async (getState, dispatch) => {
-  throw new Error('Main process thunk error');
-};
-
-// Renderer thunk - errors stay in renderer process
-const rendererThunk = async (getState, dispatch) => {
-  throw new Error('Renderer process thunk error');
-};
-
-// Each process must handle its own thunk errors
-try {
-  await bridge.dispatch(mainThunk);
-} catch (error) {
-  // Handle main process thunk error
-}
-
-try {
-  await dispatch(rendererThunk);
-} catch (error) {
-  // Handle renderer process thunk error
-}
 ```
 
 ## Related Documentation
