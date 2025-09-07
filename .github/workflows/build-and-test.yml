@@ -178,7 +178,7 @@ jobs:
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
           path: |
-            ${{ inputs.app == 'electron' && format('apps/e2e-electron/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/e2e-tauri/src-tauri/target/release/bundle/' || 'apps/e2e-tauri-v1/src-tauri/target/release/bundle/' }}
+            ${{ inputs.app == 'electron' && format('apps/electron/e2e/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/tauri/e2e/src-tauri/target/release/bundle/' || 'apps/tauri-v1/e2e/src-tauri/target/release/bundle/' }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -295,7 +295,7 @@ jobs:
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
           path: |
-            ${{ inputs.app == 'electron' && format('apps/e2e-electron/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/e2e-tauri/src-tauri/target/release/bundle/' || 'apps/e2e-tauri-v1/src-tauri/target/release/bundle/' }}
+            ${{ inputs.app == 'electron' && format('apps/electron/e2e/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/tauri/e2e/src-tauri/target/release/bundle/' || 'apps/tauri-v1/e2e/src-tauri/target/release/bundle/' }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -406,7 +406,7 @@ jobs:
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
           path: |
-            ${{ inputs.app == 'electron' && format('apps/e2e-electron/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/e2e-tauri/src-tauri/target/release/bundle/' || 'apps/e2e-tauri-v1/src-tauri/target/release/bundle/' }}
+            ${{ inputs.app == 'electron' && format('apps/electron/e2e/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/tauri/e2e/src-tauri/target/release/bundle/' || 'apps/tauri-v1/e2e/src-tauri/target/release/bundle/' }}
           retention-days: 1
           if-no-files-found: warn
 

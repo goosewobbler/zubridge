@@ -1,7 +1,7 @@
 {
-  "name": "minimal-custom",
+  "name": "electron-minimal-redux",
   "version": "0.0.0",
-  "description": "Minimal Electron app demonstrating Zubridge with custom state manager",
+  "description": "Minimal Electron app demonstrating Zubridge with Redux",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",
@@ -19,10 +19,12 @@
     "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.0.1",
     "@zubridge/electron": "workspace:*",
     "clsx": "^2.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "redux": "^5.0.1",
     "scheduler": "^0.26.0",
     "zustand": "^5.0.8"
   },

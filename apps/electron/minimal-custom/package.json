@@ -1,7 +1,7 @@
 {
-  "name": "minimal-zustand-reducers",
+  "name": "electron-minimal-custom",
   "version": "0.0.0",
-  "description": "Minimal Electron app demonstrating Zubridge with Zustand reducers mode",
+  "description": "Minimal Electron app demonstrating Zubridge with custom state manager",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",

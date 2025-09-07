@@ -1,5 +1,5 @@
 {
-  "name": "minimal-zustand-basic",
+  "name": "electron-minimal-zustand-basic",
   "version": "0.0.0",
   "description": "Minimal Electron app demonstrating Zubridge with Zustand basic mode",
   "private": true,

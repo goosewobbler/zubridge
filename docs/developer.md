@@ -19,9 +19,15 @@ packages/
 └── tauri/             # Main Tauri package (`@zubridge/tauri`)
 
 apps/
-├── electron-example/  # Example Electron application
-├── minimal-zustand/   # Minimal Zustand example
-├── minimal-custom/    # Minimal custom state manager example
+├── electron/
+│   ├── e2e/                     # Comprehensive E2E testing app
+│   ├── minimal-zustand-basic/   # Minimal Zustand basic example
+│   ├── minimal-zustand-handlers/ # Zustand with handlers pattern
+│   ├── minimal-zustand-reducers/ # Zustand with reducers pattern
+│   ├── minimal-redux/           # Redux integration example
+│   └── minimal-custom/          # Custom state manager example
+└── tauri/
+    └── e2e/                     # Tauri E2E testing app
 └── e2e-tauri/         # End-to-end testing with Tauri
 └── e2e-tauri-v1/      # End-to-end testing with Tauri V1
 ```

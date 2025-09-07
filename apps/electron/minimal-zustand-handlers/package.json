@@ -1,5 +1,5 @@
 {
-  "name": "minimal-zustand-handlers",
+  "name": "electron-minimal-zustand-handlers",
   "version": "1.0.0",
   "description": "Minimal Electron app demonstrating Zubridge with Zustand handlers mode",
   "private": true,

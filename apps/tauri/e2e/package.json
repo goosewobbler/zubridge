@@ -1,5 +1,5 @@
 {
-  "name": "e2e-tauri",
+  "name": "tauri-e2e",
   "version": "0.0.0",
   "description": "Tauri example app for E2E testing of Zubridge functionality",
   "private": true,

@@ -53,11 +53,11 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.app }}" == "electron" ]; then
-          echo "download_path=./apps/e2e-${{ inputs.app }}/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT
-          echo "final_app_path=./apps/e2e-${{ inputs.app }}/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT # For electron, it's more complex
+          echo "download_path=./apps/${{ inputs.app }}/e2e/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT
+          echo "final_app_path=./apps/${{ inputs.app }}/e2e/dist-${{ inputs.mode }}" >> $GITHUB_OUTPUT # For electron, it's more complex
         else # Tauri apps
-          echo "download_path=./apps/e2e-${{ inputs.app }}/build_output" >> $GITHUB_OUTPUT
-          echo "final_app_path=./apps/e2e-${{ inputs.app }}/build_output" >> $GITHUB_OUTPUT # Will be refined based on OS below
+          echo "download_path=./apps/${{ inputs.app }}/e2e/build_output" >> $GITHUB_OUTPUT
+          echo "final_app_path=./apps/${{ inputs.app }}/e2e/build_output" >> $GITHUB_OUTPUT # Will be refined based on OS below
         fi
 
     - name: Download Build Artifacts

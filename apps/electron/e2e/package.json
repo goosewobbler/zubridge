@@ -1,5 +1,5 @@
 {
-  "name": "e2e-electron",
+  "name": "electron-e2e",
   "version": "0.0.0",
   "description": "An application demonstrating all approaches of using zubridge with Electron",
   "private": true,

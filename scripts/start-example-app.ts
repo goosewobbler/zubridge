@@ -27,9 +27,9 @@ const mode = process.argv[3] || 'basic'; // Default to basic if not specified
 if (!appName) {
   console.error('Error: App name is required.');
   console.error('Usage: tsx scripts/start-example-app.ts [app-name] [mode]');
-  console.error('Example: tsx scripts/start-example-app.ts e2e-electron');
-  console.error('         tsx scripts/start-example-app.ts e2e-electron basic');
-  console.error('         tsx scripts/start-example-app.ts e2e-tauri');
+  console.error('Example: tsx scripts/start-example-app.ts electron-e2e');
+  console.error('         tsx scripts/start-example-app.ts electron-e2e basic');
+  console.error('         tsx scripts/start-example-app.ts tauri-e2e');
   process.exit(1);
 }
 

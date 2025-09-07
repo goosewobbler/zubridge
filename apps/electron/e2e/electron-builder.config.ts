@@ -22,7 +22,7 @@ const isE2eTest = process.cwd().includes('/e2e/');
 console.log(`[DEBUG] Running in e2e test environment: ${isE2eTest}`);
 
 // Base directory is different in e2e tests vs normal builds
-const appBaseDir = isE2eTest ? path.resolve(process.cwd(), '../apps/e2e-electron') : process.cwd();
+const appBaseDir = isE2eTest ? path.resolve(process.cwd(), '../apps/electron/e2e') : process.cwd();
 console.log(`[DEBUG] Application base directory: ${appBaseDir}`);
 
 // Calculate the electron cache directory based on the mode and ensure it's in the right location
