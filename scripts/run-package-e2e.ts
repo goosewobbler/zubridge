@@ -3,7 +3,7 @@
 /**
  * Script to run package E2E tests for minimal apps.
  * This script:
- * 1. Finds all minimal apps in the apps directory
+ * 1. Finds all minimal apps in the apps/electron directory
  * 2. Creates a temporary directory for testing
  * 3. Packages up the electron and ui packages using turborepo
  * 4. Copies and modifies each minimal app to use the packaged versions
@@ -73,19 +73,25 @@ function runCommand(
   }
 }
 
-// Find all minimal apps in the apps directory
+// Find all minimal apps in the apps/electron directory
 function findMinimalApps(): string[] {
-  const appsDir = path.join(process.cwd(), 'apps');
+  const electronAppsDir = path.join(process.cwd(), 'apps', 'electron');
+
+  // Check if electron directory exists
+  if (!fs.existsSync(electronAppsDir)) {
+    throw new Error('Apps electron directory not found');
+  }
+
   const allApps = fs
-    .readdirSync(appsDir)
+    .readdirSync(electronAppsDir)
     .filter((dir) => dir.includes('minimal') && !dir.startsWith('.'))
-    .map((dir) => path.join(appsDir, dir));
+    .map((dir) => path.join(electronAppsDir, dir));
 
   // Filter to specific app if requested
   if (targetApp) {
     const filtered = allApps.filter((app) => path.basename(app) === targetApp);
     if (filtered.length === 0) {
-      throw new Error(`App ${targetApp} not found in apps directory`);
+      throw new Error(`App ${targetApp} not found in apps/electron directory`);
     }
     return filtered;
   }
@@ -394,7 +400,7 @@ async function main() {
     // Find minimal apps
     const minimalApps = findMinimalApps();
     if (minimalApps.length === 0) {
-      throw new Error('No minimal apps found in apps directory');
+      throw new Error('No minimal apps found in apps/electron directory');
     }
     console.log(
       `\nFound ${minimalApps.length} minimal apps: ${minimalApps.map((p) => path.basename(p)).join(', ')}`,
