@@ -28,11 +28,11 @@
       "dependsOn": [
         "@zubridge/electron#build",
         "@zubridge/ui#build",
-        "e2e-electron#build:zustand-basic",
-        "e2e-electron#build:zustand-handlers",
-        "e2e-electron#build:zustand-reducers",
-        "e2e-electron#build:redux",
-        "e2e-electron#build:custom"
+        "electron-e2e#build:zustand-basic",
+        "electron-e2e#build:zustand-handlers",
+        "electron-e2e#build:zustand-reducers",
+        "electron-e2e#build:redux",
+        "electron-e2e#build:custom"
       ],
       "cache": false
     },
@@ -74,52 +74,52 @@
     },
     "test:e2e:electron-zustand-reducers": {
       "dependsOn": [
-        "e2e-electron#build:zustand-reducers"
+        "electron-e2e#build:zustand-reducers"
         // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
-        // "e2e-tauri#build",
-        // "e2e-tauri-v1#build"
+        // "tauri-e2e#build",
+        // "tauri-v1-e2e#build"
       ],
       "cache": false
     },
     "test:e2e:electron-zustand-handlers": {
       "dependsOn": [
-        "e2e-electron#build:zustand-handlers"
+        "electron-e2e#build:zustand-handlers"
         // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
-        // "e2e-tauri#build",
-        // "e2e-tauri-v1#build"
+        // "tauri-e2e#build",
+        // "tauri-v1-e2e#build"
       ],
       "cache": false
     },
     "test:e2e:electron-zustand-basic": {
       "dependsOn": [
-        "e2e-electron#build:zustand-basic"
+        "electron-e2e#build:zustand-basic"
         // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
-        // "e2e-tauri#build",
-        // "e2e-tauri-v1#build"
+        // "tauri-e2e#build",
+        // "tauri-v1-e2e#build"
       ],
       "cache": false
     },
     "test:e2e:electron-redux": {
       "dependsOn": [
-        "e2e-electron#build:redux"
+        "electron-e2e#build:redux"
         // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
-        // "e2e-tauri#build",
-        // "e2e-tauri-v1#build"
+        // "tauri-e2e#build",
+        // "tauri-v1-e2e#build"
       ],
       "cache": false
     },
     "test:e2e:electron-custom": {
       "dependsOn": [
-        "e2e-electron#build:custom"
+        "electron-e2e#build:custom"
         // Uncomment these AND remove Tauri deps on Electron to prioritize Tauri development
-        // "e2e-tauri#build",
-        // "e2e-tauri-v1#build"
+        // "tauri-e2e#build",
+        // "tauri-v1-e2e#build"
       ],
       "cache": false
     },
     "test:e2e:tauri": {
       "dependsOn": [
-        "e2e-tauri#build",
+        "tauri-e2e#build",
         // NOTE: Tauri tests wait for Electron E2E tests to ensure Electron stability
         // During Tauri development, remove these AND uncomment inverse dependencies in electron tasks
         "test:e2e:electron-zustand-basic",
@@ -132,7 +132,7 @@
     },
     "test:e2e:tauri-v1": {
       "dependsOn": [
-        "e2e-tauri-v1#build",
+        "tauri-v1-e2e#build",
         // NOTE: Tauri tests wait for Electron E2E tests to ensure Electron stability
         // During Tauri development, remove these AND uncomment inverse dependencies in electron tasks
         "test:e2e:electron-zustand-basic",
@@ -178,21 +178,11 @@
       "dependsOn": ["@zubridge/tauri#build"],
       "cache": false
     },
-    "e2e-electron#build": {
+    "electron-e2e#build": {
       "dependsOn": ["^build"],
       "cache": false
     },
-    "e2e-electron#build:zustand-reducers": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "packages/electron/dist/**",
-        "packages/ui/dist/**",
-        "packages/apps-shared/dist/**",
-        "packages/middleware/dist/**"
-      ],
-      "cache": false
-    },
-    "e2e-electron#build:zustand-handlers": {
+    "electron-e2e#build:zustand-reducers": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -202,7 +192,7 @@
       ],
       "cache": false
     },
-    "e2e-electron#build:zustand-basic": {
+    "electron-e2e#build:zustand-handlers": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -212,7 +202,7 @@
       ],
       "cache": false
     },
-    "e2e-electron#build:redux": {
+    "electron-e2e#build:zustand-basic": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -222,7 +212,7 @@
       ],
       "cache": false
     },
-    "e2e-electron#build:custom": {
+    "electron-e2e#build:redux": {
       "dependsOn": ["^build"],
       "inputs": [
         "packages/electron/dist/**",
@@ -232,7 +222,17 @@
       ],
       "cache": false
     },
-    "e2e-tauri#build": {
+    "electron-e2e#build:custom": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "packages/electron/dist/**",
+        "packages/ui/dist/**",
+        "packages/apps-shared/dist/**",
+        "packages/middleware/dist/**"
+      ],
+      "cache": false
+    },
+    "tauri-e2e#build": {
       "dependsOn": [
         "^build",
         // NOTE: Tauri builds wait for Electron E2E tests to ensure Electron stability
@@ -249,10 +249,10 @@
         "packages/apps-shared/dist/**",
         "packages/middleware/dist/**"
       ],
-      "outputs": ["apps/e2e-tauri/dist/**", "apps/e2e-tauri/src-tauri/target/**"],
+      "outputs": ["apps/tauri/e2e/dist/**", "apps/tauri/e2e/src-tauri/target/**"],
       "cache": false
     },
-    "e2e-tauri-v1#build": {
+    "tauri-v1-e2e#build": {
       "dependsOn": [
         "^build",
         // NOTE: Tauri builds wait for Electron E2E tests to ensure Electron stability
@@ -269,7 +269,7 @@
         "packages/apps-shared/dist/**",
         "packages/middleware/dist/**"
       ],
-      "outputs": ["apps/e2e-tauri-v1/dist/**", "apps/e2e-tauri-v1/src-tauri/target/**"],
+      "outputs": ["apps/tauri-v1/e2e/dist/**", "apps/tauri-v1/e2e/src-tauri/target/**"],
       "cache": false
     },
     "@zubridge/core#build": {
