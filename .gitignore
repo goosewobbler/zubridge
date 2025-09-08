@@ -41,3 +41,8 @@ target
 
 # Ignore Electron user data
 .electron-user-data*
+
+# Ignore napi-rs build artifacts
+**/node/index.js
+**/node/index.d.ts
+**/node/*.node
