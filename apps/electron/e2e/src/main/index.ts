@@ -232,7 +232,7 @@ app
         // Continue execution even if logging setup fails
       }
     } else {
-      debug('core:warning', 'setup_file_logging is not available in middleware module');
+      debug('core:warning', 'setupFileLogging is not available in middleware module');
     }
 
     // Create middleware configuration with detailed telemetry (camelCase required for NAPI-RS)
