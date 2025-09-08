@@ -219,7 +219,7 @@ app
     debug('core', 'initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
 
     // Initialize file logging for debugging
-    const middlewareSetupFileLogging = middlewareModule.setup_file_logging;
+    const middlewareSetupFileLogging = middlewareModule.setupFileLogging;
     if (typeof middlewareSetupFileLogging === 'function') {
       debug('core', 'Setting up middleware file logging');
       try {
