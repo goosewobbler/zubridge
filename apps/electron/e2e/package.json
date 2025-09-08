@@ -42,7 +42,7 @@
     "local:dev": "cd ../.. && pnpm clean:cache && pnpm build:packages && cd - && cross-env DEBUG=zubridge:*,example-app:* pnpm dev"
   },
   "dependencies": {
-    "@reduxjs/toolkit": "^2.7.0",
+    "@reduxjs/toolkit": "^2.9.0",
     "@zubridge/apps-shared": "workspace:*",
     "@zubridge/core": "workspace:*",
     "@zubridge/electron": "workspace:*",
