@@ -18,7 +18,7 @@ runs:
       if: inputs.app == 'electron'
       run: |
         echo "=== E2E Test Logs for ${{ inputs.app }}-${{ inputs.mode }} ==="
-        cat ./e2e/wdio-logs-e2e-${{ inputs.app }}-${{ inputs.mode }}/wdio.log || echo "No log files found"
+        cat ./e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}/wdio.log || echo "No log files found"
         echo "=== End of E2E Test Logs ==="
       shell: bash
 
@@ -48,7 +48,7 @@ runs:
       if: inputs.app == 'electron'
       with:
         name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
-        path: e2e/wdio-logs-e2e-${{ inputs.app }}-${{ inputs.mode }}/*.log
+        path: e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}/*.log
         retention-days: 30
         if-no-files-found: warn
 
