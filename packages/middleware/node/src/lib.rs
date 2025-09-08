@@ -18,6 +18,7 @@ use zubridge_middleware::{
   Action as RustAction,
 };
 
+
 #[napi(object)]
 pub struct PerformanceConfig {
   pub enabled: Option<bool>,
@@ -324,7 +325,7 @@ impl ZubridgeMiddleware {
 }
 
 #[napi]
-pub fn init_zubridge_middleware(config: Option<ZubridgeMiddlewareConfig>) -> ZubridgeMiddleware {
+pub async fn init_zubridge_middleware(config: Option<ZubridgeMiddlewareConfig>) -> Result<ZubridgeMiddleware> {
   // Create default config if none provided
   let rust_config = if let Some(js_config) = config {
     RustZubridgeMiddlewareConfig::from(js_config)
@@ -332,13 +333,15 @@ pub fn init_zubridge_middleware(config: Option<ZubridgeMiddlewareConfig>) -> Zub
     RustZubridgeMiddlewareConfig::default()
   };
   
-  // Initialize middleware
-  let middleware = zubridge_middleware::init_middleware(rust_config);
+  // Initialize middleware in async context - NAPI-RS v3 provides Tokio runtime automatically for async functions
+  let middleware = tokio::task::spawn_blocking(move || {
+    zubridge_middleware::init_middleware(rust_config)
+  }).await.map_err(|e| Error::from_reason(format!("Failed to initialize middleware: {}", e)))?;
   
   // Wrap in our JS-friendly wrapper
-  ZubridgeMiddleware {
+  Ok(ZubridgeMiddleware {
     inner: Arc::new(middleware),
-  }
+  })
 }
 
 /// Function to set up file logging with a custom path

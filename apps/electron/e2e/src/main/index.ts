@@ -273,7 +273,7 @@ app
     );
 
     // Initialize the middleware using the provided init function
-    const middleware = initZubridgeMiddleware(middlewareConfig);
+    const middleware = await initZubridgeMiddleware(middlewareConfig);
     debug('core', 'Middleware instance initialized successfully.');
 
     // Assign to the outer scope bridge

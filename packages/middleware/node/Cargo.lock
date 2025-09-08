@@ -1514,5 +1514,6 @@ dependencies = [
  "napi-derive",
  "serde",
  "serde_json",
+ "tokio",
  "zubridge-middleware",
 ]
