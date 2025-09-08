@@ -18,7 +18,23 @@ runs:
       if: inputs.app == 'electron'
       run: |
         echo "=== E2E Test Logs for ${{ inputs.app }}-${{ inputs.mode }} ==="
-        cat ./e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}/wdio.log || echo "No log files found"
+        
+        LOG_DIR="./e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}"
+        
+        if [ -d "$LOG_DIR" ]; then
+          # Find and display all log files in the directory
+          find "$LOG_DIR" -name "*.log" -type f | sort | while read -r log_file; do
+            log_name=$(basename "$log_file")
+            echo "::group::📄 $log_name"
+            echo "=== Contents of $log_name ==="
+            cat "$log_file" || echo "Could not read log file: $log_file"
+            echo "::endgroup::"
+            echo ""
+          done
+        else
+          echo "No log directory found at: $LOG_DIR"
+        fi
+        
         echo "=== End of E2E Test Logs ==="
       shell: bash
 
@@ -28,16 +44,21 @@ runs:
         echo "=== Package Test Logs for ${{ inputs.mode }} ==="
 
         # Find all wdio-logs directories in apps
-        find apps -name "wdio-logs-*" -type d | while read -r log_dir; do
+        find apps -name "wdio-logs-*" -type d | sort | while read -r log_dir; do
           app_name=$(basename "$log_dir" | sed 's/wdio-logs-//')
-          echo "--- Logs for $app_name ---"
+          echo "::group::🔧 Logs for $app_name"
 
           # Find and display all log files in the directory
-          find "$log_dir" -name "*.log" -type f | while read -r log_file; do
-            echo "=== $(basename "$log_file") ==="
+          find "$log_dir" -name "*.log" -type f | sort | while read -r log_file; do
+            log_name=$(basename "$log_file")
+            echo "::group::📄 $log_name"
+            echo "=== Contents of $log_name ==="
             cat "$log_file" || echo "Could not read log file: $log_file"
+            echo "::endgroup::"
             echo ""
           done
+          
+          echo "::endgroup::"
         done
 
         echo "=== End of Package Test Logs ==="
