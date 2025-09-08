@@ -59,12 +59,12 @@
     "state-management"
   ],
   "devDependencies": {
+    "@biomejs/biome": "^2.2.3",
     "@types/shelljs": "^0.8.15",
     "cross-env": "^10.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.5",
+    "lint-staged": "^16.1.6",
     "package-versioner": "^0.9.2",
-    "@biomejs/biome": "^2.2.2",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
     "tsx": "^4.20.5",
