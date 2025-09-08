@@ -34,7 +34,9 @@ target
 *.node
 
 # Rust / Cargo specific for libraries
+# Note: Cargo.lock is committed for middleware package to ensure deterministic NAPI-RS builds
 /packages/middleware/Cargo.lock
+!/packages/middleware/node/Cargo.lock
 
 # Ignore package tarballs
 *.tgz
