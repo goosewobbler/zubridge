@@ -9,7 +9,7 @@
     "url": "https://github.com/goosewobbler/zubridge.git"
   },
   "scripts": {
-    "clean": "pnpm run clean:output && pnpx shx rm -rf node_modules",
+    "clean": "pnpm run clean:logs && pnpx shx rm -rf node_modules",
     "clean:logs": "pnpx shx rm -rf ./wdio-logs-* ./.electron-user-data-*",
     "test:e2e": "pnpm test:e2e:basic && pnpm test:e2e:handlers && pnpm test:e2e:reducers && pnpm test:e2e:redux && pnpm test:e2e:custom",
     "test:e2e:electron-zustand-basic": "cross-env APP_DIR=electron/e2e MODE=zustand-basic pnpm run exec",
