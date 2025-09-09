@@ -11,36 +11,16 @@ on:
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
 
 jobs:
-  build:
-    name: Build & Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-        node-version: [20.x]
-      fail-fast: false
-
+  # Build shared packages on Linux only
+  build-shared-packages:
+    name: Build Shared Packages
+    runs-on: ubuntu-latest
     steps:
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
-          deb http://archive.ubuntu.com/ubuntu jammy main universe
-          EOT
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libglib2.0-dev \
-            libsoup-2.4-1 \
-            libjavascriptcoregtk-4.1-dev
-
       - name: 📥 Checkout code
         uses: actions/checkout@v4
         with:
@@ -49,31 +29,110 @@ jobs:
       - name: 🛠️ Setup workspace
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "20.x"
 
-      - name: 🏗️ Build and verify packages
-        uses: ./.github/workflows/actions/build-verify
+      - name: 🏗️ Build shared packages
+        run: pnpm run build:packages
 
-      - name: 🧪 Run Tests
-        run: |
-          # Turborepo's caching ensures each package is only built once
-          # The build dependency graph in turbo.json controls this
-          pnpm run test:unit
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            # Workaround for linux CI
-            # https://github.com/electron/electron/issues/41066
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          fi
-          pnpm run test:e2e --concurrency=1
-        shell: bash
-
-      - name: 🐛 Show logs
-        if: failure()
-        run: |
-          pnpm run ci:e2e:logs
-
-      - name: 🐛 Debug Build
-        uses: stateful/vscode-server-action@v1.1.0
-        if: failure()
+      - name: 📦 Upload shared packages
+        uses: actions/upload-artifact@v4
         with:
-          timeout: '180000'
+          name: shared-packages
+          path: |
+            packages/*/dist
+            packages/tauri-plugin
+          retention-days: 1
+
+
+  # Code quality checks - Ubuntu only (fast feedback)
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    needs: [build-shared-packages]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20.x"
+
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      - name: 🔍 Run Linting
+        run: pnpm run lint
+
+      - name: 🎨 Check Formatting
+        run: pnpm run format:check
+
+      - name: ✅ Run Typecheck
+        run: pnpm run typecheck
+
+      - name: 🧪 Run Unit Tests
+        run: pnpm test:unit
+
+  # E2E tests - using matrix strategy
+  e2e-tests:
+    needs: [build-shared-packages, code-quality]
+    name: ${{ matrix.app }}:${{ matrix.mode }}
+    strategy:
+      matrix:
+        app: [electron, tauri, tauri-v1]
+        mode: [zustand-basic, zustand-handlers, zustand-reducers, redux, custom]
+        exclude:
+          # Exclude non-basic modes for tauri
+          - app: tauri
+            mode: zustand-handlers
+          - app: tauri
+            mode: zustand-reducers
+          - app: tauri
+            mode: redux
+          - app: tauri
+            mode: custom
+          # Exclude non-basic modes for tauri-v1
+          - app: tauri-v1
+            mode: zustand-handlers
+          - app: tauri-v1
+            mode: zustand-reducers
+          - app: tauri-v1
+            mode: redux
+          - app: tauri-v1
+            mode: custom
+      fail-fast: false
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+      app: ${{ matrix.app }}
+      mode: ${{ matrix.mode }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # Final status job
+  ci-status:
+    name: CI Status
+    needs: [
+      build-shared-packages,
+      code-quality,
+      e2e-tests
+    ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        run: |
+          # Check if any job succeeded
+          if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
+            echo "At least one job passed successfully"
+            exit 0
+          else
+            echo "All jobs failed"
+            exit 1
+          fi

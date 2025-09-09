@@ -1,7 +1,7 @@
 #!/usr/bin/env node
+import { type ExecException, execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 
 interface PackageJson {
   version: string;
@@ -13,8 +13,8 @@ function readPackageJson(pkgPath: string): PackageJson | undefined {
   try {
     const content = fs.readFileSync(path.resolve(pkgPath), 'utf-8');
     return JSON.parse(content);
-  } catch (error: any) {
-    console.error(`Error reading or parsing ${pkgPath}:`, error.message);
+  } catch (error) {
+    console.error(`Error reading or parsing ${pkgPath}:`, (error as Error).message);
     return undefined;
   }
 }
@@ -28,16 +28,18 @@ function runCommand(command: string): string {
       maxBuffer: 10 * 1024 * 1024,
     });
     return output;
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Error executing command: ${command}`);
-    if (error.stdout) console.error(error.stdout.toString().trim());
-    if (error.stderr) console.error(error.stderr.toString().trim());
+    const stdout = (error as ExecException).stdout;
+    const stderr = (error as ExecException).stderr;
+    if (stdout) console.error(stdout.toString().trim());
+    if (stderr) console.error(stderr.toString().trim());
     process.exit(1);
   }
 }
 
 // Strip scope from package name
-function getUnscopedPackageName(pkgName: string): string {
+function _getUnscopedPackageName(pkgName: string): string {
   return pkgName.includes('/') ? pkgName.split('/')[1] : pkgName;
 }
 
@@ -83,7 +85,10 @@ async function main() {
 
   // Get target packages
   const packageList = packagesInput.includes(',')
-    ? packagesInput.split(',').map((p) => p.trim()).filter(Boolean)
+    ? packagesInput
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
     : [packagesInput.trim()];
 
   const targets: string[] = [];
@@ -103,7 +108,7 @@ async function main() {
 
   // Get scoped target names
   const scopedTargets = targets
-    .map(dirName => getScopedPackageName(dirName))
+    .map((dirName) => getScopedPackageName(dirName))
     .filter(Boolean) as string[];
 
   console.log(`Using specified directories: ${targets.join(', ')}`);
@@ -142,8 +147,10 @@ async function main() {
     bumpFlag,
     dryRun ? '--dry-run' : '',
     '--json',
-    `-t ${targetsArg}`
-  ].filter(Boolean).join(' ');
+    `-t ${targetsArg}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   // Execute command
   let newVersion: string | null = null;
@@ -152,7 +159,9 @@ async function main() {
   try {
     // Parse JSON output
     const jsonOutput = JSON.parse(commandOutput);
-    const refPackageUpdate = jsonOutput.updates?.find((update: any) => update.packageName === refPkgScopedName);
+    const refPackageUpdate = jsonOutput.updates?.find(
+      (update: { packageName: string }) => update.packageName === refPkgScopedName,
+    );
 
     if (refPackageUpdate?.newVersion) {
       newVersion = refPackageUpdate.newVersion;
@@ -160,7 +169,7 @@ async function main() {
     } else {
       throw new Error(`Could not find ${refPkgScopedName} in the updates array`);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Error parsing JSON output: ${error.message}`);
     console.log('Falling back to reading version from package.json');
 
@@ -194,8 +203,7 @@ async function main() {
   console.log('Version calculation completed successfully');
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Script failed:', error);
   process.exit(1);
 });
-

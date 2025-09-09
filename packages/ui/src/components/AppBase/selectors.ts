@@ -6,12 +6,9 @@ export interface CounterObject {
 }
 
 /**
- * Type for the theme state which varies slightly between platforms
+ * Type for the theme state - now using string-based model exclusively
  */
-export interface ThemeState {
-  isDark?: boolean;
-  is_dark?: boolean;
-}
+export type ThemeState = 'dark' | 'light';
 
 /**
  * Interface for the common state shape across platforms
@@ -30,10 +27,10 @@ export type Selector<T> = (state: AppState) => T;
 /**
  * Generic selector that can be used with any store implementation
  */
-export function useSelector<T>(store: any, selector: Selector<T>): T {
+export function useSelector<T>(store: unknown, selector: Selector<T>): T {
   // This is a utility function that will be implemented by the platform-specific HOCs
   // for example, in Electron it will call useStore(selector)
-  return selector(store);
+  return selector(store as AppState);
 }
 
 /**
@@ -50,15 +47,16 @@ export const getCounterSelector: Selector<number> = (state: AppState) => {
 };
 
 /**
- * Get the dark mode state from the theme, handling different property names
+ * Get the dark mode state from the theme using string-based model
  */
 export const getThemeSelector: Selector<boolean> = (state: AppState) => {
+  // Default to light theme if no theme is set
   if (!state.theme) {
     return false;
   }
 
-  // Handle both property naming conventions
-  return state.theme.isDark ?? state.theme.is_dark ?? false;
+  // Simple string check - 'dark' = true, anything else = false
+  return state.theme === 'dark';
 };
 
 /**

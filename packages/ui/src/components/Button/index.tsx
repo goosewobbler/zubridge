@@ -1,5 +1,6 @@
-import React, { ButtonHTMLAttributes } from 'react';
 import clsx from 'clsx';
+import type React from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'create' | 'reset' | 'close' | 'link' | 'outline';
@@ -34,7 +35,6 @@ export const Button: React.FC<ButtonProps> = ({
         return 'bg-transparent text-primary hover:text-primary-dark underline hover:no-underline';
       case 'outline':
         return 'bg-transparent border border-primary text-primary hover:bg-primary/10';
-      case 'primary':
       default:
         return 'bg-primary hover:bg-primary-dark active:bg-primary-darker';
     }
@@ -47,7 +47,6 @@ export const Button: React.FC<ButtonProps> = ({
         return 'py-1 px-3 text-xs';
       case 'lg':
         return 'py-3 px-6 text-base';
-      case 'md':
       default:
         return 'py-2 px-4 text-sm';
     }
@@ -55,7 +54,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const buttonClasses = clsx(
     // Base styles
-    'cursor-pointer font-medium rounded-lg transition-all duration-200 min-w-[theme(--button-width)] whitespace-nowrap',
+    'cursor-pointer font-medium rounded-lg transition-all duration-200 min-w-[theme(--button-width)] whitespace-nowrap w-full',
     // Text color (white for most variants)
     variant !== 'link' && variant !== 'outline' ? 'text-white' : '',
     // Variant specific styles
@@ -66,7 +65,8 @@ export const Button: React.FC<ButtonProps> = ({
     'hover:-translate-y-[1px] hover:shadow-sm',
     'active:translate-y-[1px] active:shadow-none',
     // Disabled state
-    (disabled || loading) && 'bg-gray-400 cursor-not-allowed transform-none hover:bg-gray-400 hover:shadow-none',
+    (disabled || loading) &&
+      'bg-gray-400 cursor-not-allowed transform-none hover:bg-gray-400 hover:shadow-none',
     // Custom classes
     className,
   );

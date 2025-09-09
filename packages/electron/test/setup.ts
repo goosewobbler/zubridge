@@ -1,20 +1,24 @@
+import type {} from '@zubridge/types/internal'; // Import internal window augmentations
 import { vi } from 'vitest';
 
-// Create a mock zubridge object on global
+// Set up mocks for the window object
 const mockZubridge = {
   dispatch: vi.fn(),
   getState: vi.fn(),
   subscribe: vi.fn(),
 };
 
-// Add mockZubridge to window
-(global as any).window = {
-  ...(global as any).window,
-  zubridge: mockZubridge,
-};
-
-// Make mockEventCallback accessible globally
-(global as any).mockEventCallback = undefined;
+// Add properties to global object in a type-safe way
+Object.defineProperty(global, 'window', {
+  value: {
+    zubridge: mockZubridge,
+    __zubridge_windowId: undefined,
+    dispatchEvent: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  },
+  writable: true,
+});
 
 // Mock Electron IPC modules
 vi.mock('electron', () => ({
@@ -30,5 +34,8 @@ vi.mock('electron', () => ({
     emit: vi.fn(),
     removeHandler: vi.fn(),
     removeAllListeners: vi.fn(),
+  },
+  contextBridge: {
+    exposeInMainWorld: vi.fn(),
   },
 }));

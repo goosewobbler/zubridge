@@ -1,24 +1,25 @@
 {
   "name": "@zubridge/electron",
-  "version": "1.3.2",
+  "version": "2.0.0-next.26",
   "description": "A streamlined state management library for Electron applications using Zustand.",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/electron",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/renderer.cjs",
+  "module": "./dist/renderer.js",
+  "types": "./dist/renderer.d.ts",
   "scripts": {
     "clean": "pnpm clean:output && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
-    "clean:output": "pnpm dlx shx rm -rf ./dist",
+    "clean:output": "pnpm dlx shx rm -rf ./dist && pnpm run clean:cache",
     "clean:cache": "shx rm -rf .turbo",
     "prebuild": "pnpm clean:output",
-    "build": "tsx ./scripts/build.ts",
+    "build": "tsup",
+    "package": "pnpm pack",
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest --coverage --watch=false",
     "test:dev": "vitest --coverage",
-    "typecheck": "tsc --noEmi"
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -31,50 +32,41 @@
     "redux"
   ],
   "exports": {
-    ".": [
-      {
-        "import": {
-          "types": "./dist/index.d.ts",
-          "default": "./dist/index.js"
-        },
-        "require": {
-          "types": "./dist/index.d.cts",
-          "default": "./dist/index.cjs"
-        }
+    ".": {
+      "import": {
+        "types": "./dist/renderer.d.ts",
+        "default": "./dist/renderer.js"
       },
-      "./dist/index.cjs"
-    ],
-    "./main": [
-      {
-        "import": {
-          "types": "./dist/main.d.ts",
-          "default": "./dist/main.js"
-        },
-        "require": {
-          "types": "./dist/main.d.cts",
-          "default": "./dist/main.cjs"
-        }
+      "require": {
+        "types": "./dist/renderer.d.cts",
+        "default": "./dist/renderer.cjs"
+      }
+    },
+    "./main": {
+      "import": {
+        "types": "./dist/main.d.ts",
+        "default": "./dist/main.js"
       },
-      "./dist/main.cjs"
-    ],
-    "./preload": [
-      {
-        "import": {
-          "types": "./dist/preload.d.ts",
-          "default": "./dist/preload.js"
-        },
-        "require": {
-          "types": "./dist/preload.d.cts",
-          "default": "./dist/preload.cjs"
-        }
+      "require": {
+        "types": "./dist/main.d.cts",
+        "default": "./dist/main.cjs"
+      }
+    },
+    "./preload": {
+      "import": {
+        "types": "./dist/preload.d.ts",
+        "default": "./dist/preload.js"
       },
-      "./dist/preload.cjs"
-    ]
+      "require": {
+        "types": "./dist/preload.d.cts",
+        "default": "./dist/preload.cjs"
+      }
+    }
   },
   "peerDependencies": {
     "electron": ">=12",
-    "zustand": ">=5.0.0",
-    "redux": ">=4.0.0"
+    "redux": ">=4.0.0",
+    "zustand": ">=5.0.0"
   },
   "peerDependenciesMeta": {
     "electron": {
@@ -88,30 +80,38 @@
     }
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
-    "@types/node": "^22.14.0",
+    "@types/node": "24.3.1",
     "@types/shelljs": "^0.8.15",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^3.0.5",
+    "@zubridge/types": "workspace:*",
     "jsdom": "^26.0.0",
     "react": "^19.0.0",
     "redux": "^5.0.1",
-    "rollup": "^4.34.6",
-    "shelljs": "^0.9.1",
+    "rollup": "^4.50.1",
+    "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.0.5",
+    "zustand": "^5.0.3"
   },
   "files": [
-    "dist/*",
-    "docs/*",
-    "main/*",
-    "preload/*",
+    "dist/**/*",
+    "preload/**/*",
+    "main/**/*",
     "README.md"
   ],
   "dependencies": {
-    "@zubridge/types": "workspace:*",
-    "zustand": "^5.0.3"
+    "@types/debug": "^4.1.12",
+    "@zubridge/core": "workspace:*",
+    "dequal": "^2.0.3",
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.8"
   }
 }

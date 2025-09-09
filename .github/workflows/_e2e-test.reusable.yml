@@ -1,0 +1,157 @@
+name: E2E Test
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: "Application to test (electron, tauri, tauri-v1)"
+        required: true
+        type: string
+      mode:
+        description: "Mode to test (zustand-basic, zustand-handlers, zustand-reducers, redux, custom)"
+        required: true
+        type: string
+      os:
+        description: "Operating system (linux, macos, windows)"
+        required: true
+        type: string
+      artifact_name:
+        description: "Name of the build artifact to download"
+        required: true
+        type: string
+    secrets:
+      TURBO_TOKEN:
+        required: false
+      TURBO_TEAM:
+        required: false
+      TURBO_API:
+        required: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
+
+jobs:
+  e2e-test:
+    name: ${{ inputs.os == 'linux' && 'Linux' || inputs.os == 'macos' && 'macOS' || 'Windows' }} E2E Test
+    runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
+    # Tauri E2E tests are disabled for now due to WDIO compatibility issues
+    # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
+    if: inputs.app == 'electron'
+    steps:
+      # Install Linux dependencies for Tauri apps before running E2E tests
+      - name: Install Linux dependencies for Tauri & E2E (including WebKitWebDriver)
+        if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1') && inputs.os == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          COMMON_DEPS="\
+          pkg-config \
+          libgtk-3-dev \
+          libappindicator3-dev \
+          librsvg2-dev \
+          patchelf \
+          libglib2.0-dev \
+          libsoup-2.4-1 \
+          libsoup2.4-dev \
+          xvfb"
+
+
+          TAURI_V1_DEPS=\
+          "libwebkit2gtk-4.0-dev \
+          libwebkit2gtk-driver \
+          webkitgtk-webdriver \
+          libjavascriptcoregtk-4.0-dev"
+
+
+          TAURI_V2_DEPS=\
+          "libwebkit2gtk-4.1-dev \
+          webkitgtk-webdriver \
+          libjavascriptcoregtk-4.1-dev"
+
+
+          if [[ "${{ inputs.app }}" == "tauri-v1" ]]; then
+            echo "Installing dependencies for Tauri v1"
+            # For Tauri v1 on Ubuntu 24.04, we expect libwebkit2gtk-4.0-dev and related to fail.
+            # We'll attempt to install them but allow failure, then install the 4.1 versions as a fallback.
+            # This is a temporary workaround pending official Tauri v1 support for Ubuntu 24.04's newer WebKit.
+            echo "Attempting to install Tauri v1 specific WebKit 4.0 packages (expected to fail on Ubuntu 24.04)..."
+            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V1_DEPS || echo "Known issue: Failed to install some Tauri v1 WebKit 4.0 packages on Ubuntu 24.04. Continuing with 4.1 as fallback."
+            echo "Installing WebKit 4.1 packages as a fallback for Tauri v1 on Ubuntu 24.04..."
+            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS # Use V2_DEPS as fallback for V1
+          elif [[ "${{ inputs.app }}" == "tauri" ]]; then
+            echo "Installing dependencies for Tauri v2 on Ubuntu 24.04 (Noble)"
+            echo "--- apt-cache show libwebkit2gtk-4.1-dev ---"
+            apt-cache show libwebkit2gtk-4.1-dev || echo "apt-cache show libwebkit2gtk-4.1-dev failed"
+            echo "--- apt-cache search libjavascriptcoregtk-4.1-dev ---"
+            apt-cache search libjavascriptcoregtk-4.1-dev || echo "apt-cache search libjavascriptcoregtk-4.1-dev failed"
+            echo "--- End diagnostic searches ---"
+            sudo apt-get install -y $COMMON_DEPS $TAURI_V2_DEPS
+          else
+            echo "::warning:: Unknown Tauri app type for dependency installation: ${{ inputs.app }}"
+            # As a fallback, attempt to install common and v2 deps, but this might fail or be incorrect
+            sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
+          fi
+
+      - name: Install tauri-driver
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          echo "Installing tauri-driver..."
+          cargo install tauri-driver --locked
+          if ! command -v tauri-driver &> /dev/null; then
+          echo "::error::tauri-driver installation failed or not in PATH"
+          exit 1
+          fi
+          echo "tauri-driver installed successfully."
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      - name: Setup E2E Environment
+        id: setup_e2e
+        uses: ./.github/workflows/actions/setup-e2e-environment
+        with:
+          os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+          artifact_name: ${{ inputs.artifact_name }}
+
+      - name: Execute E2E Tests
+        env:
+          APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
+          DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
+        run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
+        shell: bash
+
+      - name: Handle E2E Test Logs
+        if: always()
+        uses: ./.github/workflows/actions/handle-logs
+        with:
+          os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
+
+      - name: 🐛 Debug Build
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          machineName: zubridge-e2e-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
+          timeout: '120000'

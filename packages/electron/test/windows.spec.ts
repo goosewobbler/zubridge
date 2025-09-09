@@ -1,15 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WebContents } from 'electron';
 import type { WebContentsWrapper } from '@zubridge/types';
+import type { WebContents } from 'electron';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  isWebContents,
-  isWrapper,
+  createWebContentsTracker,
   getWebContents,
   isDestroyed,
+  isWebContents,
+  isWrapper,
+  prepareWebContents,
   safelySendToWindow,
   setupDestroyListener,
-  createWebContentsTracker,
-  prepareWebContents,
 } from '../src/utils/windows';
 
 // Create mock WebContents object
@@ -72,9 +72,9 @@ describe('windows.ts', () => {
     });
 
     it('should return undefined for invalid input', () => {
-      expect(getWebContents(null as any)).toBeUndefined();
-      expect(getWebContents(undefined as any)).toBeUndefined();
-      expect(getWebContents({} as any)).toBeUndefined();
+      expect(getWebContents(null as unknown as WebContents)).toBeUndefined();
+      expect(getWebContents(undefined as unknown as WebContents)).toBeUndefined();
+      expect(getWebContents({} as unknown as WebContents)).toBeUndefined();
     });
   });
 
@@ -99,7 +99,7 @@ describe('windows.ts', () => {
 
     it('should return false if isDestroyed is not a function', () => {
       const webContents = mockWebContents();
-      (webContents as any).isDestroyed = 'not a function';
+      (webContents as unknown as { isDestroyed: string }).isDestroyed = 'not a function';
       expect(isDestroyed(webContents)).toBe(false);
     });
   });
@@ -139,12 +139,12 @@ describe('windows.ts', () => {
     });
 
     it('should handle invalid WebContents', () => {
-      expect(safelySendToWindow(null as any, 'test-channel', {})).toBe(false);
+      expect(safelySendToWindow(null as unknown as WebContents, 'test-channel', {})).toBe(false);
     });
 
     it('should handle WebContents without a send function', () => {
       const webContents = mockWebContents();
-      (webContents as any).send = undefined;
+      (webContents as unknown as { send: undefined }).send = undefined;
 
       const result = safelySendToWindow(webContents, 'test-channel', { data: 'test' });
 
@@ -153,7 +153,7 @@ describe('windows.ts', () => {
 
     it('should handle WebContents without an isLoading function', () => {
       const webContents = mockWebContents();
-      (webContents as any).isLoading = undefined;
+      (webContents as unknown as { isLoading: undefined }).isLoading = undefined;
 
       const result = safelySendToWindow(webContents, 'test-channel', { data: 'test' });
 
@@ -236,7 +236,7 @@ describe('windows.ts', () => {
 
     it('should handle WebContents without an once function', () => {
       const webContents = mockWebContents();
-      (webContents as any).once = undefined;
+      (webContents as unknown as { once: undefined }).once = undefined;
       const cleanup = vi.fn();
 
       setupDestroyListener(webContents, cleanup);
@@ -377,7 +377,10 @@ describe('windows.ts', () => {
     });
 
     it('should handle invalid inputs', () => {
-      const result = prepareWebContents([null as any, undefined as any]);
+      const result = prepareWebContents([
+        null as unknown as WebContents,
+        undefined as unknown as WebContents,
+      ]);
       expect(result).toEqual([]);
     });
   });

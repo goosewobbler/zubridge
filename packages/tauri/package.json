@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/tauri",
-  "version": "1.1.0",
+  "version": "1.1.1-next.1",
   "description": "A streamlined state management library for Tauri applications using Zustand.",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/tauri",
@@ -51,17 +51,17 @@
     }
   },
   "devDependencies": {
-    "@tauri-apps/api": "^2.4.1",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@tauri-apps/api": "^2.8.0",
+    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
-    "@types/react": "^19.1.2",
+    "@types/react": "^19.1.11",
     "@types/shelljs": "^0.8.15",
     "@vitest/coverage-v8": "^3.0.9",
     "react": "^19.0.0",
-    "rollup": "^4.36.0",
-    "shelljs": "^0.9.2",
+    "rollup": "^4.50.1",
+    "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.9.2",
     "vitest": "^3.0.9"
   },
   "files": [
@@ -76,7 +76,8 @@
     "README.md"
   ],
   "dependencies": {
+    "@zubridge/core": "workspace:*",
     "@zubridge/types": "workspace:*",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.8"
   }
 }

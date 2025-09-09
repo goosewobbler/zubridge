@@ -1,8 +1,21 @@
-// Export all components
-export * from './components';
+// Export shared components
+
+// Export component types
+export type { ElectronAppProps } from './components/AppBase/hoc/withElectron';
+export type { TauriAppProps } from './components/AppBase/hoc/withTauri';
+// Export shared hooks
+export { useBridgeStatus } from './components/AppBase/hooks/useBridgeStatus';
+export * from './components/Button';
+export * from './components/CounterActions';
+export * from './components/GenerateLargeState';
+export * from './components/Header';
+export * from './components/SubscriptionControls';
+export * from './components/ThemeToggle';
+export * from './components/WindowActions';
+export * from './components/WindowDisplay';
 
 // Import types to augment Window interface
-import './types';
+import './types.js';
 
 /**
  * Styles are bundled separately as CSS.
@@ -10,7 +23,7 @@ import './types';
  *
  * ```js
  * // Import styles in your entry file
- * import '@zubridge/ui/dist/styles.css';
+ * import '@zubridge/ui/styles.css';
  * ```
  */
 
@@ -22,4 +35,4 @@ import './types';
 
 // Note: The CSS file will be generated separately and included in the package
 // Consuming applications should import this CSS file
-// Example: import '@zubridge/ui/dist/styles.css';
+// Example: import '@zubridge/ui/styles.css';

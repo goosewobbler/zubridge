@@ -1,12 +1,19 @@
-import React from 'react';
+// Import app window augmentations
+import type {} from '@zubridge/types/app';
 import clsx from 'clsx';
+import type React from 'react';
 
 interface HeaderProps {
   windowId: number | string;
   windowTitle: string;
+  currentSubscriptions?: string[] | '*';
+  windowType?: string;
+  appName?: string;
   mode?: string;
   bridgeStatus?: 'ready' | 'error' | 'initializing';
   className?: string;
+  counterValue?: number;
+  isLoading?: boolean;
 }
 
 /**
@@ -15,31 +22,61 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   windowId,
   windowTitle,
+  appName,
   mode,
   bridgeStatus = 'ready',
   className = '',
+  currentSubscriptions,
+  counterValue,
+  isLoading = false,
 }) => {
+  // Get the test environment variable using the renamed API
+  const isTestEnv = window.processAPI?.env('TEST') === 'true';
+
   const headerClasses = clsx(
     'z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80',
+    // Fixed header is nice but it breaks e2e tests
+    isTestEnv ? '' : 'fixed top-0 left-0 right-0',
     `status-${bridgeStatus}`,
     className,
   );
 
+  // Determine subscription display text
+  let subscriptionsText: string;
+  if (currentSubscriptions === '*') {
+    subscriptionsText = '*';
+  } else if (Array.isArray(currentSubscriptions) && currentSubscriptions.length > 0) {
+    subscriptionsText = currentSubscriptions.join(', ');
+  } else {
+    subscriptionsText = 'none';
+  }
+
   return (
     <header className={headerClasses}>
-      <div className="header-left">
-        <h1 className="window-title">
-          {windowTitle} (ID: {windowId})
-        </h1>
+      <div className="flex-1 header-left">
+        {appName && <div className="text-sm font-bold app-name">{appName}</div>}
+        <h1 className="window-title">{windowTitle}</h1>
         {mode && <div className="mt-1 text-xs opacity-75 window-mode">Mode: {mode}</div>}
+        {windowId && <div className="mt-1 text-xs opacity-75 window-type">ID: {windowId}</div>}
       </div>
 
-      <div className="header-right">
+      {counterValue !== undefined && (
+        <div className="flex-1 text-center">
+          <h2 className="text-xl font-bold whitespace-nowrap">
+            Counter: {isLoading ? '...' : counterValue}
+          </h2>
+        </div>
+      )}
+
+      <div className="flex flex-col items-end flex-1 header-right">
         <div className="flex items-center bridge-status">
           <span className="inline-block w-2 h-2 rounded-full status-indicator" />
           <span className="ml-2 status-text">
             Bridge: {bridgeStatus.charAt(0).toUpperCase() + bridgeStatus.slice(1)}
           </span>
+        </div>
+        <div className="flex items-center">
+          <span className="text-xs opacity-75">Subscriptions: {subscriptionsText}</span>
         </div>
       </div>
     </header>

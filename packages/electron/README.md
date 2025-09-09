@@ -1,4 +1,10 @@
-<img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png"/>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" style="max-height: 415px;">
+</picture>
+
+<h1 align="center">Zubridge Electron</h1>
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity for Electron_
 
@@ -56,21 +62,89 @@ Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
 ## Documentation
 
 - [Getting Started Guide](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/getting-started.md) - Step-by-step guide to setting up Zubridge in your Electron app
-- [API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/api-reference.md) - Complete API documentation
+- [Advanced Usage](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md) - Advanced features including multi-window support, custom handlers, and more
 - [Main Process](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/main-process.md) - Setting up and using Zubridge in the main process
 - [Renderer Process](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/renderer-process.md) - Setting up and using Zubridge in the renderer process
 - [Backend Contract](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/backend-contract.md) - Understanding the IPC contract between processes
+- [Debugging](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/debugging.md) - Using the debug utilities to troubleshoot and monitor Zubridge
+- [API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/api-reference.md) - Complete API documentation
 
 ## Example Applications
 
-The example app demonstrates all three approaches of using zubridge with Electron:
+The example apps demonstrate different approaches to using zubridge with Electron:
 
-- [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron-example)
-  - **Basic Mode**: Zustand with direct store mutations using `createZustandBridge`
-  - **Handlers Mode**: Zustand with dedicated action handler functions using `createZustandBridge`
-  - **Reducers Mode**: Zustand with Redux-style reducers using `createZustandBridge`
-  - **Redux Mode**: Redux with Redux Toolkit using `createReduxBridge`
-  - **Custom Mode**: Custom state manager implementation using `createCoreBridge`
+- [Custom Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/custom) - Custom state manager implementation using `createCoreBridge`
+- [Redux Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/redux) - Redux with Redux Toolkit using `createReduxBridge`
+- [Zustand Basic Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-basic) - Zustand with direct store mutations using `createZustandBridge`
+- [Zustand Handlers Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-handlers) - Zustand with dedicated action handler functions using `createZustandBridge`
+- [Zustand Reducers Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-reducers) - Zustand with Redux-style reducers using `createZustandBridge`
+
+## Debugging
+
+Zubridge includes a built-in debugging utility that allows you to control logging across different parts of the package. This is separate from the middleware logging which focuses on IPC traffic.
+
+### Enabling Debug Mode
+
+Zubridge uses the popular [debug](https://www.npmjs.com/package/debug) package for debugging. You can enable it in several ways:
+
+1. **Using the DEBUG environment variable**:
+
+   ```bash
+   # Enable all Zubridge debugging
+   DEBUG=zubridge:* electron .
+
+   # Enable specific debug areas only
+   DEBUG=zubridge:ipc,zubridge:core electron .
+   ```
+
+2. **Using the ZUBRIDGE_DEBUG environment variable**:
+
+   ```bash
+   # Enable all debugging
+   ZUBRIDGE_DEBUG=true electron .
+   ```
+
+3. **Programmatically**:
+
+   ```typescript
+   import { debug } from '@zubridge/core';
+
+   // Enable all debugging
+   debug.enable();
+
+   // Enable debugging for specific areas
+   debug.enable(['ipc', 'core']);
+
+   // Disable debugging
+   debug.disable();
+   ```
+
+### Debug Areas
+
+The following debug namespaces are available:
+
+- `zubridge:core`: Core bridge functionality
+- `zubridge:ipc`: IPC communication between processes
+- `zubridge:store`: Store management
+- `zubridge:adapters`: Zustand and Redux adapters
+- `zubridge:windows`: Window management
+- `zubridge:serialization`: State serialization/deserialization
+
+### Browser Integration
+
+For debugging in the renderer process, you can use the browser's localStorage:
+
+```javascript
+// In the DevTools console
+localStorage.debug = 'zubridge:*'; // Enable all debugging
+localStorage.debug = ''; // Disable debugging
+```
+
+For more detailed information, see the [Debugging documentation](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/debugging.md).
+
+## Development
+
+For information about contributing to this project, see the [Developer Guide](https://github.com/goosewobbler/zubridge/blob/main/docs/developer.md).
 
 ## License
 

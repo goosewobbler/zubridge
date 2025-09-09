@@ -28,7 +28,8 @@ if (newVersion) {
 // Ensure targetPackage is a string (not a Symbol) when used
 // IMPORTANT: This explicit conversion is necessary to prevent TypeScript warnings
 // about implicit Symbol to string conversion
-const targetPackageStr = typeof targetPackage === 'string' ? targetPackage : String(targetPackage || '');
+const targetPackageStr =
+  typeof targetPackage === 'string' ? targetPackage : String(targetPackage || '');
 
 // List of known Rust crates to publish with their paths
 const knownCrates = [
@@ -151,7 +152,9 @@ for (const crate of cratesToPublish) {
       // If this is a hybrid package with Node bindings, package-versioner has already
       // updated the version in all components, so we don't need additional logic
       if (crate.isHybrid) {
-        console.log(`This is a hybrid package - package-versioner has synced all component versions`);
+        console.log(
+          'This is a hybrid package - package-versioner has synced all component versions',
+        );
       }
     }
   } catch (error) {

@@ -7,23 +7,44 @@
   "scripts": {
     "build": "turbo run build",
     "build:packages": "turbo run build:packages",
-    "ci": "turbo run test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom",
-    "ci-linux": "turbo run test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom --concurrency=1",
-    "ci:e2e:logs": "cat ./e2e/wdio-logs-electron-example-basic/*.log && cat ./e2e/wdio-logs-electron-example-handlers/*.log && cat ./e2e/wdio-logs-electron-example-reducers/*.log && cat ./e2e/wdio-logs-electron-example-redux/*.log && cat ./e2e/wdio-logs-electron-example-custom/*.log",
-    "format": "prettier -w .",
-    "format:check": "prettier -c .",
+    "build:electron-zustand-basic": "turbo run build:zustand-basic --filter=electron-e2e --force",
+    "build:electron-zustand-handlers": "turbo run build:zustand-handlers --filter=electron-e2e --force",
+    "build:electron-zustand-reducers": "turbo run build:zustand-reducers --filter=electron-e2e --force",
+    "build:electron-redux": "turbo run build:redux --filter=electron-e2e --force",
+    "build:electron-custom": "turbo run build:custom --filter=electron-e2e --force",
+    "build:tauri": "turbo run build --filter=tauri-e2e --force",
+    "build:tauri-v1": "turbo run build --filter=tauri-v1-e2e --force",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "lint:fix:unsafe": "biome check --write --unsafe .",
     "graph:e2e": "tsx ./scripts/create-task-graph.ts ./e2e-graph.png test:unit test:e2e:reducers test:e2e:handlers test:e2e:basic test:e2e:redux test:e2e:custom",
+    "logs:e2e": "cat ./e2e/wdio-logs-electron-basic/wdio.log || cat ./e2e/wdio-logs-electron-handlers/wdio.log || cat ./e2e/wdio-logs-electron-reducers/wdio.log || cat ./e2e/wdio-logs-electron-redux/wdio.log || cat ./e2e/wdio-logs-electron-custom/wdio.log",
     "prepare": "husky",
     "test": "turbo run test",
     "test:unit": "turbo run test:unit",
     "test:e2e": "turbo run test:e2e",
-    "test:e2e:basic": "turbo run test:e2e:basic",
-    "test:e2e:handlers": "turbo run test:e2e:handlers",
-    "test:e2e:reducers": "turbo run test:e2e:reducers",
-    "test:e2e:redux": "turbo run test:e2e:redux",
-    "test:e2e:custom": "turbo run test:e2e:custom",
+    "test:e2e:electron-zustand-basic": "cross-env DEBUG=zubridge:* turbo run test:e2e:electron-zustand-basic",
+    "test:e2e:electron-zustand-handlers": "cross-env DEBUG=zubridge:* turbo run test:e2e:electron-zustand-handlers",
+    "test:e2e:electron-zustand-reducers": "cross-env DEBUG=zubridge:* turbo run test:e2e:electron-zustand-reducers",
+    "test:e2e:electron-redux": "cross-env DEBUG=zubridge:* turbo run test:e2e:electron-redux",
+    "test:e2e:electron-custom": "cross-env DEBUG=zubridge:* turbo run test:e2e:electron-custom",
+    "test:e2e:tauri-basic": "cross-env DEBUG=zubridge:* turbo run test:e2e:tauri",
+    "test:e2e:tauri-v1-basic": "cross-env DEBUG=zubridge:* turbo run test:e2e:tauri-v1",
+    "test:package": "pnpx tsx scripts/run-package-e2e.ts",
+    "test:package:zustand-basic": "pnpx tsx scripts/run-package-e2e.ts zustand-basic",
+    "test:package:custom": "pnpx tsx scripts/run-package-e2e.ts custom",
+    "test:package:redux": "pnpx tsx scripts/run-package-e2e.ts redux",
+    "test:package:zustand-handlers": "pnpx tsx scripts/run-package-e2e.ts zustand-handlers",
+    "test:package:zustand-reducers": "pnpx tsx scripts/run-package-e2e.ts zustand-reducers",
+    "typecheck": "turbo run typecheck",
+    "validate": "turbo run validate",
     "clean": "turbo run clean && pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
-    "clean:cache": "turbo run clean:cache && pnpm dlx shx rm -rf .turbo"
+    "clean:cache": "turbo run clean:cache && pnpm dlx shx rm -rf .turbo",
+    "clean:output": "turbo run clean:output"
   },
   "repository": {
     "type": "git",
@@ -38,19 +59,23 @@
     "state-management"
   ],
   "devDependencies": {
+    "@biomejs/biome": "^2.2.3",
     "@types/shelljs": "^0.8.15",
+    "cross-env": "^10.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.4.3",
-    "package-versioner": "^0.5.4",
-    "prettier": "^3.5.0",
-    "shelljs": "^0.9.2",
+    "lint-staged": "^16.1.6",
+    "package-versioner": "^0.9.2",
+    "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "tsx": "^4.19.2",
-    "turbo": "^2.4.1"
+    "tsx": "^4.20.5",
+    "turbo": "^2.5.6"
   },
   "lint-staged": {
-    "**/*.{yml,json,md,ts,tsx,js}": [
-      "prettier --write"
+    "**/*.{ts,tsx,js,jsx,json,jsonc}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "**/*.{yml,yaml,md}": [
+      "biome format --write --no-errors-on-unmatched"
     ]
   },
   "packageManager": "pnpm@10.8.1+sha512.c50088ba998c67b8ca8c99df8a5e02fd2ae2e2b29aaf238feaa9e124248d3f48f9fb6db2424949ff901cffbb5e0f0cc1ad6aedb602cd29450751d11c35023677",
@@ -62,6 +87,11 @@
     "onlyBuiltDependencies": [
       "electron",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "@types/node": "24.3.0",
+      "@zubridge/electron": "workspace:*",
+      "@zubridge/core": "workspace:*"
+    }
   }
 }

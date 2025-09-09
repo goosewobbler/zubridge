@@ -1,10 +1,23 @@
-import React from 'react';
+import type React from 'react';
 
 // Common component props
 export interface BaseProps {
   className?: string;
   id?: string;
 }
+
+// Counter method
+export type CounterMethod =
+  | 'thunk'
+  | 'object'
+  | 'action'
+  | 'main-thunk'
+  | 'slow-thunk'
+  | 'slow-main-thunk'
+  | 'slow-object'
+  | 'distinctive'
+  | 'distinctive-slow'
+  | 'thunk-get-state-override';
 
 // Button variants
 export type ButtonVariant = 'primary' | 'secondary' | 'reset' | 'create' | 'close';
@@ -22,7 +35,7 @@ export interface CounterProps extends BaseProps {
   value: number;
   onIncrement: () => void;
   onDecrement: () => void;
-  onDouble: (method: 'thunk' | 'object') => void;
+  onDouble: (method: CounterMethod) => void;
   onReset: () => void;
   isLoading?: boolean;
 }

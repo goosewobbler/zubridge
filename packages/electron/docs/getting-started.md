@@ -68,7 +68,7 @@ export function App() {
   const counter = useStore((state: AppState) => state.counter);
   const dispatch = useDispatch<AppState>();
 
-  // Optional: Create a typed dispatch function for better type safety
+  // For enhanced type safety, you can specify action types
   const typedDispatch = useDispatch<AppState, { SET_COUNTER: number }>();
 
   return (
@@ -77,6 +77,7 @@ export function App() {
       <button onClick={() => dispatch('INCREMENT')}>Increment</button>
       <button onClick={() => dispatch('DECREMENT')}>Decrement</button>
       <button onClick={() => dispatch({ type: 'SET_COUNTER', payload: 0 })}>Reset</button>
+      {/* Type-checked action dispatch */}
       <button onClick={() => typedDispatch({ type: 'SET_COUNTER', payload: 42 })}>Set to 42 (Type-checked)</button>
     </div>
   );
@@ -152,7 +153,7 @@ export const store = createStore<AppState>()(() => initialState);
 
 ### Initialize Bridge in Main Process
 
-In the main process, instantiate the bridge with your store and an array of window objects:
+In the main process, create the bridge and subscribe your windows:
 
 ```ts
 // `src/main/index.ts`
@@ -170,7 +171,10 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe } = createZustandBridge(store, [mainWindow]);
+const bridge = createZustandBridge(store);
+
+// subscribe the window to state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
@@ -207,7 +211,7 @@ export type RootState = ReturnType<typeof store.getState>;
 
 ### Initialize Bridge in Main Process
 
-In the main process, instantiate the bridge with your Redux store:
+In the main process, create the bridge and subscribe your windows:
 
 ```ts
 // `src/main/index.ts`
@@ -225,10 +229,13 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe, dispatch } = createReduxBridge(store, [mainWindow]);
+const bridge = createReduxBridge(store);
+
+// subscribe the window to state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // you can dispatch actions directly from the main process
-dispatch({ type: 'counter/initialize', payload: 5 });
+bridge.dispatch({ type: 'counter/initialize', payload: 5 });
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
@@ -316,63 +323,28 @@ const mainWindow = new BrowserWindow({
 });
 
 // instantiate bridge
-const { unsubscribe } = createCoreBridge(stateManager, [mainWindow]);
+const bridge = createCoreBridge(stateManager);
+
+// subscribe the window to state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // unsubscribe on quit
 app.on('quit', unsubscribe);
 ```
 
-## Advanced Configuration
-
-### Working with Multiple Windows
-
-For applications with multiple windows, you can subscribe and unsubscribe windows as needed:
-
-```ts
-// `src/main/index.ts`
-import { app, BrowserWindow } from 'electron';
-import { createZustandBridge } from '@zubridge/electron/main';
-import { store } from './store.js';
-
-// create main window
-const mainWindow = new BrowserWindow({
-  /* ... */
-});
-
-// instantiate bridge with initial window
-const { unsubscribe, subscribe } = createZustandBridge(store, [mainWindow]);
-
-// Later, create a new window
-const secondWindow = new BrowserWindow({
-  /* ... */
-});
-
-// Subscribe the new window
-const subscription = subscribe([secondWindow]);
-
-// Unsubscribe specific window when it's closed
-secondWindow.on('closed', () => {
-  subscription.unsubscribe();
-});
-
-// unsubscribe all windows on quit
-app.on('quit', unsubscribe);
-```
-
 ## Next Steps
 
-For more detailed information about the API:
+Now that you've got the basics set up, you might want to explore:
 
 - [How It Works](./how-it-works.md) - Detailed explanation of how Zubridge manages state synchronization
-- [API Reference](./api-reference.md) - Complete reference for all API functions and types
 - [Main Process](./main-process.md) - Detailed guide for using Zubridge in the main process
 - [Renderer Process](./renderer-process.md) - Detailed guide for using Zubridge in the renderer process
 - [Backend Contract](./backend-contract.md) - Detailed explanation of the backend contract
-- [Migration Guide](./migration-guide.md) - Guide for migrating from older versions
+- [API Reference](./api-reference.md) - Complete reference for all API functions and types
 
 ## Example Applications
 
-The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron-example) demonstrates the different approaches to state management with Zubridge:
+The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/main/apps/electron/e2e) demonstrates the different approaches to state management with Zubridge:
 
 - **Basic Mode**: Zustand with direct store mutations using `createZustandBridge`
 - **Handlers Mode**: Zustand with dedicated action handler functions using `createZustandBridge`

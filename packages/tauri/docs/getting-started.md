@@ -282,4 +282,4 @@ window.addEventListener('beforeunload', () => {
 
 - Check out the [API Reference](./api-reference.md) for detailed documentation
 - Learn about [Backend Contract](./backend-process.md) for advanced customization
-- See a complete example in the [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-example)
+- See a complete example in the [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri/e2e)

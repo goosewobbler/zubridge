@@ -1,0 +1,28 @@
+{
+  "name": "@zubridge/apps-shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared utilities and logic for Zubridge example apps",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "clean": "pnpm run clean:output && pnpm dlx shx rm -rf dist node_modules",
+    "clean:output": "pnpm dlx shx rm -rf ./dist",
+    "clean:cache": "pnpm dlx shx rm -rf .turbo",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zubridge/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "zustand": "^4.3.0"
+  },
+  "devDependencies": {
+    "@zubridge/types": "workspace:*",
+    "typescript": "^5.9.2"
+  }
+}

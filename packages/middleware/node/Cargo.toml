@@ -1,0 +1,36 @@
+[package]
+name = "zubridge-middleware-node"
+version = "0.1.1-next.1"
+edition = "2021"
+authors = [ "Zubridge Contributors" ]
+
+[lib]
+crate-type = [ "cdylib" ]
+
+[dependencies]
+napi-derive = "3.2.5"
+fern = "0.6"
+log = "0.4"
+chrono = "0.4"
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+
+[dependencies.napi]
+version = "3.3.0"
+features = [ "async" ]
+
+[dependencies.zubridge-middleware]
+path = "../"
+
+[dependencies.serde]
+version = "1.0"
+features = [ "derive" ]
+
+[build-dependencies]
+napi-build = "2.2.3"
+
+[profile]
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1

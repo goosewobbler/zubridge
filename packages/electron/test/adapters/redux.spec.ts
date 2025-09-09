@@ -1,8 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Action, AnyState } from '@zubridge/types';
 import type { Store } from 'redux';
-import type { AnyState, Action } from '@zubridge/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createReduxAdapter } from '../../src/adapters/redux.js';
+
+// Mock the debug utility
+vi.mock('@zubridge/core', () => ({
+  debug: vi.fn(), // Simplified mock
+}));
 
 // Create a mock Redux store
 function createMockStore(initialState: AnyState = {}) {
@@ -11,12 +16,14 @@ function createMockStore(initialState: AnyState = {}) {
 
   const store = {
     getState: vi.fn(() => currentState),
-    dispatch: vi.fn((action: any) => {
+    dispatch: vi.fn((action: Action) => {
       if (action.type === 'TEST_ACTION') {
         currentState = { ...currentState, value: action.payload };
       }
       // Notify all listeners
-      listeners.forEach((listener) => listener());
+      listeners.forEach((listener) => {
+        listener();
+      });
       return action;
     }),
     subscribe: vi.fn((listener: () => void) => {
@@ -134,10 +141,10 @@ describe('Redux Adapter', () => {
           handlers: {
             counter: {
               increment: counterHandler,
-            } as any,
+            },
             theme: {
               toggle: themeHandler,
-            } as any,
+            },
           },
         });
 
@@ -163,7 +170,7 @@ describe('Redux Adapter', () => {
           handlers: {
             Counter: {
               Increment: counterHandler,
-            } as any,
+            },
           },
         });
 
@@ -184,12 +191,15 @@ describe('Redux Adapter', () => {
                   update: updateHandler,
                 },
               },
-            } as any,
+            },
           },
         });
 
         // Test deeply nested path resolution
-        adapterWithDeepHandlers.processAction({ type: 'ui.settings.theme.update', payload: 'light' });
+        adapterWithDeepHandlers.processAction({
+          type: 'ui.settings.theme.update',
+          payload: 'light',
+        });
         expect(updateHandler).toHaveBeenCalledWith('light');
         expect(store.dispatch).not.toHaveBeenCalled();
       });
@@ -216,7 +226,7 @@ describe('Redux Adapter', () => {
           handlers: {
             counter: {
               increment: incrementHandler,
-            } as any,
+            },
           },
         });
 
@@ -237,17 +247,9 @@ describe('Redux Adapter', () => {
 
       const errorAdapter = createReduxAdapter(errorStore);
 
-      // Mock console.error
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const action: Action = { type: 'ERROR_ACTION', payload: 'error-data' };
-      errorAdapter.processAction(action);
-
-      // Verify error was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error processing Redux action:', expect.any(Error));
-
-      // Restore console.error
-      consoleErrorSpy.mockRestore();
+      // Expect this path to be taken, error to be handled internally by debug log
+      expect(() => errorAdapter.processAction(action)).not.toThrow();
     });
 
     it('should catch and log errors from handlers', () => {
@@ -255,25 +257,134 @@ describe('Redux Adapter', () => {
         throw new Error('Test handler error');
       });
 
-      const adapterWithErrorHandler = createReduxAdapter(store, {
+      const errorStore = createMockStore();
+      errorStore.dispatch = vi.fn();
+
+      const adapter = createReduxAdapter(errorStore, {
         handlers: {
-          ERROR_ACTION: errorHandler,
+          ERROR_HANDLER_ACTION: errorHandler,
         },
       });
 
-      // Mock console.error
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const action: Action = { type: 'ERROR_ACTION', payload: 'error-data' };
-      adapterWithErrorHandler.processAction(action);
-
-      // Verify error was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error processing Redux action:', expect.any(Error));
+      const action: Action = { type: 'ERROR_HANDLER_ACTION', payload: 'error-data' };
+      // Expect this path to be taken, error to be handled internally by debug log
+      expect(() => adapter.processAction(action)).not.toThrow();
       expect(errorHandler).toHaveBeenCalled();
-      expect(store.dispatch).not.toHaveBeenCalled();
+      expect(errorStore.dispatch).not.toHaveBeenCalled();
+    });
 
-      // Restore console.error
-      consoleErrorSpy.mockRestore();
+    it('should handle async handlers that resolve successfully', async () => {
+      const asyncHandler = vi.fn().mockResolvedValue('async-result');
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          ASYNC_SUCCESS_ACTION: asyncHandler,
+        },
+      });
+
+      const action: Action = { type: 'ASYNC_SUCCESS_ACTION', payload: 'test-data' };
+      const result = adapter.processAction(action);
+
+      expect(asyncHandler).toHaveBeenCalledWith('test-data');
+      expect(result).toEqual({
+        isSync: false,
+        completion: expect.any(Promise),
+      });
+
+      // Wait for the async completion
+      await result.completion;
+      expect(asyncHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle async handler errors', async () => {
+      const asyncHandler = vi.fn().mockRejectedValue(new Error('Async handler failed'));
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          ASYNC_ERROR_ACTION: asyncHandler,
+        },
+      });
+
+      const action: Action = { type: 'ASYNC_ERROR_ACTION', payload: 'test-data' };
+      const result = adapter.processAction(action);
+
+      expect(asyncHandler).toHaveBeenCalledWith('test-data');
+      expect(result).toEqual({
+        isSync: false,
+        completion: expect.any(Promise),
+      });
+
+      // Wait for the async completion and check error handling
+      const completionResult = await result.completion;
+      expect(completionResult).toEqual({
+        error: expect.stringContaining('Async handler execution failed'),
+      });
+    });
+
+    it('should handle sync handlers that complete successfully', () => {
+      const syncHandler = vi.fn().mockReturnValue('sync-result');
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          SYNC_SUCCESS_ACTION: syncHandler,
+        },
+      });
+
+      const action: Action = { type: 'SYNC_SUCCESS_ACTION', payload: 'test-data' };
+      const result = adapter.processAction(action);
+
+      expect(syncHandler).toHaveBeenCalledWith('test-data');
+      expect(result).toEqual({ isSync: true });
+      expect(store.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('should handle middleware option', () => {
+      const mockMiddleware = vi.fn();
+
+      const adapter = createReduxAdapter(store, {
+        middleware: mockMiddleware,
+      });
+
+      // The middleware should be passed through but not directly tested here
+      // since it's more of an integration concern
+      expect(adapter).toBeDefined();
+    });
+
+    it('should handle actions with no custom handlers by dispatching to Redux', () => {
+      const action: Action = { type: 'NO_HANDLER_ACTION', payload: 'test-data' };
+
+      const adapter = createReduxAdapter(store, {
+        handlers: {
+          // No handlers defined
+        },
+      });
+
+      const result = adapter.processAction(action);
+
+      expect(store.dispatch).toHaveBeenCalledWith(action);
+      expect(result).toEqual({ isSync: true });
+    });
+
+    it('should handle undefined options gracefully', () => {
+      const action: Action = { type: 'UNDEFINED_OPTIONS_ACTION', payload: 'test-data' };
+
+      const adapter = createReduxAdapter(store, undefined);
+
+      const result = adapter.processAction(action);
+
+      expect(store.dispatch).toHaveBeenCalledWith(action);
+      expect(result).toEqual({ isSync: true });
+    });
+
+    it('should handle empty handlers object', () => {
+      const action: Action = { type: 'EMPTY_HANDLERS_ACTION', payload: 'test-data' };
+
+      const adapter = createReduxAdapter(store, { handlers: {} });
+
+      const result = adapter.processAction(action);
+
+      expect(store.dispatch).toHaveBeenCalledWith(action);
+      expect(result).toEqual({ isSync: true });
     });
   });
 });

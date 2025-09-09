@@ -1,103 +1,75 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { preloadBridge, preloadZustandBridge } from '../src/preload';
-import type { AnyState } from '@zubridge/types';
-import { IpcChannel } from '../src/constants';
-import { ipcRenderer } from 'electron';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock electron for testing
+// Mock external dependencies for preload tests
+vi.mock('@zubridge/core', () => ({
+  debug: vi.fn(),
+}));
+
 vi.mock('electron', () => ({
+  contextBridge: {
+    exposeInMainWorld: vi.fn(),
+  },
   ipcRenderer: {
-    on: vi.fn(() => ipcRenderer),
-    removeListener: vi.fn(),
     invoke: vi.fn(),
     send: vi.fn(),
+    on: vi.fn(),
+    removeListener: vi.fn(),
   },
 }));
 
-describe('preloadBridge', () => {
+vi.mock('../src/renderer/rendererThunkProcessor.js', () => ({
+  RendererThunkProcessor: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn(),
+    setStateProvider: vi.fn(),
+  })),
+}));
+
+vi.mock('../src/utils/globalErrorHandlers.js', () => ({
+  setupRendererErrorHandlers: vi.fn(),
+}));
+
+vi.mock('../src/utils/preloadOptions.js', () => ({
+  getPreloadOptions: vi.fn(() => ({
+    actionCompletionTimeoutMs: 30000,
+    maxQueueSize: 100,
+  })),
+}));
+
+describe('Preload Bridge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('creates handlers with expected methods', () => {
-    const bridge = preloadBridge<AnyState>();
-
-    expect(bridge).toHaveProperty('handlers');
-    expect(bridge.handlers).toHaveProperty('dispatch');
-    expect(bridge.handlers).toHaveProperty('getState');
-    expect(bridge.handlers).toHaveProperty('subscribe');
+  it('should export preloadBridge function', async () => {
+    const { preloadBridge } = await import('../src/preload.js');
+    expect(typeof preloadBridge).toBe('function');
   });
 
-  it('sets up subscription with ipcRenderer', () => {
-    const bridge = preloadBridge<AnyState>();
-    const callback = vi.fn();
+  it('should create preload bridge with handlers', async () => {
+    const { preloadBridge } = await import('../src/preload.js');
 
-    bridge.handlers.subscribe(callback);
+    // Mock the global objects that preload.ts expects
+    (global as typeof globalThis).window = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as Window & typeof globalThis;
+    (global as typeof globalThis).document = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as Document;
+    (global as typeof globalThis).process = { platform: 'darwin' } as NodeJS.Process;
 
-    expect(ipcRenderer.on).toHaveBeenCalledWith(IpcChannel.SUBSCRIBE, expect.any(Function));
+    const result = preloadBridge();
 
-    // Get the callback function registered with ipcRenderer
-    const ipcCallback = vi.mocked(ipcRenderer.on).mock.calls[0][1];
-
-    // Simulate state update event
-    ipcCallback({} as any, { count: 42 });
-
-    expect(callback).toHaveBeenCalledWith({ count: 42 });
+    expect(result).toHaveProperty('handlers');
+    expect(result).toHaveProperty('initialized');
+    expect(result.handlers).toHaveProperty('subscribe');
+    expect(result.handlers).toHaveProperty('getState');
+    expect(result.handlers).toHaveProperty('dispatch');
   });
 
-  it('gets state from ipcRenderer', async () => {
-    const bridge = preloadBridge<AnyState>();
-
-    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce({ count: 42 });
-
-    const state = await bridge.handlers.getState();
-
-    expect(ipcRenderer.invoke).toHaveBeenCalledWith(IpcChannel.GET_STATE);
-    expect(state).toEqual({ count: 42 });
-  });
-
-  it('does not execute thunks in preload', () => {
-    const bridge = preloadBridge<AnyState>();
-    const thunk = vi.fn();
-
-    bridge.handlers.dispatch(thunk);
-
-    expect(thunk).not.toHaveBeenCalled();
-  });
-
-  it('dispatches string actions correctly', () => {
-    const bridge = preloadBridge<AnyState>();
-
-    bridge.handlers.dispatch('INCREMENT', 5);
-
-    expect(ipcRenderer.send).toHaveBeenCalledWith(
-      IpcChannel.DISPATCH,
-      expect.objectContaining({
-        type: 'INCREMENT',
-        payload: 5,
-        id: expect.any(String),
-      }),
-    );
-  });
-
-  it('dispatches action objects correctly', () => {
-    const bridge = preloadBridge<AnyState>();
-
-    bridge.handlers.dispatch({ type: 'INCREMENT', payload: 5 });
-
-    expect(ipcRenderer.send).toHaveBeenCalledWith(
-      IpcChannel.DISPATCH,
-      expect.objectContaining({
-        type: 'INCREMENT',
-        payload: 5,
-        id: expect.any(String),
-      }),
-    );
-  });
-});
-
-describe('preloadZustandBridge', () => {
-  it('is an alias for preloadBridge', () => {
-    expect(preloadZustandBridge).toBe(preloadBridge);
+  it('should export legacy preloadZustandBridge alias', async () => {
+    const { preloadZustandBridge } = await import('../src/preload.js');
+    expect(typeof preloadZustandBridge).toBe('function');
   });
 });

@@ -1,5 +1,5 @@
-import React from 'react';
 import clsx from 'clsx';
+import type React from 'react';
 import { Button } from '../Button';
 
 interface WindowActionsProps {
@@ -41,7 +41,7 @@ export const WindowActions: React.FC<WindowActionsProps> = ({
   const showSideBySideButtons = showCreateWindow || showQuitApp || showClose;
 
   // Determine which button pairs with Create Window
-  const pairWithCreate = isMainWindow ? showQuitApp : showClose;
+  const _pairWithCreate = isMainWindow ? showQuitApp : showClose;
   // The second button is either Quit (main window) or Close (non-main)
   const secondButton = isMainWindow ? showQuitApp : showClose;
   const secondButtonAction = isMainWindow ? onQuitApp : handleClose;

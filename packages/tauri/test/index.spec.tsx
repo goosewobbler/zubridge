@@ -1,89 +1,93 @@
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React, { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, waitFor, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { renderHook } from '@testing-library/react';
-
+import type { Action, AnyState, DispatchFunc } from '@zubridge/types';
 import {
-  internalStore,
-  initializeBridge,
+  type BackendOptions,
   cleanupZubridge,
   getState,
+  initializeBridge,
+  internalStore,
   updateState,
   useZubridgeDispatch,
   useZubridgeStore,
-  type BackendOptions,
 } from '../src/index.js';
-import type { AnyState, Action, DispatchFunc } from '@zubridge/types';
 
 // --- Mocks Setup ---
 let mockBackendState: AnyState = { counter: 0, initial: true };
-let stateUpdateListener: ((event: { payload: any }) => void) | null = null;
-let unlistenMock = vi.fn();
+let stateUpdateListener: ((event: { payload: unknown }) => void) | null = null;
+const unlistenMock = vi.fn();
 
 // Create mock functions for invoke and listen that will be passed to initializeBridge
-const mockInvoke = vi.fn(async (cmd: string, args?: any): Promise<any> => {
+const mockInvoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promise<R> => {
   switch (cmd) {
     // Plugin format (Tauri v2)
     case 'plugin:zubridge|get_initial_state':
-      return Promise.resolve(mockBackendState);
+      return Promise.resolve(mockBackendState) as Promise<R>;
     case 'plugin:zubridge|dispatch_action':
-      return Promise.resolve();
+      return Promise.resolve() as Promise<R>;
     // Direct format (Tauri v1)
     case 'get_initial_state':
-      return Promise.resolve(mockBackendState);
+      return Promise.resolve(mockBackendState) as Promise<R>;
     case 'dispatch_action':
-      return Promise.resolve();
+      return Promise.resolve() as Promise<R>;
     // Legacy format - specific to tests
     case '__zubridge_get_initial_state':
-      return Promise.resolve(mockBackendState);
+      return Promise.resolve(mockBackendState) as Promise<R>;
     case '__zubridge_dispatch_action':
-      return Promise.resolve();
+      return Promise.resolve() as Promise<R>;
     // Custom command names
     case 'custom_get_state':
-      return Promise.resolve(mockBackendState);
+      return Promise.resolve(mockBackendState) as Promise<R>;
     case 'custom_dispatch':
-      return Promise.resolve();
+      return Promise.resolve() as Promise<R>;
     // Direct state access
     case 'get_state':
-      return Promise.resolve({ value: mockBackendState });
-    case 'update_state':
-      mockBackendState = args?.state?.value ?? mockBackendState;
-      return Promise.resolve();
+      return Promise.resolve({ value: mockBackendState }) as Promise<R>;
+    case 'update_state': {
+      const stateArgs = args as { state?: { value?: AnyState } } | undefined;
+      mockBackendState = stateArgs?.state?.value ?? mockBackendState;
+      return Promise.resolve() as Promise<R>;
+    }
     default:
       console.error(`[Mock Invoke] Unknown command: ${cmd}`);
-      return Promise.reject(new Error(`[Mock Invoke] Unknown command: ${cmd}`));
+      return Promise.reject(new Error(`[Mock Invoke] Unknown command: ${cmd}`)) as Promise<R>;
   }
 });
 
 // Raw mock implementation with payload structure
-const mockListenRaw = vi.fn(async (event: string, callback: (event: { payload: any }) => void): Promise<UnlistenFn> => {
-  if (event === '__zubridge_state_update' || event === 'zubridge://state-update' || event === 'custom-event') {
-    stateUpdateListener = callback;
-    return Promise.resolve(unlistenMock);
-  }
-  return Promise.resolve(vi.fn()); // Return a generic mock unlisten for other events
-});
+const mockListenRaw = vi.fn(
+  async (event: string, callback: (event: { payload: unknown }) => void): Promise<UnlistenFn> => {
+    if (
+      event === '__zubridge_state_update' ||
+      event === 'zubridge://state-update' ||
+      event === 'custom-event'
+    ) {
+      stateUpdateListener = callback;
+      return Promise.resolve(unlistenMock);
+    }
+    return Promise.resolve(vi.fn()); // Return a generic mock unlisten for other events
+  },
+);
 
 // Type-compatible wrapper for the BackendOptions interface
-const mockListen = async <E = unknown,>(event: string, handler: (event: E) => void): Promise<UnlistenFn> => {
+const mockListen = async <E = unknown>(
+  event: string,
+  handler: (event: E) => void,
+): Promise<UnlistenFn> => {
   // Adapt the handler to expect an event with payload
-  return mockListenRaw(event, (e: { payload: any }) => {
+  return mockListenRaw(event, (e: { payload: unknown }) => {
     // Call the original handler with the payload as the event
     handler(e as unknown as E);
   });
 };
 
-// Mock options object to pass to initializeBridge
-const mockTauriOptions: BackendOptions = {
-  invoke: mockInvoke,
-  listen: mockListen,
-};
-
 // Legacy commands for backward compatibility with tests
 const mockLegacyOptions: BackendOptions = {
-  invoke: mockInvoke,
+  invoke: mockInvoke as BackendOptions['invoke'],
   listen: mockListen,
   commands: {
     getInitialState: '__zubridge_get_initial_state',
@@ -94,7 +98,7 @@ const mockLegacyOptions: BackendOptions = {
 
 // Custom command configuration
 const mockCustomOptions: BackendOptions = {
-  invoke: mockInvoke,
+  invoke: mockInvoke as BackendOptions['invoke'],
   listen: mockListen,
   commands: {
     getInitialState: 'custom_get_state',
@@ -107,16 +111,11 @@ const mockCustomOptions: BackendOptions = {
 function simulateStateUpdate(newState: AnyState) {
   if (stateUpdateListener) {
     act(() => {
-      stateUpdateListener!({ payload: newState });
+      stateUpdateListener?.({ payload: newState });
     });
   } else {
     console.warn('[TEST Mock] simulateStateUpdate called but no listener is registered.');
   }
-}
-
-// Import fail function or create a helper
-function fail(message: string): never {
-  throw new Error(message);
 }
 
 // --- Test Suite ---
@@ -199,15 +198,18 @@ describe('@zubridge/tauri', () => {
       expect(internalStore.getState().__bridge_status).toBe('uninitialized');
 
       // Create new mock functions
-      const newMockInvoke = vi.fn(async (cmd: string, args?: any): Promise<any> => {
+      const newMockInvoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promise<R> => {
         if (cmd === '__zubridge_get_initial_state') {
-          return Promise.resolve({ counter: 100, initial: false, source: 'new' });
+          return Promise.resolve({ counter: 100, initial: false, source: 'new' }) as Promise<R>;
         }
-        return mockInvoke(cmd, args);
+        return mockInvoke(cmd, args) as Promise<R>;
       });
 
-      const newMockListen = async <E = unknown,>(event: string, handler: (event: E) => void): Promise<UnlistenFn> => {
-        return mockListenRaw(event, (e: { payload: any }) => {
+      const newMockListen = async <E = unknown>(
+        event: string,
+        handler: (event: E) => void,
+      ): Promise<UnlistenFn> => {
+        return mockListenRaw(event, (e: { payload: unknown }) => {
           handler(e as unknown as E);
         });
       };
@@ -215,7 +217,7 @@ describe('@zubridge/tauri', () => {
       // Re-initialize with new functions
       await act(async () => {
         await initializeBridge({
-          invoke: newMockInvoke,
+          invoke: newMockInvoke as BackendOptions['invoke'],
           listen: newMockListen,
           commands: {
             getInitialState: '__zubridge_get_initial_state',
@@ -245,7 +247,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_ACTION' });
+        await dispatchFn?.({ type: 'TEST_ACTION' });
       });
 
       // Should use new function for dispatch
@@ -255,42 +257,50 @@ describe('@zubridge/tauri', () => {
     it('should throw error when options are missing', async () => {
       await expect(
         act(async () => {
-          // @ts-ignore - Testing invalid parameters
-          await initializeBridge();
+          // @ts-expect-error - Testing invalid parameters
+          await initializeBridge({});
         }),
-      ).rejects.toThrow("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+      ).rejects.toThrow(
+        "Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.",
+      );
     });
 
     it('should throw error when invoke function is missing', async () => {
       await expect(
         act(async () => {
-          // @ts-ignore - Testing invalid parameters
+          // @ts-expect-error - Testing invalid parameters
           await initializeBridge({ listen: mockListen });
         }),
-      ).rejects.toThrow("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+      ).rejects.toThrow(
+        "Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.",
+      );
     });
 
     it('should throw error when listen function is missing', async () => {
       await expect(
         act(async () => {
-          // @ts-ignore - Testing invalid parameters
+          // @ts-expect-error - Testing invalid parameters
           await initializeBridge({ invoke: mockInvoke });
         }),
-      ).rejects.toThrow("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+      ).rejects.toThrow(
+        "Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.",
+      );
     });
 
     it('should handle initialization with v1 Tauri APIs', async () => {
-      const v1Invoke = vi.fn(async (cmd: string, args?: any) => {
-        return mockInvoke(cmd, args);
+      const v1Invoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promise<R> => {
+        return mockInvoke(cmd, args) as Promise<R>;
       });
-      const v1Listen = vi.fn(async (event: string, callback: any) => {
-        return mockListenRaw(event, callback);
-      });
+      const v1Listen = vi.fn(
+        async (event: string, callback: (event: { payload: unknown }) => void) => {
+          return mockListenRaw(event, callback);
+        },
+      );
 
       await act(async () => {
         await initializeBridge({
-          invoke: v1Invoke,
-          listen: v1Listen,
+          invoke: v1Invoke as BackendOptions['invoke'],
+          listen: v1Listen as BackendOptions['listen'],
         });
       });
 
@@ -301,17 +311,19 @@ describe('@zubridge/tauri', () => {
     });
 
     it('should handle initialization with v2 Tauri APIs', async () => {
-      const v2Invoke = vi.fn(async (cmd: string, args?: any) => {
-        return mockInvoke(cmd, args);
+      const v2Invoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promise<R> => {
+        return mockInvoke(cmd, args) as Promise<R>;
       });
-      const v2Listen = vi.fn(async (event: string, callback: any) => {
-        return mockListenRaw(event, callback);
-      });
+      const v2Listen = vi.fn(
+        async (event: string, callback: (event: { payload: unknown }) => void) => {
+          return mockListenRaw(event, callback);
+        },
+      );
 
       await act(async () => {
         await initializeBridge({
-          invoke: v2Invoke,
-          listen: v2Listen,
+          invoke: v2Invoke as BackendOptions['invoke'],
+          listen: v2Listen as BackendOptions['listen'],
         });
       });
 
@@ -326,10 +338,10 @@ describe('@zubridge/tauri', () => {
 
       try {
         await initializeBridge({
-          invoke: mockInvokeError as unknown as <R = unknown>(cmd: string, args?: any, options?: any) => Promise<R>,
-          listen: mockListenRaw,
+          invoke: mockInvokeError as BackendOptions['invoke'],
+          listen: mockListen,
         });
-      } catch (e) {
+      } catch (_e) {
         // Expected to throw
       }
 
@@ -346,8 +358,8 @@ describe('@zubridge/tauri', () => {
       await expect(
         act(async () => {
           await initializeBridge({
-            invoke: mockInvoke,
-            listen: failingMockListen as any,
+            invoke: mockInvoke as BackendOptions['invoke'],
+            listen: failingMockListen as BackendOptions['listen'],
           });
         }),
       ).rejects.toThrow();
@@ -366,14 +378,14 @@ describe('@zubridge/tauri', () => {
 
     it('should initialize with plugin format commands', async () => {
       // Mock to simulate plugin format supported by backend
-      const pluginInvoke = vi.fn(async (cmd: string, args?: any) => {
+      const pluginInvoke = vi.fn(async <R = unknown>(cmd: string, _args?: unknown): Promise<R> => {
         if (cmd === 'plugin:zubridge|get_initial_state') {
-          return Promise.resolve({ counter: 42, source: 'plugin' });
-        } else if (cmd === 'plugin:zubridge|dispatch_action') {
-          return Promise.resolve();
-        } else {
-          return Promise.reject(new Error(`Unknown command: ${cmd}`));
+          return Promise.resolve({ counter: 42, source: 'plugin' }) as Promise<R>;
         }
+        if (cmd === 'plugin:zubridge|dispatch_action') {
+          return Promise.resolve() as Promise<R>;
+        }
+        return Promise.reject(new Error(`Unknown command: ${cmd}`)) as Promise<R>;
       });
 
       // Reset the spy before passing it to ensure call count is 0
@@ -381,7 +393,7 @@ describe('@zubridge/tauri', () => {
 
       await act(async () => {
         await initializeBridge({
-          invoke: pluginInvoke as unknown as <R = unknown>(cmd: string, args?: any, options?: any) => Promise<R>,
+          invoke: pluginInvoke as BackendOptions['invoke'],
           listen: mockListen,
           commands: {
             getInitialState: 'plugin:zubridge|get_initial_state',
@@ -405,34 +417,39 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_PLUGIN' });
+        await dispatchFn?.({ type: 'TEST_PLUGIN' });
       });
 
-      expect(pluginInvoke).toHaveBeenCalledWith('plugin:zubridge|dispatch_action', expect.anything());
+      expect(pluginInvoke).toHaveBeenCalledWith(
+        'plugin:zubridge|dispatch_action',
+        expect.anything(),
+      );
     });
 
     it('should fall back to direct format commands when plugin format fails', async () => {
       cleanupZubridge();
 
       // Create a mock function that fails for plugin format but succeeds for direct format
-      const mockPluginFailInvoke = vi.fn().mockImplementation((command, args) => {
+      const mockPluginFailInvoke = vi.fn().mockImplementation((command, _args) => {
         if (command.startsWith('plugin:')) {
           return Promise.reject(new Error('Plugin format not supported'));
-        } else {
-          return Promise.resolve({ counter: 100 });
         }
+        return Promise.resolve({ counter: 100 });
       });
 
       // Initialize with our custom invoke function
       await act(async () => {
         await initializeBridge({
-          invoke: mockPluginFailInvoke,
+          invoke: mockPluginFailInvoke as BackendOptions['invoke'],
           listen: mockListen,
         });
       });
 
       // Verify that the plugin format was tried first and then the direct format
-      expect(mockPluginFailInvoke).toHaveBeenCalledWith('plugin:zubridge|get_initial_state', undefined);
+      expect(mockPluginFailInvoke).toHaveBeenCalledWith(
+        'plugin:zubridge|get_initial_state',
+        undefined,
+      );
       expect(mockPluginFailInvoke).toHaveBeenCalledWith('get_initial_state', undefined);
 
       // Wait for the state to be updated after the async operations complete
@@ -456,7 +473,7 @@ describe('@zubridge/tauri', () => {
 
       // Test that dispatch uses the direct format
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_DIRECT' });
+        await dispatchFn?.({ type: 'TEST_DIRECT' });
       });
 
       // Verify dispatch called the direct command format
@@ -481,7 +498,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({ type: 'TEST_CUSTOM' });
+        await dispatchFn?.({ type: 'TEST_CUSTOM' });
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('custom_dispatch', expect.anything());
@@ -498,7 +515,7 @@ describe('@zubridge/tauri', () => {
       // Attempt to initialize with failing invoke
       await expect(
         initializeBridge({
-          invoke: failingInvoke,
+          invoke: failingInvoke as BackendOptions['invoke'],
           listen: mockListen,
         }),
       ).rejects.toThrow('Failed to connect to backend');
@@ -515,7 +532,7 @@ describe('@zubridge/tauri', () => {
 
     it('should dispatch an action', async () => {
       await initializeBridge({
-        invoke: mockInvoke as unknown as <R = unknown>(cmd: string, args?: any, options?: any) => Promise<R>,
+        invoke: mockInvoke as BackendOptions['invoke'],
         listen: mockListen,
       });
 
@@ -527,7 +544,7 @@ describe('@zubridge/tauri', () => {
       render(<TestComponent />);
 
       await act(async () => {
-        await dispatchFn!({
+        await dispatchFn?.({
           type: 'INCREMENT',
           payload: 1,
         });
@@ -572,8 +589,8 @@ describe('@zubridge/tauri', () => {
       const counterValues: number[] = [];
 
       function CounterTrackingComponent() {
-        const state = useZubridgeStore<any>((state) => state);
-        const counter = state?.counter || 0;
+        const state = useZubridgeStore<AnyState>((state) => state);
+        const counter = (state?.counter as number) || 0;
 
         // Track render count and values
         useEffect(() => {
@@ -581,12 +598,12 @@ describe('@zubridge/tauri', () => {
           counterValues.push(counter);
         }, [counter]);
 
-        return <div>{counter}</div>;
+        return <div data-testid="counter">{counter}</div>;
       }
 
       // Initialize bridge
       await initializeBridge({
-        invoke: mockInvoke,
+        invoke: mockInvoke as BackendOptions['invoke'],
         listen: mockListen,
       });
 
@@ -646,7 +663,7 @@ describe('@zubridge/tauri', () => {
 
       const testAction: Action = { type: 'TEST_ACTION', payload: { value: 1 } };
       await act(async () => {
-        await dispatchFn!(testAction);
+        await dispatchFn?.(testAction);
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('__zubridge_dispatch_action', expect.anything());
@@ -659,7 +676,7 @@ describe('@zubridge/tauri', () => {
 
       // Override mockInvoke for specific command
       const dispatchError = new Error('Dispatch failed');
-      mockInvoke.mockImplementation(async (cmd: string, args?: any) => {
+      mockInvoke.mockImplementation(async (cmd: string, _args?: unknown) => {
         if (cmd === '__zubridge_dispatch_action') {
           throw dispatchError;
         }
@@ -678,7 +695,7 @@ describe('@zubridge/tauri', () => {
       const testAction: Action = { type: 'FAILING_ACTION' };
       await expect(
         act(async () => {
-          await dispatchFn!(testAction);
+          await dispatchFn?.(testAction);
         }),
       ).rejects.toThrow(dispatchError);
     });
@@ -706,7 +723,7 @@ describe('@zubridge/tauri', () => {
 
       // Reset the mockInvoke implementation to ensure it doesn't throw errors
       // This prevents unhandled rejections in this test
-      mockInvoke.mockImplementation(async (cmd: string, args?: any): Promise<any> => {
+      mockInvoke.mockImplementation(async (cmd: string, _args?: unknown): Promise<unknown> => {
         if (cmd === '__zubridge_dispatch_action') {
           return Promise.resolve();
         }
@@ -715,8 +732,8 @@ describe('@zubridge/tauri', () => {
       });
 
       // Create a thunk that accesses state and calls dispatch
-      const thunkMock = vi.fn((getState, dispatch) => {
-        const state = getState();
+      const thunkMock = vi.fn(async (getState, dispatch) => {
+        const state = await getState();
         expect(state.counter).toBe(42);
 
         // Dispatch an action from within the thunk
@@ -725,9 +742,9 @@ describe('@zubridge/tauri', () => {
       });
 
       // Execute the thunk
-      let result;
+      let result: unknown;
       await act(async () => {
-        result = await dispatchFn!(thunkMock);
+        result = await dispatchFn?.(thunkMock);
       });
 
       // Verify thunk was executed and dispatch was called
@@ -761,7 +778,7 @@ describe('@zubridge/tauri', () => {
       // Execute the thunk and expect it to throw
       await expect(
         act(async () => {
-          await dispatchFn!(errorThunk);
+          await dispatchFn?.(errorThunk);
         }),
       ).rejects.toThrow('Thunk execution failed');
     });
@@ -836,8 +853,8 @@ describe('@zubridge/tauri', () => {
       });
       await waitFor(() => expect(internalStore.getState().__bridge_status).toBe('ready'));
 
-      let messageFromHook: string | undefined = undefined;
-      let statusFromHook: string | undefined = undefined;
+      let messageFromHook: string | undefined;
+      let statusFromHook: string | undefined;
       const TestComponent = () => {
         messageFromHook = useZubridgeStore((s) => s.message as string | undefined);
         statusFromHook = useZubridgeStore((s) => s.__bridge_status as string | undefined);
@@ -888,7 +905,7 @@ describe('@zubridge/tauri', () => {
       expect(dispatchFn).toBeInstanceOf(Function);
 
       // Mock a successful response for the dispatch
-      mockInvoke.mockImplementation(async (cmd: string, args?: any) => {
+      mockInvoke.mockImplementation(async (cmd: string, _args?: unknown) => {
         if (cmd === '__zubridge_dispatch_action') {
           return Promise.resolve();
         }
@@ -896,7 +913,9 @@ describe('@zubridge/tauri', () => {
       });
 
       // Dispatch while bridge is initializing (should wait for initialization)
-      const actionPromise = dispatchFn!({ type: 'TEST_WAIT' });
+      const actionPromise = (dispatchFn as unknown as DispatchFunc<AnyState>)?.({
+        type: 'TEST_WAIT',
+      });
 
       // Complete initialization
       await act(async () => {
@@ -946,7 +965,9 @@ describe('@zubridge/tauri', () => {
       const { result } = renderHook(() => useZubridgeDispatch());
 
       // Test that it throws the expected error about missing dispatch command
-      await expect(result.current({ type: 'TEST' })).rejects.toThrow('Zubridge dispatch command not determined');
+      await expect(result.current?.({ type: 'TEST' })).rejects.toThrow(
+        'Zubridge dispatch command not determined',
+      );
 
       cleanupZubridge();
     });
@@ -973,9 +994,9 @@ describe('@zubridge/tauri', () => {
       });
 
       // This should fail specifically with the updated error message that matches the implementation
-      await expect(dispatchFn!({ type: 'NO_INIT_PROMISE' })).rejects.toThrow(
-        'Zubridge is not initialized (missing invoke function)',
-      );
+      await expect(
+        (dispatchFn as unknown as DispatchFunc<AnyState>)?.({ type: 'NO_INIT_PROMISE' }),
+      ).rejects.toThrow('Zubridge is not initialized (missing invoke function)');
     });
 
     it('should handle initialization errors when trying to dispatch', async () => {
@@ -987,14 +1008,14 @@ describe('@zubridge/tauri', () => {
       const failingInit = vi.fn().mockRejectedValue(initError);
 
       // Start initialization but expect it to fail
-      let initPromise;
+      let initPromise: Promise<void>;
       try {
         initPromise = initializeBridge({
           invoke: failingInit,
           listen: mockListen,
         });
         await initPromise;
-      } catch (e) {
+      } catch (_e) {
         // Expected error
       }
 
@@ -1022,7 +1043,7 @@ describe('@zubridge/tauri', () => {
       await expect(
         act(async () => {
           // We expect this to fail because the bridge is in error state
-          await dispatchFn!({ type: 'INIT_ERROR' });
+          await dispatchFn?.({ type: 'INIT_ERROR' });
         }),
       ).rejects.toThrow();
 

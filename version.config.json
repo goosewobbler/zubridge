@@ -2,8 +2,9 @@
   "versionPrefix": "v",
   "preset": "angular",
   "baseBranch": "main",
-  "synced": false,
-  "commitMessage": "chore: release ${name}@${version} [skip-ci]",
-  "skip": ["zubridge-electron-example", "zubridge-tauri-example", "zubridge-tauri-v1-example", "zubridge-e2e"],
+  "sync": false,
+  "commitMessage": "chore: release ${packageName}@${version} [skip-ci]",
+  "tagTemplate": "${packageName}@${prefix}${version}",
+  "skip": ["@zubridge/apps-shared", "e2e-*", "minimal-*", "zubridge-e2e"],
   "prereleaseIdentifier": "next"
 }

@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/*
+ * Most styles are now provided by @zubridge/ui
+ * Only app-specific overrides are kept here
+ */
+
+/* App container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Content area */
+.content {
+  padding: 20px;
+  margin-top: 20px;
+}
+
+/* Ensure proper spacing between component sections */
+.window-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 0;
+}

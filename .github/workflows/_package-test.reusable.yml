@@ -1,0 +1,131 @@
+name: Package Test
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "Operating system to run on"
+        required: true
+        type: string
+      mode:
+        description: "Test mode to run"
+        required: true
+        type: string
+    secrets:
+      TURBO_TOKEN:
+        required: false
+      TURBO_TEAM:
+        required: false
+      TURBO_API:
+        required: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
+
+jobs:
+  package-test:
+    name: ${{ inputs.os == 'linux' && 'Linux' || inputs.os == 'macos' && 'macOS' || 'Windows' }} Package Test
+    if: contains(fromJSON('["zustand-basic", "custom", "redux", "zustand-handlers", "zustand-reducers"]'), inputs.mode)
+    runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup workspace
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20.x"
+
+      - name: 📦 Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+
+      # Linux-specific kernel workaround for electron testing
+      - name: 🔧 Apply Linux Kernel Workaround
+        if: inputs.os == 'linux'
+        run: |
+          sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
+
+          # Install XVFB and X11 utilities for display testing
+          echo "Installing XVFB and X11 utilities..."
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb x11-utils
+
+          # Set DISPLAY for XVFB
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+          export DISPLAY=:99
+
+          # Set basic desktop environment variables that GLib expects
+          echo "Setting basic desktop environment variables..."
+          echo "XDG_SESSION_TYPE=x11" >> $GITHUB_ENV
+          echo "XDG_CURRENT_DESKTOP=ubuntu:GNOME" >> $GITHUB_ENV
+          export XDG_SESSION_TYPE=x11
+          export XDG_CURRENT_DESKTOP=ubuntu:GNOME
+          echo "XDG_SESSION_TYPE set to: $XDG_SESSION_TYPE"
+          echo "XDG_CURRENT_DESKTOP set to: $XDG_CURRENT_DESKTOP"
+
+          # Start XVFB server to provide actual display backend for electron
+          echo "Starting XVFB server on display :99..."
+          Xvfb :99 -screen 0 1024x768x24 -ac -nolisten tcp -dpi 96 &
+          XVFB_PID=$!
+          echo "XVFB_PID=$XVFB_PID" >> $GITHUB_ENV
+          echo "XVFB started with PID: $XVFB_PID"
+
+          # Wait for XVFB to be ready
+          sleep 2
+          echo "XVFB status check:"
+          ps aux | grep Xvfb | grep -v grep || echo "XVFB not found in process list"
+
+          # Verify display is accessible
+          echo "Testing display accessibility:"
+          DISPLAY=:99 xdpyinfo || echo "Display :99 not accessible"
+
+      - name: 🧪 Run package tests for ${{ inputs.mode }}
+        env:
+          DEBUG: "zubridge:*,wdio-electron-service*,webdriverio*"
+        shell: bash
+        run: |
+          echo "=== Running package tests ==="
+          set +e  # Don't exit on error
+
+          # Run package tests (keeping xvfb-maybe at the correct level - in package.json)
+          pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
+          exit_code=$?
+
+          exit $exit_code
+
+      - name: Handle Package Test Logs
+        if: always()
+        uses: ./.github/workflows/actions/handle-logs
+        with:
+          os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
+          app: package-test
+          mode: ${{ inputs.mode }}
+
+
+      # Cleanup XVFB process
+      - name: 🧹 Cleanup XVFB
+        if: always() && inputs.os == 'linux'
+        shell: bash
+        run: |
+          if [ ! -z "${XVFB_PID}" ]; then
+            echo "Cleaning up XVFB process (PID: $XVFB_PID)..."
+            kill $XVFB_PID 2>/dev/null || echo "XVFB process already terminated"
+          else
+            echo "No XVFB PID found, checking for any running Xvfb processes..."
+            pkill -f "Xvfb :99" || echo "No Xvfb processes found"
+          fi
+
+      # Provide an interactive debugging session on failure
+      # This allows manual investigation of the environment
+      - name: 🐛 Debug Build on Failure
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          timeout: '180000'

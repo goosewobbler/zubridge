@@ -5,19 +5,19 @@
  * This handles finding the correct binary path for the built app in the dist directory.
  *
  * Usage: tsx scripts/start-example-app.ts [app-name]
- * Example: tsx scripts/start-example-app.ts zubridge-electron-example
- *          tsx scripts/start-example-app.ts zubridge-tauri-example
+ * Example: tsx scripts/start-example-app.ts e2e-electron
+ *          tsx scripts/start-example-app.ts e2e-tauri
  *
  * For Electron apps, you can specify a mode:
- * Example: tsx scripts/start-example-app.ts zubridge-electron-example basic
- *          tsx scripts/start-example-app.ts zubridge-electron-example handlers
- *          tsx scripts/start-example-app.ts zubridge-electron-example reducers
+ * Example: tsx scripts/start-example-app.ts e2e-electron basic
+ *          tsx scripts/start-example-app.ts e2e-electron handlers
+ *          tsx scripts/start-example-app.ts e2e-electron reducers
  */
 
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
+import path from 'node:path';
 
 // Get app name and mode from command line arguments
 const appName = process.argv[2];
@@ -27,9 +27,9 @@ const mode = process.argv[3] || 'basic'; // Default to basic if not specified
 if (!appName) {
   console.error('Error: App name is required.');
   console.error('Usage: tsx scripts/start-example-app.ts [app-name] [mode]');
-  console.error('Example: tsx scripts/start-example-app.ts zubridge-electron-example');
-  console.error('         tsx scripts/start-example-app.ts zubridge-electron-example basic');
-  console.error('         tsx scripts/start-example-app.ts zubridge-tauri-example');
+  console.error('Example: tsx scripts/start-example-app.ts electron-e2e');
+  console.error('         tsx scripts/start-example-app.ts electron-e2e basic');
+  console.error('         tsx scripts/start-example-app.ts tauri-e2e');
   process.exit(1);
 }
 
@@ -138,21 +138,12 @@ function startElectronApp(appName: string, platform: string, arch: string, distD
 function startTauriApp(appName: string, platform: string, arch: string, distDir: string): void {
   let appPath: string;
 
-  // Convert from zubridge-tauri-example to tauri-example (strip zubridge- prefix if it exists)
-  const normalizedAppName = appName.replace(/^zubridge-/, '');
-  // Further normalize by removing any version suffix (e.g., tauri-v1 -> tauri)
-  const simplifiedAppName = normalizedAppName.replace(/-v\d+$/, '');
-
   if (platform === 'darwin') {
     // macOS: .app package inside macos directory
     const appDir = path.join(distDir, 'macos');
 
-    // Try with different naming patterns
-    const possiblePaths = [
-      path.join(appDir, `${appName}.app`),
-      path.join(appDir, `${simplifiedAppName}.app`),
-      path.join(appDir, `${normalizedAppName}.app`),
-    ];
+    // Try with the actual app name
+    const possiblePaths = [path.join(appDir, `${appName}.app`)];
 
     appPath = possiblePaths.find((p) => fs.existsSync(p)) || '';
 

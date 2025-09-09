@@ -1,6 +1,6 @@
 {
   "name": "@zubridge/ui",
-  "version": "0.1.0",
+  "version": "0.1.1-next.1",
   "description": "UI components for zubridge applications",
   "type": "module",
   "main": "dist/index.js",
@@ -13,7 +13,17 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./dist/styles.css": "./dist/styles.css",
+    "./electron": {
+      "types": "./dist/electron.d.ts",
+      "import": "./dist/electron.js",
+      "require": "./dist/electron.cjs"
+    },
+    "./tauri": {
+      "types": "./dist/tauri.d.ts",
+      "import": "./dist/tauri.js",
+      "require": "./dist/tauri.cjs"
+    },
+    "./styles.css": "./dist/styles.css",
     "./vite-plugin": {
       "types": "./scripts/vite-ui-watcher-plugin.ts",
       "import": "./dist/scripts/vite-ui-watcher-plugin.js"
@@ -29,28 +39,38 @@
   "scripts": {
     "build:plugin": "tsc scripts/vite-ui-watcher-plugin.ts --outDir dist/scripts --module ESNext --moduleResolution bundler --target ESNext --esModuleInterop",
     "build:css": "pnpx @tailwindcss/cli -i ./src/styles/tailwind.css -o ./dist/styles.css --postcss",
-    "build:lib": "tsup src/index.ts --format esm,cjs --dts --external react",
-    "build": "mkdir -p dist && pnpm run build:plugin && pnpm run build:css && pnpm run build:lib",
-    "dev": "mkdir -p dist && concurrently \"pnpm run build:css -- --watch\" \"tsup src/index.ts --format esm,cjs --watch --dts --external react\"",
-    "clean": "shx rm -rf .turbo node_modules dist"
+    "build:lib": "tsup",
+    "build": "pnpm run build:lib && pnpm run build:plugin && pnpm run build:css",
+    "clean": "shx rm -rf .turbo node_modules dist",
+    "dev:css": "pnpm run build:css -- --watch",
+    "dev:lib": "tsup --watch",
+    "dev": "mkdir -p dist && pnpm run dev:lib && pnpm run dev:css",
+    "package": "pnpm pack"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.1.4",
-    "@tailwindcss/postcss": "^4.1.4",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
-    "concurrently": "^8.2.2",
-    "postcss": "^8.5.3",
+    "@tailwindcss/cli": "^4.1.13",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@tauri-apps/api": "^2.8.0",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.8",
+    "@zubridge/electron": "workspace:*",
+    "@zubridge/types": "workspace:*",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.5.5",
     "react": "^19.1.0",
-    "tailwindcss": "^4.1.4",
+    "tailwindcss": "^4.1.13",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.3"
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
   },
   "dependencies": {
+    "@zubridge/core": "workspace:*",
     "clsx": "^2.1.1"
   },
   "peerDependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@zubridge/electron": "workspace:*",
+    "@zubridge/tauri": "workspace:*",
     "react": "^19.1.0"
   },
   "publishConfig": {

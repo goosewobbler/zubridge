@@ -1,6 +1,6 @@
+import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import type { Plugin, ViteDevServer } from 'vite';
 
 // For resolving the UI package path correctly
@@ -42,7 +42,9 @@ export function watchUIPackage(): Plugin {
         // Skip if already building
         if (isBuildingUI) return;
 
-        console.log(`[watch-ui-package] UI package file changed: ${path.relative(uiSourcePath, filePath)}`);
+        console.log(
+          `[watch-ui-package] UI package file changed: ${path.relative(uiSourcePath, filePath)}`,
+        );
         console.log('[watch-ui-package] Rebuilding UI package...');
 
         try {

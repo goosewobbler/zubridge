@@ -1,118 +1,110 @@
-import { useMemo } from 'react';
-import type { WindowType } from '../WindowInfo';
+import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri';
+import type { PropsWithChildren } from 'react';
+import { type BridgeStateStore, useBridgeStatus } from '../hooks/useBridgeStatus';
+import type { ActionHandlers, WindowInfo } from '../WindowInfo';
 import { ZubridgeApp } from '../ZubridgeApp';
-import { createTauriAdapter } from '../adapters/tauri';
-
-// Note: These imports will be available in the consuming app
-// We're just using type information here
-type DispatchFunction = any;
-type StoreType = any;
 
 /**
  * Props for the TauriApp component
  */
-export interface TauriAppProps {
+export interface TauriAppProps extends PropsWithChildren {
   /**
-   * The window label
+   * Window information
    */
-  windowLabel: string;
+  windowInfo?: WindowInfo;
 
   /**
-   * The type of window (defaults to 'main' unless it starts with 'runtime_')
+   * Title for the application window
+   * @default 'Tauri App'
    */
-  windowType?: WindowType;
+  windowTitle?: string;
 
   /**
-   * Whether to show the logger component
-   * @default true for main windows, false for others
+   * Application name shown in the header
+   * @default 'Tauri App'
    */
-  showLogger?: boolean;
+  appName?: string;
 
   /**
-   * Whether to show action payloads in the logger
-   * @default false
+   * Additional CSS classes to apply to the component
    */
-  showLoggerPayloads?: boolean;
-
-  /**
-   * The Zubridge dispatch function
-   * This should be provided by the consuming app
-   */
-  dispatch?: DispatchFunction;
-
-  /**
-   * The Zubridge store
-   * This should be provided by the consuming app
-   */
-  store?: StoreType;
-
-  /**
-   * The WebviewWindow constructor from Tauri
-   */
-  WebviewWindow?: any;
-
-  /**
-   * The invoke function from Tauri
-   */
-  invoke?: any;
-
-  /**
-   * Whether this is Tauri v1
-   */
-  isV1?: boolean;
+  className?: string;
 }
 
 /**
  * Higher-order component that wraps ZubridgeApp with Tauri-specific functionality
  */
-export function TauriApp({
-  windowLabel,
-  windowType: propWindowType,
-  showLogger,
-  showLoggerPayloads,
-  dispatch,
-  store,
-  WebviewWindow,
-  invoke,
-  isV1 = false,
-}: TauriAppProps) {
-  // Determine window type based on label if not provided
-  const windowType = useMemo(() => {
-    if (propWindowType) return propWindowType;
-    if (windowLabel.startsWith('runtime_')) return 'runtime';
-    return 'main';
-  }, [propWindowType, windowLabel]);
+export function withTauri() {
+  return function TauriApp({
+    children,
+    windowInfo = { id: 'main', type: 'main', platform: 'tauri' },
+    windowTitle = 'Tauri App',
+    appName = 'Tauri App',
+    className = '',
+  }: TauriAppProps) {
+    // Get store and dispatch from Tauri hooks
+    // Need to provide a selector function, even if it's identity
+    const store = useZubridgeStore((state) => state);
+    const dispatch = useZubridgeDispatch();
+    // Cast store to any to avoid type error in useBridgeStatus
+    const bridgeStatus = useBridgeStatus(store as BridgeStateStore);
 
-  // Verify we have the required props
-  if (!dispatch || !store || !WebviewWindow) {
-    console.error('TauriApp requires dispatch, store, and WebviewWindow props');
-    return <div>Error: Missing required props</div>;
-  }
+    // Platform handlers for Tauri
+    const actionHandlers: ActionHandlers = {
+      createWindow: async () => {
+        try {
+          // Import dynamically to avoid issues with SSR
+          const module = await import('@tauri-apps/api/webviewWindow');
+          const WebviewWindow = module.WebviewWindow;
+          const uniqueLabel = `window-${Date.now()}`;
 
-  // Create platform handlers
-  const platformHandlers = useMemo(
-    () =>
-      createTauriAdapter({
-        WebviewWindow,
-        invoke,
-        windowLabel,
-        isV1,
-      }),
-    [WebviewWindow, invoke, windowLabel, isV1],
-  );
+          // Create a new window with the proper options
+          await new WebviewWindow(uniqueLabel, {
+            url: window.location.pathname,
+            title: `Window (${uniqueLabel})`,
+            width: 800,
+            height: 600,
+          });
 
-  return (
-    <ZubridgeApp
-      windowInfo={{
-        id: windowLabel,
-        type: windowType,
-        platform: isV1 ? 'tauri-v1' : 'tauri',
-      }}
-      store={store}
-      dispatch={dispatch}
-      platformHandlers={platformHandlers}
-      showLogger={showLogger}
-      showLoggerPayloads={showLoggerPayloads}
-    />
-  );
+          return { success: true, id: uniqueLabel };
+        } catch (error) {
+          console.error('Failed to create window:', error);
+          return { success: false, error: String(error) };
+        }
+      },
+
+      closeWindow: async () => {
+        try {
+          // Import dynamically to avoid issues with SSR
+          const module = await import('@tauri-apps/api/webviewWindow');
+          const WebviewWindow = module.WebviewWindow;
+          const currentWindow = await WebviewWindow.getByLabel(windowInfo.id.toString());
+
+          if (currentWindow) {
+            await currentWindow.close();
+            return { success: true };
+          }
+          throw new Error('Window not found');
+        } catch (error) {
+          console.error('Failed to close window:', error);
+          return { success: false, error: String(error) };
+        }
+      },
+    };
+
+    return (
+      <ZubridgeApp
+        store={store}
+        dispatch={dispatch}
+        bridgeStatus={bridgeStatus}
+        windowInfo={windowInfo}
+        actionHandlers={actionHandlers as ActionHandlers}
+        windowTitle={windowTitle}
+        appName={appName}
+        className={className}
+      >
+        {children}
+      </ZubridgeApp>
+    );
+  };
 }

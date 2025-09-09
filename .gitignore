@@ -31,3 +31,20 @@ out-*
 # Ignore Tauri files
 .tauri/
 target
+*.node
+
+# Rust / Cargo specific for libraries
+# Note: Cargo.lock is committed for middleware package to ensure deterministic NAPI-RS builds
+/packages/middleware/Cargo.lock
+!/packages/middleware/node/Cargo.lock
+
+# Ignore package tarballs
+*.tgz
+
+# Ignore Electron user data
+.electron-user-data*
+
+# Ignore napi-rs build artifacts
+**/node/index.js
+**/node/index.d.ts
+**/node/*.node

@@ -1,21 +1,22 @@
-import type { AnyState, Handlers } from '@zubridge/types';
-import { useStore, type StoreApi } from 'zustand';
+import type {
+  Action,
+  AnyState,
+  DispatchFunc,
+  DispatchOptions,
+  ExtractState,
+  Handlers,
+  ReadonlyStoreApi,
+  Thunk,
+} from '@zubridge/types';
+import { type StoreApi, useStore } from 'zustand';
 import { createStore as createZustandStore } from 'zustand/vanilla';
-import type { Action, Thunk, ExtractState, ReadonlyStoreApi, DispatchFunc } from '@zubridge/types';
 
 // Export types
 export type * from '@zubridge/types';
 
-// Add type declaration for window.zubridge
-declare global {
-  interface Window {
-    zubridge: Handlers<AnyState>;
-  }
-}
-
 // Store registry to implement singleton pattern
 // Maps handler objects to their corresponding stores
-const storeRegistry = new WeakMap<Handlers<any>, StoreApi<any>>();
+const storeRegistry = new WeakMap<Handlers<AnyState>, StoreApi<AnyState>>();
 
 // Internal implementation of store creation
 const createStore = <S extends AnyState>(bridge: Handlers<S>): StoreApi<S> => {
@@ -50,16 +51,20 @@ type UseBoundStore<S extends ReadonlyStoreApi<unknown>> = {
 // Create Electron-specific handlers
 export const createHandlers = <S extends AnyState>(): Handlers<S> => {
   if (typeof window === 'undefined' || !window.zubridge) {
-    throw new Error('Zubridge handlers not found in window. Make sure the preload script is properly set up.');
+    throw new Error(
+      'Zubridge handlers not found in window. Make sure the preload script is properly set up.',
+    );
   }
 
   return window.zubridge as Handlers<S>;
 };
 
 /**
- * Creates a hook for accessing the store state in React components
+ * Creates a hook for accessing the store state in renderer components
  */
-export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>): UseBoundStore<StoreApi<S>> => {
+export const createUseStore = <S extends AnyState>(
+  customHandlers?: Handlers<S>,
+): UseBoundStore<StoreApi<S>> => {
   const handlers = customHandlers || createHandlers<S>();
   const vanillaStore = createStore<S>(handlers);
   const useBoundStore = (selector: (state: S) => unknown) => useStore(vanillaStore, selector);
@@ -71,67 +76,55 @@ export const createUseStore = <S extends AnyState>(customHandlers?: Handlers<S>)
 };
 
 /**
- * Creates a dispatch function for sending actions to the main process
- *
- * @template S The state type
- * @template TActions A record of action types to payload types mapping (optional)
- * @param customHandlers Optional custom handlers to use instead of window.zubridge
- * @returns A typed dispatch function
- *
- * @example
- * // Basic usage
- * const dispatch = useDispatch();
- *
- * @example
- * // With typed actions
- * type CounterActions = {
- *   'COUNTER:INCREMENT': void;
- *   'COUNTER:DECREMENT': void;
- *   'COUNTER:SET': number;
- * };
- * const dispatch = useDispatch<State, CounterActions>();
- * dispatch({ type: 'COUNTER:SET', payload: 5 }); // Type-safe payload
- * dispatch({ type: 'UNKNOWN' }); // Type error
+ * Creates a dispatch function for use in renderer components
  */
-export const useDispatch = <S extends AnyState = AnyState, TActions extends Record<string, any> = Record<string, any>>(
-  customHandlers?: Handlers<S>,
-): DispatchFunc<S, TActions> => {
+function useDispatch<
+  S extends AnyState = AnyState,
+  TActions extends Record<string, unknown> = Record<string, unknown>,
+>(customHandlers?: Handlers<S>): DispatchFunc<S, TActions> {
   const handlers = customHandlers || createHandlers<S>();
 
-  // Ensure we have a store for these handlers
-  const store = storeRegistry.has(handlers) ? (storeRegistry.get(handlers) as StoreApi<S>) : createStore<S>(handlers);
-
-  // Create a dispatch function that will handle both generic and typed actions
-  const dispatch = ((
-    action: Thunk<S> | Action | string | { type: keyof TActions; payload?: TActions[keyof TActions] },
-    payload?: unknown,
-  ): unknown => {
-    if (typeof action === 'function') {
-      // Handle thunks - execute them with the store's getState and our dispatch function
-      return (action as Thunk<S>)(store.getState, dispatch);
-    }
-
-    // Handle string action type with payload
+  // Create a dispatch function that delegates directly to handlers.dispatch
+  const dispatch: DispatchFunc<S, TActions> = (
+    action: string | Action | Thunk<S>,
+    payloadOrOptions?: unknown | DispatchOptions,
+    maybeOptions?: DispatchOptions,
+  ): Promise<unknown> => {
+    // Delegate based on the action type
     if (typeof action === 'string') {
-      // Only pass the payload parameter if it's not undefined, and handle promise return value
-      return payload !== undefined ? handlers.dispatch(action, payload) : handlers.dispatch(action);
+      return handlers.dispatch(action, payloadOrOptions, maybeOptions);
     }
-
-    // For action objects, normalize to standard Action format
-    if (typeof action.type !== 'string') {
-      throw new Error(`Invalid action type: ${action.type}. Expected a string.`);
+    if (typeof action === 'function') {
+      return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
     }
-    const normalizedAction: Action = {
-      type: action.type,
-      payload: action.payload,
-    };
-
-    // Return the promise from dispatch
-    return handlers.dispatch(normalizedAction);
-  }) as DispatchFunc<S, TActions>;
+    return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
+  };
 
   return dispatch;
-};
+}
+
+export { useDispatch };
+
+// Export action validation utilities
+export {
+  canDispatchAction,
+  getAffectedStateKeys,
+  registerActionMapping,
+  registerActionMappings,
+  validateActionDispatch,
+} from './renderer/actionValidator.js';
+
+// Export the validation utilities to be used by applications
+export {
+  getWindowSubscriptions,
+  isSubscribedToKey,
+  stateKeyExists,
+  validateStateAccess,
+  validateStateAccessWithExistence,
+} from './renderer/subscriptionValidator.js';
+// Export preload configuration types and options
+export { QueueOverflowError } from './types/errors.js';
+export type { PreloadOptions } from './types/preload.js';
 
 // Export environment utilities
-export * from './utils/environment';
+export * from './utils/environment.js';

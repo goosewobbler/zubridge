@@ -49,17 +49,17 @@ const subscription = bridge.subscribe([secondWindow]);
 app.on('quit', bridge.unsubscribe);
 ```
 
-#### `createZustandBridge(store, windows?, options?)`
+#### `createZustandBridge(store, options?)`
 
 Creates a bridge between a Zustand store in the main process and renderer processes. This is the recommended way to integrate a Zustand store with Electron's IPC system.
 
 ##### Parameters:
 
 - `store`: The Zustand store to bridge
-- `windows?`: Optional array of `BrowserWindow`, `BrowserView`, `WebContentsView`, or `WebContents` instances to subscribe to the store. Can be empty or undefined.
-- `options`: Optional configuration object
+- `options?`: Optional configuration object
   - `handlers`: Optional object containing store handler functions
   - `reducer`: Optional root reducer function for Redux-style state management
+  - `middleware`: Optional middleware for logging and debugging
 
 ##### Returns:
 
@@ -82,15 +82,14 @@ const mainWindow = new BrowserWindow({
   /* options */
 });
 
-// Create bridge with initial windows
-const { unsubscribe, subscribe, dispatch } = createZustandBridge(store, [mainWindow]);
-
-// Or create without windows and subscribe later
+// Create bridge
 const bridge = createZustandBridge(store);
-const subscription = bridge.subscribe([mainWindow]);
+
+// Subscribe windows to receive state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // Using with handlers option
-const bridgeWithHandlers = createZustandBridge(store, [mainWindow], {
+const bridgeWithHandlers = createZustandBridge(store, {
   handlers: {
     CUSTOM_ACTION: (payload) => {
       console.log('Custom action received:', payload);
@@ -100,7 +99,7 @@ const bridgeWithHandlers = createZustandBridge(store, [mainWindow], {
 });
 
 // Using with reducer option
-const bridgeWithReducer = createZustandBridge(store, [mainWindow], {
+const bridgeWithReducer = createZustandBridge(store, {
   reducer: (state, action) => {
     switch (action.type) {
       case 'SET_VALUE':
@@ -112,21 +111,22 @@ const bridgeWithReducer = createZustandBridge(store, [mainWindow], {
 });
 
 // Dispatch actions from the main process
-dispatch('INCREMENT');
+bridge.dispatch('INCREMENT');
 
 // Unsubscribe when quitting
 app.on('quit', unsubscribe);
 ```
 
-#### `createReduxBridge(store, windows?, options?)`
+#### `createReduxBridge(store, options?)`
 
 Creates a bridge between a Redux store in the main process and renderer processes. This is the recommended way to integrate a Redux store with Electron's IPC system.
 
 ##### Parameters:
 
 - `store`: The Redux store to bridge
-- `windows?`: Optional array of `BrowserWindow`, `BrowserView`, `WebContentsView`, or `WebContents` instances to subscribe to the store. Can be empty or undefined.
-- `options`: Optional configuration object for customizing store integration
+- `options?`: Optional configuration object
+  - `handlers`: Optional object containing action handler functions
+  - `middleware`: Optional middleware for logging and debugging
 
 ##### Returns:
 
@@ -149,15 +149,14 @@ const mainWindow = new BrowserWindow({
   /* options */
 });
 
-// Create bridge with initial windows
-const { unsubscribe, subscribe, dispatch } = createReduxBridge(store, [mainWindow]);
-
-// Or create without windows and subscribe later
+// Create bridge
 const bridge = createReduxBridge(store);
-const subscription = bridge.subscribe([mainWindow]);
+
+// Subscribe windows to receive state updates
+const { unsubscribe } = bridge.subscribe([mainWindow]);
 
 // Dispatch actions from the main process
-dispatch({ type: 'INCREMENT' });
+bridge.dispatch({ type: 'INCREMENT' });
 
 // Unsubscribe when quitting
 app.on('quit', unsubscribe);
@@ -338,6 +337,16 @@ function Counter() {
     dispatch('SET_COUNTER', data.value);
   });
 
+  // Dispatch with options to bypass thunk locking
+  const handleUrgentAction = () => dispatch('URGENT_ACTION', null, {
+    bypassThunkLock: true
+  });
+
+  // Dispatch with selective subscription keys
+  const handlePrivateAction = () => dispatch('PRIVATE_UPDATE', { data: 'secret' }, {
+    keys: ['admin', 'private']
+  });
+
   return (
     <div>
       <button onClick={handleIncrement}>+1</button>
@@ -345,6 +354,8 @@ function Counter() {
       <button onClick={() => handleCustomIncrement(5)}>+5</button>
       <button onClick={() => handleTypedSetCounter(10)}>Set to 10 (Typed)</button>
       <button onClick={handleFetchAndUpdate}>Fetch</button>
+      <button onClick={handleUrgentAction}>Urgent Action</button>
+      <button onClick={handlePrivateAction}>Private Action</button>
     </div>
   );
 }
@@ -434,6 +445,24 @@ Represents a thunk function for handling asynchronous logic.
 ```ts
 type Thunk<State> = (getState: StoreApi<State>['getState'], dispatch: Dispatch<State>) => void;
 ```
+
+### `DispatchOptions`
+
+Options that can be passed to dispatch functions to control execution behavior.
+
+```ts
+type DispatchOptions = {
+  keys?: string[];                  // Selective subscription keys
+  bypassAccessControl?: boolean;    // Skip access control checks
+  bypassThunkLock?: boolean;        // Skip thunk locking mechanism
+};
+```
+
+These options allow for advanced control over action dispatch:
+
+- `keys`: When provided, only subscribers with matching keys will receive state updates
+- `bypassAccessControl`: Allows actions to bypass normal access control restrictions
+- `bypassThunkLock`: Allows actions to execute even when thunks are currently running, bypassing the normal action sequencing
 
 ### `ZustandOptions<State>`
 

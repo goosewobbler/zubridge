@@ -1,6 +1,5 @@
-import React from 'react';
 import clsx from 'clsx';
-import { Header } from '../Header';
+import type React from 'react';
 
 interface WindowDisplayProps {
   windowId: number | string;
@@ -17,10 +16,10 @@ interface WindowDisplayProps {
  * WindowDisplay component that shows information about the current window
  */
 export const WindowDisplay: React.FC<WindowDisplayProps> = ({
-  windowId,
-  windowTitle,
-  mode,
-  bridgeStatus = 'ready',
+  windowId: _windowId,
+  windowTitle: _windowTitle,
+  mode: _mode,
+  bridgeStatus: _bridgeStatus = 'ready',
   isMainWindow = false,
   isRuntimeWindow = false,
   className = '',
@@ -35,14 +34,6 @@ export const WindowDisplay: React.FC<WindowDisplayProps> = ({
 
   return (
     <div className={displayClasses}>
-      <Header
-        windowId={windowId}
-        windowTitle={windowTitle}
-        mode={mode}
-        bridgeStatus={bridgeStatus}
-        className="window-header"
-      />
-
       <div className="window-content">{children}</div>
     </div>
   );

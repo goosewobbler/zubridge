@@ -1,90 +1,122 @@
-import { useMemo } from 'react';
-import type { WindowType } from '../WindowInfo';
+import { debug } from '@zubridge/core';
+import { createUseStore, useDispatch } from '@zubridge/electron';
+import { type PropsWithChildren, type ReactNode, useCallback } from 'react';
+import { useBridgeStatus } from '../hooks/useBridgeStatus';
+import type { ActionHandlers, WindowInfo } from '../WindowInfo';
 import { ZubridgeApp } from '../ZubridgeApp';
-import { createElectronAdapter } from '../adapters/electron';
-
-// Note: These imports will be available in the consuming app
-// We're just using type information here
-type DispatchFunction = any;
-type StoreType = any;
 
 /**
  * Props for the ElectronApp component
  */
-export interface ElectronAppProps {
+export interface ElectronAppProps extends PropsWithChildren {
   /**
-   * The window ID
+   * Window information
    */
-  windowId: number;
+  windowInfo?: WindowInfo;
 
   /**
-   * The type of window
+   * Title for the application window
+   * @default 'Electron App'
    */
-  windowType: WindowType;
+  windowTitle?: string;
 
   /**
-   * The mode name (e.g., 'basic', 'handlers', 'reducers')
+   * Application name shown in the header
+   * @default 'Electron App'
    */
-  modeName: string;
+  appName?: string;
+  /**
+   * Additional CSS classes to apply to the component
+   */
+  className?: string;
 
   /**
-   * Whether to show the logger component
-   * @default true for main windows, false for others
+   * Child elements to render
    */
-  showLogger?: boolean;
+  children?: ReactNode;
 
   /**
-   * Whether to show action payloads in the logger
-   * @default false
+   * Custom action handlers
    */
-  showLoggerPayloads?: boolean;
+  actionHandlers?: ActionHandlers;
 
   /**
-   * The Zubridge dispatch function
-   * This should be provided by the consuming app
+   * Current subscriptions for this window
+   * @default '*'
    */
-  dispatch?: DispatchFunction;
+  currentSubscriptions?: string[] | '*';
 
   /**
-   * The Zubridge store
-   * This should be provided by the consuming app
+   * Handler for subscribing to specific state keys
    */
-  store?: StoreType;
+  onSubscribe?: (keys: string[]) => void;
+
+  /**
+   * Handler for unsubscribing from specific state keys
+   */
+  onUnsubscribe?: (keys: string[]) => void;
 }
 
 /**
  * Higher-order component that wraps ZubridgeApp with Electron-specific functionality
  */
-export function ElectronApp({
-  windowId,
-  windowType,
-  modeName,
-  showLogger,
-  showLoggerPayloads,
-  dispatch,
-  store,
-}: ElectronAppProps) {
-  // Create platform handlers
-  const platformHandlers = useMemo(() => createElectronAdapter(window), []);
+export function withElectron() {
+  // Create a store hook for this component
+  const useStore = createUseStore();
 
-  // Verify we have the required props
-  if (!dispatch || !store) {
-    console.error('ElectronApp requires dispatch and store props');
-    return <div>Error: Missing required props</div>;
-  }
+  return function ElectronApp({
+    children,
+    windowInfo = { id: 'main', type: 'main', platform: 'electron' },
+    windowTitle = 'Electron App',
+    appName = 'Electron App',
+    className = '',
+    actionHandlers,
+    currentSubscriptions = '*',
+    onSubscribe,
+    onUnsubscribe,
+  }: ElectronAppProps) {
+    // Get store and dispatch from Electron hooks
+    const store = useStore();
+    const dispatch = useDispatch();
+    const bridgeStatus = useBridgeStatus(store);
 
-  return (
-    <ZubridgeApp
-      windowInfo={{
-        id: windowId,
-        type: windowType,
-        platform: modeName,
-      }}
-      store={store}
-      dispatch={dispatch}
-      platformHandlers={platformHandlers}
-      showLogger={showLogger}
-      showLoggerPayloads={showLoggerPayloads}
-    />
-  );
+    // Platform handlers for Electron
+    const handleSubscribe = useCallback(async (keys: string[]) => {
+      debug('ui', `[withElectron] Subscribing to keys: ${keys.join(', ')}`);
+      try {
+        await window.electronAPI?.subscribe(keys);
+        debug('ui', '[withElectron] Subscribe call successful');
+      } catch (error) {
+        debug('ui:error', '[withElectron] Error in subscribe:', error);
+      }
+    }, []);
+
+    const handleUnsubscribe = useCallback(async (keys: string[]) => {
+      debug('ui', `[withElectron] Unsubscribing from keys: ${keys.join(', ')}`);
+      try {
+        await window.electronAPI?.unsubscribe(keys);
+        debug('ui', '[withElectron] Unsubscribe call successful');
+      } catch (error) {
+        debug('ui:error', '[withElectron] Error in unsubscribe:', error);
+      }
+    }, []);
+
+    return (
+      <ZubridgeApp
+        store={store}
+        dispatch={dispatch}
+        bridgeStatus={bridgeStatus}
+        windowInfo={windowInfo}
+        actionHandlers={actionHandlers as ActionHandlers}
+        windowTitle={windowTitle}
+        appName={appName}
+        className={className}
+        onSubscribe={onSubscribe || handleSubscribe}
+        onUnsubscribe={onUnsubscribe || handleUnsubscribe}
+        currentSubscriptions={currentSubscriptions}
+      >
+        {children}
+      </ZubridgeApp>
+    );
+  };
 }

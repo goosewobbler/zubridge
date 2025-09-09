@@ -1,4 +1,10 @@
-<img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png"/>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" style="max-height: 415px;">
+</picture>
+
+<h1 align="center">Zubridge Tauri</h1>
 
 _Cross-platform state without boundaries: Zustand-inspired simplicity for Tauri_
 
@@ -76,8 +82,7 @@ For more detailed documentation, see:
 
 Complete example applications demonstrating the use of `@zubridge/tauri`:
 
-- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-example)
-- [Tauri V1 Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-v1-example)
+- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri/e2e)
 
 ## Direct Architecture
 
@@ -86,6 +91,10 @@ Complete example applications demonstrating the use of `@zubridge/tauri`:
 ## Plugin Architecture
 
 <img alt="zubridge tauri plugin architecture" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-tauri-plugin-architecture.png"/>
+
+## Development
+
+For information about contributing to this project, see the [Developer Guide](https://github.com/goosewobbler/zubridge/blob/main/docs/developer.md).
 
 ## License
 

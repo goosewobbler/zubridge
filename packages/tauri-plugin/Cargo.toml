@@ -1,36 +1,36 @@
 [package]
 name = "tauri-plugin-zubridge"
-version = "0.1.0"
+version = "0.1.1-next.1"
 description = "A Tauri plugin for state management between frontend and backend"
-authors = ["Sam Maister"]
+authors = [ "Sam Maister" ]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 rust-version = "1.70"
-exclude = ["/examples"]
-include = [
-    "Cargo.toml",
-    "src/**/*",
-    "build.rs",
-    "README.md",
-    "target/package/tauri-plugin-zubridge-*/gen/**/*"
-]
+exclude = [ "/examples" ]
+include = [ "Cargo.toml", "src/**/*", "build.rs", "README.md", "target/package/tauri-plugin-zubridge-*/gen/**/*" ]
 links = "tauri-plugin-zubridge"
 repository = "https://github.com/goosewobbler/zubridge"
 homepage = "https://github.com/goosewobbler/zubridge/tree/main/packages/tauri-plugin-zubridge"
 documentation = "https://github.com/goosewobbler/zubridge/tree/main/packages/tauri-plugin-zubridge"
 readme = "README.md"
-keywords = ["tauri", "zubridge", "state-management", "zustand"]
-categories = ["gui", "api-bindings", "web-programming"]
+keywords = [ "tauri", "zubridge", "state-management", "zustand" ]
+categories = [ "gui", "api-bindings", "web-programming" ]
 
 [dependencies]
-tauri = { version = "2.0.0-beta" }
-serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 log = "0.4"
 
+[dependencies.tauri]
+version = "2.0.0-beta"
+
+[dependencies.serde]
+version = "1.0"
+features = [ "derive" ]
+
 [build-dependencies]
-tauri-build = { version = "2.0.0-beta" }
+[build-dependencies.tauri-build]
+version = "2.0.0-beta"
 
 [features]
 custom-protocol = [ "tauri/custom-protocol" ]

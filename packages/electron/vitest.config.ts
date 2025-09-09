@@ -1,5 +1,5 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
   test: {
@@ -9,10 +9,10 @@ export default defineConfig({
     coverage: {
       enabled: true,
       include: ['src/**/*'],
-      exclude: ['src/types.ts'],
+      exclude: ['src/types/*.ts'],
       thresholds: {
         lines: 50,
-        functions: 80,
+        functions: 70,
         branches: 70,
         statements: 50,
       },

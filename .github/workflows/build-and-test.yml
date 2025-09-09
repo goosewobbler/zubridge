@@ -1,0 +1,529 @@
+name: Build and Test Mode
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: "Application to build and test"
+        required: true
+        type: string
+      mode:
+        description: "Mode to build and test"
+        required: true
+        type: string
+    secrets:
+      TURBO_TOKEN:
+        required: false
+      TURBO_TEAM:
+        required: false
+      TURBO_API:
+        required: false
+    outputs:
+      success:
+        description: "Whether any build/test succeeded"
+        value: ${{ jobs.ci-status.outputs.success }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
+  BUILD_ID: ${{ github.run_id }}-${{ github.run_number }}
+
+jobs:
+  # Build on Linux
+  linux-build:
+    name: Linux Build
+    runs-on: ubuntu-latest
+    outputs:
+      success: ${{ steps.build-result.outputs.success }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
+    steps:
+      # Linux-specific dependencies
+      - name: Install Linux dependencies
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        run: |
+          sudo tee -a /etc/apt/sources.list > /dev/null <<EOT
+          deb http://archive.ubuntu.com/ubuntu jammy main universe
+          EOT
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libglib2.0-dev \
+            libsoup-2.4-1 \
+            libsoup2.4-dev \
+            libjavascriptcoregtk-4.0-dev \
+            libjavascriptcoregtk-4.1-dev
+          # Set PKG_CONFIG_PATH for Ubuntu
+          PC_PATH1="/usr/lib/x86_64-linux-gnu/pkgconfig"
+          PC_PATH2="/usr/share/pkgconfig"
+          PC_PATH3="/lib/x86_64-linux-gnu/pkgconfig"
+
+          EXPORT_PKG_CONFIG_PATH=""
+          for path in "$PC_PATH1" "$PC_PATH2" "$PC_PATH3"; do
+            if [ -d "$path" ]; then
+              if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then
+                EXPORT_PKG_CONFIG_PATH="$EXPORT_PKG_CONFIG_PATH:$path"
+              else
+                EXPORT_PKG_CONFIG_PATH="$path"
+              fi
+            fi
+          done
+
+          if [ -n "$EXPORT_PKG_CONFIG_PATH" ]; then
+            export PKG_CONFIG_PATH="${EXPORT_PKG_CONFIG_PATH}${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          fi
+
+      # Checkout and setup
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      # Download shared packages
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
+
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
+        id: build-app
+        shell: bash
+        run: |
+          PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'electron/e2e' || inputs.app == 'tauri' && 'tauri/e2e' || 'tauri-v1/e2e' }}"
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -l
+          else
+
+            # Run Vite build first
+            echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec vite build
+
+            # Determine config file and property name
+            RELATIVE_CONFIG_FILE_PATH="apps/$APP_DIR_NAME/src-tauri/tauri.conf.json"
+            ABSOLUTE_CONFIG_FILE_PATH_SHELL="$GITHUB_WORKSPACE/$RELATIVE_CONFIG_FILE_PATH"
+            DIST_PROPERTY_NAME="distDir" # Default for v1
+            if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
+              DIST_PROPERTY_NAME="frontendDist"
+            fi
+
+            # Calculate absolute path for dist dir
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/dist"
+
+
+            echo "--- Modifying $ABSOLUTE_CONFIG_FILE_PATH_SHELL to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            node -e "\
+              const fs = require('fs');\
+              const path = require('path');\
+              const workspaceDir = process.env.GITHUB_WORKSPACE;\
+              const configFile = path.join(workspaceDir, '$RELATIVE_CONFIG_FILE_PATH');\
+              console.log('Node: Attempting to read config from:', configFile);\
+              try { \
+                const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+                config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+                fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+                console.log('Node: Successfully updated $DIST_PROPERTY_NAME in', configFile);\
+              } catch (err) { \
+                console.error('Node: Error processing config file:', configFile, err); \
+                process.exit(1); \
+              }"
+
+
+
+            # Now run Tauri build
+            echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec pnpm tauri build
+          fi
+        continue-on-error: true
+
+      # Process build result for Linux
+      - name: Process Build Result
+        id: build-result
+        uses: ./.github/workflows/actions/process-build-result
+        with:
+          build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
+          shell_type: bash
+
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
+          path: |
+            ${{ inputs.app == 'electron' && format('apps/electron/e2e/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/tauri/e2e/src-tauri/target/release/bundle/' || 'apps/tauri-v1/e2e/src-tauri/target/release/bundle/' }}
+          retention-days: 1
+          if-no-files-found: warn
+
+      # Debug on failure
+      - name: Debug on Failure
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          timeout: "120000"
+
+  # Build on macOS
+  macos-build:
+    name: macOS Build
+    runs-on: macOS-latest
+    outputs:
+      success: ${{ steps.build-result.outputs.success }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
+    steps:
+      # Checkout and setup
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      # Download shared packages
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
+
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
+        id: build-app
+        shell: bash
+        run: |
+          PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'electron/e2e' || inputs.app == 'tauri' && 'tauri/e2e' || 'tauri-v1/e2e' }}"
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -m
+          else
+
+            # Run Vite build first
+            echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec vite build
+
+            # Determine config file and property name
+            RELATIVE_CONFIG_FILE_PATH="apps/$APP_DIR_NAME/src-tauri/tauri.conf.json"
+            ABSOLUTE_CONFIG_FILE_PATH_SHELL="$GITHUB_WORKSPACE/$RELATIVE_CONFIG_FILE_PATH"
+            DIST_PROPERTY_NAME="distDir" # Default for v1
+            if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
+              DIST_PROPERTY_NAME="frontendDist"
+            fi
+
+            # Calculate absolute path for dist dir
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/dist"
+
+
+            echo "--- Modifying $ABSOLUTE_CONFIG_FILE_PATH_SHELL to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            node -e "\
+              const fs = require('fs');\
+              const path = require('path');\
+              const workspaceDir = process.env.GITHUB_WORKSPACE;\
+              const configFile = path.join(workspaceDir, '$RELATIVE_CONFIG_FILE_PATH');\
+              console.log('Node: Attempting to read config from:', configFile);\
+              try { \
+                const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+                config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+                fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+                console.log('Node: Successfully updated $DIST_PROPERTY_NAME in', configFile);\
+              } catch (err) { \
+                console.error('Node: Error processing config file:', configFile, err); \
+                process.exit(1); \
+              }"
+
+
+
+            # Now run Tauri build
+            echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec pnpm tauri build
+          fi
+        continue-on-error: true
+
+      # Process build result for macOS
+      - name: Process Build Result
+        id: build-result
+        uses: ./.github/workflows/actions/process-build-result
+        with:
+          build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
+          shell_type: bash
+
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
+          path: |
+            ${{ inputs.app == 'electron' && format('apps/electron/e2e/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/tauri/e2e/src-tauri/target/release/bundle/' || 'apps/tauri-v1/e2e/src-tauri/target/release/bundle/' }}
+          retention-days: 1
+          if-no-files-found: warn
+
+
+  # Build on Windows
+  windows-build:
+    name: Windows Build
+    runs-on: windows-latest
+    outputs:
+      success: ${{ steps.build-result.outputs.success }}
+      artifact_name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
+    steps:
+      # Checkout and setup
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: "20"
+
+      # Download shared packages
+      - name: Download shared packages
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-packages
+          path: packages
+
+      # Cargo setup for Tauri
+      - name: Setup Cargo Cache
+        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo/{registry,git}
+          echo '[net]
+          git-fetch-with-cli = true
+          retry = 3
+          [build]
+          jobs = 2' > ~/.cargo/config.toml
+
+      # Build application
+      - name: Build ${{ inputs.app }}:${{ inputs.mode }}
+        id: build-app
+        shell: bash
+        run: |
+          PACKAGE_NAME="${{ inputs.app == 'electron' && 'e2e-electron' || inputs.app == 'tauri' && 'e2e-tauri' || 'e2e-tauri-v1' }}"
+          APP_DIR_NAME="${{ inputs.app == 'electron' && 'electron/e2e' || inputs.app == 'tauri' && 'tauri/e2e' || 'tauri-v1/e2e' }}"
+          if [ "${{ inputs.app }}" == "electron" ]; then
+            pnpm run build:${{ inputs.app }}-${{ inputs.mode }} -- -w
+          else
+
+            # Run Vite build first
+            echo "--- Running Vite build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec vite build
+
+            # Determine config file and property name
+            RELATIVE_CONFIG_FILE_PATH="apps/$APP_DIR_NAME/src-tauri/tauri.conf.json"
+            ABSOLUTE_CONFIG_FILE_PATH_SHELL="$GITHUB_WORKSPACE/$RELATIVE_CONFIG_FILE_PATH"
+            DIST_PROPERTY_NAME="distDir" # Default for v1
+            if [ "${{ inputs.app }}" == "tauri" ]; then # Tauri v2 uses frontendDist
+              DIST_PROPERTY_NAME="frontendDist"
+            fi
+
+            # Calculate absolute path for dist dir
+            ABSOLUTE_DIST_PATH="$GITHUB_WORKSPACE/apps/$APP_DIR_NAME/dist"
+
+
+            echo "--- Modifying $ABSOLUTE_CONFIG_FILE_PATH_SHELL to use absolute dist path: $ABSOLUTE_DIST_PATH for property $DIST_PROPERTY_NAME ---"
+            node -e "\
+              const fs = require('fs');\
+              const path = require('path');\
+              const workspaceDir = process.env.GITHUB_WORKSPACE;\
+              const configFile = path.join(workspaceDir, '$RELATIVE_CONFIG_FILE_PATH');\
+              console.log('Node: Attempting to read config from:', configFile);\
+              try { \
+                const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));\
+                config.build.$DIST_PROPERTY_NAME = '$ABSOLUTE_DIST_PATH';\
+                fs.writeFileSync(configFile, JSON.stringify(config, null, 2));\
+                console.log('Node: Successfully updated $DIST_PROPERTY_NAME in', configFile);\
+              } catch (err) { \
+                console.error('Node: Error processing config file:', configFile, err); \
+                process.exit(1); \
+              }"
+
+
+
+            # Now run Tauri build
+            echo "--- Running Tauri build for ${{ inputs.app }}-${{ inputs.mode }} ---"
+            pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} pnpm --filter=$PACKAGE_NAME exec pnpm tauri build
+          fi
+        continue-on-error: true
+
+      # Process build result for Windows
+      - name: Process Build Result
+        id: build-result
+        uses: ./.github/workflows/actions/process-build-result
+        with:
+          build_step_id: build-app
+          build_outcome: ${{ steps.build-app.outcome }}
+          shell_type: pwsh
+
+      # Upload artifacts
+      - name: Upload Artifacts
+        if: steps.build-result.outputs.success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
+          path: |
+            ${{ inputs.app == 'electron' && format('apps/electron/e2e/dist-{0}', inputs.mode) || inputs.app == 'tauri' && 'apps/tauri/e2e/src-tauri/target/release/bundle/' || 'apps/tauri-v1/e2e/src-tauri/target/release/bundle/' }}
+          retention-days: 1
+          if-no-files-found: warn
+
+      # Debug on failure
+      - name: Debug on Failure
+        uses: goosewobbler/vscode-server-action@v1.3.0
+        if: failure()
+        with:
+          timeout: "120000"
+
+  # E2E Tests for Linux
+  linux-test:
+    name: Linux E2E
+    if: needs.linux-build.outputs.success == 'true'
+    needs: [linux-build]
+    uses: ./.github/workflows/_e2e-test.reusable.yml
+    with:
+      app: ${{ inputs.app }}
+      mode: ${{ inputs.mode }}
+      os: linux
+      artifact_name: ${{ needs.linux-build.outputs.artifact_name }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # E2E Tests for macOS
+  macos-test:
+    name: macOS E2E
+    if: needs.macos-build.outputs.success == 'true'
+    needs: [macos-build]
+    uses: ./.github/workflows/_e2e-test.reusable.yml
+    with:
+      app: ${{ inputs.app }}
+      mode: ${{ inputs.mode }}
+      os: macos
+      artifact_name: ${{ needs.macos-build.outputs.artifact_name }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # E2E Tests for Windows
+  windows-test:
+    name: Windows E2E
+    if: needs.windows-build.outputs.success == 'true'
+    needs: [windows-build]
+    uses: ./.github/workflows/_e2e-test.reusable.yml
+    with:
+      app: ${{ inputs.app }}
+      mode: ${{ inputs.mode }}
+      os: windows
+      artifact_name: ${{ needs.windows-build.outputs.artifact_name }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # Package tests for Linux - test minimal apps with packaged dependencies
+  linux-package-test:
+    name: Linux Package Test
+    if: inputs.app == 'electron'
+    uses: ./.github/workflows/_package-test.reusable.yml
+    needs: [linux-build]
+    with:
+      os: linux
+      mode: ${{ inputs.mode }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # Package tests for macOS - test minimal apps with packaged dependencies
+  macos-package-test:
+    name: macOS Package Test
+    if: inputs.app == 'electron'
+    uses: ./.github/workflows/_package-test.reusable.yml
+    needs: [macos-build]
+    with:
+      os: macos
+      mode: ${{ inputs.mode }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # Package tests for Windows - test minimal apps with packaged dependencies
+  windows-package-test:
+    name: Windows Package Test
+    if: inputs.app == 'electron'
+    uses: ./.github/workflows/_package-test.reusable.yml
+    needs: [windows-build]
+    with:
+      os: windows
+      mode: ${{ inputs.mode }}
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # Final status aggregation
+  ci-status:
+    name: Status
+    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test, linux-package-test, macos-package-test]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      success: ${{ steps.check-status.outputs.success }}
+    steps:
+      - name: Check status
+        id: check-status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'success') }}" == "true" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "At least one job passed successfully"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "All jobs failed"
+            exit 1
+          fi

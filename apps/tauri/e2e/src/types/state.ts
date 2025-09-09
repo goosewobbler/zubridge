@@ -1,0 +1,34 @@
+/**
+ * Common base state interface that all mode-specific states share.
+ * This defines the minimal structure expected across all modes.
+ */
+export interface BaseState {
+  counter: number;
+  window: {
+    isOpen: boolean;
+  };
+  [key: string]: unknown; // Add index signature to satisfy AnyState constraint
+}
+
+/**
+ * Type guard to check if a state object conforms to the BaseState interface
+ */
+export function isBaseState(state: unknown): state is BaseState {
+  if (!state || typeof state !== 'object') return false;
+
+  const s = state as Record<string, unknown>;
+  const window = s.window;
+  return (
+    typeof s.counter === 'number' &&
+    Boolean(window) &&
+    typeof window === 'object' &&
+    window !== null &&
+    typeof (window as Record<string, unknown>).isOpen === 'boolean'
+  );
+}
+
+/**
+ * Shared State type that all modes can use
+ * This is the common state structure across all modes
+ */
+export type State = BaseState;

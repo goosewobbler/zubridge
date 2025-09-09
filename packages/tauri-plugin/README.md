@@ -1,8 +1,10 @@
 <picture>
-  <img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" onerror="this.style.display='none';document.getElementById('fallback-title').style.display='block'"/>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png">
+  <img alt="zubridge hero image" src="https://raw.githubusercontent.com/goosewobbler/zubridge/main/resources/zubridge-hero.png" style="max-height: 415px;">
 </picture>
 
-<h1 id="fallback-title" style="display:none">Zubridge Tauri Plugin</h1>
+<h1 align="center">Zubridge Tauri Plugin</h1>
 
 _Cross-platform state without boundaries: The official Tauri plugin for Zubridge_
 
@@ -166,7 +168,7 @@ For more detailed documentation, see:
 
 A complete example application demonstrating the use of `tauri-plugin-zubridge` with a simple counter state:
 
-- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri-example)
+- [Tauri Example App](https://github.com/goosewobbler/zubridge/tree/main/apps/tauri/e2e)
 
 ## Plugin Architecture
 

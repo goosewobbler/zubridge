@@ -10,14 +10,20 @@
  */
 export const isDev = async (): Promise<boolean> => {
   // Ensure we have access to the app object (should be in the main process)
+  if (process.type !== 'browser') {
+    // Not in main process, use environment variables only
+    if (process.env.NODE_ENV === 'production' || process.env.ELECTRON_IS_DEV === '0') {
+      return false;
+    }
+    return (
+      process.env.NODE_ENV === 'development' ||
+      process.env.ELECTRON_IS_DEV === '1' ||
+      !process.env.VITE_DEV_SERVER_URL
+    );
+  }
   const { app } = await import('electron');
 
-  if (typeof app !== 'undefined') {
-    return !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1';
-  }
-
-  // Fallback for renderer process or when app isn't available
   return (
-    process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1' || !process.env.VITE_DEV_SERVER_URL
-  ); // Vite-specific check
+    !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1'
+  );
 };

@@ -1,7 +1,13 @@
 /**
  * Common window types across platforms
  */
-export type WindowType = 'main' | 'runtime' | 'directWebContents' | 'browserView' | 'webContentsView' | 'secondary';
+export type WindowType =
+  | 'main'
+  | 'runtime'
+  | 'directWebContents'
+  | 'browserView'
+  | 'webContentsView'
+  | 'secondary';
 
 /**
  * Information about the current window
@@ -26,7 +32,7 @@ export interface WindowInfo {
 /**
  * Base handlers that must be implemented for each platform
  */
-export interface PlatformHandlers {
+export interface ActionHandlers {
   /**
    * Create a new window
    */
@@ -41,6 +47,31 @@ export interface PlatformHandlers {
    * Quit the application (optional - only for main windows)
    */
   quitApp?: () => Promise<{ success: boolean }>;
+
+  /**
+   * Double counter thunk implementation
+   */
+  doubleCounter?: (counter: number) => unknown;
+
+  /**
+   * Double counter slow thunk implementation
+   */
+  doubleCounterSlow?: (counter: number) => unknown;
+
+  /**
+   * Double counter thunk implementation with getState override (setting bypassAccessControl: true)
+   */
+  doubleCounterWithGetStateOverride?: (counter: number) => unknown;
+
+  /**
+   * Distinctive counter thunk implementation (multiply by 3, add 2, subtract 1)
+   */
+  distinctiveCounter?: (counter: number) => unknown;
+
+  /**
+   * Distinctive counter slow thunk implementation (multiply by 3, add 2, subtract 1)
+   */
+  distinctiveCounterSlow?: (counter: number) => unknown;
 }
 
 /**
