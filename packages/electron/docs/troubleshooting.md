@@ -6,7 +6,7 @@ This guide covers common issues you might encounter when using Zubridge with Ele
 
 ### Overview
 
-While Electron has added support for ES Modules (ESM) since version 28.0.0, using ESM in preload scripts comes with significant limitations and caveats. Zubridge provides dual ESM/CommonJS entry points for flexibility, but we recommend using CommonJS for preload scripts in most cases.
+While Electron has added support for ES Modules (ESM) since version 28.0.0, choosing to use ESM instead of CommonJS (CJS) in preload scripts comes with significant limitations and caveats. Zubridge provides dual ESM / CJS entry points for flexibility, but we recommend using CJS for preload scripts in most cases.
 
 ### Known Issues with ESM Preload Scripts
 
@@ -49,47 +49,9 @@ const { handlers } = preloadBridge();
 contextBridge.exposeInMainWorld('zubridge', handlers);
 ```
 
-### Using ESM with Compilation to CJS
+### Recommended Approach: ESM with Compilation to CJS
 
-One elegant approach is to write your preload scripts using ESM syntax but have them compiled to CommonJS format during the build process. We recommend using [electron-vite](https://electron-vite.org/) by Alex Wei ([GitHub](https://github.com/alex8088/electron-vite)) for this purpose. This is the preferred electron-vite implementation and the one we use for testing Zubridge.
-
-In your `electron.vite.config.ts`, configure the preload section to compile ESM to CJS:
-
-```js
-// electron.vite.config.ts
-export default {
-  // ... other config
-  preload: {
-    build: {
-      outDir: 'dist/preload',
-      minify: false,
-      rollupOptions: {
-        external: ['electron'],
-        output: {
-          format: 'cjs',
-          entryFileNames: '[name].cjs',
-          chunkFileNames: '[name]-[hash].cjs',
-        },
-      },
-    },
-  },
-};
-```
-
-This allows you to write your preload scripts using modern ESM syntax:
-
-```js
-// src/preload/index.ts - written in ESM syntax
-import { preloadBridge } from '@zubridge/electron/preload';
-import { contextBridge, ipcRenderer } from 'electron';
-
-const { handlers } = preloadBridge();
-contextBridge.exposeInMainWorld('zubridge', handlers);
-```
-
-The bundler will compile this to CommonJS format, avoiding the ESM preload script limitations while still letting you use modern syntax.
-
-> **Note**: There are multiple projects named "electron-vite". We specifically recommend [electron-vite by Alex Wei](https://github.com/alex8088/electron-vite), which is well-maintained and has excellent support for proper bundling of preload scripts. This is the one we use for testing Zubridge.
+For the recommended build setup using electron-vite to write ESM preload scripts that compile to CommonJS, see the [Build Setup section](./getting-started.md#build-setup-recommended) in the Getting Started guide.
 
 ### If You Must Use ESM Preload
 
