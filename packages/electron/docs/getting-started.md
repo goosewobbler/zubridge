@@ -28,12 +28,41 @@ For an in-depth explanation of how Zubridge works under the hood, including the 
 
 Regardless of which state management approach you choose, these setup steps are common to all implementations.
 
+### Build Setup (Optional but Recommended)
+
+We recommend using [electron-vite](https://electron-vite.org/) for building Electron applications. It provides hot module replacement, TypeScript support, and handles the complexities of bundling for multiple Electron processes. For preload scripts, this means you can write code in modern ESM syntax which gets automatically compiled to CommonJS, avoiding Electron's ESM preload limitations. All code examples in this documentation use the same file paths found in the [minimal example apps](https://github.com/goosewobbler/zubridge/tree/main/examples), which are also the default electron-vite file paths.
+
+Configure your `electron.vite.config.ts` to compile preload scripts to CommonJS:
+
+```js
+// `electron.vite.config.ts`
+export default {
+  // ... other config
+  preload: {
+    build: {
+      outDir: 'dist/preload',
+      minify: false,
+      rollupOptions: {
+        external: ['electron'],
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].cjs',
+          chunkFileNames: '[name]-[hash].cjs',
+        },
+      },
+    },
+  },
+};
+```
+
+> **Note**: There are multiple projects named "electron-vite". We specifically recommend [electron-vite by Alex Wei](https://github.com/alex8088/electron-vite) (https://electron-vite.org), which is well-maintained and has excellent support for proper bundling of preload scripts. This is what we use for E2E testing.
+
 ### Preload Script
 
-Create a preload script to expose the Zubridge handlers to the renderer process:
+Expose the Zubridge handlers to the renderer process in your preload script:
 
 ```ts
-// `src/preload.js`
+// `src/preload/index.ts`
 import { contextBridge } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
 
@@ -42,6 +71,8 @@ const { handlers } = preloadBridge();
 // Expose the handlers to the renderer process
 contextBridge.exposeInMainWorld('zubridge', handlers);
 ```
+
+> **Security Note**: This setup requires `contextIsolation: true` (the default since Electron 12). If you must use `contextIsolation: false` due to legacy constraints, see the [Context Isolation Disabled](#context-isolation-disabled) section below.
 
 ### Renderer Process Hooks
 
@@ -165,7 +196,7 @@ import { store } from './store.js';
 const mainWindow = new BrowserWindow({
   // ...
   webPreferences: {
-    preload: path.join(__dirname, 'preload.js'),
+    preload: path.join(__dirname, 'path/to/preload/index.cjs'),
     // other options...
   },
 });
@@ -223,7 +254,7 @@ import { store } from './store.js';
 const mainWindow = new BrowserWindow({
   // ...
   webPreferences: {
-    preload: path.join(__dirname, 'preload.js'),
+    preload: path.join(__dirname, 'path/to/preload/index.cjs'),
     // other options...
   },
 });
@@ -317,7 +348,7 @@ import { stateManager } from './state-manager.js';
 const mainWindow = new BrowserWindow({
   // ...
   webPreferences: {
-    preload: path.join(__dirname, 'preload.js'),
+    preload: path.join(__dirname, 'path/to/preload/index.cjs'),
     // other options...
   },
 });
@@ -353,3 +384,56 @@ The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/ma
 - **Custom Mode**: Custom state manager implementation using `createCoreBridge`
 
 Each example demonstrates the same functionality implemented with different state management patterns, allowing you to compare approaches and choose what works best for your application.
+
+## Context Isolation Disabled
+
+### ⚠️ Security Warning
+
+**We strongly recommend keeping `contextIsolation: true` (the default since Electron 12).** Disabling context isolation removes important security protections and exposes your application to potential security vulnerabilities including:
+
+- **Shared global context** - Websites can directly access powerful preload script APIs
+- **XSS to RCE escalation** - Cross-site scripting attacks can escalate to remote code execution
+- **Unrestricted IPC access** - Malicious code can send arbitrary IPC messages to the main process
+- **Electron internals exposure** - Websites can potentially access Electron's internal APIs
+
+For more details, see [Electron's Context Isolation Documentation](https://www.electronjs.org/docs/latest/tutorial/context-isolation) and [Security Best Practices](https://www.electronjs.org/docs/latest/tutorial/security).
+
+### When You Must Use `contextIsolation: false`
+
+If you absolutely cannot enable context isolation in your application, Zubridge supports this configuration. Use your preload script with direct window assignment:
+
+```typescript
+// `src/preload/index.ts`
+import { preloadBridge } from '@zubridge/electron/preload';
+
+const { handlers } = preloadBridge();
+
+// With contextIsolation: false, directly assign to window instead of using contextBridge
+window.zubridge = handlers;
+```
+
+### Limitations with contextIsolation: false
+
+When context isolation is disabled:
+
+- Some internal subscription validation optimizations may not be available
+- You lose the security benefits of isolated contexts
+- Your application becomes vulnerable to malicious website code
+
+### Migration Path
+
+To properly secure your application, plan to migrate to `contextIsolation: true`:
+
+1. **Audit your renderer code** - Remove any direct Node.js API usage
+2. **Use contextBridge** - Expose only necessary APIs through the preload script
+3. **Update webPreferences**:
+   ```javascript
+   webPreferences: {
+     contextIsolation: true,  // Enable context isolation
+     nodeIntegration: false,  // Disable Node.js in renderer
+     preload: path.resolve(__dirname, 'path/to/preload/index.cjs')
+   }
+   ```
+4. **Test thoroughly** - Ensure all functionality works with proper isolation
+
+For migration assistance, see [Electron's Context Isolation Guide](https://www.electronjs.org/docs/latest/tutorial/context-isolation).

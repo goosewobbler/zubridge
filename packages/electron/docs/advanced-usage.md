@@ -53,7 +53,7 @@ You can expose the Zubridge handlers under a different name in your preload scri
 First, expose the handlers under a custom name in your preload script:
 
 ```ts
-// `src/preload.js`
+// `src/preload/index.ts`
 import { contextBridge } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
 
