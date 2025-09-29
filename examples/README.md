@@ -6,23 +6,23 @@ This directory contains examples demonstrating different state management patter
 
 ### Electron Examples
 
-### [zustand-basic](./electron/zustand-basic)
+### [zustand-basic](../apps/electron/minimal-zustand-basic)
 
 The simplest Zustand implementation with basic store setup and state synchronization.
 
-### [zustand-handlers](./electron/zustand-handlers)
+### [zustand-handlers](../apps/electron/minimal-zustand-handlers)
 
 Zustand pattern using handlers detached from the store definition for improved separation of concerns.
 
-### [zustand-reducers](./electron/zustand-reducers)
+### [zustand-reducers](../apps/electron/minimal-zustand-reducers)
 
 Zustand implementation with Redux-style reducers for predictable state updates.
 
-### [redux](./electron/redux)
+### [redux](../apps/electron/minimal-redux)
 
 Redux integration showing how to use Zubridge with Redux state management.
 
-### [custom](./electron/custom)
+### [custom](../apps/electron/minimal-custom)
 
 Custom state management implementation demonstrating Zubridge's flexibility.
 
