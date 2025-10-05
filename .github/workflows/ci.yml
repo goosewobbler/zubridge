@@ -100,6 +100,18 @@ jobs:
         with:
           toolchain: stable
 
+      - name: 📦 Install Tauri dependencies
+        if: contains(matrix.feature, 'tauri')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libglib2.0-dev \
+            libgio2.0-cil-dev
+
       - name: 🔨 Build Rust crate
         working-directory: packages/core
         run: |
