@@ -46,11 +46,11 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 5.5 Test multiple feature combinations don't conflict
   - [x] 5.6 Verify all integration tests pass
 
-- [ ] 6. Update CI/CD pipeline for Rust validation
-  - [ ] 6.1 Identify existing GitHub Actions workflow file to update
-  - [ ] 6.2 Add rust-core job with matrix strategy for all feature combinations
-  - [ ] 6.3 Configure cargo build and test steps for each feature set
-  - [ ] 6.4 Verify CI pipeline runs successfully on test branch
+- [x] 6. Update CI/CD pipeline for Rust validation
+  - [x] 6.1 Identify existing GitHub Actions workflow file to update
+  - [x] 6.2 Add rust-core job with matrix strategy for all feature combinations
+  - [x] 6.3 Configure cargo build and test steps for each feature set
+  - [x] 6.4 Verify CI pipeline runs successfully on test branch
 
 - [ ] 7. Write comprehensive documentation
   - [ ] 7.1 Create README.md with architecture overview
