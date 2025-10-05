@@ -14,13 +14,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 1.4 Update all imports across codebase from @zubridge/core to @zubridge/utils
   - [x] 1.5 Verify all tests pass after rename
 
-- [ ] 2. Set up Rust crate structure at packages/core/
-  - [ ] 2.1 Write integration test skeleton for feature flag validation
-  - [ ] 2.2 Create packages/core/ directory with Cargo.toml (name: zubridge-core)
-  - [ ] 2.3 Set up feature flags (uniffi, napi, tauri) with conditional dependencies
-  - [ ] 2.4 Create module structure (src/core/, src/middleware/, src/wrappers/)
-  - [ ] 2.5 Add build.rs for UniFFI and NAPI-RS build scripts
-  - [ ] 2.6 Verify cargo build succeeds with default features
+- [x] 2. Set up Rust crate structure at packages/core/
+  - [x] 2.1 Write integration test skeleton for feature flag validation
+  - [x] 2.2 Create packages/core/ directory with Cargo.toml (name: zubridge-core)
+  - [x] 2.3 Set up feature flags (uniffi, napi, tauri) with conditional dependencies
+  - [x] 2.4 Create module structure (src/core/, src/middleware/, src/wrappers/)
+  - [x] 2.5 Add build.rs for UniFFI and NAPI-RS build scripts
+  - [x] 2.6 Verify cargo build succeeds with default features
 
 - [ ] 3. Implement core Store struct and minimal working example
   - [ ] 3.1 Write unit tests for Store struct (new, get_name)

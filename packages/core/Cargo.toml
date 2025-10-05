@@ -1,0 +1,29 @@
+[package]
+name = "zubridge-core"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+uniffi = ["dep:uniffi"]
+napi = ["dep:napi", "dep:napi-derive"]
+tauri = ["dep:tauri"]
+
+# Future platform scaffolding (commented out)
+# flutter = ["uniffi"]  # Uses uniffi + flutter_rust_bridge
+# wasm = ["dep:wasm-bindgen"]
+
+[dependencies]
+# Core dependencies (always included)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Platform-specific dependencies (conditional)
+uniffi = { version = "0.28", optional = true }
+napi = { version = "2", optional = true }
+napi-derive = { version = "2", optional = true }
+tauri = { version = "2", optional = true }
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"], optional = true }
+napi-build = { version = "2", optional = true }
