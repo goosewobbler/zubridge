@@ -1,6 +1,8 @@
 // Core Store struct - platform-agnostic state management
 
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 pub struct Store {
     pub name: String,

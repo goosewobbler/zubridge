@@ -5,8 +5,8 @@
 #[cfg(feature = "napi")]
 #[test]
 fn test_napi_feature_compiles() {
-    // This test just needs to compile successfully when napi feature is enabled
-    // The actual functionality will be tested in unit tests
+    // NAPI bindings require a Node.js runtime to actually execute,
+    // so we just verify that the feature compiles successfully
     assert!(true, "napi feature compiles successfully");
 }
 

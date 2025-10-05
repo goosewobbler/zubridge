@@ -5,9 +5,15 @@
 #[cfg(feature = "uniffi")]
 #[test]
 fn test_uniffi_feature_compiles() {
-    // This test just needs to compile successfully when uniffi feature is enabled
-    // The actual functionality will be tested in unit tests
-    assert!(true, "uniffi feature compiles successfully");
+    use zubridge_core::{create_store, Store};
+
+    // Test that create_store function is available
+    let store = create_store("uniffi-test".to_string());
+    assert_eq!(store.get_name(), "uniffi-test");
+
+    // Test that Store can be constructed directly
+    let store2 = Store::new("uniffi-direct".to_string());
+    assert_eq!(store2.get_name(), "uniffi-direct");
 }
 
 #[cfg(not(feature = "uniffi"))]

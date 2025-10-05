@@ -4,7 +4,7 @@
 pub mod core;
 pub mod middleware;
 
-#[cfg(feature = "napi")]
+#[cfg(any(feature = "napi", feature = "tauri"))]
 pub mod wrappers;
 
 // Re-export core types for convenience

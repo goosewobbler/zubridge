@@ -38,13 +38,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 4.4 Create LoggingMiddleware example in src/middleware/logging.rs
   - [x] 4.5 Verify all middleware tests pass
 
-- [ ] 5. Create integration tests for feature flag validation
-  - [ ] 5.1 Implement tests/feature_uniffi.rs to verify uniffi feature compiles
-  - [ ] 5.2 Implement tests/feature_napi.rs to verify napi feature compiles
-  - [ ] 5.3 Implement tests/feature_tauri.rs to verify tauri feature compiles
-  - [ ] 5.4 Test default build (no features) compiles successfully
-  - [ ] 5.5 Test multiple feature combinations don't conflict
-  - [ ] 5.6 Verify all integration tests pass
+- [x] 5. Create integration tests for feature flag validation
+  - [x] 5.1 Implement tests/feature_uniffi.rs to verify uniffi feature compiles
+  - [x] 5.2 Implement tests/feature_napi.rs to verify napi feature compiles
+  - [x] 5.3 Implement tests/feature_tauri.rs to verify tauri feature compiles
+  - [x] 5.4 Test default build (no features) compiles successfully
+  - [x] 5.5 Test multiple feature combinations don't conflict
+  - [x] 5.6 Verify all integration tests pass
 
 - [ ] 6. Update CI/CD pipeline for Rust validation
   - [ ] 6.1 Identify existing GitHub Actions workflow file to update
