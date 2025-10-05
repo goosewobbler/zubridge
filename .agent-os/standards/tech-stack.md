@@ -1,7 +1,7 @@
 **# Tech Stack**
 
-**Version:** 1.1.0  
-**Last Updated:** 2024-12-19
+**Version:** 1.2.0
+**Last Updated:** 2025-10-05
 
 **## Context**
 Global tech stack defaults for Agent OS projects, overridable in project-specific `.agent-os/product/tech-stack.md`.
@@ -64,11 +64,32 @@ Global tech stack defaults for Agent OS projects, overridable in project-specifi
 - Extension Target: Chrome/Firefox cross-browser
 - Extension Storage: browser.storage.local + IndexedDB
 
+## Language-Specific Conventions
+
+### Rust Projects
+- **Package Naming**: Kebab-case crate names (e.g., `zubridge-core`, `tauri-plugin-zubridge`)
+- **Monorepo Pattern**:
+  - Directory: Short name (e.g., `packages/core/`, `packages/tauri-plugin/`)
+  - Cargo.toml: Full prefixed name (e.g., `name = "zubridge-core"`)
+- **Test Organization**: See best-practices.md Rust Testing Standards
+- **Feature Flags**: Use Cargo features for conditional compilation
+- **Build Tools**: cargo, rustc, cargo-edit for dependency management
+
+### TypeScript/JavaScript Projects
+- **Package Naming**: Scoped names (e.g., `@zubridge/electron`, `@zubridge/utils`)
+- **Monorepo Pattern**: Directory matches scope (e.g., `packages/electron/`)
+- **Test Organization**: See best-practices.md Testing Standards
+
 ---
 
 ## Changelog
 
-### v1.1.0 (2024-12-19)
+### v1.2.0 (2025-10-05)
+- Added language-specific conventions for Rust and TypeScript projects
+- Added Rust package naming patterns and monorepo conventions
+- Added references to best-practices.md for test organization
+
+### v1.1.0 (2025-10-04)
 - Updated TypeScript from 5.6+ to 5.7+
 - Updated PostgreSQL from 17+ to 18+
 - Updated Lucide React from 0.4x+ to 0.5x+

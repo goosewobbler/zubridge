@@ -1,7 +1,7 @@
 # Development Best Practices
 
-**Version:** 1.2.0
-**Last Updated:** 2024-12-19
+**Version:** 1.3.0
+**Last Updated:** 2025-10-05
 
 ## Context
 
@@ -71,10 +71,26 @@ ELSE:
 - Focus on comprehensive unit test coverage, selective integration tests, minimal E2E tests
 
 ### E2E Testing Framework
-- **Cross-platform apps** (Electron/Tauri/Flutter/Neutralino/Blazor): Use WebdriverIO latest
+- **Cross-platform apps** (Electron/Tauri/Flutter/Neutralino/Blazor/Wails): Use WebdriverIO latest
 - **Web applications**: Use Playwright latest
 - E2E tests should cover critical user journeys and business workflows
 - Keep E2E tests focused on user-facing functionality, not implementation details
+
+### Rust Testing Standards
+
+#### Test Organization
+- **Unit tests**: Use `#[cfg(test)] mod tests { ... }` inline in the same file as the code being tested
+- **Integration tests**: Place in `tests/` directory at package root, each `.rs` file is a separate test binary
+- **Feature flag tests**: Integration tests in `tests/` that verify conditional compilation works correctly
+
+#### Test File Naming
+- Integration test files: Descriptive names like `feature_uniffi.rs`, `middleware_chain.rs`
+- No `mod.rs` in `tests/` directory (each file is independent)
+
+#### Rust Testing Pyramid
+- **Unit tests** (many): Test individual functions and structs inline
+- **Integration tests** (fewer): Test the crate API as a whole, compiled state
+- **E2E tests** (fewest): Test actual framework integrations via WebdriverIO
 </conditional-block>
 
 <conditional-block context-check="dependencies" task-condition="choosing-external-library">
@@ -103,7 +119,13 @@ When adding third-party dependencies:
 
 ## Changelog
 
-### v1.2.0 (2024-12-19)
+### v1.3.0 (2025-10-05)
+- Added Rust testing standards section
+- Added Rust test organization (inline unit tests, integration tests in tests/ directory)
+- Added Rust test file naming conventions
+- Added Rust testing pyramid guidance
+
+### v1.2.0 (2025-10-04)
 - Added comprehensive testing standards with 80% coverage requirement
 - Added test directory structure guidelines for unit and integration tests
 - Added testing pyramid strategy (unit > integration > E2E)

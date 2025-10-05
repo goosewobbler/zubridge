@@ -2,7 +2,7 @@
 description: Spec Creation Rules for Agent OS
 globs:
 alwaysApply: false
-version: 1.1
+version: 1.2
 encoding: UTF-8
 ---
 
@@ -84,6 +84,12 @@ Use the context-fetcher subagent to clarify scope boundaries and technical consi
     - UI/UX requirements
     - integration points
   </technical>
+  <cicd_infrastructure>
+    - ASK: Does this require updating existing CI/CD workflows or creating new ones?
+    - CHECK: Review @.agent-os/standards/cicd-patterns.md for workflow architecture patterns
+    - PREFER: Adding jobs to existing workflows over creating new workflow files
+    - IF_NEW_WORKFLOW_NEEDED: Justify why it can't be added to existing workflows
+  </cicd_infrastructure>
 </clarification_areas>
 
 <decision_tree>
@@ -278,6 +284,17 @@ Use the file-creator subagent to create the file: sub-specs/technical-spec.md us
     - integration requirements
     - performance criteria
   </technical_requirements>
+  <project_conventions>
+    IMPORTANT: Before writing technical spec:
+    - CHECK: @.agent-os/product/tech-stack.md for language-specific conventions
+    - CHECK: @.agent-os/standards/best-practices.md for test organization
+    - CHECK: @.agent-os/standards/cicd-patterns.md for workflow patterns
+    - CHECK: @.agent-os/standards/monorepo-conventions.md for package naming patterns
+    - APPLY: Language-specific naming patterns (Rust kebab-case, TS scoped packages)
+    - APPLY: Language-specific test organization (Rust inline unit tests, TS test/ directory)
+    - APPLY: Monorepo conventions if package directory ≠ package name
+    - APPLY: CI/CD patterns (prefer updating existing workflows)
+  </project_conventions>
   <external_dependencies_conditional>
     - only include if new dependencies needed
     - new libraries/packages
