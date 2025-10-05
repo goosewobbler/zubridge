@@ -1,11 +1,11 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { ThunkSchedulerEvents } from '../constants.js';
 import { ActionExecutor } from '../action/ActionExecutor.js';
+import { ThunkSchedulerEvents } from '../constants.js';
 import { actionScheduler, thunkManager } from '../thunk/init.js';
-import type { Thunk as ThunkClass } from '../thunk/Thunk.js';
 import { ThunkRegistrationQueue } from '../thunk/registration/ThunkRegistrationQueue.js';
+import type { Thunk as ThunkClass } from '../thunk/Thunk.js';
 import type { ThunkTask } from '../types/thunk.js';
 
 /**

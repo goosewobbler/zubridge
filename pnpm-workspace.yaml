@@ -9,7 +9,7 @@ packages:
   - 'apps/tauri-v1/e2e'
   - 'e2e'
   - 'packages/apps-shared'
-  - 'packages/core'
+  - 'packages/utils'
   - 'packages/electron'
   - 'packages/middleware/node'
   - 'packages/tauri'

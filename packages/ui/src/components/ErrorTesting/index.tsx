@@ -1,9 +1,9 @@
 // No need to redeclare the window global since it's in @zubridge/types
 
-import { debug } from '@zubridge/core';
 import type { Action, Dispatch } from '@zubridge/types';
 // Import app window augmentations
 import type {} from '@zubridge/types/app';
+import { debug } from '@zubridge/utils';
 import { useCallback, useState } from 'react';
 import { Button } from '../Button';
 import { ErrorLog } from '../ErrorLog';

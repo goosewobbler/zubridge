@@ -5,9 +5,9 @@ import {
   createDoubleCounterThunk,
   type ThunkContext,
 } from '@zubridge/apps-shared';
-import { debug } from '@zubridge/core';
 import { createDispatch, isDev } from '@zubridge/electron/main';
 import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { AppIpcChannel } from '../constants.js';
 import { getZubridgeMode } from '../utils/mode.js';

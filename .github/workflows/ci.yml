@@ -78,6 +78,57 @@ jobs:
       - name: 🧪 Run Unit Tests
         run: pnpm test:unit
 
+  # Rust core crate validation
+  rust-core:
+    name: Rust Core (${{ matrix.feature }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature:
+          - default
+          - uniffi
+          - napi
+          - tauri
+          - uniffi,tauri
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: 📦 Install Tauri dependencies
+        if: contains(matrix.feature, 'tauri')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev
+
+      - name: 🔨 Build Rust crate
+        working-directory: packages/core
+        run: |
+          if [ "${{ matrix.feature }}" = "default" ]; then
+            cargo build --verbose
+          else
+            cargo build --verbose --features "${{ matrix.feature }}"
+          fi
+
+      - name: 🧪 Run Rust tests
+        working-directory: packages/core
+        run: |
+          if [ "${{ matrix.feature }}" = "default" ]; then
+            cargo test --verbose
+          else
+            cargo test --verbose --features "${{ matrix.feature }}"
+          fi
+
   # E2E tests - using matrix strategy
   e2e-tests:
     needs: [build-shared-packages, code-quality]
@@ -121,6 +172,7 @@ jobs:
     needs: [
       build-shared-packages,
       code-quality,
+      rust-core,
       e2e-tests
     ]
     if: always()

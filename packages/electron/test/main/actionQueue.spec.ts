@@ -2,7 +2,7 @@ import type { Action, AnyState, StateManager } from '@zubridge/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock all the dependencies
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

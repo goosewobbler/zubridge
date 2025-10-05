@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { useEffect, useState } from 'react';
 
 // Define a generic store type with bridge status

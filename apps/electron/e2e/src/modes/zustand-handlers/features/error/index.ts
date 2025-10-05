@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 
 /**
  * Creates a handler that intentionally throws an error for testing error handling

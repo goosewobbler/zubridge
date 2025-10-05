@@ -1,5 +1,5 @@
 {
-  "name": "@zubridge/core",
+  "name": "@zubridge/utils",
   "version": "2.0.0",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "description": "Core utilities and shared functionality for Zubridge packages",
@@ -24,7 +24,8 @@
   },
   "devDependencies": {
     "shx": "^0.4.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.0.5"
   },
   "repository": {
     "type": "git",
@@ -39,5 +40,5 @@
   "bugs": {
     "url": "https://github.com/goosewobbler/zubridge/issues"
   },
-  "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/core#readme"
+  "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/utils#readme"
 }

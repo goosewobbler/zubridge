@@ -1,10 +1,10 @@
-import { debug } from '@zubridge/core';
 import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { WebContents } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from '../../constants.js';
-import { thunkManager } from '../../thunk/init.js';
 import { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
+import { thunkManager } from '../../thunk/init.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import {
   getWebContents,

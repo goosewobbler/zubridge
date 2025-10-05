@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { create, type StoreApi } from 'zustand';
 import type { State } from '../../types.js';
 

@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { thunkManager } from '../thunk/init.js';
 
 /**

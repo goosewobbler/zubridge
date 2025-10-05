@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, Handler, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { Store } from 'redux';
 import { ActionProcessingError } from '../errors/index.js';
 import type { ZubridgeMiddleware } from '../middleware.js';

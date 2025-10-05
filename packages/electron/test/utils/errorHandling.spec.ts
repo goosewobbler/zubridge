@@ -1,11 +1,11 @@
 // Import debug function and mock it
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ZubridgeError } from '../../src/errors/index.js';
 import { ensureZubridgeError } from '../../src/errors/index.js';
 import { logError, logZubridgeError, serializeError } from '../../src/utils/errorHandling.js';
 
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

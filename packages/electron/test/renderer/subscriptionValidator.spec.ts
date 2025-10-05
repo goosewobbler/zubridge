@@ -11,7 +11,7 @@ vi.mock('electron', () => ({
 }));
 
 // Mock the debug module that might be used
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

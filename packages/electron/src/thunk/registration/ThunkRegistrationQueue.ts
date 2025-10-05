@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import type { Thunk } from '../Thunk.js';
 import { type ThunkManager, ThunkManagerEvent } from '../ThunkManager.js';
 

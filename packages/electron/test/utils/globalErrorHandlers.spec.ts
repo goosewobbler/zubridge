@@ -20,7 +20,7 @@ vi.mock('../../src/errors/index.js', () => ({
 }));
 
 // Mock the debug function
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

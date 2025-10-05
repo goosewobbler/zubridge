@@ -1,4 +1,3 @@
-import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -7,6 +6,7 @@ import type {
   StateManager,
   Thunk,
 } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { Store } from 'redux';
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreApi } from 'zustand/vanilla';

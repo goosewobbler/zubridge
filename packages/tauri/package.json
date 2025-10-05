@@ -76,7 +76,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@zubridge/core": "workspace:*",
+    "@zubridge/utils": "workspace:*",
     "@zubridge/types": "workspace:*",
     "zustand": "^5.0.8"
   }

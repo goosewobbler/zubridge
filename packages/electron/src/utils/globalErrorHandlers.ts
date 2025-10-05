@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { ConfigurationError, ResourceManagementError } from '../errors/index.js';
 import { logZubridgeError } from './errorHandling.js';
 

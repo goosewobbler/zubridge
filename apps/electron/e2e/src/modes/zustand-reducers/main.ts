@@ -1,7 +1,7 @@
-import { debug } from '@zubridge/core';
 import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { RootReducer } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { StoreApi } from 'zustand';
 import type { BaseState } from '../../types.js';
 // Import root reducer

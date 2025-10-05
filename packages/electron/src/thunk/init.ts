@@ -1,7 +1,7 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { initActionScheduler } from '../action/ActionScheduler.js';
-import { initThunkManager as initManager } from './ThunkManager.js';
 import { ThunkScheduler } from './scheduling/ThunkScheduler.js';
+import { initThunkManager as initManager } from './ThunkManager.js';
 
 // Initialize the ThunkManager immediately when this file is imported
 const scheduler = new ThunkScheduler();

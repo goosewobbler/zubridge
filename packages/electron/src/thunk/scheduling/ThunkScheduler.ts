@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { ThunkSchedulerEvents } from '../../constants.js';
 import type {
   ThunkScheduler as IThunkScheduler,

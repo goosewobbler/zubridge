@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createReduxAdapter } from '../../src/adapters/redux.js';
 
 // Mock the debug utility
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(), // Simplified mock
 }));
 

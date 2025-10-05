@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, Reducer } from '@zubridge/electron';
+import { debug } from '@zubridge/utils';
 
 /**
  * Reducer for theme state

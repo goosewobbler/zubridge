@@ -7,7 +7,7 @@ import { getMainThunkProcessor } from '../../src/main/mainThunkProcessor.js';
 import { getStateManager } from '../../src/registry/stateManagerRegistry.js';
 
 // Mock all external dependencies
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

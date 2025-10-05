@@ -1,6 +1,6 @@
-import { debug } from '@zubridge/core';
-import type { Action } from '@zubridge/types';
 import { EventEmitter } from 'node:events';
+import type { Action } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { ThunkScheduler } from '../scheduling/ThunkScheduler.js';
 import { type Thunk, ThunkState } from '../Thunk.js';
 

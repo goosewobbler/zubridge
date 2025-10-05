@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Handler } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 
 // Cache for handler resolutions to improve performance
 // Using WeakMap keyed by handlers object for automatic cleanup when handlers change
