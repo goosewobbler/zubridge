@@ -65,9 +65,9 @@ jobs:
         run: |
           # Extract package name from branch name (more flexible pattern)
           BRANCH_PACKAGE=""
-          
-          # Try standard pattern first (feature/package-vX.x)
-          if [[ "${TARGET_BRANCH}" =~ ^feature/([^-]+)-v[0-9]+\.x$ ]]; then
+
+          # Try standard pattern first (feat/package-vX.x)
+          if [[ "${TARGET_BRANCH}" =~ ^feat/([^-]+)-v[0-9]+\.x$ ]]; then
             BRANCH_PACKAGE="${BASH_REMATCH[1]}"
             echo "Extracted package name from standard branch pattern: ${BRANCH_PACKAGE}"
           # For custom branch names, check if it contains the package name
@@ -124,7 +124,7 @@ jobs:
                   git branch ${FEATURE_BRANCH}
                   git checkout ${FEATURE_BRANCH}
 
-                  # Extract version number for commit message (assuming format feature/pkg-vMAJOR.x)
+                  # Extract version number for commit message (assuming format feat/pkg-vMAJOR.x)
                   NEXT_MAJOR_VERSION=$(echo "${FEATURE_BRANCH}" | sed -n 's/.*-v\([0-9]*\)\.x$/\1/p')
                   if [ -z "${NEXT_MAJOR_VERSION}" ]; then
                     echo "::warning::Could not extract major version from branch name ${FEATURE_BRANCH}. Using generic commit message."
@@ -156,9 +156,9 @@ jobs:
         run: |
           # Extract package name from branch name (more flexible pattern)
           BRANCH_PACKAGE=""
-          
-          # Try standard pattern first (feature/package-vX.x)
-          if [[ "${TARGET_BRANCH}" =~ ^feature/([^-]+)-v[0-9]+\.x$ ]]; then
+
+          # Try standard pattern first (feat/package-vX.x)
+          if [[ "${TARGET_BRANCH}" =~ ^feat/([^-]+)-v[0-9]+\.x$ ]]; then
             BRANCH_PACKAGE="${BASH_REMATCH[1]}"
             echo "Extracted package name from standard branch pattern: ${BRANCH_PACKAGE}"
           # For custom branch names, check if it contains the package name
@@ -177,7 +177,7 @@ jobs:
           fi
 
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-            if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feature/') }}" == "true" ]]; then
+            if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feat/') }}" == "true" ]]; then
               if [[ "${PACKAGE_MATCHES_BRANCH}" == "true" ]]; then
                 echo "DRY RUN: Would merge feature branch ${{ inputs.target_branch }} to main (package matches branch)"
               else
@@ -187,15 +187,15 @@ jobs:
               echo "DRY RUN: Not a major release from feature branch, would skip merge to main"
             fi
           else
-            if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feature/') }}" == "true" ]]; then
+            if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feat/') }}" == "true" ]]; then
               if [[ "${PACKAGE_MATCHES_BRANCH}" == "true" ]]; then
                 echo "::group::Merging feature branch to main"
-                
+
                 # Ensure we have the latest main branch
                 git fetch origin main
 
                 # Check if we're on a feature branch
-                if [[ "${{ inputs.target_branch }}" == feature/* ]]; then
+                if [[ "${{ inputs.target_branch }}" == feat/* ]]; then
                   echo "We are on feature branch ${{ inputs.target_branch }}, preparing to merge to main"
 
                   # Create a temporary branch from main to merge into
