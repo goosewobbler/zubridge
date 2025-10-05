@@ -171,7 +171,7 @@ jobs:
               echo "Using custom feature branch name: ${TARGET_BRANCH_NAME}"
             else
               # Default to conventional feature branch name if no custom name provided
-              TARGET_BRANCH_NAME="feature/${PACKAGE_NAME}-v${CURRENT_FEATURE_MAJOR_VERSION}.x"
+              TARGET_BRANCH_NAME="feat/${PACKAGE_NAME}-v${CURRENT_FEATURE_MAJOR_VERSION}.x"
               echo "Using default feature branch name: ${TARGET_BRANCH_NAME}"
             fi
             echo "target_branch=${TARGET_BRANCH_NAME}" >> "$GITHUB_OUTPUT"
@@ -183,7 +183,7 @@ jobs:
           fi
 
           # The next_version_branch (for creating future feature branches) ALWAYS uses the NEXT major version.
-          NEXT_BRANCH_NAME="feature/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
+          NEXT_BRANCH_NAME="feat/${PACKAGE_NAME}-v${FEATURE_MAJOR_VERSION}.x"
           echo "Calculated next version branch: ${NEXT_BRANCH_NAME}"
           echo "next_version_branch=${NEXT_BRANCH_NAME}" >>"${GITHUB_OUTPUT}"
 
@@ -204,21 +204,21 @@ jobs:
                 echo "::error::Custom feature branch '${TARGET_BRANCH}' does not exist. Please create this branch first or specify a different branch."
               else
                 echo "::error::Feature branch '${TARGET_BRANCH}' does not exist. Please create this branch first or specify a custom branch name using the 'feature_branch_name' field."
-                echo "::error::Expected branch naming convention: feature/{package_name}-v{next_major_version}.x (e.g., feature/electron-v2.x)"
+                echo "::error::Expected branch naming convention: feat/{package_name}-v{next_major_version}.x (e.g., feat/electron-v2.x)"
               fi
             else
               echo "::error::Branch '${TARGET_BRANCH}' does not exist."
             fi
             exit 1
           fi
-          
+
           # For feature branches, provide info but don't enforce naming convention
           if [ "${BRANCH_TYPE}" == "feature" ]; then
             if [ -n "${FEATURE_BRANCH_NAME}" ]; then
               echo "ℹ️ Releasing package '${INPUT_PACKAGES}' from custom feature branch '${TARGET_BRANCH}'"
             else
               echo "ℹ️ Releasing package '${INPUT_PACKAGES}' from feature branch '${TARGET_BRANCH}'"
-              echo "ℹ️ Recommended naming convention: feature/{package_name}-v{next_major_version}.x"
+              echo "ℹ️ Recommended naming convention: feat/{package_name}-v{next_major_version}.x"
             fi
           fi
 

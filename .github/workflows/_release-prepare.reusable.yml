@@ -166,7 +166,7 @@ jobs:
           fi
 
       - name: 🔄 Merge feature branch to main
-        if: ${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && !inputs.dry_run && startsWith(inputs.target_branch, 'feature/') }}
+        if: ${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && !inputs.dry_run && startsWith(inputs.target_branch, 'feat/') }}
         shell: bash
         run: |
           echo "::group::Merging feature branch to main"
@@ -175,7 +175,7 @@ jobs:
           git fetch origin main
 
           # Check if we're on a feature branch
-          if [[ "${{ inputs.target_branch }}" == feature/* ]]; then
+          if [[ "${{ inputs.target_branch }}" == feat/* ]]; then
             echo "We are on feature branch ${{ inputs.target_branch }}, preparing to merge to main"
 
             # Create a temporary branch from main to merge into
@@ -244,7 +244,7 @@ jobs:
             echo "DRY RUN: Would push branches"
 
             # If we would merge a feature branch to main, show what would happen
-            if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feature/') }}" == "true" ]]; then
+            if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feat/') }}" == "true" ]]; then
               echo "DRY RUN: Would push merged main branch"
             fi
           else
@@ -288,7 +288,7 @@ jobs:
           git diff "origin/${RELEASE_BRANCH}"
 
           # If this is a major release from a feature branch, also show the changes that would be merged to main
-          if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feature/') }}" == "true" ]]; then
+          if [[ "${{ contains(inputs.release_version, 'major') && !contains(inputs.release_version, 'pre') && startsWith(inputs.target_branch, 'feat/') }}" == "true" ]]; then
             echo -e "\nChanges that would be merged to main:"
             git diff origin/main
           fi
