@@ -31,12 +31,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 3.6 Wire up lib.rs with conditional compilation for all platforms
   - [x] 3.7 Verify all unit tests pass
 
-- [ ] 4. Implement middleware architecture
-  - [ ] 4.1 Write unit tests for Middleware trait and MiddlewareChain
-  - [ ] 4.2 Define Middleware trait in src/middleware/mod.rs
-  - [ ] 4.3 Implement MiddlewareChain with add() and trigger methods
-  - [ ] 4.4 Create LoggingMiddleware example in src/middleware/logging.rs
-  - [ ] 4.5 Verify all middleware tests pass
+- [x] 4. Implement middleware architecture
+  - [x] 4.1 Write unit tests for Middleware trait and MiddlewareChain
+  - [x] 4.2 Define Middleware trait in src/middleware/mod.rs
+  - [x] 4.3 Implement MiddlewareChain with add() and trigger methods
+  - [x] 4.4 Create LoggingMiddleware example in src/middleware/logging.rs
+  - [x] 4.5 Verify all middleware tests pass
 
 - [ ] 5. Create integration tests for feature flag validation
   - [ ] 5.1 Implement tests/feature_uniffi.rs to verify uniffi feature compiles
