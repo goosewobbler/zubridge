@@ -1,4 +1,3 @@
-import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -6,9 +5,10 @@ import type {
   StateManager,
   WrapperOrWebContents,
 } from '@zubridge/types';
-import { actionScheduler, thunkManager } from '../thunk/init.js';
+import { debug } from '@zubridge/utils';
 import { initActionQueue } from '../main/actionQueue.js';
 import { createMiddlewareOptions } from '../middleware.js';
+import { actionScheduler, thunkManager } from '../thunk/init.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
 import { setupMainProcessErrorHandlers } from '../utils/globalErrorHandlers.js';
 import { sanitizeState } from '../utils/serialization.js';

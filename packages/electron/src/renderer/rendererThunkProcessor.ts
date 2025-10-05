@@ -1,7 +1,7 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from '@zubridge/types';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
+import { debug } from '@zubridge/utils';
 import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';
 import { Thunk } from '../thunk/Thunk.js';
 import type { PreloadOptions } from '../types/preload.js';

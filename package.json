@@ -91,7 +91,7 @@
     "overrides": {
       "@types/node": "24.3.0",
       "@zubridge/electron": "workspace:*",
-      "@zubridge/core": "workspace:*"
+      "@zubridge/utils": "workspace:*"
     }
   }
 }

@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { v4 as uuidv4 } from 'uuid';
 
 export enum ThunkState {

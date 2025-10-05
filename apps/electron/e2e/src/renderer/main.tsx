@@ -14,10 +14,10 @@ import {
   createDoubleCounterWithGetStateOverrideThunk,
   type ThunkContext,
 } from '@zubridge/apps-shared';
-// Import debug utility
-import { debug } from '@zubridge/core';
 // Import Zubridge components
 import { withElectron } from '@zubridge/ui/electron';
+// Import debug utility
+import { debug } from '@zubridge/utils';
 
 // Create the Electron app component
 const ElectronApp = withElectron();

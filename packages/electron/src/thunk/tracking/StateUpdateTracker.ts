@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 
 /**
  * Tracks state updates pending acknowledgment from renderer processes

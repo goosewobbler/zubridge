@@ -7,12 +7,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ## Tasks
 
-- [ ] 1. Rename existing TypeScript package from @zubridge/core to @zubridge/utils
-  - [ ] 1.1 Write tests to verify package imports work after rename
-  - [ ] 1.2 Rename directory from packages/core/ to packages/utils/
-  - [ ] 1.3 Update package.json name field to @zubridge/utils
-  - [ ] 1.4 Update all imports across codebase from @zubridge/core to @zubridge/utils
-  - [ ] 1.5 Verify all tests pass after rename
+- [x] 1. Rename existing TypeScript package from @zubridge/core to @zubridge/utils
+  - [x] 1.1 Write tests to verify package imports work after rename
+  - [x] 1.2 Rename directory from packages/core/ to packages/utils/
+  - [x] 1.3 Update package.json name field to @zubridge/utils
+  - [x] 1.4 Update all imports across codebase from @zubridge/core to @zubridge/utils
+  - [x] 1.5 Verify all tests pass after rename
 
 - [ ] 2. Set up Rust crate structure at packages/core/
   - [ ] 2.1 Write integration test skeleton for feature flag validation

@@ -18,7 +18,7 @@ interface ActionSchedulerTestAccess extends ActionScheduler {
 }
 
 // Mock all external dependencies
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

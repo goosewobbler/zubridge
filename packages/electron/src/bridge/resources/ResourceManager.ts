@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { WebContents } from 'electron';
 import { ResourceManagementError } from '../../errors/index.js';
 import type { SubscriptionManager } from '../../subscription/SubscriptionManager.js';

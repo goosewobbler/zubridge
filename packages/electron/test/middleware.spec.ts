@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMiddlewareOptions, type ZubridgeMiddleware } from '../src/middleware.js';
 
 // Mock the debug function
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

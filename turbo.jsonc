@@ -15,7 +15,7 @@
     "build:packages": {
       "dependsOn": [
         "@zubridge/types#build",
-        "@zubridge/core#build",
+        "@zubridge/utils#build",
         "@zubridge/electron#build",
         "@zubridge/tauri#build",
         "@zubridge/ui#build",
@@ -272,7 +272,7 @@
       "outputs": ["apps/tauri-v1/e2e/dist/**", "apps/tauri-v1/e2e/src-tauri/target/**"],
       "cache": false
     },
-    "@zubridge/core#build": {
+    "@zubridge/utils#build": {
       "dependsOn": ["@zubridge/types#build"],
       "outputs": ["dist/**"],
       "cache": false

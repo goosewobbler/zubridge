@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 import type { Plugin } from 'vite';
@@ -134,7 +134,7 @@ export default defineConfig({
   main: {
     plugins: [
       externalizeDepsPlugin({
-        exclude: ['@zubridge/core', '@zubridge/electron', '@zubridge/apps-shared'],
+        exclude: ['@zubridge/utils', '@zubridge/electron', '@zubridge/apps-shared'],
       }),
       debugPlugin(),
     ],
@@ -170,7 +170,7 @@ export default defineConfig({
       alias: {
         '@': resolve('src/renderer'),
         // Add aliases of core packages to use browser-safe versions
-        '@zubridge/core': resolve(__dirname, '../../../packages/core/dist/index.js'),
+        '@zubridge/utils': resolve(__dirname, '../../../packages/core/dist/index.js'),
         '@zubridge/electron': resolve(__dirname, '../../../packages/electron/dist/renderer.js'),
         '@zubridge/middleware': resolve(__dirname, '../../../packages/middleware/dist/index.js'),
         '@zubridge/types': resolve(__dirname, '../../../packages/types/dist/index.js'),

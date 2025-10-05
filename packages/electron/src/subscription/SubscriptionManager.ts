@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { dequal } from 'dequal';
 import { deepGet } from '../utils/deepGet.js';
 

@@ -1,5 +1,4 @@
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -9,6 +8,7 @@ import type {
   DispatchFunc,
   Thunk,
 } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { useSyncExternalStore } from 'react';
 import { createStore } from 'zustand/vanilla';
 

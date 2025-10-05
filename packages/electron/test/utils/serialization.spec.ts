@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { isPromise, sanitizeState } from '../../src/utils/serialization.js';
 
 // Mock the debug function
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

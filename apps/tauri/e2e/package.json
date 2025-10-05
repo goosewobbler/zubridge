@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
-    "@zubridge/core": "workspace:*",
+    "@zubridge/utils": "workspace:*",
     "@zubridge/tauri": "workspace:*",
     "@zubridge/ui": "workspace:*",
     "react": "^19.0.0",

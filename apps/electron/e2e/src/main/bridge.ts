@@ -1,6 +1,6 @@
-import { debug } from '@zubridge/core';
 import type { ReduxBridge, ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
 import type { CustomBridge } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 
 import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 

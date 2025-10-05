@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { initialState } from '@zubridge/apps-shared';
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import type { State } from '../types.js';
 import { getZubridgeMode, ZubridgeMode } from '../utils/mode.js';
 import {

@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { QueueOverflowError } from '../../types/errors.js';
 import type { ThunkProcessorOptions } from '../../types/thunk.js';

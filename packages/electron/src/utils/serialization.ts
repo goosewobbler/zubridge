@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { AnyState } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 
 /**
  * Type guard to check if a value is a Promise

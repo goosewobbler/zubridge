@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 import { ensureZubridgeError, type ZubridgeError } from '../errors/index.js';
 
 /**
