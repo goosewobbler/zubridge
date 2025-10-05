@@ -109,8 +109,7 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libglib2.0-dev \
-            libgio2.0-cil-dev
+            libgtk-3-dev
 
       - name: 🔨 Build Rust crate
         working-directory: packages/core
