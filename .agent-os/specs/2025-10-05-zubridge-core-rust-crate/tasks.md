@@ -22,14 +22,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 2.5 Add build.rs for UniFFI and NAPI-RS build scripts
   - [x] 2.6 Verify cargo build succeeds with default features
 
-- [ ] 3. Implement core Store struct and minimal working example
-  - [ ] 3.1 Write unit tests for Store struct (new, get_name)
-  - [ ] 3.2 Implement Store struct in src/core/store.rs
-  - [ ] 3.3 Create UniFFI interface definition (src/uniffi.udl) with create_store function
-  - [ ] 3.4 Implement NAPI-RS wrapper in src/wrappers/napi.rs
-  - [ ] 3.5 Implement Tauri plugin wrapper in src/wrappers/tauri.rs
-  - [ ] 3.6 Wire up lib.rs with conditional compilation for all platforms
-  - [ ] 3.7 Verify all unit tests pass
+- [x] 3. Implement core Store struct and minimal working example
+  - [x] 3.1 Write unit tests for Store struct (new, get_name)
+  - [x] 3.2 Implement Store struct in src/core/store.rs
+  - [x] 3.3 Create UniFFI interface definition (src/uniffi.udl) with create_store function
+  - [x] 3.4 Implement NAPI-RS wrapper in src/wrappers/napi.rs
+  - [x] 3.5 Implement Tauri plugin wrapper in src/wrappers/tauri.rs
+  - [x] 3.6 Wire up lib.rs with conditional compilation for all platforms
+  - [x] 3.7 Verify all unit tests pass
 
 - [ ] 4. Implement middleware architecture
   - [ ] 4.1 Write unit tests for Middleware trait and MiddlewareChain

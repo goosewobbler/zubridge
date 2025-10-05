@@ -2,5 +2,10 @@
 // This file defines the public API that will be exposed via UniFFI bindings
 
 namespace zubridge_core {
-    // Functions and types will be added in Task 3
+    Store create_store(string name);
+};
+
+interface Store {
+    constructor(string name);
+    string get_name();
 };

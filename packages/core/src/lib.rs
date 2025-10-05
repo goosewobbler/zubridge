@@ -8,6 +8,11 @@ pub mod middleware;
 pub mod wrappers;
 
 // Re-export core types for convenience
-// These will be uncommented in Task 3 when modules have content
-// pub use core::*;
-// pub use middleware::*;
+pub use core::store::Store;
+
+#[cfg(feature = "uniffi")]
+pub use core::store::create_store;
+
+// UniFFI scaffolding
+#[cfg(feature = "uniffi")]
+uniffi::setup_scaffolding!();
