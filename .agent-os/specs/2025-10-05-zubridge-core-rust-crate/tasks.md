@@ -3,7 +3,7 @@
 These are the tasks to be completed for the spec detailed in @.agent-os/specs/2025-10-05-zubridge-core-rust-crate/spec.md
 
 > Created: 2025-10-05
-> Status: Ready for Implementation
+> Status: ✅ Completed
 
 ## Tasks
 
