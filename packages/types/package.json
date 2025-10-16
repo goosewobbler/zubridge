@@ -45,7 +45,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "clean": "shx rm -rf dist",
+    "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
+    "clean:output": "shx rm -rf dist",
     "clean:cache": "shx rm -rf .turbo",
     "test": "vitest run",
     "package": "pnpm pack"

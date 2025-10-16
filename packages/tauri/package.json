@@ -10,10 +10,9 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "pnpm clean:output && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
-    "clean:output": "pnpm dlx shx rm -rf ./dist",
+    "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
+    "clean:output": "shx rm -rf dist",
     "clean:cache": "shx rm -rf .turbo",
-    "prebuild": "pnpm clean:output",
     "build": "tsx ./scripts/build.ts",
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest run",
@@ -60,7 +59,6 @@
     "react": "^19.0.0",
     "rollup": "^4.50.1",
     "shelljs": "^0.10.0",
-    "shx": "^0.4.0",
     "typescript": "^5.9.2",
     "vitest": "^3.0.9"
   },
