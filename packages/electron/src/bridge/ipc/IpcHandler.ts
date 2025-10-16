@@ -4,11 +4,11 @@ import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
 import { IpcChannel } from '../../constants.js';
 import { IpcCommunicationError } from '../../errors/index.js';
-import { thunkManager } from '../../thunk/init.js';
-import { getPartialState } from '../../subscription/SubscriptionManager.js';
-import { Thunk as ThunkClass } from '../../thunk/Thunk.js';
-import { ThunkRegistrationQueue } from '../../thunk/registration/ThunkRegistrationQueue.js';
 import { actionQueue } from '../../main/actionQueue.js';
+import { getPartialState } from '../../subscription/SubscriptionManager.js';
+import { thunkManager } from '../../thunk/init.js';
+import { ThunkRegistrationQueue } from '../../thunk/registration/ThunkRegistrationQueue.js';
+import { Thunk as ThunkClass } from '../../thunk/Thunk.js';
 import { logZubridgeError, serializeError } from '../../utils/errorHandling.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import { isDestroyed, safelySendToWindow } from '../../utils/windows.js';
@@ -20,6 +20,7 @@ export class IpcHandler<State extends AnyState> {
   constructor(
     private stateManager: StateManager<State>,
     private resourceManager: ResourceManager<State>,
+    private serializationMaxDepth?: number,
   ) {
     this.thunkRegistrationQueue = new ThunkRegistrationQueue(thunkManager);
     this.setupHandlers();
@@ -276,7 +277,11 @@ export class IpcHandler<State extends AnyState> {
         '[BRIDGE DEBUG] Raw state retrieved:',
         typeof rawState === 'object' ? Object.keys(rawState) : typeof rawState,
       );
-      const state = sanitizeState(rawState);
+      const serializationOptions =
+        this.serializationMaxDepth !== undefined
+          ? { maxDepth: this.serializationMaxDepth }
+          : undefined;
+      const state = sanitizeState(rawState, serializationOptions);
 
       // Get window ID and subscriptions
       const windowId = event.sender.id;
