@@ -206,8 +206,13 @@ describe('SubscriptionHandler', () => {
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
 
-      (mockResourceManager.getOrCreateSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+      mockResourceManager.getSubscriptionManager.mockReturnValue(null);
       (mockWindowTracker.track as Mock).mockReturnValue(true);
+
+      // Mock addSubscriptionManager to set up the manager
+      mockResourceManager.addSubscriptionManager.mockImplementation(() => {
+        mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+      });
 
       // Create SubscriptionHandler with maxDepth: 3
       const handlerWithMaxDepth = new SubscriptionHandler(
@@ -272,8 +277,13 @@ describe('SubscriptionHandler', () => {
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
 
-      (mockResourceManager.getOrCreateSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+      mockResourceManager.getSubscriptionManager.mockReturnValue(null);
       (mockWindowTracker.track as Mock).mockReturnValue(true);
+
+      // Mock addSubscriptionManager to set up the manager
+      mockResourceManager.addSubscriptionManager.mockImplementation(() => {
+        mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+      });
 
       // Create SubscriptionHandler with maxDepth: 2
       const handlerWithMaxDepth = new SubscriptionHandler(

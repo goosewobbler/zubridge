@@ -632,6 +632,13 @@ describe('IpcHandler', () => {
 
   describe('serialization maxDepth configuration', () => {
     it('should use serializationMaxDepth when getting state', async () => {
+      // Unmock sanitizeState for this test to use the real implementation
+      const { sanitizeState: realSanitizeState } = await import(
+        '../../../src/utils/serialization.js'
+      );
+      vi.mocked(await import('../../../src/utils/serialization.js')).sanitizeState =
+        realSanitizeState;
+
       // Create deep nested state
       const deepState = {
         level1: {
@@ -678,6 +685,13 @@ describe('IpcHandler', () => {
     });
 
     it('should use default depth when serializationMaxDepth is not provided', async () => {
+      // Unmock sanitizeState for this test to use the real implementation
+      const { sanitizeState: realSanitizeState } = await import(
+        '../../../src/utils/serialization.js'
+      );
+      vi.mocked(await import('../../../src/utils/serialization.js')).sanitizeState =
+        realSanitizeState;
+
       // Create deep nested state (11 levels - deeper than default maxDepth of 10)
       let deepState: Record<string, unknown> = { value: 'deepest' };
       for (let i = 0; i < 11; i++) {

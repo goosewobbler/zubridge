@@ -255,8 +255,8 @@ describe('BridgeCore', () => {
       const stateChangeCallback = (mockStateManager.subscribe as Mock).mock.calls[0][0];
       stateChangeCallback({ counter: 43 });
 
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 });
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 });
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, undefined);
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, undefined);
     });
   });
 
