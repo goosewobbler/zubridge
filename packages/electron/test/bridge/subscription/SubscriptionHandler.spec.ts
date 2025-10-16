@@ -152,31 +152,6 @@ describe('SubscriptionHandler', () => {
     });
   });
 
-  describe('getWindowSubscriptions', () => {
-    it('should get subscriptions for specified window', () => {
-      const windowId = 123;
-      const mockSubManager = {
-        getCurrentSubscriptionKeys: vi.fn(() => ['counter', 'user']),
-      };
-      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
-
-      const result = subscriptionHandler.getWindowSubscriptions(windowId);
-
-      expect(result).toEqual(['counter', 'user']);
-      expect(mockResourceManager.getSubscriptionManager).toHaveBeenCalledWith(windowId);
-      expect(mockSubManager.getCurrentSubscriptionKeys).toHaveBeenCalledWith(windowId);
-    });
-
-    it('should return empty array when no subscription manager exists', () => {
-      const windowId = 123;
-      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(null);
-
-      const result = subscriptionHandler.getWindowSubscriptions(windowId);
-
-      expect(result).toEqual([]);
-    });
-  });
-
   describe('serialization maxDepth configuration', () => {
     it('should pass serializationMaxDepth to sanitizeState when sending state updates', async () => {
       // Create deep nested state

@@ -896,7 +896,7 @@ describe('bridge.ts', () => {
       expect(mockMiddleware.destroy).toHaveBeenCalled();
     });
 
-    it('should handle getSubscribedWindows functionality', () => {
+    it('should handle subscription functionality', () => {
       const stateManager = createMockStateManager();
       const bridge = createCoreBridge(stateManager);
 
@@ -905,10 +905,9 @@ describe('bridge.ts', () => {
       const webContents = createMockWebContents(200);
       (getWebContents as ReturnType<typeof vi.fn>).mockReturnValue(webContents);
 
-      bridge.subscribe([wrapper], ['user.name']);
-
-      const subscribedWindows = bridge.getSubscribedWindows();
-      expect(Array.isArray(subscribedWindows)).toBe(true);
+      const result = bridge.subscribe([wrapper], ['user.name']);
+      expect(result).toHaveProperty('unsubscribe');
+      expect(typeof result.unsubscribe).toBe('function');
     });
 
     it('should handle errors in subscription manager gracefully', () => {
@@ -1242,7 +1241,6 @@ describe('bridge.ts', () => {
       // Verify that the resulting object has the expected bridge properties
       expect(result).toHaveProperty('subscribe');
       expect(result).toHaveProperty('unsubscribe');
-      expect(result).toHaveProperty('getSubscribedWindows');
       expect(result).toHaveProperty('destroy');
     });
   });
@@ -1780,8 +1778,6 @@ describe('bridge.ts', () => {
       expect(typeof bridge.subscribe).toBe('function');
       expect(typeof bridge.unsubscribe).toBe('function');
       expect(typeof bridge.destroy).toBe('function');
-      expect(typeof bridge.getSubscribedWindows).toBe('function');
-      expect(typeof bridge.getWindowSubscriptions).toBe('function');
     });
 
     it('should handle state manager errors gracefully', () => {

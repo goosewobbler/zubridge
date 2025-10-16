@@ -74,7 +74,6 @@ vi.mock('../../src/bridge/subscription/SubscriptionHandler.js', () => ({
     subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
     selectiveSubscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
     unsubscribe: vi.fn(),
-    getWindowSubscriptions: vi.fn(() => []),
   })),
 }));
 
@@ -147,9 +146,7 @@ describe('BridgeCore', () => {
       expect(bridge).toBeDefined();
       expect(typeof bridge.subscribe).toBe('function');
       expect(typeof bridge.unsubscribe).toBe('function');
-      expect(typeof bridge.getSubscribedWindows).toBe('function');
       expect(typeof bridge.destroy).toBe('function');
-      expect(typeof bridge.getWindowSubscriptions).toBe('function');
     });
 
     it('should initialize components with correct parameters', async () => {
@@ -317,36 +314,6 @@ describe('BridgeCore', () => {
         bridge.unsubscribe(undefined, undefined);
 
         expect(bridge).toBeDefined();
-      });
-    });
-
-    describe('getSubscribedWindows', () => {
-      it('should return active window IDs from tracker', () => {
-        const mockIds = [123, 456];
-        (mockWebContentsTracker.getActiveIds as Mock).mockReturnValue(mockIds);
-
-        const result = bridge.getSubscribedWindows();
-
-        expect(result).toEqual(mockIds);
-        expect(mockWebContentsTracker.getActiveIds).toHaveBeenCalled();
-      });
-
-      it('should handle empty active IDs', () => {
-        (mockWebContentsTracker.getActiveIds as Mock).mockReturnValue([]);
-
-        const result = bridge.getSubscribedWindows();
-
-        expect(result).toEqual([]);
-      });
-    });
-
-    describe('getWindowSubscriptions', () => {
-      it('should delegate to subscription handler', () => {
-        const windowId = 123;
-
-        const result = bridge.getWindowSubscriptions(windowId);
-
-        expect(Array.isArray(result)).toBe(true);
       });
     });
   });

@@ -146,13 +146,6 @@ export function createCoreBridge<State extends AnyState>(
     stateManagerUnsubscribe = () => {}; // Provide no-op fallback
   }
 
-  // Get IDs of subscribed windows
-  const getSubscribedWindows = (): number[] => {
-    const activeIds = windowTracker.getActiveIds();
-    debug('windows', `Currently subscribed windows: ${activeIds.join(', ') || 'none'}`);
-    return activeIds;
-  };
-
   // Cleanup function for removing listeners
   const destroy = async () => {
     debug('core', 'Destroying CoreBridge');
@@ -224,8 +217,6 @@ export function createCoreBridge<State extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
-    getSubscribedWindows,
     destroy,
-    getWindowSubscriptions: subscriptionHandler.getWindowSubscriptions.bind(subscriptionHandler),
   };
 }

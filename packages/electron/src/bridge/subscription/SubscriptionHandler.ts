@@ -180,9 +180,4 @@ export class SubscriptionHandler<State extends AnyState> {
       this.windowTracker.untrack(webContents);
     }
   }
-
-  getWindowSubscriptions(windowId: number): string[] {
-    const subManager = this.resourceManager.getSubscriptionManager(windowId);
-    return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
-  }
 }

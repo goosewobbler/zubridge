@@ -18,7 +18,7 @@ export type { CoreBridgeOptions };
 export function createCoreBridge<State extends AnyState>(
   stateManager: StateManager<State>,
   options?: CoreBridgeOptions,
-): BackendBridge<number> {
+): BackendBridge {
   return createCoreBridgeImpl(stateManager, options);
 }
 
@@ -28,7 +28,7 @@ export function createCoreBridge<State extends AnyState>(
 export function createBridgeFromStore<S extends AnyState = AnyState>(
   store: StoreApi<S> | Store<S>,
   options?: ZustandOptions<S> | ReduxOptions<S> | CoreBridgeOptions,
-): BackendBridge<number> {
+): BackendBridge {
   debug('adapters', 'Creating bridge from store');
 
   // Get the appropriate state manager for this store
