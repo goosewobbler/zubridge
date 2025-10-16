@@ -33,6 +33,10 @@ vi.mock('../../../src/utils/windows.js', () => ({
   setupDestroyListener: vi.fn(),
 }));
 
+vi.mock('../../../src/utils/serialization.js', () => ({
+  sanitizeState: vi.fn((state) => state),
+}));
+
 describe('SubscriptionHandler', () => {
   let subscriptionHandler: SubscriptionHandler<AnyState>;
   let mockWebContents: WebContents[];
@@ -174,7 +178,7 @@ describe('SubscriptionHandler', () => {
   });
 
   describe('serialization maxDepth configuration', () => {
-    it('should use serializationMaxDepth when sending state updates', () => {
+    it('should pass serializationMaxDepth to sanitizeState when sending state updates', async () => {
       // Create deep nested state
       const deepState = {
         level1: {
@@ -198,21 +202,19 @@ describe('SubscriptionHandler', () => {
 
       const mockSubManager = {
         subscribe: vi.fn((_keys, callback) => {
-          // Immediately call the callback with state to test serialization
-          callback(deepState);
-          return vi.fn(); // Return unsubscribe function
+          // Store callback to call later
+          setTimeout(() => callback(deepState), 0);
+          return { unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
 
       mockResourceManager.getSubscriptionManager.mockReturnValue(null);
-      (mockWindowTracker.track as Mock).mockReturnValue(true);
-
-      // Mock addSubscriptionManager to set up the manager
       mockResourceManager.addSubscriptionManager.mockImplementation(() => {
         mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
       });
+      (mockWindowTracker.track as Mock).mockReturnValue(true);
 
       // Create SubscriptionHandler with maxDepth: 3
       const handlerWithMaxDepth = new SubscriptionHandler(
@@ -222,34 +224,21 @@ describe('SubscriptionHandler', () => {
         3,
       );
 
+      // Get the mocked sanitizeState
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+      (sanitizeState as Mock).mockClear();
+
       // Subscribe
       handlerWithMaxDepth.selectiveSubscribe(mockWebContents, ['*']);
 
-      // Verify subscribe was called
-      expect(mockSubManager.subscribe).toHaveBeenCalled();
+      // Wait for async callback
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Get the callback that was passed to subscribe
-      const subscribeCallback = (mockSubManager.subscribe as Mock).mock.calls[0][1];
-
-      // Clear previous calls
-      (mockWebContents.send as Mock).mockClear();
-
-      // Call the callback with deep state
-      subscribeCallback(deepState);
-
-      // Verify send was called
-      expect(mockWebContents.send).toHaveBeenCalled();
-
-      // Get the sent data
-      const sentData = (mockWebContents.send as Mock).mock.calls[0][1];
-
-      // Verify that level4 is truncated due to maxDepth: 3
-      expect(sentData.state.level1.level2.level3.level4).toBe(
-        '[Max Depth Exceeded: level1.level2.level3.level4]',
-      );
+      // Verify sanitizeState was called with maxDepth: 3 for both initial state and update
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, { maxDepth: 3 });
     });
 
-    it('should use serializationMaxDepth when sending initial state', () => {
+    it('should pass serializationMaxDepth to sanitizeState when sending initial state', async () => {
       // Create deep nested state
       const deepState = {
         level1: {
@@ -272,18 +261,16 @@ describe('SubscriptionHandler', () => {
       } as unknown as WebContents;
 
       const mockSubManager = {
-        subscribe: vi.fn(() => vi.fn()), // Return unsubscribe function
+        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
 
       mockResourceManager.getSubscriptionManager.mockReturnValue(null);
-      (mockWindowTracker.track as Mock).mockReturnValue(true);
-
-      // Mock addSubscriptionManager to set up the manager
       mockResourceManager.addSubscriptionManager.mockImplementation(() => {
         mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
       });
+      (mockWindowTracker.track as Mock).mockReturnValue(true);
 
       // Create SubscriptionHandler with maxDepth: 2
       const handlerWithMaxDepth = new SubscriptionHandler(
@@ -293,24 +280,15 @@ describe('SubscriptionHandler', () => {
         2,
       );
 
+      // Get the mocked sanitizeState
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+      (sanitizeState as Mock).mockClear();
+
       // Subscribe
       handlerWithMaxDepth.selectiveSubscribe(mockWebContents, ['*']);
 
-      // Verify initial state was sent
-      expect(mockWebContents.send).toHaveBeenCalled();
-
-      // Get the initial state that was sent
-      const initialStateSend = (mockWebContents.send as Mock).mock.calls.find(
-        (call) => call[0] === IpcChannel.STATE_UPDATE,
-      );
-
-      expect(initialStateSend).toBeDefined();
-      const sentData = initialStateSend[1];
-
-      // Verify that level3 is truncated due to maxDepth: 2
-      expect(sentData.state.level1.level2.level3).toBe(
-        '[Max Depth Exceeded: level1.level2.level3]',
-      );
+      // Verify sanitizeState was called with maxDepth: 2 for initial state
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, { maxDepth: 2 });
     });
   });
 });

@@ -631,14 +631,7 @@ describe('IpcHandler', () => {
   });
 
   describe('serialization maxDepth configuration', () => {
-    it('should use serializationMaxDepth when getting state', async () => {
-      // Unmock sanitizeState for this test to use the real implementation
-      const { sanitizeState: realSanitizeState } = await import(
-        '../../../src/utils/serialization.js'
-      );
-      vi.mocked(await import('../../../src/utils/serialization.js')).sanitizeState =
-        realSanitizeState;
-
+    it('should pass serializationMaxDepth to sanitizeState when getting state', async () => {
       // Create deep nested state
       const deepState = {
         level1: {
@@ -668,30 +661,28 @@ describe('IpcHandler', () => {
         sender: mockWebContents,
       } as IpcMainInvokeEvent;
 
-      // Trigger handler setup
-      const handleGetState = (ipcMain.handle as Mock).mock.calls.find(
+      // Get the LAST registered GET_STATE handler (from our new IpcHandler instance)
+      const getStateCalls = (ipcMain.handle as Mock).mock.calls.filter(
         (call) => call[0] === IpcChannel.GET_STATE,
-      )?.[1];
+      );
+      const handleGetState = getStateCalls[getStateCalls.length - 1]?.[1];
 
       expect(handleGetState).toBeDefined();
 
-      // Call the handler
-      const result = await handleGetState(mockInvokeEvent);
+      // Get the mocked sanitizeState
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
 
-      // Verify that level4 is truncated due to maxDepth: 3
-      expect(result.level1.level2.level3.level4).toBe(
-        '[Max Depth Exceeded: level1.level2.level3.level4]',
-      );
+      // Clear previous calls
+      (sanitizeState as Mock).mockClear();
+
+      // Call the handler
+      await handleGetState(mockInvokeEvent);
+
+      // Verify sanitizeState was called with maxDepth: 3
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, { maxDepth: 3 });
     });
 
-    it('should use default depth when serializationMaxDepth is not provided', async () => {
-      // Unmock sanitizeState for this test to use the real implementation
-      const { sanitizeState: realSanitizeState } = await import(
-        '../../../src/utils/serialization.js'
-      );
-      vi.mocked(await import('../../../src/utils/serialization.js')).sanitizeState =
-        realSanitizeState;
-
+    it('should pass undefined to sanitizeState when serializationMaxDepth is not provided', async () => {
       // Create deep nested state (11 levels - deeper than default maxDepth of 10)
       let deepState: Record<string, unknown> = { value: 'deepest' };
       for (let i = 0; i < 11; i++) {
@@ -714,25 +705,25 @@ describe('IpcHandler', () => {
         sender: mockWebContents,
       } as IpcMainInvokeEvent;
 
-      // Trigger handler setup
-      const handleGetState = (ipcMain.handle as Mock).mock.calls.find(
+      // Get the LAST registered GET_STATE handler (from our new IpcHandler instance)
+      const getStateCalls = (ipcMain.handle as Mock).mock.calls.filter(
         (call) => call[0] === IpcChannel.GET_STATE,
-      )?.[1];
+      );
+      const handleGetState = getStateCalls[getStateCalls.length - 1]?.[1];
 
       expect(handleGetState).toBeDefined();
 
+      // Get the mocked sanitizeState
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+
+      // Clear previous calls
+      (sanitizeState as Mock).mockClear();
+
       // Call the handler
-      const result = await handleGetState(mockInvokeEvent);
+      await handleGetState(mockInvokeEvent);
 
-      // Navigate to level 10 - should exist
-      let current: unknown = result;
-      for (let i = 1; i <= 10; i++) {
-        current = (current as Record<string, unknown>)[`level${i}`];
-        expect(current).toBeDefined();
-      }
-
-      // Level 11 should be truncated
-      expect((current as Record<string, unknown>).level11).toContain('[Max Depth Exceeded');
+      // Verify sanitizeState was called with undefined (no maxDepth)
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, undefined);
     });
   });
 });

@@ -251,12 +251,35 @@ describe('BridgeCore', () => {
 
       const _bridge = createCoreBridge(mockStateManager);
 
+      // Trigger state change (first run - no prevState)
+      const stateChangeCallback = (mockStateManager.subscribe as Mock).mock.calls[0][0];
+      stateChangeCallback({ counter: 43 });
+
+      // Should only call sanitizeState once on first run (no prevState)
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, undefined);
+      expect(sanitizeState).toHaveBeenCalledTimes(1);
+    });
+
+    it('should sanitize state with maxDepth option when provided', async () => {
+      const mockWebContents = { id: 123, send: vi.fn() };
+      const mockSubscriptionManager = { notify: vi.fn() };
+
+      (mockWebContentsTracker.getActiveWebContents as Mock).mockReturnValue([mockWebContents]);
+      mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubscriptionManager);
+
+      const { sanitizeState } = await import('../../src/utils/serialization.js');
+      (sanitizeState as Mock).mockImplementation((state) => ({ ...state, sanitized: true }));
+
+      const _bridge = createCoreBridge(mockStateManager, {
+        serialization: { maxDepth: 5 },
+      });
+
       // Trigger state change
       const stateChangeCallback = (mockStateManager.subscribe as Mock).mock.calls[0][0];
       stateChangeCallback({ counter: 43 });
 
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, undefined);
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, undefined);
+      // Should call sanitizeState with maxDepth option
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, { maxDepth: 5 });
     });
   });
 
