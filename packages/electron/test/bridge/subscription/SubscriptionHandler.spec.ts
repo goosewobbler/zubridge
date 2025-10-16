@@ -172,4 +172,135 @@ describe('SubscriptionHandler', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('serialization maxDepth configuration', () => {
+    it('should use serializationMaxDepth when sending state updates', () => {
+      // Create deep nested state
+      const deepState = {
+        level1: {
+          level2: {
+            level3: {
+              level4: {
+                level5: 'deep',
+              },
+            },
+          },
+        },
+      };
+
+      mockStateManager.getState = vi.fn(() => deepState);
+
+      const mockWebContents = {
+        id: 123,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const mockSubManager = {
+        subscribe: vi.fn((_keys, callback) => {
+          // Immediately call the callback with state to test serialization
+          callback(deepState);
+          return vi.fn(); // Return unsubscribe function
+        }),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => ['*']),
+      };
+
+      (mockResourceManager.getOrCreateSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+      (mockWindowTracker.track as Mock).mockReturnValue(true);
+
+      // Create SubscriptionHandler with maxDepth: 3
+      const handlerWithMaxDepth = new SubscriptionHandler(
+        mockStateManager,
+        mockResourceManager,
+        mockWindowTracker,
+        3,
+      );
+
+      // Subscribe
+      handlerWithMaxDepth.selectiveSubscribe(mockWebContents, ['*']);
+
+      // Verify subscribe was called
+      expect(mockSubManager.subscribe).toHaveBeenCalled();
+
+      // Get the callback that was passed to subscribe
+      const subscribeCallback = (mockSubManager.subscribe as Mock).mock.calls[0][1];
+
+      // Clear previous calls
+      (mockWebContents.send as Mock).mockClear();
+
+      // Call the callback with deep state
+      subscribeCallback(deepState);
+
+      // Verify send was called
+      expect(mockWebContents.send).toHaveBeenCalled();
+
+      // Get the sent data
+      const sentData = (mockWebContents.send as Mock).mock.calls[0][1];
+
+      // Verify that level4 is truncated due to maxDepth: 3
+      expect(sentData.state.level1.level2.level3.level4).toBe(
+        '[Max Depth Exceeded: level1.level2.level3.level4]',
+      );
+    });
+
+    it('should use serializationMaxDepth when sending initial state', () => {
+      // Create deep nested state
+      const deepState = {
+        level1: {
+          level2: {
+            level3: {
+              level4: {
+                level5: 'deep',
+              },
+            },
+          },
+        },
+      };
+
+      mockStateManager.getState = vi.fn(() => deepState);
+
+      const mockWebContents = {
+        id: 123,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const mockSubManager = {
+        subscribe: vi.fn(() => vi.fn()), // Return unsubscribe function
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => ['*']),
+      };
+
+      (mockResourceManager.getOrCreateSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+      (mockWindowTracker.track as Mock).mockReturnValue(true);
+
+      // Create SubscriptionHandler with maxDepth: 2
+      const handlerWithMaxDepth = new SubscriptionHandler(
+        mockStateManager,
+        mockResourceManager,
+        mockWindowTracker,
+        2,
+      );
+
+      // Subscribe
+      handlerWithMaxDepth.selectiveSubscribe(mockWebContents, ['*']);
+
+      // Verify initial state was sent
+      expect(mockWebContents.send).toHaveBeenCalled();
+
+      // Get the initial state that was sent
+      const initialStateSend = (mockWebContents.send as Mock).mock.calls.find(
+        (call) => call[0] === IpcChannel.STATE_UPDATE,
+      );
+
+      expect(initialStateSend).toBeDefined();
+      const sentData = initialStateSend[1];
+
+      // Verify that level3 is truncated due to maxDepth: 2
+      expect(sentData.state.level1.level2.level3).toBe(
+        '[Max Depth Exceeded: level1.level2.level3]',
+      );
+    });
+  });
 });

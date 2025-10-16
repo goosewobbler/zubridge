@@ -8,11 +8,11 @@ import type {
   ResourceManager,
 } from '../../../src/bridge/resources/ResourceManager.js';
 import { IpcChannel } from '../../../src/constants.js';
-import { thunkManager } from '../../../src/thunk/init.js';
-import { getPartialState } from '../../../src/subscription/SubscriptionManager.js';
-import { Thunk } from '../../../src/thunk/Thunk.js';
-import { ThunkRegistrationQueue } from '../../../src/thunk/registration/ThunkRegistrationQueue.js';
 import { actionQueue } from '../../../src/main/actionQueue.js';
+import { getPartialState } from '../../../src/subscription/SubscriptionManager.js';
+import { thunkManager } from '../../../src/thunk/init.js';
+import { ThunkRegistrationQueue } from '../../../src/thunk/registration/ThunkRegistrationQueue.js';
+import { Thunk } from '../../../src/thunk/Thunk.js';
 import { safelySendToWindow } from '../../../src/utils/windows.js';
 
 // Mock dependencies
@@ -627,6 +627,88 @@ describe('IpcHandler', () => {
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.TRACK_ACTION_DISPATCH);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.COMPLETE_THUNK);
+    });
+  });
+
+  describe('serialization maxDepth configuration', () => {
+    it('should use serializationMaxDepth when getting state', async () => {
+      // Create deep nested state
+      const deepState = {
+        level1: {
+          level2: {
+            level3: {
+              level4: {
+                level5: 'deep',
+              },
+            },
+          },
+        },
+      };
+
+      mockStateManager.getState = vi.fn(() => deepState);
+
+      // Create subscription manager that returns subscriptions
+      const mockSubManager = {
+        getCurrentSubscriptionKeys: vi.fn(() => ['*']),
+      };
+      mockResourceManager.getSubscriptionManager = vi.fn(() => mockSubManager);
+
+      // Create IpcHandler with maxDepth: 3
+      new IpcHandler(mockStateManager, mockResourceManager, 3);
+
+      // Trigger handler setup
+      const handleGetState = (ipcMain.handle as Mock).mock.calls.find(
+        (call) => call[0] === IpcChannel.GET_STATE,
+      )?.[1];
+
+      expect(handleGetState).toBeDefined();
+
+      // Call the handler
+      const result = await handleGetState(mockEvent);
+
+      // Verify that level4 is truncated due to maxDepth: 3
+      expect(result.level1.level2.level3.level4).toBe(
+        '[Max Depth Exceeded: level1.level2.level3.level4]',
+      );
+    });
+
+    it('should use default depth when serializationMaxDepth is not provided', async () => {
+      // Create deep nested state (11 levels - deeper than default maxDepth of 10)
+      let deepState: Record<string, unknown> = { value: 'deepest' };
+      for (let i = 0; i < 11; i++) {
+        deepState = { [`level${11 - i}`]: deepState };
+      }
+
+      mockStateManager.getState = vi.fn(() => deepState);
+
+      // Create subscription manager
+      const mockSubManager = {
+        getCurrentSubscriptionKeys: vi.fn(() => ['*']),
+      };
+      mockResourceManager.getSubscriptionManager = vi.fn(() => mockSubManager);
+
+      // Create IpcHandler without maxDepth (should use default of 10)
+      new IpcHandler(mockStateManager, mockResourceManager);
+
+      // Trigger handler setup
+      const handleGetState = (ipcMain.handle as Mock).mock.calls.find(
+        (call) => call[0] === IpcChannel.GET_STATE,
+      )?.[1];
+
+      expect(handleGetState).toBeDefined();
+
+      // Call the handler
+      const result = await handleGetState(mockEvent);
+
+      // Navigate to level 10 - should exist
+      let current: unknown = result;
+      for (let i = 1; i <= 10; i++) {
+        current = (current as Record<string, unknown>)[`level${i}`];
+        expect(current).toBeDefined();
+      }
+
+      // Level 11 should be truncated
+      expect((current as Record<string, unknown>).level11).toContain('[Max Depth Exceeded');
     });
   });
 });

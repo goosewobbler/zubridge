@@ -464,28 +464,4 @@ describe('BridgeCore', () => {
       expect(() => createCoreBridge(mockStateManager)).not.toThrow();
     });
   });
-
-  describe('serialization configuration', () => {
-    it('should accept serialization.maxDepth configuration', async () => {
-      const bridge = createCoreBridge(mockStateManager, {
-        serialization: {
-          maxDepth: 5,
-        },
-      });
-
-      expect(bridge).toBeDefined();
-      expect(bridge.subscribe).toBeDefined();
-
-      await bridge.destroy();
-    });
-
-    it('should work without serialization configuration', async () => {
-      const bridge = createCoreBridge(mockStateManager);
-
-      expect(bridge).toBeDefined();
-      expect(bridge.subscribe).toBeDefined();
-
-      await bridge.destroy();
-    });
-  });
 });
