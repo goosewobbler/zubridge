@@ -23,7 +23,7 @@ import { SubscriptionHandler } from './subscription/SubscriptionHandler.js';
 export function createCoreBridge<State extends AnyState>(
   stateManager: StateManager<State>,
   options?: CoreBridgeOptions,
-): BackendBridge<number> {
+): BackendBridge {
   debug('core', 'Creating CoreBridge with options:', options);
 
   // Setup global error handlers for the main process
