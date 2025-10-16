@@ -651,10 +651,14 @@ describe('IpcHandler', () => {
       const mockSubManager = {
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
-      mockResourceManager.getSubscriptionManager = vi.fn(() => mockSubManager);
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
 
       // Create IpcHandler with maxDepth: 3
-      new IpcHandler(mockStateManager, mockResourceManager, 3);
+      new IpcHandler(
+        mockStateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        3,
+      );
 
       // Create mock invoke event
       const mockInvokeEvent = {
@@ -695,10 +699,10 @@ describe('IpcHandler', () => {
       const mockSubManager = {
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
-      mockResourceManager.getSubscriptionManager = vi.fn(() => mockSubManager);
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
 
       // Create IpcHandler without maxDepth (should use default of 10)
-      new IpcHandler(mockStateManager, mockResourceManager);
+      new IpcHandler(mockStateManager, mockResourceManager as unknown as ResourceManager<AnyState>);
 
       // Create mock invoke event
       const mockInvokeEvent = {
