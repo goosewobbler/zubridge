@@ -682,7 +682,7 @@ describe('IpcHandler', () => {
       expect(sanitizeState).toHaveBeenCalledWith(deepState, { maxDepth: 3 });
     });
 
-    it('should pass undefined to sanitizeState when serializationMaxDepth is not provided', async () => {
+    it('should pass empty object to sanitizeState when serializationMaxDepth is not provided', async () => {
       // Create deep nested state (11 levels - deeper than default maxDepth of 10)
       let deepState: Record<string, unknown> = { value: 'deepest' };
       for (let i = 0; i < 11; i++) {
@@ -722,8 +722,8 @@ describe('IpcHandler', () => {
       // Call the handler
       await handleGetState(mockInvokeEvent);
 
-      // Verify sanitizeState was called with undefined (no maxDepth)
-      expect(sanitizeState).toHaveBeenCalledWith(deepState, undefined);
+      // Verify sanitizeState was called with empty object (no maxDepth)
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, {});
     });
   });
 });

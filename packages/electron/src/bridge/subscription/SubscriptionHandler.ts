@@ -66,10 +66,10 @@ export class SubscriptionHandler<State extends AnyState> {
         keys,
         (state) => {
           debug('core', `Sending state update to window ${webContents.id}`);
-          const serializationOptions =
-            this.serializationMaxDepth !== undefined
-              ? { maxDepth: this.serializationMaxDepth }
-              : undefined;
+          const serializationOptions: { maxDepth?: number } = {};
+          if (this.serializationMaxDepth !== undefined) {
+            serializationOptions.maxDepth = this.serializationMaxDepth;
+          }
           const sanitizedState = sanitizeState(state, serializationOptions);
 
           // Generate update ID and check if this state update is from a thunk action
@@ -99,10 +99,10 @@ export class SubscriptionHandler<State extends AnyState> {
       unsubs.push(unsubscribe);
 
       if (tracked) {
-        const serializationOptions =
-          this.serializationMaxDepth !== undefined
-            ? { maxDepth: this.serializationMaxDepth }
-            : undefined;
+        const serializationOptions: { maxDepth?: number } = {};
+        if (this.serializationMaxDepth !== undefined) {
+          serializationOptions.maxDepth = this.serializationMaxDepth;
+        }
         const initialState = sanitizeState(this.stateManager.getState(), serializationOptions);
 
         // Generate update ID for initial state

@@ -277,10 +277,10 @@ export class IpcHandler<State extends AnyState> {
         '[BRIDGE DEBUG] Raw state retrieved:',
         typeof rawState === 'object' ? Object.keys(rawState) : typeof rawState,
       );
-      const serializationOptions =
-        this.serializationMaxDepth !== undefined
-          ? { maxDepth: this.serializationMaxDepth }
-          : undefined;
+      const serializationOptions: { maxDepth?: number } = {};
+      if (this.serializationMaxDepth !== undefined) {
+        serializationOptions.maxDepth = this.serializationMaxDepth;
+      }
       const state = sanitizeState(rawState, serializationOptions);
 
       // Get window ID and subscriptions

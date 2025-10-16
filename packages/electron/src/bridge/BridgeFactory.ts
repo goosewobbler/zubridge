@@ -113,9 +113,10 @@ export function createCoreBridge<State extends AnyState>(
       debug('core', `Notifying ${activeWebContents.length} active windows of state change`);
 
       // Sanitize state before notifying subscribers
-      const serializationOptions = options?.serialization
-        ? { maxDepth: options.serialization.maxDepth }
-        : undefined;
+      const serializationOptions: { maxDepth?: number } = {};
+      if (options?.serialization?.maxDepth !== undefined) {
+        serializationOptions.maxDepth = options.serialization.maxDepth;
+      }
       const sanitizedState = sanitizeState(state, serializationOptions) as State;
       const sanitizedPrevState = prevState
         ? (sanitizeState(prevState, serializationOptions) as State)

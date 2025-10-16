@@ -256,7 +256,7 @@ describe('BridgeCore', () => {
       stateChangeCallback({ counter: 43 });
 
       // Should only call sanitizeState once on first run (no prevState)
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, undefined);
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, {});
       expect(sanitizeState).toHaveBeenCalledTimes(1);
     });
 
