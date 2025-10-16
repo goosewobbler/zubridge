@@ -412,6 +412,8 @@ const { handlers } = preloadBridge();
 window.zubridge = handlers;
 ```
 
+> **Example App**: A complete working example is available at [`apps/electron/manual-context-isolation-false/`](../../../apps/electron/manual-context-isolation-false/). Run `pnpm dev` in that directory to see it in action.
+
 ### Limitations with contextIsolation: false
 
 When context isolation is disabled:
