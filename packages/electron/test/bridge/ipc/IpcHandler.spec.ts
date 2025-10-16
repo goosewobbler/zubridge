@@ -656,6 +656,11 @@ describe('IpcHandler', () => {
       // Create IpcHandler with maxDepth: 3
       new IpcHandler(mockStateManager, mockResourceManager, 3);
 
+      // Create mock invoke event
+      const mockInvokeEvent = {
+        sender: mockWebContents,
+      } as IpcMainInvokeEvent;
+
       // Trigger handler setup
       const handleGetState = (ipcMain.handle as Mock).mock.calls.find(
         (call) => call[0] === IpcChannel.GET_STATE,
@@ -664,7 +669,7 @@ describe('IpcHandler', () => {
       expect(handleGetState).toBeDefined();
 
       // Call the handler
-      const result = await handleGetState(mockEvent);
+      const result = await handleGetState(mockInvokeEvent);
 
       // Verify that level4 is truncated due to maxDepth: 3
       expect(result.level1.level2.level3.level4).toBe(
@@ -690,6 +695,11 @@ describe('IpcHandler', () => {
       // Create IpcHandler without maxDepth (should use default of 10)
       new IpcHandler(mockStateManager, mockResourceManager);
 
+      // Create mock invoke event
+      const mockInvokeEvent = {
+        sender: mockWebContents,
+      } as IpcMainInvokeEvent;
+
       // Trigger handler setup
       const handleGetState = (ipcMain.handle as Mock).mock.calls.find(
         (call) => call[0] === IpcChannel.GET_STATE,
@@ -698,7 +708,7 @@ describe('IpcHandler', () => {
       expect(handleGetState).toBeDefined();
 
       // Call the handler
-      const result = await handleGetState(mockEvent);
+      const result = await handleGetState(mockInvokeEvent);
 
       // Navigate to level 10 - should exist
       let current: unknown = result;
