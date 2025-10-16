@@ -4,6 +4,7 @@ packages:
   - 'apps/electron/minimal-zustand-reducers'
   - 'apps/electron/minimal-redux'
   - 'apps/electron/minimal-custom'
+  - 'apps/electron/manual-context-isolation-false'
   - 'apps/electron/e2e'
   - 'apps/tauri/e2e'
   - 'apps/tauri-v1/e2e'
