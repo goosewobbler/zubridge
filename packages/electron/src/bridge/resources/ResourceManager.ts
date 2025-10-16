@@ -1,10 +1,8 @@
 import { debug } from '@zubridge/core';
 import type { Action, AnyState } from '@zubridge/types';
-import type { WebContents } from 'electron';
-import { ResourceManagementError } from '../../errors/index.js';
 import type { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import type { CoreBridgeOptions } from '../../types/bridge.js';
-import { logZubridgeError } from '../../utils/errorHandling.js';
+import type { WebContentsTracker } from '../../utils/windows.js';
 
 // Middleware callback functions
 export interface MiddlewareCallbacks {
@@ -24,10 +22,10 @@ export class ResourceManager<State extends AnyState> {
   private MAX_SUBSCRIPTION_MANAGERS = 1000; // Prevent unbounded growth (configurable)
   private cleanupTimer?: NodeJS.Timeout;
 
-  private windowTracker?: { getActiveWebContents(): { id: number }[] };
+  private windowTracker?: WebContentsTracker;
 
   constructor(
-    windowTracker?: { getActiveWebContents(): { id: number }[] },
+    windowTracker?: WebContentsTracker,
     options?: CoreBridgeOptions['resourceManagement'],
   ) {
     this.windowTracker = windowTracker;
@@ -44,7 +42,7 @@ export class ResourceManager<State extends AnyState> {
         `Enabling periodic cleanup every ${cleanupInterval}ms (default: enabled)`,
       );
       this.cleanupTimer = setInterval(() => {
-        this.performPeriodicCleanup(this.windowTracker);
+        void this.performPeriodicCleanup();
       }, cleanupInterval);
     } else {
       if (cleanupEnabled && !windowTracker) {
@@ -100,62 +98,45 @@ export class ResourceManager<State extends AnyState> {
     return this.middlewareCallbacks;
   }
 
-  private performPeriodicCleanup(windowTracker?: {
-    getActiveWebContents(): { id: number }[];
-  }): void {
+  private async performPeriodicCleanup(): Promise<void> {
     debug(
       'bridge:memory',
       `Performing periodic cleanup of ${this.subscriptionManagers.size} subscription managers`,
     );
 
-    // Only clean up subscription managers for windows that no longer exist
-    let cleanedCount = 0;
+    // windowTracker is guaranteed to exist when periodic cleanup is enabled
+    const windowTracker = this.windowTracker as WebContentsTracker;
 
-    if (windowTracker) {
-      // Get currently active window IDs from the window tracker
-      const activeWindowIds = new Set(windowTracker.getActiveWebContents().map((wc) => wc.id));
+    // Get currently active window IDs from the window tracker
+    let activeWebContents = windowTracker.getActiveWebContents();
 
-      // Remove subscription managers for windows that are no longer active
-      for (const [windowId] of this.subscriptionManagers.entries()) {
-        if (!activeWindowIds.has(windowId)) {
-          debug('bridge:memory', `Removing subscription manager for destroyed window ${windowId}`);
-          this.removeSubscriptionManager(windowId);
-          cleanedCount++;
-        }
-      }
-    } else {
-      // Fallback: Only remove if we can verify the WebContents is destroyed
-      // This is safer but less efficient than using windowTracker
+    // Safety check: If tracker returns empty array but we have subscription managers,
+    // the tracker may have failed. Use Electron's WebContents directly as fallback.
+    if (activeWebContents.length === 0 && this.subscriptionManagers.size > 0) {
+      debug(
+        'bridge:memory',
+        'Window tracker returned empty array but subscription managers exist - using Electron WebContents fallback',
+      );
       try {
-        // Import Electron synchronously (should be available in main process)
-        const electron = require('electron');
-
-        const allWebContents = electron.webContents.getAllWebContents();
-        const activeWindowIds = new Set(
-          allWebContents
-            .filter((wc: WebContents) => !wc.isDestroyed())
-            .map((wc: WebContents) => wc.id),
-        );
-
-        for (const [windowId] of this.subscriptionManagers.entries()) {
-          if (!activeWindowIds.has(windowId)) {
-            debug(
-              'bridge:memory',
-              `Removing subscription manager for destroyed window ${windowId}`,
-            );
-            this.removeSubscriptionManager(windowId);
-            cleanedCount++;
-          }
-        }
+        const { webContents } = await import('electron');
+        activeWebContents = webContents.getAllWebContents().filter((wc) => !wc.isDestroyed());
+        debug('bridge:memory', `Fallback found ${activeWebContents.length} active WebContents`);
       } catch (error) {
-        const cleanupError = new ResourceManagementError(
-          'Error during fallback window cleanup',
-          'window_subscriptions',
-          'cleanup',
-          { originalError: error },
-        );
-        logZubridgeError(cleanupError);
-        // Don't remove anything on error - be conservative
+        debug('bridge:memory', 'Failed to import electron for fallback cleanup:', error);
+        // If we can't get real WebContents, skip cleanup to avoid false positives
+        return;
+      }
+    }
+
+    const activeWindowIds = new Set(activeWebContents.map((wc) => wc.id));
+
+    // Remove subscription managers for windows that are no longer active
+    let cleanedCount = 0;
+    for (const [windowId] of this.subscriptionManagers.entries()) {
+      if (!activeWindowIds.has(windowId)) {
+        debug('bridge:memory', `Removing subscription manager for destroyed window ${windowId}`);
+        this.removeSubscriptionManager(windowId);
+        cleanedCount++;
       }
     }
 
@@ -183,17 +164,5 @@ export class ResourceManager<State extends AnyState> {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = undefined;
     }
-  }
-
-  getMetrics(): {
-    subscriptionManagers: number;
-    destroyListeners: number;
-    middlewareCallbacks: number;
-  } {
-    return {
-      subscriptionManagers: this.subscriptionManagers.size,
-      destroyListeners: this.destroyListenerSet.size,
-      middlewareCallbacks: Object.keys(this.middlewareCallbacks).length,
-    };
   }
 }

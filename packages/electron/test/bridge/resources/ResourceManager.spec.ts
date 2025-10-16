@@ -33,13 +33,6 @@ describe('ResourceManager', () => {
       // Test using the public API instead of private properties
       expect(resourceManager.getSubscriptionManager(123)).toBeUndefined();
     });
-
-    it('should initialize with proper metrics', () => {
-      const metrics = resourceManager.getMetrics();
-      expect(metrics.subscriptionManagers).toBe(0);
-      expect(metrics.destroyListeners).toBe(0);
-      expect(metrics.middlewareCallbacks).toBe(0);
-    });
   });
 
   describe('addSubscriptionManager and getSubscriptionManager', () => {
@@ -145,9 +138,6 @@ describe('ResourceManager', () => {
 
       expect(resourceManager.hasDestroyListener(windowId1)).toBe(true);
       expect(resourceManager.hasDestroyListener(windowId2)).toBe(true);
-
-      const metrics = resourceManager.getMetrics();
-      expect(metrics.destroyListeners).toBe(2);
     });
   });
 
@@ -231,14 +221,6 @@ describe('ResourceManager', () => {
 
       expect(resourceManagerNoCleanup).toBeDefined();
     });
-
-    it('should disable periodic cleanup when no windowTracker provided', () => {
-      const resourceManagerNoTracker = new ResourceManager(undefined, {
-        enablePeriodicCleanup: true,
-      });
-
-      expect(resourceManagerNoTracker).toBeDefined();
-    });
   });
 
   describe('periodic cleanup', () => {
@@ -277,7 +259,8 @@ describe('ResourceManager', () => {
       resourceManager.addSubscriptionManager(123, mockManager1);
       resourceManager.addSubscriptionManager(456, mockManager2); // This window is "destroyed"
 
-      expect(resourceManager.getMetrics().subscriptionManagers).toBe(2);
+      expect(resourceManager.getSubscriptionManager(123)).toBe(mockManager1);
+      expect(resourceManager.getSubscriptionManager(456)).toBe(mockManager2);
 
       // Trigger periodic cleanup via constructor with immediate cleanup
       const cleanupResourceManager = new ResourceManager(mockWindowTracker, {
@@ -292,64 +275,6 @@ describe('ResourceManager', () => {
       // Note: Actual cleanup is asynchronous and hard to test without complex timing
       expect(cleanupResourceManager).toBeDefined();
     });
-
-    it('should handle fallback cleanup without window tracker', async () => {
-      // Create resource manager without window tracker
-      const noTrackerResourceManager = new ResourceManager(undefined);
-
-      const mockManager = new SubscriptionManager();
-      noTrackerResourceManager.addSubscriptionManager(123, mockManager);
-
-      expect(noTrackerResourceManager.getMetrics().subscriptionManagers).toBe(1);
-
-      // The fallback cleanup should work but we can't easily test it synchronously
-      expect(noTrackerResourceManager).toBeDefined();
-    });
-
-    it('should handle electron import errors in fallback cleanup', () => {
-      // Mock require to throw an error
-      vi.doMock('electron', () => {
-        throw new Error('Electron not available');
-      });
-
-      const noTrackerResourceManager = new ResourceManager(undefined);
-      expect(noTrackerResourceManager).toBeDefined();
-
-      vi.doUnmock('electron');
-    });
-  });
-
-  describe('getMetrics', () => {
-    it('should return accurate metrics', () => {
-      const windowId1 = 123;
-      const windowId2 = 456;
-      const mockManager1 = new SubscriptionManager();
-      const mockManager2 = new SubscriptionManager();
-      const middlewareCallbacks = {
-        trackActionDispatch: vi.fn(),
-        trackActionReceived: vi.fn(),
-        trackStateUpdate: vi.fn(),
-      };
-
-      resourceManager.addSubscriptionManager(windowId1, mockManager1);
-      resourceManager.addSubscriptionManager(windowId2, mockManager2);
-      resourceManager.addDestroyListener(windowId1);
-      resourceManager.setMiddlewareCallbacks(middlewareCallbacks);
-
-      const metrics = resourceManager.getMetrics();
-
-      expect(metrics.subscriptionManagers).toBe(2);
-      expect(metrics.destroyListeners).toBe(1);
-      expect(metrics.middlewareCallbacks).toBe(3);
-    });
-
-    it('should return zero metrics for empty manager', () => {
-      const metrics = resourceManager.getMetrics();
-
-      expect(metrics.subscriptionManagers).toBe(0);
-      expect(metrics.destroyListeners).toBe(0);
-      expect(metrics.middlewareCallbacks).toBe(0);
-    });
   });
 
   describe('clearAll', () => {
@@ -363,11 +288,13 @@ describe('ResourceManager', () => {
       resourceManager.addSubscriptionManager(windowId1, mockSubscriptionManager1);
       resourceManager.addSubscriptionManager(windowId2, mockSubscriptionManager2);
 
-      expect(resourceManager.getMetrics().subscriptionManagers).toBe(2);
+      expect(resourceManager.getSubscriptionManager(windowId1)).toBeDefined();
+      expect(resourceManager.getSubscriptionManager(windowId2)).toBeDefined();
 
       resourceManager.clearAll();
 
-      expect(resourceManager.getMetrics().subscriptionManagers).toBe(0);
+      expect(resourceManager.getSubscriptionManager(windowId1)).toBeUndefined();
+      expect(resourceManager.getSubscriptionManager(windowId2)).toBeUndefined();
     });
 
     it('should clear middleware callbacks', () => {
@@ -383,11 +310,13 @@ describe('ResourceManager', () => {
       resourceManager.addDestroyListener(123);
       resourceManager.addDestroyListener(456);
 
-      expect(resourceManager.getMetrics().destroyListeners).toBe(2);
+      expect(resourceManager.hasDestroyListener(123)).toBe(true);
+      expect(resourceManager.hasDestroyListener(456)).toBe(true);
 
       resourceManager.clearAll();
 
-      expect(resourceManager.getMetrics().destroyListeners).toBe(0);
+      expect(resourceManager.hasDestroyListener(123)).toBe(false);
+      expect(resourceManager.hasDestroyListener(456)).toBe(false);
     });
 
     it('should clear cleanup timer', () => {
