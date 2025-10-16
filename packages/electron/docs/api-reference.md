@@ -6,14 +6,14 @@ This document provides a comprehensive reference for the `@zubridge/electron` AP
 
 ### Bridge APIs
 
-#### `createCoreBridge(stateManager, windows?)`
+#### `createCoreBridge(stateManager, options?)`
 
 Creates a core bridge between the main process and renderer processes, using any state manager that implements the `StateManager` interface. This is useful for creating custom bridges with state management libraries not directly supported by Zubridge.
 
 ##### Parameters:
 
 - `stateManager`: Implementation of the `StateManager<State>` interface
-- `windows?`: Optional array of `BrowserWindow`, `BrowserView`, `WebContentsView`, or `WebContents` instances to subscribe to the store. Can be empty or undefined.
+- `options?`: Optional `CoreBridgeOptions` configuration object (see [CoreBridgeOptions](#corebridgeoptions) for details)
 
 ##### Returns:
 
@@ -21,7 +21,6 @@ A `CoreBridge` object with:
 
 - `subscribe(windows)`: Function to subscribe additional windows to the state updates. Returns an object with an `unsubscribe` method.
 - `unsubscribe(windows?)`: Function to unsubscribe windows from updates. When called without arguments, unsubscribes all windows.
-- `getSubscribedWindows()`: Function to get all currently subscribed window IDs.
 - `destroy()`: Function to clean up resources used by the bridge.
 
 ##### Example:
@@ -35,15 +34,21 @@ const mainWindow = new BrowserWindow({
   /* options */
 });
 
-// Create bridge without initial windows (subscribe later)
+// Create bridge with default settings
 const bridge = createCoreBridge(myStateManager);
 
-// Or create with initial windows
-const bridgeWithWindows = createCoreBridge(myStateManager, [mainWindow]);
+// Or create with custom options
+const bridgeWithOptions = createCoreBridge(myStateManager, {
+  serialization: {
+    maxDepth: 5, // Limit state serialization depth
+  },
+  onBridgeDestroy: async () => {
+    console.log('Bridge destroyed');
+  },
+});
 
-// Subscribe additional windows later
-const secondWindow = new BrowserWindow(/* options */);
-const subscription = bridge.subscribe([secondWindow]);
+// Subscribe windows
+const subscription = bridge.subscribe([mainWindow]);
 
 // Unsubscribe when quitting
 app.on('quit', bridge.unsubscribe);
@@ -59,7 +64,7 @@ Creates a bridge between a Zustand store in the main process and renderer proces
 - `options?`: Optional configuration object
   - `handlers`: Optional object containing store handler functions
   - `reducer`: Optional root reducer function for Redux-style state management
-  - `middleware`: Optional middleware for logging and debugging
+  - `middleware`: **⚠️ Experimental** - Optional middleware for logging and debugging (not yet released)
 
 ##### Returns:
 
@@ -67,7 +72,6 @@ A `ZustandBridge` object with:
 
 - `subscribe(windows)`: Function to subscribe additional windows to the store updates. Returns an object with an `unsubscribe` method.
 - `unsubscribe(windows?)`: Function to unsubscribe windows from the store. When called without arguments, unsubscribes all windows.
-- `getSubscribedWindows()`: Function to get all currently subscribed window IDs.
 - `dispatch`: Function to dispatch actions to the store.
 - `destroy()`: Function to clean up resources used by the bridge.
 
@@ -126,7 +130,7 @@ Creates a bridge between a Redux store in the main process and renderer processe
 - `store`: The Redux store to bridge
 - `options?`: Optional configuration object
   - `handlers`: Optional object containing action handler functions
-  - `middleware`: Optional middleware for logging and debugging
+  - `middleware`: **⚠️ Experimental** - Optional middleware for logging and debugging (not yet released)
 
 ##### Returns:
 
@@ -134,7 +138,6 @@ A `ReduxBridge` object with:
 
 - `subscribe(windows)`: Function to subscribe additional windows to the store updates. Returns an object with an `unsubscribe` method.
 - `unsubscribe(windows?)`: Function to unsubscribe windows from the store. When called without arguments, unsubscribes all windows.
-- `getSubscribedWindows()`: Function to get all currently subscribed window IDs.
 - `dispatch`: Function to dispatch actions to the store.
 - `destroy()`: Function to clean up resources used by the bridge.
 
@@ -380,10 +383,9 @@ interface StateManager<State> {
 Interface for the bridge created by `createCoreBridge`.
 
 ```ts
-interface CoreBridge extends BaseBridge<number> {
+interface CoreBridge extends BaseBridge {
   subscribe: (wrappers: WebContentsWrapper[]) => { unsubscribe: () => void };
   unsubscribe: (wrappers?: WebContentsWrapper[]) => void;
-  getSubscribedWindows: () => number[];
   destroy: () => void;
 }
 ```
@@ -393,10 +395,9 @@ interface CoreBridge extends BaseBridge<number> {
 Interface for the bridge created by `createZustandBridge`.
 
 ```ts
-interface ZustandBridge extends BackendBridge<number> {
+interface ZustandBridge extends BackendBridge {
   subscribe: (windows: WrapperOrWebContents[]) => { unsubscribe: () => void };
   unsubscribe: (windows?: WrapperOrWebContents[]) => void;
-  getSubscribedWindows: () => number[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
@@ -407,23 +408,21 @@ interface ZustandBridge extends BackendBridge<number> {
 Interface for the bridge created by `createReduxBridge`.
 
 ```ts
-interface ReduxBridge extends BackendBridge<number> {
+interface ReduxBridge extends BackendBridge {
   subscribe: (windows: WrapperOrWebContents[]) => { unsubscribe: () => void };
   unsubscribe: (windows?: WrapperOrWebContents[]) => void;
-  getSubscribedWindows: () => number[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
 ```
 
-### `BaseBridge<WindowId>`
+### `BaseBridge`
 
 Base interface that all bridge implementations extend.
 
 ```ts
-interface BaseBridge<WindowId> {
+interface BaseBridge {
   unsubscribe: (...args: any[]) => void;
-  getSubscribedWindows: () => WindowId[];
 }
 ```
 
@@ -463,6 +462,72 @@ These options allow for advanced control over action dispatch:
 - `keys`: When provided, only subscribers with matching keys will receive state updates
 - `bypassAccessControl`: Allows actions to bypass normal access control restrictions
 - `bypassThunkLock`: Allows actions to execute even when thunks are currently running, bypassing the normal action sequencing
+
+### `CoreBridgeOptions`
+
+Configuration options for the core bridge created with `createCoreBridge`.
+
+```ts
+interface CoreBridgeOptions {
+  // Middleware
+  middleware?: ZubridgeMiddleware;
+
+  // Lifecycle hooks
+  onBridgeDestroy?: () => Promise<void> | void;
+
+  // Resource management
+  resourceManagement?: {
+    enablePeriodicCleanup?: boolean;    // Enable periodic cleanup (default: true)
+    cleanupIntervalMs?: number;         // Cleanup interval in ms (default: 600000 = 10 minutes)
+    maxSubscriptionManagers?: number;   // Max managers before forcing cleanup (default: 1000)
+  };
+
+  // Serialization
+  serialization?: {
+    maxDepth?: number;                  // Maximum depth for state serialization (default: 10)
+  };
+}
+```
+
+**Serialization:**
+
+- `maxDepth`: Controls how deep the state serialization will traverse object hierarchies. This prevents stack overflow errors and controls payload size when dealing with deeply nested state. The default is 10 levels. When the maximum depth is exceeded, the value is replaced with a string indicating truncation.
+
+  ```ts
+  // Example: Limit serialization to 5 levels deep
+  const bridge = createCoreBridge(stateManager, {
+    serialization: {
+      maxDepth: 5
+    }
+  });
+  ```
+
+**Resource Management:**
+
+- `enablePeriodicCleanup`: Automatically clean up subscription managers for destroyed windows (default: true)
+- `cleanupIntervalMs`: How often to run cleanup in milliseconds (default: 600000 = 10 minutes)
+- `maxSubscriptionManagers`: Force cleanup when this many managers exist (default: 1000)
+
+**Middleware:**
+
+- `middleware`: **⚠️ Experimental** - Zubridge middleware for tracking actions and state updates. The `@zubridge/middleware` package is not yet released and will be rewritten in the UniFFI rewrite. This API may change.
+
+**Lifecycle Hooks:**
+
+- `onBridgeDestroy`: Called **before** cleanup when `bridge.destroy()` is invoked. This allows you to access final state or perform coordinated shutdown tasks before resources are cleaned up.
+
+  ```ts
+  const bridge = createCoreBridge(stateManager, {
+    onBridgeDestroy: async () => {
+      // Save final state before cleanup
+      const finalState = stateManager.getState();
+      await saveStateToFile(finalState);
+
+      // Perform any cleanup tasks
+      console.log('Bridge is shutting down');
+    }
+  });
+  ```
 
 ### `ZustandOptions<State>`
 
