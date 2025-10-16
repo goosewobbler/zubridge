@@ -157,6 +157,17 @@ export function createCoreBridge<State extends AnyState>(
   const destroy = async () => {
     debug('core', 'Destroying CoreBridge');
 
+    // Apply bridge destroy hook BEFORE cleanup if provided
+    // This allows users to access final state, log metrics, etc.
+    if (processedOptions?.onBridgeDestroy) {
+      debug('core', 'Applying onBridgeDestroy hook');
+      try {
+        await processedOptions.onBridgeDestroy();
+      } catch (error) {
+        debug('core', 'Error in onBridgeDestroy hook:', error);
+      }
+    }
+
     // Clean up IPC handlers
     ipcHandler.cleanup();
 
@@ -189,16 +200,6 @@ export function createCoreBridge<State extends AnyState>(
       }
     } catch (error) {
       debug('core', 'Error cleaning up singletons:', error);
-    }
-
-    // Apply bridge destroy hook if provided
-    if (processedOptions?.onBridgeDestroy) {
-      debug('core', 'Applying onBridgeDestroy hook');
-      try {
-        await processedOptions.onBridgeDestroy();
-      } catch (error) {
-        debug('core', 'Error in onBridgeDestroy hook:', error);
-      }
     }
 
     // Cleanup all our resources
