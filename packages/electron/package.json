@@ -12,8 +12,9 @@
   "scripts": {
     "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
     "clean:output": "shx rm -rf dist",
-    "clean:cache": "shx rm -rf .turbo",
+    "clean:cache": "tsx ../../scripts/clean-cache.ts",
     "build": "tsup",
+    "prebuild": "shx rm -rf dist && tsx ../../scripts/clean-cache.ts || echo 'Cache clean skipped'",
     "package": "pnpm pack",
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest --coverage --watch=false",

@@ -16,13 +16,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zubridge/core": "workspace:*"
+    "@zubridge/core": "workspace:*",
+    "@zubridge/types": "workspace:*"
   },
   "peerDependencies": {
     "zustand": "^4.3.0"
   },
   "devDependencies": {
-    "@zubridge/types": "workspace:*",
     "typescript": "^5.9.2"
   }
 }

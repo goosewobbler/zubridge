@@ -805,13 +805,13 @@ importers:
       '@zubridge/core':
         specifier: workspace:*
         version: link:../core
+      '@zubridge/types':
+        specifier: workspace:*
+        version: link:../types
       zustand:
         specifier: ^4.3.0
         version: 4.5.7(@types/react@19.2.2)(immer@10.1.3)(react@19.2.0)
     devDependencies:
-      '@zubridge/types':
-        specifier: workspace:*
-        version: link:../types
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -975,7 +975,7 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0
       tsup:
-        specifier: ^8.0.0
+        specifier: ^8.5.0
         version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
       typescript:
         specifier: ^5.9.2
@@ -1030,7 +1030,7 @@ importers:
         specifier: ^4.1.13
         version: 4.1.14
       tsup:
-        specifier: ^8.4.0
+        specifier: ^8.5.0
         version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
       typescript:
         specifier: ^5.9.2
