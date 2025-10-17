@@ -13,7 +13,7 @@
     "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
     "clean:output": "shx rm -rf dist",
     "clean:cache": "tsx ../../scripts/clean-cache.ts",
-    "build": "node -e \"process.exit(process.platform === 'win32' ? 0 : 1)\" && cross-env TSUP_WORKERS=1 tsup || tsup",
+    "build": "node scripts/build.js",
     "prebuild": "shx rm -rf dist && tsx ../../scripts/clean-cache.ts || echo 'Cache clean skipped'",
     "package": "pnpm pack",
     "release": "pnpm pack && pnpm publish",
