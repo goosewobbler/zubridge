@@ -1,18 +1,47 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 
-// Set TSUP_WORKERS=1 on Windows to avoid heap corruption
-if (process.platform === 'win32') {
-  process.env.TSUP_WORKERS = '1';
+function runTsup(args = []) {
+  return new Promise((resolve, reject) => {
+    const tsup = spawn('tsup', args, {
+      stdio: 'inherit',
+      shell: true,
+      env: process.env,
+    });
+
+    tsup.on('exit', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`tsup exited with code ${code}`));
+      }
+    });
+
+    tsup.on('error', reject);
+  });
 }
 
-// Run tsup
-const tsup = spawn('tsup', [], {
-  stdio: 'inherit',
-  shell: true,
-  env: process.env,
-});
+async function build() {
+  if (process.platform === 'win32') {
+    // On Windows, use tsup.win32.config.ts which builds sequentially
+    console.log('Building on Windows - using sequential config');
+    try {
+      await runTsup(['--config', 'tsup.win32.config.ts']);
+      process.exit(0);
+    } catch (error) {
+      console.error('Build failed:', error);
+      process.exit(1);
+    }
+  } else {
+    // On Unix systems, use the default config with parallel builds
+    try {
+      await runTsup();
+      process.exit(0);
+    } catch (error) {
+      console.error('Build failed:', error);
+      process.exit(1);
+    }
+  }
+}
 
-tsup.on('exit', (code) => {
-  process.exit(code ?? 1);
-});
+build();
