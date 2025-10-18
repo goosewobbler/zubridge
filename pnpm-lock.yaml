@@ -895,6 +895,9 @@ importers:
       shelljs:
         specifier: ^0.10.0
         version: 0.10.0
+      shx:
+        specifier: ^0.4.0
+        version: 0.4.0
       tsup:
         specifier: ^8.5.0
         version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
@@ -956,6 +959,9 @@ importers:
       shelljs:
         specifier: ^0.10.0
         version: 0.10.0
+      shx:
+        specifier: ^0.4.0
+        version: 0.4.0
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -1026,6 +1032,9 @@ importers:
       react:
         specifier: ^19.1.0
         version: 19.2.0
+      shx:
+        specifier: ^0.4.0
+        version: 0.4.0
       tailwindcss:
         specifier: ^4.1.13
         version: 4.1.14

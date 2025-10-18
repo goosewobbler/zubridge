@@ -61,6 +61,7 @@
     "autoprefixer": "^10.4.17",
     "postcss": "^8.5.5",
     "react": "^19.1.0",
+    "shx": "^0.4.0",
     "tailwindcss": "^4.1.13",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
