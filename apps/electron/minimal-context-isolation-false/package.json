@@ -1,7 +1,7 @@
 {
-  "name": "electron-manual-context-isolation-false",
+  "name": "electron-minimal-context-isolation-false",
   "version": "0.0.0",
-  "description": "Manual test app for Zubridge with contextIsolation: false",
+  "description": "Minimal test app for Zubridge with contextIsolation: false",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",

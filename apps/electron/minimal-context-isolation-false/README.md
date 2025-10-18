@@ -1,8 +1,8 @@
-# Manual Test App: contextIsolation: false
+# Minimal Test App: contextIsolation: false
 
 > ⚠️ **Security Warning**: This app intentionally uses `contextIsolation: false`, a **security anti-pattern**. This configuration should **NOT** be used in new production applications.
 
-This manual test app validates that Zubridge works correctly when Electron's context isolation is disabled - a legacy configuration required by some older applications that cannot be easily migrated.
+This minimal test app validates that Zubridge works correctly when Electron's context isolation is disabled - a legacy configuration required by some older applications that cannot be easily migrated.
 
 ## What This Tests
 
@@ -26,7 +26,7 @@ pnpm install
 pnpm build:packages
 
 # Run the test app
-cd apps/electron/manual-context-isolation-false
+cd apps/electron/minimal-context-isolation-false
 pnpm dev
 ```
 
