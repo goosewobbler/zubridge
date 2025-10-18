@@ -218,23 +218,14 @@ describe('Immer Integration', () => {
       });
 
       // The draft should be revoked after produce completes
-      // Attempting to serialize a revoked proxy should either:
-      // 1. Throw an error, or
-      // 2. Serialize to an error message
       if (capturedDraft) {
-        // In strict mode, accessing revoked proxy throws
-        const attemptSerialize = () => {
-          try {
-            sanitizeState(capturedDraft);
-          } catch (error) {
-            // Expected: revoked proxy throws
-            throw error;
-          }
-        };
+        // Verify that sanitizeState handles revoked proxies gracefully
+        // It should not throw even when attempting to serialize a revoked draft
+        expect(() => sanitizeState(capturedDraft)).not.toThrow();
 
-        // Either throws or succeeds - both are acceptable
-        // The key is that it doesn't crash the process
-        expect(() => attemptSerialize()).toBeTruthy();
+        // Verify the result is defined and handled properly
+        const result = sanitizeState(capturedDraft);
+        expect(result).toBeDefined();
       }
     });
   });
