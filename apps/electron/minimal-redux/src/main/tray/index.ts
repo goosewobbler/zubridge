@@ -10,10 +10,18 @@ import { BaseSystemTray } from './base.js';
  * which automatically creates a Redux state manager adapter internally
  */
 export class ReduxSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(store: Store, windows: BrowserWindow[]) {
     this.windows = windows;
 
     console.log('[Redux Tray] Using shared Redux store');
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      console.log('[Redux Tray] Cleaning up previous subscription');
+      this.unsubscribe();
+    }
 
     // Create dispatch directly from the store
     this.dispatch = createDispatch(store);
@@ -26,7 +34,7 @@ export class ReduxSystemTray extends BaseSystemTray {
     } as State);
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe(() => {
+    this.unsubscribe = store.subscribe(() => {
       const state = store.getState();
       console.log('[Redux Tray] State update:', state);
 

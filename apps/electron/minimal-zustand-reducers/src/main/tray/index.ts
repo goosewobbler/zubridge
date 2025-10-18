@@ -11,10 +11,18 @@ import { BaseSystemTray } from './base.js';
  * which automatically creates a state manager adapter internally
  */
 export class ReducersSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(store: StoreApi<State>, windows: BrowserWindow[]) {
     this.windows = windows;
 
     console.log('[Reducers Tray] Using shared Zustand store with reducers');
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      console.log('[Reducers Tray] Cleaning up previous subscription');
+      this.unsubscribe();
+    }
 
     // Create dispatch directly from the store with reducer option
     this.dispatch = createDispatch<State>(store, { reducer: rootReducer });
@@ -23,7 +31,7 @@ export class ReducersSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => {
+    this.unsubscribe = store.subscribe((state) => {
       console.log('[Reducers Tray] State update:', state);
       this.update(state);
     });
