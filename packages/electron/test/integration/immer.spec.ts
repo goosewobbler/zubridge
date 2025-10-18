@@ -137,7 +137,7 @@ describe('Immer Integration', () => {
 
   describe('IPC round-trip with Immer', () => {
     it('should successfully send immer state through sanitizeState()', () => {
-      interface State {
+      interface State extends Record<string, unknown> {
         counter: number;
         theme: 'light' | 'dark';
         user: {
@@ -275,10 +275,15 @@ describe('Immer Integration', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
         counter: 1,
       });
+      expect(typeof serialized.createdAt).toBe('string');
     });
 
     it('should handle undefined values', () => {
-      const baseState = {
+      const baseState: {
+        value1: string | undefined;
+        value2: undefined;
+        value3: string;
+      } = {
         value1: 'present',
         value2: undefined,
         value3: 'also present',
@@ -356,8 +361,14 @@ describe('Immer Integration', () => {
       const serialized = sanitizeState(nextState, { maxDepth: 3 });
 
       // Should truncate at max depth
-      expect(typeof serialized.level1?.level2?.level3?.level4).toBe('string');
-      expect(serialized.level1?.level2?.level3?.level4).toContain('Max Depth Exceeded');
+      type SerializedType = Record<string, unknown>;
+      const level1 = (serialized as SerializedType).level1 as SerializedType;
+      const level2 = level1?.level2 as SerializedType;
+      const level3 = level2?.level3 as SerializedType;
+      const level4 = level3?.level4 as string;
+
+      expect(typeof level4).toBe('string');
+      expect(level4).toContain('Max Depth Exceeded');
     });
 
     it('should handle mixed state with immer and non-immer updates', () => {
@@ -390,7 +401,7 @@ describe('Immer Integration', () => {
   describe('Zustand + Immer pattern', () => {
     it('should handle the recommended Zustand + Immer pattern', () => {
       // This is the pattern from Zustand docs
-      interface State {
+      interface State extends Record<string, unknown> {
         count: number;
         nested: {
           value: string;
