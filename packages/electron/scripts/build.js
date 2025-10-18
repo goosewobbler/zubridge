@@ -23,10 +23,22 @@ function runTsup(args = []) {
 
 async function build() {
   if (process.platform === 'win32') {
-    // On Windows, use tsup.win32.config.ts which builds sequentially
-    console.log('Building on Windows - using sequential config');
+    // On Windows, build each entry point separately to avoid heap corruption
+    console.log('Building on Windows - using sequential builds per entry');
     try {
-      await runTsup(['--config', 'tsup.win32.config.ts']);
+      // Build renderer (browser context)
+      console.log('Building renderer...');
+      await runTsup(['--config', 'tsup.win32.renderer.config.ts']);
+
+      // Build main (node context)
+      console.log('Building main...');
+      await runTsup(['--config', 'tsup.win32.node.config.ts', '--entry.main', 'src/main.ts']);
+
+      // Build preload (node context)
+      console.log('Building preload...');
+      await runTsup(['--config', 'tsup.win32.node.config.ts', '--entry.preload', 'src/preload.ts']);
+
+      console.log('Windows build completed successfully');
       process.exit(0);
     } catch (error) {
       console.error('Build failed:', error);
