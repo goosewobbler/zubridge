@@ -1,5 +1,6 @@
 import { debug } from '@zubridge/core';
 import type { Action, AnyState } from '@zubridge/types';
+import { webContents } from 'electron';
 import type { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import type { CoreBridgeOptions } from '../../types/bridge.js';
 import type { WebContentsTracker } from '../../utils/windows.js';
@@ -42,7 +43,11 @@ export class ResourceManager<State extends AnyState> {
         `Enabling periodic cleanup every ${cleanupInterval}ms (default: enabled)`,
       );
       this.cleanupTimer = setInterval(() => {
-        void this.performPeriodicCleanup();
+        try {
+          this.performPeriodicCleanup();
+        } catch (error) {
+          debug('bridge:memory', 'Error during periodic cleanup:', error);
+        }
       }, cleanupInterval);
     } else {
       if (cleanupEnabled && !windowTracker) {
@@ -98,7 +103,7 @@ export class ResourceManager<State extends AnyState> {
     return this.middlewareCallbacks;
   }
 
-  private async performPeriodicCleanup(): Promise<void> {
+  private performPeriodicCleanup(): void {
     debug(
       'bridge:memory',
       `Performing periodic cleanup of ${this.subscriptionManagers.size} subscription managers`,
@@ -117,15 +122,8 @@ export class ResourceManager<State extends AnyState> {
         'bridge:memory',
         'Window tracker returned empty array but subscription managers exist - using Electron WebContents fallback',
       );
-      try {
-        const { webContents } = await import('electron');
-        activeWebContents = webContents.getAllWebContents().filter((wc) => !wc.isDestroyed());
-        debug('bridge:memory', `Fallback found ${activeWebContents.length} active WebContents`);
-      } catch (error) {
-        debug('bridge:memory', 'Failed to import electron for fallback cleanup:', error);
-        // If we can't get real WebContents, skip cleanup to avoid false positives
-        return;
-      }
+      activeWebContents = webContents.getAllWebContents().filter((wc) => !wc.isDestroyed());
+      debug('bridge:memory', `Fallback found ${activeWebContents.length} active WebContents`);
     }
 
     const activeWindowIds = new Set(activeWebContents.map((wc) => wc.id));
