@@ -8,10 +8,18 @@ import { BaseSystemTray } from './base.js';
  * Custom mode tray implementation
  */
 export class CustomSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(store: StateManager<AnyState>, windows: BrowserWindow[]) {
     this.windows = windows;
 
     console.log('[Custom Tray] Initializing with shared custom store');
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      console.log('[Custom Tray] Cleaning up previous subscription');
+      this.unsubscribe();
+    }
 
     // Use the shared store instance from the main process
     this.dispatch = createDispatch(store);
@@ -20,7 +28,7 @@ export class CustomSystemTray extends BaseSystemTray {
     this.update(store.getState() as State);
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state: AnyState) => {
+    this.unsubscribe = store.subscribe((state: AnyState) => {
       console.log('[Custom Tray] State update:', state);
       this.update(state as State);
     });

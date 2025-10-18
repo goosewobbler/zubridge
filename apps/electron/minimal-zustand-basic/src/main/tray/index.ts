@@ -10,10 +10,18 @@ import { BaseSystemTray } from './base.js';
  * automatically creates the appropriate adapter internally
  */
 export class BasicSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(store: StoreApi<State>, windows: BrowserWindow[]) {
     this.windows = windows;
 
     console.log('[Basic Tray] Using shared Zustand store');
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      console.log('[Basic Tray] Cleaning up previous subscription');
+      this.unsubscribe();
+    }
 
     // Create dispatch helper from the store
     this.dispatch = createDispatch(store);
@@ -22,7 +30,7 @@ export class BasicSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => {
+    this.unsubscribe = store.subscribe((state) => {
       console.log('[Basic Tray] State update:', state);
       this.update(state);
     });
