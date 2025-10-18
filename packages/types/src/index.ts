@@ -77,12 +77,9 @@ export interface BridgeEvent<T = unknown> {
 }
 
 // Shared base bridge interface that works across platforms
-export interface BaseBridge<WindowId> {
+export interface BaseBridge {
   // Common cleanup method all implementations have
   unsubscribe: (...args: unknown[]) => void;
-
-  // Method to get all currently subscribed window identifiers
-  getSubscribedWindows: () => WindowId[];
 }
 
 export interface WebContentsWrapper {
@@ -92,12 +89,11 @@ export interface WebContentsWrapper {
 }
 
 // The object returned by mainZustandBridge
-export interface ZustandBridge extends BaseBridge<number> {
+export interface ZustandBridge extends BaseBridge {
   subscribe: (
     wrappers: [WebContentsWrapper, ...WebContentsWrapper[]],
     keys?: string[],
   ) => { unsubscribe: () => void };
-  getWindowSubscriptions: (windowId: number) => string[];
 }
 
 export type WrapperOrWebContents = WebContentsWrapper | WebContents;
@@ -188,7 +184,7 @@ export interface StateManager<State> {
 }
 
 // Base interface for backend bridges across platforms
-export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
+export interface BackendBridge extends BaseBridge {
   subscribe: (
     windows: WrapperOrWebContents[],
     keys?: string[],
@@ -196,7 +192,6 @@ export interface BackendBridge<WindowId> extends BaseBridge<WindowId> {
     unsubscribe: () => void;
   };
   destroy: () => void;
-  getWindowSubscriptions: (windowId: WindowId) => string[];
 }
 
 /**
@@ -213,7 +208,7 @@ export enum ThunkState {
  * Interface for custom bridge that wraps BackendBridge functionality
  * with additional dispatch capabilities for custom state management
  */
-export interface CustomBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
+export interface CustomBridge<S extends AnyState = AnyState> extends BackendBridge {
   dispatch: Dispatch<S>;
 }
 

@@ -74,7 +74,6 @@ vi.mock('../../src/bridge/subscription/SubscriptionHandler.js', () => ({
     subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
     selectiveSubscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
     unsubscribe: vi.fn(),
-    getWindowSubscriptions: vi.fn(() => []),
   })),
 }));
 
@@ -147,9 +146,7 @@ describe('BridgeCore', () => {
       expect(bridge).toBeDefined();
       expect(typeof bridge.subscribe).toBe('function');
       expect(typeof bridge.unsubscribe).toBe('function');
-      expect(typeof bridge.getSubscribedWindows).toBe('function');
       expect(typeof bridge.destroy).toBe('function');
-      expect(typeof bridge.getWindowSubscriptions).toBe('function');
     });
 
     it('should initialize components with correct parameters', async () => {
@@ -251,12 +248,35 @@ describe('BridgeCore', () => {
 
       const _bridge = createCoreBridge(mockStateManager);
 
+      // Trigger state change (first run - no prevState)
+      const stateChangeCallback = (mockStateManager.subscribe as Mock).mock.calls[0][0];
+      stateChangeCallback({ counter: 43 });
+
+      // Should only call sanitizeState once on first run (no prevState)
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, {});
+      expect(sanitizeState).toHaveBeenCalledTimes(1);
+    });
+
+    it('should sanitize state with maxDepth option when provided', async () => {
+      const mockWebContents = { id: 123, send: vi.fn() };
+      const mockSubscriptionManager = { notify: vi.fn() };
+
+      (mockWebContentsTracker.getActiveWebContents as Mock).mockReturnValue([mockWebContents]);
+      mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubscriptionManager);
+
+      const { sanitizeState } = await import('../../src/utils/serialization.js');
+      (sanitizeState as Mock).mockImplementation((state) => ({ ...state, sanitized: true }));
+
+      const _bridge = createCoreBridge(mockStateManager, {
+        serialization: { maxDepth: 5 },
+      });
+
       // Trigger state change
       const stateChangeCallback = (mockStateManager.subscribe as Mock).mock.calls[0][0];
       stateChangeCallback({ counter: 43 });
 
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 });
-      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 });
+      // Should call sanitizeState with maxDepth option
+      expect(sanitizeState).toHaveBeenCalledWith({ counter: 43 }, { maxDepth: 5 });
     });
   });
 
@@ -294,36 +314,6 @@ describe('BridgeCore', () => {
         bridge.unsubscribe(undefined, undefined);
 
         expect(bridge).toBeDefined();
-      });
-    });
-
-    describe('getSubscribedWindows', () => {
-      it('should return active window IDs from tracker', () => {
-        const mockIds = [123, 456];
-        (mockWebContentsTracker.getActiveIds as Mock).mockReturnValue(mockIds);
-
-        const result = bridge.getSubscribedWindows();
-
-        expect(result).toEqual(mockIds);
-        expect(mockWebContentsTracker.getActiveIds).toHaveBeenCalled();
-      });
-
-      it('should handle empty active IDs', () => {
-        (mockWebContentsTracker.getActiveIds as Mock).mockReturnValue([]);
-
-        const result = bridge.getSubscribedWindows();
-
-        expect(result).toEqual([]);
-      });
-    });
-
-    describe('getWindowSubscriptions', () => {
-      it('should delegate to subscription handler', () => {
-        const windowId = 123;
-
-        const result = bridge.getWindowSubscriptions(windowId);
-
-        expect(Array.isArray(result)).toBe(true);
       });
     });
   });

@@ -6,8 +6,6 @@ vi.mock('../src/bridge', () => {
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
     destroy: vi.fn(),
-    getSubscribedWindows: vi.fn().mockReturnValue([1, 2, 3]),
-    getWindowSubscriptions: vi.fn().mockReturnValue(['*']),
   };
 
   return {
@@ -32,9 +30,9 @@ import type { Store } from 'redux';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { StoreApi } from 'zustand/vanilla';
 import * as bridge from '../src/bridge';
-import { removeStateManager } from '../src/registry/stateManagerRegistry';
 import * as main from '../src/main';
 import { createDispatch } from '../src/main/dispatch.js';
+import { removeStateManager } from '../src/registry/stateManagerRegistry';
 
 // Helper mock functions
 function createMockWindow(id: number) {
@@ -75,7 +73,6 @@ function _createMockBridge() {
   return {
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
-    getSubscribedWindows: vi.fn(() => [1, 2, 3]),
     destroy: vi.fn(),
     dispatch: vi.fn(),
   };
@@ -86,9 +83,7 @@ function createMockCoreBridge() {
   return {
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
-    getSubscribedWindows: vi.fn(() => [1, 2, 3]),
     destroy: vi.fn(),
-    getWindowSubscriptions: vi.fn().mockReturnValue(['*']),
   };
 }
 
@@ -119,7 +114,6 @@ describe('main.ts exports', () => {
       expect(createDispatch).toHaveBeenCalledWith(store, options);
       expect(zustandBridge).toHaveProperty('subscribe');
       expect(zustandBridge).toHaveProperty('unsubscribe');
-      expect(zustandBridge).toHaveProperty('getSubscribedWindows');
       expect(zustandBridge).toHaveProperty('dispatch');
       expect(zustandBridge).toHaveProperty('destroy');
     });
@@ -158,7 +152,7 @@ describe('main.ts exports', () => {
       // Assert
       expect(vi.mocked(bridge.createBridgeFromStore)).toHaveBeenCalledWith(store, options);
       expect(createDispatch).toHaveBeenCalledWith(store, options);
-      expect(zustandBridge.getSubscribedWindows()).toEqual([1, 2, 3]);
+      expect(zustandBridge).toBeDefined();
     });
 
     it('should allow subscribing to windows after creation', () => {
@@ -193,7 +187,6 @@ describe('main.ts exports', () => {
       expect(createDispatch).toHaveBeenCalledWith(store, options);
       expect(reduxBridge).toHaveProperty('subscribe');
       expect(reduxBridge).toHaveProperty('unsubscribe');
-      expect(reduxBridge).toHaveProperty('getSubscribedWindows');
       expect(reduxBridge).toHaveProperty('dispatch');
       expect(reduxBridge).toHaveProperty('destroy');
     });
@@ -231,7 +224,7 @@ describe('main.ts exports', () => {
       expect(vi.mocked(bridge.createBridgeFromStore)).toHaveBeenCalledWith(store, undefined);
       expect(createDispatch).toHaveBeenCalledWith(store, undefined);
       expect(mockCoreBridge.subscribe).toHaveBeenCalledWith([window]);
-      expect(zustandBridge.getSubscribedWindows()).toEqual([1, 2, 3]);
+      expect(zustandBridge).toBeDefined();
     });
 
     it('should initialize Redux bridge with store and a window', () => {
@@ -249,7 +242,7 @@ describe('main.ts exports', () => {
       expect(vi.mocked(bridge.createBridgeFromStore)).toHaveBeenCalledWith(store, undefined);
       expect(createDispatch).toHaveBeenCalledWith(store, undefined);
       expect(mockCoreBridge.subscribe).toHaveBeenCalledWith([window]);
-      expect(reduxBridge.getSubscribedWindows()).toEqual([1, 2, 3]);
+      expect(reduxBridge).toBeDefined();
     });
   });
 });

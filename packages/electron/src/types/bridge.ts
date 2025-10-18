@@ -23,4 +23,10 @@ export interface CoreBridgeOptions {
     /** Maximum number of subscription managers before forcing cleanup (default: 1000) */
     maxSubscriptionManagers?: number;
   };
+
+  // Serialization options
+  serialization?: {
+    /** Maximum depth to traverse when sanitizing state (default: 10) */
+    maxDepth?: number;
+  };
 }

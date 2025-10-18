@@ -3,8 +3,8 @@ import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/typ
 import type { WebContents } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from '../../constants.js';
-import { thunkManager } from '../../thunk/init.js';
 import { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
+import { thunkManager } from '../../thunk/init.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import {
   getWebContents,
@@ -20,6 +20,7 @@ export class SubscriptionHandler<State extends AnyState> {
     private stateManager: StateManager<State>,
     private resourceManager: ResourceManager<State>,
     private windowTracker: WebContentsTracker,
+    private serializationMaxDepth?: number,
   ) {}
 
   /**
@@ -65,7 +66,11 @@ export class SubscriptionHandler<State extends AnyState> {
         keys,
         (state) => {
           debug('core', `Sending state update to window ${webContents.id}`);
-          const sanitizedState = sanitizeState(state);
+          const serializationOptions: { maxDepth?: number } = {};
+          if (this.serializationMaxDepth !== undefined) {
+            serializationOptions.maxDepth = this.serializationMaxDepth;
+          }
+          const sanitizedState = sanitizeState(state, serializationOptions);
 
           // Generate update ID and check if this state update is from a thunk action
           const updateId = uuidv4();
@@ -94,7 +99,11 @@ export class SubscriptionHandler<State extends AnyState> {
       unsubs.push(unsubscribe);
 
       if (tracked) {
-        const initialState = sanitizeState(this.stateManager.getState());
+        const serializationOptions: { maxDepth?: number } = {};
+        if (this.serializationMaxDepth !== undefined) {
+          serializationOptions.maxDepth = this.serializationMaxDepth;
+        }
+        const initialState = sanitizeState(this.stateManager.getState(), serializationOptions);
 
         // Generate update ID for initial state
         const updateId = uuidv4();
@@ -170,10 +179,5 @@ export class SubscriptionHandler<State extends AnyState> {
       }
       this.windowTracker.untrack(webContents);
     }
-  }
-
-  getWindowSubscriptions(windowId: number): string[] {
-    const subManager = this.resourceManager.getSubscriptionManager(windowId);
-    return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
   }
 }

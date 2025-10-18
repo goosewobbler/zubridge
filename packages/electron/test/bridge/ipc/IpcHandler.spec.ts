@@ -8,11 +8,11 @@ import type {
   ResourceManager,
 } from '../../../src/bridge/resources/ResourceManager.js';
 import { IpcChannel } from '../../../src/constants.js';
-import { thunkManager } from '../../../src/thunk/init.js';
-import { getPartialState } from '../../../src/subscription/SubscriptionManager.js';
-import { Thunk } from '../../../src/thunk/Thunk.js';
-import { ThunkRegistrationQueue } from '../../../src/thunk/registration/ThunkRegistrationQueue.js';
 import { actionQueue } from '../../../src/main/actionQueue.js';
+import { getPartialState } from '../../../src/subscription/SubscriptionManager.js';
+import { thunkManager } from '../../../src/thunk/init.js';
+import { ThunkRegistrationQueue } from '../../../src/thunk/registration/ThunkRegistrationQueue.js';
+import { Thunk } from '../../../src/thunk/Thunk.js';
 import { safelySendToWindow } from '../../../src/utils/windows.js';
 
 // Mock dependencies
@@ -627,6 +627,107 @@ describe('IpcHandler', () => {
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.TRACK_ACTION_DISPATCH);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.COMPLETE_THUNK);
+    });
+  });
+
+  describe('serialization maxDepth configuration', () => {
+    it('should pass serializationMaxDepth to sanitizeState when getting state', async () => {
+      // Create deep nested state
+      const deepState = {
+        level1: {
+          level2: {
+            level3: {
+              level4: {
+                level5: 'deep',
+              },
+            },
+          },
+        },
+      };
+
+      mockStateManager.getState = vi.fn(() => deepState);
+
+      // Create subscription manager that returns subscriptions
+      const mockSubManager = {
+        getCurrentSubscriptionKeys: vi.fn(() => ['*']),
+      };
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+
+      // Create IpcHandler with maxDepth: 3
+      new IpcHandler(
+        mockStateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        3,
+      );
+
+      // Create mock invoke event
+      const mockInvokeEvent = {
+        sender: mockWebContents,
+      } as IpcMainInvokeEvent;
+
+      // Get the LAST registered GET_STATE handler (from our new IpcHandler instance)
+      const getStateCalls = (ipcMain.handle as Mock).mock.calls.filter(
+        (call) => call[0] === IpcChannel.GET_STATE,
+      );
+      const handleGetState = getStateCalls[getStateCalls.length - 1]?.[1];
+
+      expect(handleGetState).toBeDefined();
+
+      // Get the mocked sanitizeState
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+
+      // Clear previous calls
+      (sanitizeState as Mock).mockClear();
+
+      // Call the handler
+      await handleGetState(mockInvokeEvent);
+
+      // Verify sanitizeState was called with maxDepth: 3
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, { maxDepth: 3 });
+    });
+
+    it('should pass empty object to sanitizeState when serializationMaxDepth is not provided', async () => {
+      // Create deep nested state (11 levels - deeper than default maxDepth of 10)
+      let deepState: Record<string, unknown> = { value: 'deepest' };
+      for (let i = 0; i < 11; i++) {
+        deepState = { [`level${11 - i}`]: deepState };
+      }
+
+      mockStateManager.getState = vi.fn(() => deepState);
+
+      // Create subscription manager
+      const mockSubManager = {
+        getCurrentSubscriptionKeys: vi.fn(() => ['*']),
+      };
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+
+      // Create IpcHandler without maxDepth (should use default of 10)
+      new IpcHandler(mockStateManager, mockResourceManager as unknown as ResourceManager<AnyState>);
+
+      // Create mock invoke event
+      const mockInvokeEvent = {
+        sender: mockWebContents,
+      } as IpcMainInvokeEvent;
+
+      // Get the LAST registered GET_STATE handler (from our new IpcHandler instance)
+      const getStateCalls = (ipcMain.handle as Mock).mock.calls.filter(
+        (call) => call[0] === IpcChannel.GET_STATE,
+      );
+      const handleGetState = getStateCalls[getStateCalls.length - 1]?.[1];
+
+      expect(handleGetState).toBeDefined();
+
+      // Get the mocked sanitizeState
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+
+      // Clear previous calls
+      (sanitizeState as Mock).mockClear();
+
+      // Call the handler
+      await handleGetState(mockInvokeEvent);
+
+      // Verify sanitizeState was called with empty object (no maxDepth)
+      expect(sanitizeState).toHaveBeenCalledWith(deepState, {});
     });
   });
 });

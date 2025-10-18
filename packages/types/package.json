@@ -45,8 +45,10 @@
   ],
   "scripts": {
     "build": "tsup",
-    "clean": "shx rm -rf dist",
-    "clean:cache": "shx rm -rf .turbo",
+    "prebuild": "shx rm -rf dist && tsx ../../scripts/clean-cache.ts || echo 'Cache clean skipped'",
+    "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
+    "clean:output": "shx rm -rf dist",
+    "clean:cache": "tsx ../../scripts/clean-cache.ts",
     "test": "vitest run",
     "package": "pnpm pack"
   },
@@ -56,7 +58,7 @@
   },
   "devDependencies": {
     "shx": "^0.4.0",
-    "tsup": "^8.0.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "zustand": "^5.0.8"
   },

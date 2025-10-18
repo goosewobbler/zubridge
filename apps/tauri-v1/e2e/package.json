@@ -4,8 +4,8 @@
   "description": "End-to-end testing app for Zubridge Tauri v1",
   "private": true,
   "scripts": {
-    "clean": "pnpm clean:output && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml ./dist ./src-tauri/target",
-    "clean:output": "pnpm dlx shx rm -rf ./dist* ./out* ./src-tauri/target",
+    "clean": "pnpm clean:output && pnpx shx rm -rf ./node_modules pnpm-lock.yaml ./dist ./src-tauri/target",
+    "clean:output": "pnpx shx rm -rf ./dist* ./out* ./src-tauri/target",
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",
     "dev:vite": "vite",
     "dev": "vite build && pnpm tauri dev",

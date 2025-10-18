@@ -4,8 +4,8 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { ReduxOptions } from './adapters/redux.js';
 import type { ZustandOptions } from './adapters/zustand.js';
 import { type CoreBridgeOptions, createBridgeFromStore } from './bridge/index.js';
-import { removeStateManager } from './registry/stateManagerRegistry.js';
 import { createDispatch } from './main/dispatch.js';
+import { removeStateManager } from './registry/stateManagerRegistry.js';
 
 export type { ReduxOptions } from './adapters/redux.js';
 // Export types
@@ -41,11 +41,9 @@ export { isDev } from './utils/environment.js';
 /**
  * Interface for a bridge that connects a Zustand store to the main process
  */
-export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
+export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBridge {
   subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
   unsubscribe: (...args: unknown[]) => void;
-  getSubscribedWindows: () => number[];
-  getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
@@ -53,11 +51,9 @@ export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBri
 /**
  * Interface for a bridge that connects a Redux store to the main process
  */
-export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge<number> {
+export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge {
   subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
   unsubscribe: (...args: unknown[]) => void;
-  getSubscribedWindows: () => number[];
-  getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
@@ -84,8 +80,6 @@ export function createZustandBridge<S extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
-    getSubscribedWindows: coreBridge.getSubscribedWindows,
-    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
       coreBridge.destroy();
       // Clean up the state manager from the registry
@@ -117,8 +111,6 @@ export function createReduxBridge<S extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
-    getSubscribedWindows: coreBridge.getSubscribedWindows,
-    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
       coreBridge.destroy();
       // Clean up the state manager from the registry

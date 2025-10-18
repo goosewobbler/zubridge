@@ -6,9 +6,9 @@ import type {
   StateManager,
   WrapperOrWebContents,
 } from '@zubridge/types';
-import { actionScheduler, thunkManager } from '../thunk/init.js';
 import { initActionQueue } from '../main/actionQueue.js';
 import { createMiddlewareOptions } from '../middleware.js';
+import { actionScheduler, thunkManager } from '../thunk/init.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
 import { setupMainProcessErrorHandlers } from '../utils/globalErrorHandlers.js';
 import { sanitizeState } from '../utils/serialization.js';
@@ -23,7 +23,7 @@ import { SubscriptionHandler } from './subscription/SubscriptionHandler.js';
 export function createCoreBridge<State extends AnyState>(
   stateManager: StateManager<State>,
   options?: CoreBridgeOptions,
-): BackendBridge<number> {
+): BackendBridge {
   debug('core', 'Creating CoreBridge with options:', options);
 
   // Setup global error handlers for the main process
@@ -54,11 +54,19 @@ export function createCoreBridge<State extends AnyState>(
   // Create resource manager to prevent memory leaks, passing windowTracker for proper cleanup
   const resourceManager = new ResourceManager<State>(windowTracker, options?.resourceManagement);
 
+  // Extract serialization maxDepth if provided
+  const serializationMaxDepth = options?.serialization?.maxDepth;
+
   // Create IPC handler
-  const ipcHandler = new IpcHandler(stateManager, resourceManager);
+  const ipcHandler = new IpcHandler(stateManager, resourceManager, serializationMaxDepth);
 
   // Create subscription handler
-  const subscriptionHandler = new SubscriptionHandler(stateManager, resourceManager, windowTracker);
+  const subscriptionHandler = new SubscriptionHandler(
+    stateManager,
+    resourceManager,
+    windowTracker,
+    serializationMaxDepth,
+  );
 
   // Process options with middleware if provided
   let processedOptions = options;
@@ -105,8 +113,14 @@ export function createCoreBridge<State extends AnyState>(
       debug('core', `Notifying ${activeWebContents.length} active windows of state change`);
 
       // Sanitize state before notifying subscribers
-      const sanitizedState = sanitizeState(state) as State;
-      const sanitizedPrevState = prevState ? (sanitizeState(prevState) as State) : undefined;
+      const serializationOptions: { maxDepth?: number } = {};
+      if (options?.serialization?.maxDepth !== undefined) {
+        serializationOptions.maxDepth = options.serialization.maxDepth;
+      }
+      const sanitizedState = sanitizeState(state, serializationOptions) as State;
+      const sanitizedPrevState = prevState
+        ? (sanitizeState(prevState, serializationOptions) as State)
+        : undefined;
 
       for (const webContents of activeWebContents) {
         const windowId = webContents.id;
@@ -132,16 +146,20 @@ export function createCoreBridge<State extends AnyState>(
     stateManagerUnsubscribe = () => {}; // Provide no-op fallback
   }
 
-  // Get IDs of subscribed windows
-  const getSubscribedWindows = (): number[] => {
-    const activeIds = windowTracker.getActiveIds();
-    debug('windows', `Currently subscribed windows: ${activeIds.join(', ') || 'none'}`);
-    return activeIds;
-  };
-
   // Cleanup function for removing listeners
   const destroy = async () => {
     debug('core', 'Destroying CoreBridge');
+
+    // Apply bridge destroy hook BEFORE cleanup if provided
+    // This allows users to access final state, log metrics, etc.
+    if (processedOptions?.onBridgeDestroy) {
+      debug('core', 'Applying onBridgeDestroy hook');
+      try {
+        await processedOptions.onBridgeDestroy();
+      } catch (error) {
+        debug('core', 'Error in onBridgeDestroy hook:', error);
+      }
+    }
 
     // Clean up IPC handlers
     ipcHandler.cleanup();
@@ -177,16 +195,6 @@ export function createCoreBridge<State extends AnyState>(
       debug('core', 'Error cleaning up singletons:', error);
     }
 
-    // Apply bridge destroy hook if provided
-    if (processedOptions?.onBridgeDestroy) {
-      debug('core', 'Applying onBridgeDestroy hook');
-      try {
-        await processedOptions.onBridgeDestroy();
-      } catch (error) {
-        debug('core', 'Error in onBridgeDestroy hook:', error);
-      }
-    }
-
     // Cleanup all our resources
     debug('core', 'Unsubscribing from state manager');
     stateManagerUnsubscribe();
@@ -209,8 +217,6 @@ export function createCoreBridge<State extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
-    getSubscribedWindows,
     destroy,
-    getWindowSubscriptions: subscriptionHandler.getWindowSubscriptions.bind(subscriptionHandler),
   };
 }
