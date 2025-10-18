@@ -3,7 +3,6 @@ import type React from 'react';
 interface HeaderProps {
   windowId: number | string;
   windowTitle: string;
-  currentSubscriptions?: string[] | '*';
   windowType?: string;
   appName?: string;
   mode?: string;
@@ -23,21 +22,10 @@ export const Header: React.FC<HeaderProps> = ({
   mode,
   bridgeStatus = 'ready',
   className = '',
-  currentSubscriptions,
   counterValue,
   isLoading = false,
 }) => {
   const headerClasses = `z-10 flex items-center justify-between px-4 py-2 text-white bg-black/80 ${className}`;
-
-  // Determine subscription display text
-  let subscriptionsText: string;
-  if (currentSubscriptions === '*') {
-    subscriptionsText = '*';
-  } else if (Array.isArray(currentSubscriptions) && currentSubscriptions.length > 0) {
-    subscriptionsText = currentSubscriptions.join(', ');
-  } else {
-    subscriptionsText = 'none';
-  }
 
   return (
     <header className={headerClasses}>
@@ -62,9 +50,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="ml-2">
             Bridge: {bridgeStatus.charAt(0).toUpperCase() + bridgeStatus.slice(1)}
           </span>
-        </div>
-        <div className="flex items-center">
-          <span className="text-xs opacity-75">Subscriptions: {subscriptionsText}</span>
         </div>
       </div>
     </header>
