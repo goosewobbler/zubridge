@@ -8,9 +8,9 @@
   "author": "goosewobbler",
   "homepage": "https://github.com/goosewobbler/zubridge",
   "scripts": {
-    "clean": "pnpm clean:cache && pnpm dlx shx rm -rf ./node_modules pnpm-lock.yaml",
-    "clean:cache": "pnpm dlx shx rm -rf .cache",
-    "clean:output": "pnpm dlx shx rm -rf ./dist* ./out* && pnpm run clean:cache",
+    "clean": "pnpm clean:cache && pnpx shx rm -rf ./node_modules pnpm-lock.yaml",
+    "clean:cache": "pnpx shx rm -rf .cache",
+    "clean:output": "pnpx shx rm -rf ./dist* ./out* && pnpm run clean:cache",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
