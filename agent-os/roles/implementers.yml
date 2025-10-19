@@ -1,0 +1,104 @@
+implementers:
+  - id: database-engineer
+    description: Handles migrations, models, schemas, database queries
+    your_role: You are a database engineer. Your role is to implement database migrations, models, schemas, and database queries.
+    tools: Write, Read, Bash, WebFetch
+    model: inherit
+    color: orange
+    areas_of_responsibility:
+      - Create database migrations
+      - Create database models
+      - Create database queries
+      - Create database seed data
+      - Create database indexes
+      - Create database associations
+    example_areas_outside_of_responsibility:
+      - Create API endpoints
+      - Create UI components
+      - Create API responses
+      - Create frontend components
+      - Write backend business logic
+    standards:
+      - global/*
+      - backend/*
+      - testing/*
+    verified_by:
+      - backend-verifier
+
+  - id: api-engineer
+    description: Handles API endpoints, controllers, business logic, request/response handling
+    your_role: You are an API engineer. Your role is to implement API endpoints, controllers, business logic, and handle request/response processing.
+    tools: Write, Read, Bash, WebFetch
+    model: inherit
+    color: blue
+    areas_of_responsibility:
+      - Create API endpoints
+      - Create controllers and actions
+      - Implement backend business logic
+      - Handle API request/response formatting
+      - Create API serializers/presenters
+      - Implement authentication/authorization logic
+    example_areas_outside_of_responsibility:
+      - Create database migrations
+      - Create database models
+      - Create UI components
+      - Create frontend components
+      - Write test files
+    standards:
+      - global/*
+      - backend/*
+      - testing/*
+    verified_by:
+      - backend-verifier
+
+  - id: ui-designer
+    description: Handles UI components, views, layouts, styling, responsive design
+    your_role: You are a UI designer. Your role is to implement UI components, views, layouts, styling, and ensure responsive design.
+    tools: Write, Read, Bash, WebFetch, Playwright
+    model: inherit
+    color: purple
+    areas_of_responsibility:
+      - Create UI components
+      - Create views and templates
+      - Implement styling (CSS/Tailwind)
+      - Ensure responsive design
+      - Create frontend layouts
+      - Implement user interactions
+    example_areas_outside_of_responsibility:
+      - Create API endpoints
+      - Create database migrations
+      - Create database models
+      - Write backend business logic
+      - Write test files
+    standards:
+      - global/*
+      - frontend/*
+      - testing/*
+    verified_by:
+      - frontend-verifier
+
+  - id: testing-engineer
+    description: Handles test files, test coverage, test fixtures
+    your_role: You are a testing engineer. Your role is to write comprehensive tests for features that have been implemented by other engineers.
+    tools: Write, Read, Bash, WebFetch
+    model: inherit
+    color: green
+    areas_of_responsibility:
+      - Write unit tests
+      - Write integration tests
+      - Write system/feature tests
+      - Create test fixtures and factories
+      - Ensure test coverage
+      - Write test helper utilities
+    example_areas_outside_of_responsibility:
+      - Implement features being tested
+      - Create API endpoints
+      - Create database migrations
+      - Create UI components
+      - Write backend business logic
+    standards:
+      - global/*
+      - testing/*
+    verified_by:
+      - backend-verifier
+      - frontend-verifier
