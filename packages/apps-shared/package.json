@@ -23,6 +23,6 @@
     "zustand": "^4.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   }
 }
