@@ -10,8 +10,15 @@ import type { State } from '../../types.js';
  * automatically creates the appropriate adapter internally
  */
 export class BasicSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(store: StoreApi<State>, window: BrowserWindow) {
     this.window = window;
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
 
     // Create dispatch directly from the store
     this.dispatch = createDispatch(store);
@@ -20,6 +27,6 @@ export class BasicSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => this.update(state));
+    this.unsubscribe = store.subscribe((state) => this.update(state));
   }
 }

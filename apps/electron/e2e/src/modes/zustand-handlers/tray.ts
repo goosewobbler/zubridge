@@ -13,8 +13,15 @@ import { createHandlers } from './main.js';
  * which automatically creates a state manager adapter internally
  */
 export class HandlersSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(store: StoreApi<State>, window: BrowserWindow) {
     this.window = window;
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
 
     // Get handlers from main.ts
     const handlers = createHandlers(store);
@@ -27,6 +34,6 @@ export class HandlersSystemTray extends BaseSystemTray {
     this.update(store.getState());
 
     // Subscribe to state changes to update the tray UI
-    store.subscribe((state) => this.update(state));
+    this.unsubscribe = store.subscribe((state) => this.update(state));
   }
 }
