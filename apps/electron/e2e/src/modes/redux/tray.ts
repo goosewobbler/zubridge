@@ -17,6 +17,12 @@ export class ReduxSystemTray extends BaseSystemTray {
   public init(store: StoreApi<BaseState> | Store<BaseState>, window: BrowserWindow) {
     this.window = window;
 
+    // Unsubscribe from previous subscription if it exists
+    if (this.storeUnsubscribe) {
+      this.storeUnsubscribe();
+      this.storeUnsubscribe = null;
+    }
+
     // Use the shared store from the main process
     this.store = store as Store<BaseState>;
     console.log('[Redux Tray] Using shared Redux store');

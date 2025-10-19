@@ -11,10 +11,17 @@ import { getCustomStore } from './store.js';
  * Custom mode tray implementation
  */
 export class CustomSystemTray extends BaseSystemTray {
+  private unsubscribe?: () => void;
+
   public init(_store: StoreApi<BaseState> | Store<BaseState>, window: BrowserWindow) {
     this.window = window;
 
     console.log('[Custom Tray] Initializing with custom store');
+
+    // Unsubscribe from previous subscription if it exists
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
 
     // Get a custom store instance
     const customStore = getCustomStore();
@@ -26,7 +33,7 @@ export class CustomSystemTray extends BaseSystemTray {
     this.update(customStore.getState() as BaseState);
 
     // Subscribe to state changes to update the tray UI
-    customStore.subscribe((state) => {
+    this.unsubscribe = customStore.subscribe((state) => {
       console.log('[Custom Tray] State update:', state);
       this.update(state as BaseState);
     });
