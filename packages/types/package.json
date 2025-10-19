@@ -59,7 +59,7 @@
   "devDependencies": {
     "shx": "^0.4.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2",
+    "typescript": "^5.9.3",
     "zustand": "^5.0.8"
   },
   "repository": {

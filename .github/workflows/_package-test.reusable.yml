@@ -94,7 +94,7 @@ jobs:
           echo "=== Running package tests ==="
           set +e  # Don't exit on error
 
-          # Run package tests (keeping xvfb-maybe at the correct level - in package.json)
+          # Run package tests (WDIO handles Xvfb automatically)
           pnpx tsx scripts/run-package-e2e.ts ${{ inputs.mode }}
           exit_code=$?
 
