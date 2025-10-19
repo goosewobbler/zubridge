@@ -16,6 +16,19 @@ import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getPreloadOptions } from './utils/preloadOptions.js';
 
+// Type for the subscription validator API that gets exposed to window
+interface SubscriptionValidatorAPI {
+  getWindowSubscriptions: () => Promise<string[]>;
+  isSubscribedToKey: (key: string) => Promise<boolean>;
+  validateStateAccess: (key: string) => Promise<boolean>;
+  stateKeyExists: (state: unknown, key: string) => boolean;
+}
+
+// Extended window type for context isolation disabled mode
+type WindowWithZubridgeValidator = Window & {
+  __zubridge_subscriptionValidator: SubscriptionValidatorAPI;
+};
+
 // Return type for preload bridge function
 export interface PreloadZustandBridgeReturn<S extends AnyState> {
   handlers: Handlers<S>;
@@ -458,7 +471,7 @@ export const preloadBridge = <S extends AnyState>(
         debug('ipc', 'Renderer thunk processor initialized');
 
         // Create subscription validation API
-        const subscriptionValidatorAPI = {
+        const subscriptionValidatorAPI: SubscriptionValidatorAPI = {
           // Get window subscriptions via IPC
           getWindowSubscriptions: async (): Promise<string[]> => {
             try {
@@ -525,12 +538,12 @@ export const preloadBridge = <S extends AnyState>(
           },
 
           // Check if a state key exists in an object
-          stateKeyExists: (state: Record<string, unknown>, key: string): boolean => {
-            if (!key || !state) return false;
+          stateKeyExists: (state: unknown, key: string): boolean => {
+            if (!key || !state || typeof state !== 'object') return false;
 
             // Handle dot notation by traversing the object
             const parts = key.split('.');
-            let current = state;
+            let current = state as Record<string, unknown>;
 
             for (const part of parts) {
               if (current === undefined || current === null || typeof current !== 'object') {
@@ -550,10 +563,17 @@ export const preloadBridge = <S extends AnyState>(
 
         // Expose the subscription validator API to the window
         debug('ipc', 'Exposing subscription validator API to window');
-        contextBridge.exposeInMainWorld(
-          '__zubridge_subscriptionValidator',
-          subscriptionValidatorAPI,
-        );
+        if (process.contextIsolated) {
+          // Context isolation enabled - use contextBridge
+          contextBridge.exposeInMainWorld(
+            '__zubridge_subscriptionValidator',
+            subscriptionValidatorAPI,
+          );
+        } else {
+          // Context isolation disabled - directly attach to window
+          (window as unknown as WindowWithZubridgeValidator).__zubridge_subscriptionValidator =
+            subscriptionValidatorAPI;
+        }
 
         // Add a state provider to the thunk processor
         thunkProcessor.setStateProvider((opts) => handlers.getState(opts));

@@ -240,7 +240,7 @@ An object with a `handlers` property that should be exposed to the renderer proc
 ##### Example:
 
 ```ts
-// preload.js
+// `src/preload/index.ts`
 import { contextBridge } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
 
@@ -276,13 +276,13 @@ A hook that can be used to select state from the store.
 ##### Example:
 
 ```ts
-// hooks/useStore.ts
+// `hooks/useStore.ts`
 import { createUseStore } from '@zubridge/electron';
 import type { AppState } from '../types';
 
 export const useStore = createUseStore<AppState>();
 
-// Component.tsx
+// `Component.tsx`
 import { useStore } from './hooks/useStore';
 
 function Counter() {

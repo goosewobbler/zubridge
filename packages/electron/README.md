@@ -78,6 +78,11 @@ The example apps demonstrate different approaches to using zubridge with Electro
 - [Zustand Basic Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-basic) - Zustand with direct store mutations using `createZustandBridge`
 - [Zustand Handlers Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-handlers) - Zustand with dedicated action handler functions using `createZustandBridge`
 - [Zustand Reducers Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-reducers) - Zustand with Redux-style reducers using `createZustandBridge`
+- [Zustand Immer Example](https://github.com/goosewobbler/zubridge/tree/main/examples/electron/zustand-immer) - Zustand with Immer middleware for immutable updates using `createZustandBridge`
+
+### Special Configuration Examples
+
+- [Context Isolation Disabled](https://github.com/goosewobbler/zubridge/tree/main/apps/electron/minimal-context-isolation-false) - Example showing Zubridge usage with `contextIsolation: false` (legacy apps only, not recommended for new projects)
 
 ## Debugging
 
