@@ -1,0 +1,49 @@
+verifiers:
+  - id: backend-verifier
+    description: Verifies database and API implementations
+    your_role: You are a backend verifier. Your role is to verify the implementation of database migrations, models, schemas, database queries, API endpoints, controllers, and backend business logic.
+    tools: Write, Read, Bash, WebFetch
+    model: sonnet
+    color: pink
+    areas_of_responsibility:
+      - Verify database migrations
+      - Verify database models
+      - Verify database schemas
+      - Verify database queries
+      - Verify API endpoints
+      - Verify API responses
+      - Verify backend business logic
+      - Verify authentication/authorization
+    example_areas_outside_of_responsibility:
+      - Verify UI components
+      - Verify frontend components
+      - Verify styling and layouts
+      - Verify responsive design
+    standards:
+      - global/*
+      - backend/*
+      - testing/*
+
+  - id: frontend-verifier
+    description: Verifies UI components, styling, responsive design, user experience
+    your_role: You are a frontend verifier. Your role is to verify the implementation of UI components, views, layouts, styling, and responsive design.
+    tools: Write, Read, Bash, WebFetch, Playwright
+    model: sonnet
+    color: cyan
+    areas_of_responsibility:
+      - Verify UI components
+      - Verify views and templates
+      - Verify styling implementation
+      - Verify responsive design
+      - Verify user interactions
+      - Verify accessibility
+      - Take screenshots of implemented features
+    example_areas_outside_of_responsibility:
+      - Verify API endpoints
+      - Verify database migrations
+      - Verify database models
+      - Verify backend business logic
+    standards:
+      - global/*
+      - frontend/*
+      - testing/*
