@@ -26,6 +26,7 @@ A `CoreBridge` object with:
 ##### Example:
 
 ```ts
+// `src/main/bridge.ts`
 import { app, BrowserWindow } from 'electron';
 import { createCoreBridge } from '@zubridge/electron/main';
 import { myStateManager } from './state-manager';
@@ -61,10 +62,15 @@ Creates a bridge between a Zustand store in the main process and renderer proces
 ##### Parameters:
 
 - `store`: The Zustand store to bridge
-- `options?`: Optional configuration object
-  - `handlers`: Optional object containing store handler functions
-  - `reducer`: Optional root reducer function for Redux-style state management
-  - `middleware`: **⚠️ Experimental** - Optional middleware for logging and debugging (not yet released)
+- `options?`: Optional configuration object that accepts both Zustand-specific options and all [CoreBridgeOptions](#corebridgeoptions)
+  - **Zustand-specific:**
+    - `handlers`: Optional object containing store handler functions
+    - `reducer`: Optional root reducer function for Redux-style state management
+  - **CoreBridgeOptions:** All options from [CoreBridgeOptions](#corebridgeoptions) are also supported:
+    - `serialization`: Serialization configuration (e.g., `maxDepth`)
+    - `resourceManagement`: Resource cleanup configuration
+    - `onBridgeDestroy`: Lifecycle hook called before bridge cleanup
+    - `middleware`: **⚠️ Experimental** - Optional middleware for logging and debugging (not yet released)
 
 ##### Returns:
 
@@ -78,6 +84,7 @@ A `ZustandBridge` object with:
 ##### Example:
 
 ```ts
+// `src/main/bridge.ts`
 import { app, BrowserWindow } from 'electron';
 import { createZustandBridge } from '@zubridge/electron/main';
 import { store } from './store';
@@ -86,7 +93,7 @@ const mainWindow = new BrowserWindow({
   /* options */
 });
 
-// Create bridge
+// Create bridge with default settings
 const bridge = createZustandBridge(store);
 
 // Subscribe windows to receive state updates
@@ -114,6 +121,20 @@ const bridgeWithReducer = createZustandBridge(store, {
   },
 });
 
+// Using with CoreBridgeOptions
+const bridgeWithOptions = createZustandBridge(store, {
+  serialization: {
+    maxDepth: 5, // Limit state serialization depth
+  },
+  resourceManagement: {
+    cleanupIntervalMs: 300000, // Cleanup every 5 minutes
+  },
+  onBridgeDestroy: async () => {
+    console.log('Saving state before shutdown...');
+    await saveState(store.getState());
+  },
+});
+
 // Dispatch actions from the main process
 bridge.dispatch('INCREMENT');
 
@@ -128,9 +149,14 @@ Creates a bridge between a Redux store in the main process and renderer processe
 ##### Parameters:
 
 - `store`: The Redux store to bridge
-- `options?`: Optional configuration object
-  - `handlers`: Optional object containing action handler functions
-  - `middleware`: **⚠️ Experimental** - Optional middleware for logging and debugging (not yet released)
+- `options?`: Optional configuration object that accepts both Redux-specific options and all [CoreBridgeOptions](#corebridgeoptions)
+  - **Redux-specific:**
+    - `handlers`: Optional object containing action handler functions
+  - **CoreBridgeOptions:** All options from [CoreBridgeOptions](#corebridgeoptions) are also supported:
+    - `serialization`: Serialization configuration (e.g., `maxDepth`)
+    - `resourceManagement`: Resource cleanup configuration
+    - `onBridgeDestroy`: Lifecycle hook called before bridge cleanup
+    - `middleware`: **⚠️ Experimental** - Optional middleware for logging and debugging (not yet released)
 
 ##### Returns:
 
@@ -144,19 +170,35 @@ A `ReduxBridge` object with:
 ##### Example:
 
 ```ts
+// `src/main/bridge.ts`
 import { app, BrowserWindow } from 'electron';
 import { createReduxBridge } from '@zubridge/electron/main';
-import { store } from './redux-store';
+import { store } from './store';
 
 const mainWindow = new BrowserWindow({
   /* options */
 });
 
-// Create bridge
+// Create bridge with default settings
 const bridge = createReduxBridge(store);
 
 // Subscribe windows to receive state updates
 const { unsubscribe } = bridge.subscribe([mainWindow]);
+
+// Using with CoreBridgeOptions
+const bridgeWithOptions = createReduxBridge(store, {
+  serialization: {
+    maxDepth: 7, // Limit state serialization depth
+  },
+  resourceManagement: {
+    enablePeriodicCleanup: true,
+    cleanupIntervalMs: 1200000, // increase cleanup interval
+  },
+  onBridgeDestroy: async () => {
+    console.log('Redux bridge shutting down');
+    await persistState(store.getState());
+  },
+});
 
 // Dispatch actions from the main process
 bridge.dispatch({ type: 'INCREMENT' });
@@ -197,11 +239,12 @@ A function that can dispatch actions to the store. This dispatch function suppor
 ##### Example:
 
 ```ts
+// `src/main/bridge.ts`
 import { createDispatch } from '@zubridge/electron/main';
-import { myStore } from './store';
+import { store } from './store';
 
 // Create dispatch function
-export const dispatch = createDispatch(myStore);
+export const dispatch = createDispatch(store);
 
 // Use the dispatch function
 dispatch('INCREMENT');
@@ -276,17 +319,17 @@ A hook that can be used to select state from the store.
 ##### Example:
 
 ```ts
-// `hooks/useStore.ts`
+// `src/renderer/hooks/useStore.ts`
 import { createUseStore } from '@zubridge/electron';
-import type { AppState } from '../types';
+import type { State } from '../../features';
 
-export const useStore = createUseStore<AppState>();
+export const useStore = createUseStore<State>();
 
-// `Component.tsx`
-import { useStore } from './hooks/useStore';
+// `src/renderer/components/Counter.tsx`
+import { useStore } from '../hooks/useStore';
 
 function Counter() {
-  const counter = useStore(state => state.counter);
+  const counter = useStore((state) => state.counter);
   return <div>{counter}</div>;
 }
 ```
@@ -308,11 +351,12 @@ A dispatch function that can be used to send actions to the main process.
 ##### Example:
 
 ```ts
+// `src/renderer/components/Counter.tsx`
 import { useDispatch } from '@zubridge/electron';
-import type { AppState } from '../types';
+import type { State } from '../../features';
 
 function Counter() {
-  const dispatch = useDispatch<AppState>();
+  const dispatch = useDispatch<State>();
 
   // Dispatch a string action
   const handleIncrement = () => dispatch('INCREMENT');
@@ -327,7 +371,7 @@ function Counter() {
   });
 
   // Dispatch with typed actions
-  const typedDispatch = useDispatch<AppState, { 'SET_COUNTER': number }>();
+  const typedDispatch = useDispatch<State, { 'SET_COUNTER': number }>();
   const handleTypedSetCounter = (value: number) => typedDispatch({
     type: 'SET_COUNTER',
     payload: value // Type checked to be a number
@@ -469,7 +513,7 @@ Configuration options for the core bridge created with `createCoreBridge`.
 
 ```ts
 interface CoreBridgeOptions {
-  // Middleware
+  // Middleware - **⚠️ Experimental** (not yet released)
   middleware?: ZubridgeMiddleware;
 
   // Lifecycle hooks
@@ -531,7 +575,7 @@ interface CoreBridgeOptions {
 
 ### `ZustandOptions<State>`
 
-Configuration options for the Zustand bridge.
+Configuration options specific to the Zustand bridge. When passed to `createZustandBridge`, these can be combined with all [CoreBridgeOptions](#corebridgeoptions).
 
 ```ts
 type ZustandOptions<State extends AnyState> = {
@@ -540,15 +584,19 @@ type ZustandOptions<State extends AnyState> = {
 };
 ```
 
+**Note:** `createZustandBridge` accepts `ZustandOptions<State> & CoreBridgeOptions`, meaning you can use any combination of Zustand-specific options and core bridge options.
+
 ### `ReduxOptions<State>`
 
-Configuration options for the Redux bridge.
+Configuration options specific to the Redux bridge. When passed to `createReduxBridge`, these can be combined with all [CoreBridgeOptions](#corebridgeoptions).
 
 ```ts
 type ReduxOptions<State extends AnyState> = {
-  // Custom options for Redux integration
+  handlers?: Record<string, Handler>;
 };
 ```
+
+**Note:** `createReduxBridge` accepts `ReduxOptions<State> & CoreBridgeOptions`, meaning you can use any combination of Redux-specific options and core bridge options.
 
 ### `WebContentsWrapper`
 
