@@ -9,12 +9,14 @@ import type {
 } from '@zubridge/types';
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
-import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getPreloadOptions } from './utils/preloadOptions.js';
+
+// Use native crypto.randomUUID instead of uuid package for sandbox compatibility
+const uuidv4 = () => crypto.randomUUID();
 
 // Type for the subscription validator API that gets exposed to window
 interface SubscriptionValidatorAPI {
