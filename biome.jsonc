@@ -77,6 +77,13 @@
       "semicolons": "always"
     }
   },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "allowWrongLineComments": false,
+      "tailwindDirectives": true
+    }
+  },
   "overrides": [
     {
       // ignore tailwind rules in CSS files

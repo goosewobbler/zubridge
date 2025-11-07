@@ -209,7 +209,7 @@ describe('Immer Integration', () => {
 
     it('should not leak draft proxies', () => {
       const baseState = { value: 'initial' };
-      let capturedDraft: any = null;
+      let capturedDraft: unknown = null;
 
       // Try to capture the draft
       produce(baseState, (draft) => {
