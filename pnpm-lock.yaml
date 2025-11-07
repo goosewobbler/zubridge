@@ -19,6 +19,9 @@ importers:
       '@types/shelljs':
         specifier: ^0.8.15
         version: 0.8.17
+      '@wdio/logger':
+        specifier: ^9.4.4
+        version: 9.18.0
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -43,6 +46,9 @@ importers:
       turbo:
         specifier: ^2.5.6
         version: 2.6.0
+      weald:
+        specifier: ^1.0.6
+        version: 1.1.1
 
   apps/electron/e2e:
     dependencies:
@@ -10818,8 +10824,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  ms@3.0.0-canary.202508261828:
-    optional: true
+  ms@3.0.0-canary.202508261828: {}
 
   mute-stream@2.0.0: {}
 
@@ -11730,8 +11735,7 @@ snapshots:
       make-asynchronous: 1.0.1
       time-span: 5.1.0
 
-  supports-color@10.2.2:
-    optional: true
+  supports-color@10.2.2: {}
 
   supports-color@7.2.0:
     dependencies:
@@ -12161,7 +12165,6 @@ snapshots:
     dependencies:
       ms: 3.0.0-canary.202508261828
       supports-color: 10.2.2
-    optional: true
 
   web-streams-polyfill@3.3.3: {}
 
