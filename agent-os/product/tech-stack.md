@@ -29,8 +29,8 @@
 
 ## Build Tools
 
-- **TypeScript Bundler**: tsup
-- **Module Bundler**: Rollup
+- **TypeScript Bundler**: tsdown
+- **Module Bundler**: Rolldown
 - **Application Bundler**: Vite, electron-vite
 - **Type Checking**: TypeScript 5.7+ strict mode
 

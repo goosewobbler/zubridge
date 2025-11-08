@@ -44,7 +44,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "prebuild": "shx rm -rf dist && tsx ../../scripts/clean-cache.ts || echo 'Cache clean skipped'",
     "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
     "clean:output": "shx rm -rf dist",
@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "shx": "^0.4.0",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.16.1",
     "typescript": "^5.9.3",
     "zustand": "^5.0.8"
   },
