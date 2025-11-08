@@ -1,4 +1,20 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
+import { defineEnv } from 'unenv';
+
+const { env } = defineEnv({
+  nodeCompat: true,
+  npmShims: true,
+  resolve: true,
+  overrides: {},
+  presets: [],
+});
+
+const { alias } = env;
+
+// Externalize unenv runtime modules to avoid bundling issues
+const externalizeUnenvRuntime = (id: string) => {
+  return id.includes('unenv/dist/runtime') || id.includes('unenv/runtime');
+};
 
 export default defineConfig([
   // Renderer-safe entry point (default)
@@ -6,30 +22,31 @@ export default defineConfig([
     entry: ['src/renderer.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: ['electron', 'zustand', 'zustand/vanilla'],
+    external: (id) => {
+      if (externalizeUnenvRuntime(id)) return true;
+      return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
+    },
     noExternal: ['@zubridge/core', 'weald', '@wdio/logger'],
     outDir: 'dist',
     clean: true,
-    bundle: true,
-    splitting: false,
     sourcemap: false,
     treeshake: true,
     platform: 'neutral',
     target: 'es2020',
-    esbuildOptions(options) {
-      options.banner = {
-        js: '// Renderer-safe build with polyfilled Node.js modules',
-      };
-      // Use esbuild's built-in Node.js polyfills for browser compatibility
-      options.define = {
-        ...options.define,
-        global: 'global',
-      };
-      // Enable Node.js polyfills
-      options.platform = 'browser';
-      options.mainFields = ['browser', 'module', 'main'];
+    define: {
+      global: 'global',
     },
-    outExtension({ format }) {
+    banner: {
+      js: '// Renderer-safe build with polyfilled Node.js modules',
+    },
+    alias,
+    inputOptions(options) {
+      options.resolve = {
+        ...options.resolve,
+        mainFields: ['browser', 'module', 'main'],
+      };
+    },
+    outExtensions({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
         dts: format === 'cjs' ? '.d.cts' : '.d.ts',
@@ -45,18 +62,14 @@ export default defineConfig([
     noExternal: ['@zubridge/core'],
     outDir: 'dist',
     clean: false,
-    bundle: true,
-    splitting: false,
     sourcemap: false,
     treeshake: true,
     platform: 'node',
     target: 'node18',
-    esbuildOptions(options) {
-      options.banner = {
-        js: '// Node.js build with bundled dependencies',
-      };
+    banner: {
+      js: '// Node.js build with bundled dependencies',
     },
-    outExtension({ format }) {
+    outExtensions({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
         dts: format === 'cjs' ? '.d.cts' : '.d.ts',
@@ -68,22 +81,19 @@ export default defineConfig([
     entry: ['src/preload.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'],
+    external: (id) => {
+      if (externalizeUnenvRuntime(id)) return true;
+      return ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'].includes(id);
+    },
     noExternal: ['@zubridge/core'],
     outDir: 'dist',
     clean: false,
-    bundle: true,
-    splitting: false,
     sourcemap: false,
     treeshake: true,
     platform: 'node',
     target: 'node18',
-    esbuildOptions(options) {
-      options.banner = {
-        js: '// Node.js build with bundled dependencies\n// Sandbox-safe process polyfill\nvar process={platform:"linux",env:{}};',
-      };
-    },
-    outExtension({ format }) {
+    alias,
+    outExtensions({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',
         dts: format === 'cjs' ? '.d.cts' : '.d.ts',

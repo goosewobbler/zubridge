@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type {
   Action,
@@ -15,6 +14,13 @@ import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getPreloadOptions } from './utils/preloadOptions.js';
+
+// Use Web Crypto API for sandbox compatibility
+// In sandbox mode, Node.js modules are not available, but Web Crypto API is
+const uuidv4 = (): string => {
+  // Web Crypto API is available in preload scripts even in sandbox mode
+  return self.crypto.randomUUID();
+};
 
 // Sandbox-safe platform detection
 function detectPlatform(): 'linux' | 'darwin' | 'win32' | 'unknown' {
@@ -284,21 +290,21 @@ export const preloadBridge = <S extends AnyState>(
           // If thunk returns a valid action, ensure it has an ID
           return {
             ...thunkResult,
-            __id: thunkResult.__id || randomUUID(),
+            __id: thunkResult.__id || uuidv4(),
           };
         }
         if (typeof thunkResult === 'string') {
           // If thunk returns a string, convert to action
           return {
             type: thunkResult,
-            __id: randomUUID(),
+            __id: uuidv4(),
           };
         }
         // If thunk returns undefined, null, or invalid result, create a default action
         return {
           type: 'THUNK_RESULT',
           payload: thunkResult,
-          __id: randomUUID(),
+          __id: uuidv4(),
         };
       }
 
@@ -308,11 +314,11 @@ export const preloadBridge = <S extends AnyState>(
           ? {
               type: action,
               payload: !isOptions ? payloadOrOptions : undefined,
-              __id: randomUUID(),
+              __id: uuidv4(),
             }
           : {
               ...action,
-              __id: action.__id || randomUUID(),
+              __id: action.__id || uuidv4(),
             };
 
       // Add bypass flags if specified
