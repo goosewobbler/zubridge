@@ -1,6 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
-import { v4 as uuidv4 } from 'uuid';
 import { QueueOverflowError } from '../../types/errors.js';
 import type { ThunkProcessorOptions } from '../../types/thunk.js';
 
@@ -35,11 +35,11 @@ export abstract class BaseThunkProcessor {
   protected ensureActionId(action: Action | string, payload?: unknown): Action {
     const actionObj: Action =
       typeof action === 'string'
-        ? { type: action, payload, __id: uuidv4() }
-        : { ...action, __id: action.__id || uuidv4() };
+        ? { type: action, payload, __id: randomUUID() }
+        : { ...action, __id: action.__id || randomUUID() };
 
     if (!actionObj.__id) {
-      actionObj.__id = uuidv4();
+      actionObj.__id = randomUUID();
     }
 
     return actionObj;

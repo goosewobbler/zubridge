@@ -1,5 +1,5 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
-import { v4 as uuidv4 } from 'uuid';
 
 export enum ThunkState {
   PENDING = 'pending',
@@ -60,7 +60,7 @@ export class Thunk {
   protected _contextId?: string;
 
   constructor(options: ThunkOptions) {
-    this.id = options.id || uuidv4();
+    this.id = options.id || randomUUID();
     this._sourceWindowId = options.sourceWindowId;
     this.parentId = options.parentId;
     this.source = options.source;

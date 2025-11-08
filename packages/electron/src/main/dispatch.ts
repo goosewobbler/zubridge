@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type {
   Action,
@@ -8,7 +9,6 @@ import type {
   Thunk,
 } from '@zubridge/types';
 import type { Store } from 'redux';
-import { v4 as uuidv4 } from 'uuid';
 import type { StoreApi } from 'zustand/vanilla';
 import type { ReduxOptions } from '../adapters/redux.js';
 import type { ZustandOptions } from '../adapters/zustand.js';
@@ -86,14 +86,14 @@ export function createDispatch<S extends AnyState>(
             actionObj = {
               type: actionOrThunk,
               payload,
-              __id: uuidv4(),
+              __id: randomUUID(),
             };
           } else if (actionOrThunk && typeof actionOrThunk === 'object') {
             // Handle action objects
             debug('core', `Dispatching action object: ${(actionOrThunk as Action).type}`);
             actionObj = {
               ...(actionOrThunk as Action),
-              __id: (actionOrThunk as Action).__id || uuidv4(),
+              __id: (actionOrThunk as Action).__id || randomUUID(),
             };
           } else {
             throw new Error(`Invalid action type: ${typeof actionOrThunk}`);

@@ -68,7 +68,7 @@ export default defineConfig([
     entry: ['src/preload.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger', 'uuid'],
+    external: ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'],
     noExternal: ['@zubridge/core'],
     outDir: 'dist',
     clean: false,

@@ -11,9 +11,13 @@ vi.mock('@zubridge/core', () => ({
   debug: vi.fn(),
 }));
 
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'mock-uuid'),
-}));
+vi.mock('node:crypto', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    randomUUID: vi.fn(() => 'mock-uuid'),
+  };
+});
 
 vi.mock('../../src/registry/stateManagerRegistry.js', () => ({
   getStateManager: vi.fn(),

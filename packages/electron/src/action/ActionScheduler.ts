@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
-import { EventEmitter } from 'node:events';
-import { v4 as uuid } from 'uuid';
 import { ResourceManagementError } from '../errors/index.js';
 import type { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
 import type { ThunkManager } from '../thunk/ThunkManager.js';
@@ -109,7 +109,7 @@ export class ActionScheduler extends EventEmitter {
 
     // Ensure action has an ID
     if (!action.__id) {
-      action.__id = uuid();
+      action.__id = randomUUID();
     }
 
     debug(
