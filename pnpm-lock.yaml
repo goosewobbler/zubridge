@@ -1119,6 +1119,9 @@ importers:
 
   packages/electron:
     dependencies:
+      '@oxc-project/runtime':
+        specifier: ^0.96.0
+        version: 0.96.0
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
