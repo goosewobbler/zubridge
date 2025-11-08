@@ -13,7 +13,12 @@ const { alias } = env;
 
 // Externalize unenv runtime modules to avoid bundling issues
 const externalizeUnenvRuntime = (id: string) => {
-  return id.includes('unenv/dist/runtime') || id.includes('unenv/runtime');
+  return (
+    id.includes('unenv/dist/runtime') ||
+    id.includes('unenv/runtime') ||
+    id.includes('unenv\\dist\\runtime') ||
+    id.includes('unenv\\runtime')
+  );
 };
 
 export default defineConfig([
