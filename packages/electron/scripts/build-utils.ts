@@ -1,14 +1,14 @@
 /**
  * Checks if an ID should be externalized.
  * We externalize @oxc-project/runtime because it has bundling compatibility issues.
- * It needs to be available as a runtime dependency.
+ * It's available as a regular dependency, so users don't need to install it manually.
  */
 export function externalizeUnenvRuntime(id: string): boolean {
   // Normalize path separators to forward slashes for consistent checking
   const normalized = id.replace(/\\/g, '/');
 
   // Externalize @oxc-project/runtime modules (they cause bundling issues)
-  // These will be resolved at runtime, so they need to be available as dependencies
+  // These will be resolved at runtime via the regular dependency
   if (normalized.includes('@oxc-project/runtime')) {
     return true;
   }
@@ -29,63 +29,98 @@ export function createUnenvExternalPlugin() {
   return {
     name: 'unenv-external',
     load(id: string) {
-      // Intercept @oxc-project/runtime modules and add default export
-      // These are CommonJS modules that need a default export for ESM compatibility
+      // Intercept @oxc-project/runtime modules to transform them
       if (id.includes('@oxc-project/runtime')) {
-        // Return null to let rolldown load it normally, but we'll transform it
+        // Return null to let rolldown load it, we'll transform in the transform hook
         return null;
       }
       return null;
     },
-    resolveId(id: string) {
-      // Mark @oxc-project/runtime modules for special handling
+    resolveId(id: string, importer?: string) {
+      // Intercept @oxc-project/runtime imports and mark them for transformation
+      // This happens before the transform hook, so we can ensure they're handled correctly
       if (id.includes('@oxc-project/runtime')) {
-        // Return the id to let rolldown resolve it, but we'll transform it
+        // Return null to let rolldown resolve it, but we'll transform it in the transform hook
         return null;
       }
+
+      // If unenv is importing from @oxc-project/runtime, we need to ensure it gets transformed
+      // The actual import rewriting happens in the transform hook
       return null;
     },
     transform(code: string, id: string) {
-      // Fix imports from @oxc-project/runtime in unenv's code
+      // Fix imports from @oxc-project/runtime in ANY code (especially unenv's code)
       // unenv imports default from @oxc-project/runtime but it doesn't export default
-      if (id.includes('unenv') && code.includes('@oxc-project/runtime')) {
+      // We need to fix this before rolldown tries to resolve the import
+      if (code.includes('@oxc-project/runtime')) {
         // Fix default imports from @oxc-project/runtime
         // Change: import defineProperty from '@oxc-project/runtime/helpers/defineProperty'
         // To: import * as defineProperty from '@oxc-project/runtime/helpers/defineProperty'
-        const fixed = code.replace(
+        let fixed = code.replace(
           /import\s+(\w+)\s+from\s+['"]@oxc-project\/runtime([^'"]*)['"]/g,
           (match, importName, path) => {
             // Change default import to namespace import
             return `import * as ${importName} from '@oxc-project/runtime${path}'`;
           },
         );
+
+        // Also handle dynamic imports
+        fixed = fixed.replace(
+          /import\s*\(\s*['"]@oxc-project\/runtime([^'"]*)['"]\s*\)/g,
+          (match, path) => {
+            // For dynamic imports, we can't easily change to namespace, so we'll handle it differently
+            // Return the import as-is for now, the module will be transformed to export default
+            return match;
+          },
+        );
+
         if (fixed !== code) {
           return { code: fixed, map: null };
         }
       }
 
-      // Fix @oxc-project/runtime modules to export default
-      // These are CommonJS modules that need ESM default export
-      // The id might be a virtual module ID like \0@oxc-project+runtime@...
+      // Transform @oxc-project/runtime CommonJS modules to ESM
+      // These modules use module.exports but need to export default for ESM
       if (id.includes('@oxc-project/runtime') || id.includes('oxc-project+runtime')) {
-        // If it's a CommonJS module, ensure it has a default export
-        // Most @oxc-project/runtime modules use module.exports
-        if (code.includes('module.exports') || code.includes('module.exports =')) {
-          // Add ESM default export if not present
-          if (!code.includes('export default') && !code.includes('export { default }')) {
-            // Convert CommonJS to ESM with default export
-            // Remove any existing module.exports assignment and add export default
-            const fixed = code.replace(
-              /module\.exports\s*=\s*([^;]+);?/g,
-              'const __exports = $1;\nexport default __exports;',
-            );
-            if (fixed !== code) {
-              return { code: fixed, map: null };
-            }
-            // Fallback: just add export default
-            return { code: `${code}\nexport default module.exports;`, map: null };
+        // Check if it's already ESM
+        if (code.includes('export ')) {
+          return null;
+        }
+
+        // Convert CommonJS to ESM
+        // Pattern: module.exports = function() {...} or module.exports = value
+        if (code.includes('module.exports')) {
+          // Replace module.exports = ... with export default
+          let transformed = code;
+
+          // Handle: module.exports = value;
+          transformed = transformed.replace(
+            /module\.exports\s*=\s*([^;]+);/g,
+            'export default $1;',
+          );
+
+          // Handle: module.exports.__esModule = true; module.exports.default = module.exports;
+          // This is a CommonJS interop pattern, we can remove it
+          transformed = transformed.replace(
+            /module\.exports\.__esModule\s*=\s*true[^;]*;?\s*/g,
+            '',
+          );
+          transformed = transformed.replace(
+            /module\.exports\["default"\]\s*=\s*module\.exports[^;]*;?\s*/g,
+            '',
+          );
+
+          // If we still have module.exports references, wrap them
+          if (transformed.includes('module.exports') && !transformed.includes('export default')) {
+            // Wrap the entire module
+            transformed = `const __module = {};\n(function(module) {\n${transformed}\n})(__module);\nexport default __module.exports;`;
+          }
+
+          if (transformed !== code) {
+            return { code: transformed, map: null };
           }
         }
+
         return null;
       }
 

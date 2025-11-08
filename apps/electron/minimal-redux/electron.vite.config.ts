@@ -47,7 +47,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
         },
-        external: ['electron'],
+        external: (id) => id === 'electron' || id.startsWith('@oxc-project/runtime'),
       },
     },
     // workaround for windows path issue
