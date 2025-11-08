@@ -28,24 +28,53 @@ export function externalizeUnenvRuntime(id: string): boolean {
 export function createUnenvExternalPlugin() {
   return {
     name: 'unenv-external',
-    load(id: string) {
-      // Intercept @oxc-project/runtime modules to transform them
-      if (id.includes('@oxc-project/runtime')) {
-        // Return null to let rolldown load it, we'll transform in the transform hook
-        return null;
-      }
-      return null;
-    },
     resolveId(id: string, importer?: string) {
-      // Intercept @oxc-project/runtime imports and mark them for transformation
-      // This happens before the transform hook, so we can ensure they're handled correctly
+      // Intercept @oxc-project/runtime imports from unenv and rewrite them
+      // This happens before rolldown tries to resolve, so we can fix the import
+      if (importer?.includes('unenv') && id.includes('@oxc-project/runtime')) {
+        // Return a virtual module ID that we'll handle in the load hook
+        // This prevents rolldown from trying to resolve the problematic import
+        return `\0virtual:${id}`;
+      }
+
+      // For other @oxc-project/runtime imports, let rolldown resolve normally
       if (id.includes('@oxc-project/runtime')) {
-        // Return null to let rolldown resolve it, but we'll transform it in the transform hook
         return null;
       }
 
-      // If unenv is importing from @oxc-project/runtime, we need to ensure it gets transformed
-      // The actual import rewriting happens in the transform hook
+      return null;
+    },
+    load(id: string) {
+      // Handle virtual modules created in resolveId
+      if (id.startsWith('\0virtual:@oxc-project/runtime')) {
+        // Extract the original module path and load it
+        const originalPath = id.replace('\0virtual:', '');
+        try {
+          const fs = require('fs');
+          // Try to resolve and load the actual module
+          const code = fs.readFileSync(require.resolve(originalPath), 'utf8');
+          // Transform CommonJS to ESM
+          const transformed = code.replace(/module\.exports\s*=\s*([^;]+);/g, 'export default $1;');
+          return transformed;
+        } catch {
+          // If we can't load it, return null to let rolldown handle it
+          return null;
+        }
+      }
+
+      // Intercept @oxc-project/runtime modules to transform them
+      if (id.includes('@oxc-project/runtime') && !id.startsWith('\0')) {
+        try {
+          const fs = require('fs');
+          const code = fs.readFileSync(require.resolve(id), 'utf8');
+          // Transform CommonJS to ESM
+          const transformed = code.replace(/module\.exports\s*=\s*([^;]+);/g, 'export default $1;');
+          return transformed;
+        } catch {
+          // If we can't load it, return null to let rolldown handle it
+          return null;
+        }
+      }
       return null;
     },
     transform(code: string, id: string) {
@@ -53,12 +82,28 @@ export function createUnenvExternalPlugin() {
       // unenv imports default from @oxc-project/runtime but it doesn't export default
       // We need to fix this before rolldown tries to resolve the import
       if (code.includes('@oxc-project/runtime')) {
+        // Debug: log when we find @oxc-project/runtime imports
+        if (process.env.DEBUG_BUILD) {
+          console.log('[transform] Found @oxc-project/runtime in', id);
+          const matches = code.match(
+            /import\s+(\w+)\s+from\s+['"]@oxc-project\/runtime([^'"]*)['"]/g,
+          );
+          if (matches) {
+            console.log('[transform] Found imports:', matches);
+          }
+        }
+
         // Fix default imports from @oxc-project/runtime
         // Change: import defineProperty from '@oxc-project/runtime/helpers/defineProperty'
         // To: import * as defineProperty from '@oxc-project/runtime/helpers/defineProperty'
         let fixed = code.replace(
           /import\s+(\w+)\s+from\s+['"]@oxc-project\/runtime([^'"]*)['"]/g,
           (match, importName, path) => {
+            if (process.env.DEBUG_BUILD) {
+              console.log(
+                `[transform] Replacing: ${match} -> import * as ${importName} from '@oxc-project/runtime${path}'`,
+              );
+            }
             // Change default import to namespace import
             return `import * as ${importName} from '@oxc-project/runtime${path}'`;
           },
@@ -67,14 +112,19 @@ export function createUnenvExternalPlugin() {
         // Also handle dynamic imports
         fixed = fixed.replace(
           /import\s*\(\s*['"]@oxc-project\/runtime([^'"]*)['"]\s*\)/g,
-          (match, path) => {
+          (_match) => {
             // For dynamic imports, we can't easily change to namespace, so we'll handle it differently
             // Return the import as-is for now, the module will be transformed to export default
-            return match;
+            return _match;
           },
         );
 
         if (fixed !== code) {
+          if (process.env.DEBUG_BUILD) {
+            console.log(
+              `[transform] Transformed ${id}, changed ${(code.match(/@oxc-project\/runtime/g) || []).length} occurrences`,
+            );
+          }
           return { code: fixed, map: null };
         }
       }
@@ -164,7 +214,40 @@ export function createUnenvExternalPlugin() {
         },
       );
 
+      // Remove @oxc-project/runtime imports from renderer output
+      // These can't be resolved in browser context, so we need to remove them
+      // The _defineProperty is only used by unenv's bundled code, and we can replace it with a no-op
+      if (transformed.includes('@oxc-project/runtime')) {
+        // Remove the import statement
+        transformed = transformed.replace(
+          /import\s+(\w+)\s+from\s+["']@oxc-project\/runtime[^"']*["'];\s*/g,
+          (match, importName) => {
+            if (process.env.DEBUG_BUILD) {
+              console.log(`[renderChunk] Removing import: ${match}`);
+            }
+            // Replace with a no-op function that matches the expected signature
+            // _defineProperty is used by unenv's code, but we can provide a polyfill
+            return `const ${importName} = Object.defineProperty;\n`;
+          },
+        );
+
+        // Also handle namespace imports
+        transformed = transformed.replace(
+          /import\s+\*\s+as\s+(\w+)\s+from\s+["']@oxc-project\/runtime[^"']*["'];\s*/g,
+          (match, importName) => {
+            if (process.env.DEBUG_BUILD) {
+              console.log(`[renderChunk] Removing namespace import: ${match}`);
+            }
+            // Replace with a no-op object
+            return `const ${importName} = { default: Object.defineProperty };\n`;
+          },
+        );
+      }
+
       if (transformed !== code) {
+        if (process.env.DEBUG_BUILD) {
+          console.log('[renderChunk] Transformed chunk, changed code');
+        }
         return { code: transformed, map: null };
       }
       return null;
