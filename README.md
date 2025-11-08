@@ -38,7 +38,10 @@ Zubridge solves this by enabling a single store workflow, abstracting away the I
 
 - Works with the latest security model in Electron
 - Supports Zustand and Redux
-- Supports various usage patterns when using Zustand for your main process store (store handlers, separate handlers, Redux-style reducers)
+- Supports various usage patterns when using Zustand for your main process store
+  - store handlers
+  - separate handlers
+  - Redux-style reducers
 - Supports dispatching thunks, action objects and string actions in both processes
 
 #### Tauri-specific features
