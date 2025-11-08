@@ -42,6 +42,7 @@ Actions from renderer processes are sent through IPC to the main process, which 
 - **Automatic state synchronization** across multiple windows
 - **Support for multiple windows and views**
 - **Works with the latest [Electron security recommendations](https://www.electronjs.org/docs/latest/tutorial/security#checklist-security-recommendations)**
+- **Full sandbox mode support** with automatic Node.js polyfills for renderer and preload processes
 - **Rich action support** including thunks, inline actions, and action objects in both processes
 - **Automatic cleanup** for destroyed windows and error recovery
 
@@ -82,6 +83,7 @@ The example apps demonstrate different approaches to using zubridge with Electro
 
 ### Special Configuration Examples
 
+- [Sandbox Mode Enabled](https://github.com/goosewobbler/zubridge/tree/main/apps/electron/minimal-sandbox-true) - Example showing Zubridge usage with `sandbox: true` for enhanced security
 - [Context Isolation Disabled](https://github.com/goosewobbler/zubridge/tree/main/apps/electron/minimal-context-isolation-false) - Example showing Zubridge usage with `contextIsolation: false` (legacy apps only, not recommended for new projects)
 
 ## Debugging

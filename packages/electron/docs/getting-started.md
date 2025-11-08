@@ -57,6 +57,24 @@ export default {
 
 > **Note**: There are multiple projects named "electron-vite". We specifically recommend [electron-vite by Alex Wei](https://github.com/alex8088/electron-vite) (https://electron-vite.org), which is well-maintained and has excellent support for proper bundling of preload scripts. This is what we use for E2E testing.
 
+If you're using Vite (or electron-vite), you'll need to externalize `@oxc-project/runtime` in your renderer configuration:
+
+```js
+// `electron.vite.config.ts`
+export default {
+  // ... other config
+  renderer: {
+    build: {
+      rollupOptions: {
+        external: (id) => id === 'electron' || id.startsWith('@oxc-project/runtime'),
+      },
+    },
+  },
+};
+```
+
+This is required because Zubridge uses `unenv` polyfills for Node.js modules in the renderer process, and `@oxc-project/runtime` is a dependency that needs to be externalized.
+
 ### Preload Script
 
 Expose the Zubridge handlers to the renderer process in your preload script:
@@ -73,6 +91,8 @@ contextBridge.exposeInMainWorld('zubridge', handlers);
 ```
 
 > **Security Note**: This setup requires `contextIsolation: true` (the default since Electron 12). If you must use `contextIsolation: false` due to legacy constraints, see the [Context Isolation Disabled](#context-isolation-disabled) section below.
+
+> **Sandbox Mode**: Zubridge fully supports Electron's sandbox mode for enhanced security. When `sandbox: true` is enabled, Node.js APIs are not available in the renderer or preload processes. Zubridge automatically includes polyfills for common Node.js modules (via `unenv`) to ensure compatibility. See the [Sandbox Mode](#sandbox-mode) section below for more details.
 
 ### Renderer Process Hooks
 
@@ -384,6 +404,81 @@ The [Zubridge Electron Example](https://github.com/goosewobbler/zubridge/tree/ma
 - **Custom Mode**: Custom state manager implementation using `createCoreBridge`
 
 Each example demonstrates the same functionality implemented with different state management patterns, allowing you to compare approaches and choose what works best for your application.
+
+## Sandbox Mode
+
+### Overview
+
+Electron's sandbox mode (`sandbox: true`) provides enhanced security by running renderer processes in a sandboxed environment where Node.js APIs are not directly accessible. This is a recommended security practice for Electron applications.
+
+### How Zubridge Supports Sandbox Mode
+
+Zubridge fully supports sandbox mode and includes polyfills for common Node.js modules that may be used by dependencies. These polyfills are automatically bundled with the renderer and preload builds:
+
+- **Renderer Process**: Includes polyfills for Node.js modules (e.g., `node:crypto`, `node:util`) that may be used by your dependencies
+- **Preload Process**: Includes the same polyfills to ensure compatibility in the sandboxed preload context
+
+The polyfills are provided via [`unenv`](https://github.com/unjs/unenv), which provides browser-compatible implementations of Node.js modules.
+
+### Configuration
+
+To enable sandbox mode, set `sandbox: true` in your window's `webPreferences`:
+
+```ts
+// `src/main/index.ts`
+import { BrowserWindow } from 'electron';
+
+const mainWindow = new BrowserWindow({
+  // ... other options
+  webPreferences: {
+    preload: path.join(__dirname, 'path/to/preload/index.cjs'),
+    contextIsolation: true,  // Required for security
+    nodeIntegration: false,  // Required for security
+    sandbox: true,          // Enable sandbox mode
+  },
+});
+```
+
+### Vite Configuration
+
+If you're using Vite (or electron-vite) with sandbox mode, ensure your renderer configuration externalizes `@oxc-project/runtime`:
+
+```js
+// `electron.vite.config.ts`
+export default {
+  renderer: {
+    build: {
+      rollupOptions: {
+        external: (id) => id === 'electron' || id.startsWith('@oxc-project/runtime'),
+      },
+    },
+  },
+};
+```
+
+This is required because `@oxc-project/runtime` is a dependency of `unenv` and needs to be externalized from the renderer bundle.
+
+### Example Application
+
+A complete working example with sandbox mode enabled is available at [`apps/electron/minimal-sandbox-true/`](https://github.com/goosewobbler/zubridge/tree/main/apps/electron/minimal-sandbox-true). This example demonstrates:
+
+- Sandbox mode configuration
+- State synchronization between multiple windows
+- Proper preload script setup for sandboxed environments
+
+### Benefits of Sandbox Mode
+
+- **Enhanced Security**: Prevents malicious code from accessing Node.js APIs directly
+- **Isolation**: Renderer processes run in a restricted environment
+- **Compatibility**: Zubridge's polyfills ensure your dependencies continue to work
+
+### Limitations
+
+- Some Node.js APIs may not be fully polyfilled (only commonly used ones are included)
+- Native Node.js modules cannot be used in the renderer process
+- All communication with the main process must go through IPC
+
+For more information about Electron's sandbox mode, see the [Electron Security Documentation](https://www.electronjs.org/docs/latest/tutorial/security#sandbox).
 
 ## Context Isolation Disabled
 

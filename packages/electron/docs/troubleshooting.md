@@ -14,7 +14,7 @@ The [Electron documentation on ESM preload scripts](https://www.electronjs.org/d
 
 1. **File Extension Requirement**: ESM preload scripts must use the `.mjs` extension. Preload scripts ignore `"type": "module"` in package.json.
 
-2. **Sandboxing Incompatibility**: Sandboxed preload scripts cannot use ESM imports at all. You would need to use a bundler for your preload code.
+2. **Sandboxing Incompatibility**: Sandboxed preload scripts cannot use ESM imports at all. You would need to use a bundler for your preload code. However, Zubridge includes polyfills for Node.js modules in both the renderer and preload builds, so sandbox mode is fully supported when using the bundled output.
 
 3. **Race Conditions with Empty Pages**: Unsandboxed ESM preload scripts will run after page load on pages with no content, potentially leading to race conditions.
 
@@ -74,6 +74,45 @@ If you still want to use ESM preload scripts with Zubridge:
    const { contextBridge, ipcRenderer } = electron;
    ```
 6. Be prepared to handle various edge cases across different Electron versions
+
+## Sandbox Mode Issues
+
+### Polyfills Not Working
+
+If you encounter errors related to Node.js modules not being available in sandbox mode:
+
+1. **Verify Vite Configuration**: Ensure `@oxc-project/runtime` is externalized in your renderer build:
+   ```js
+   // `electron.vite.config.ts`
+   renderer: {
+     build: {
+       rollupOptions: {
+         external: (id) => id === 'electron' || id.startsWith('@oxc-project/runtime'),
+       },
+     },
+   },
+   ```
+
+2. **Check Sandbox Configuration**: Ensure `sandbox: true` is set in your window's `webPreferences`:
+   ```ts
+   webPreferences: {
+     sandbox: true,
+     contextIsolation: true,
+     nodeIntegration: false,
+   }
+   ```
+
+3. **Verify Preload Script**: Ensure your preload script is using the CommonJS entry point (`preload.cjs`), not the ESM entry point.
+
+### Missing Node.js Module Polyfills
+
+Zubridge includes polyfills for common Node.js modules (via `unenv`), but not all Node.js APIs are polyfilled. If you need a specific Node.js module that isn't polyfilled:
+
+1. Check if the module is available in the browser (many Node.js modules have browser equivalents)
+2. Use IPC to access Node.js functionality from the main process
+3. Consider using a different dependency that doesn't require Node.js APIs
+
+For more information about sandbox mode, see the [Sandbox Mode section](./getting-started.md#sandbox-mode) in the Getting Started guide.
 
 ## Other Common Issues
 
