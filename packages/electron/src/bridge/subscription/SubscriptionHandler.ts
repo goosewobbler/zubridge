@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/types';
 import type { WebContents } from 'electron';
-import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from '../../constants.js';
 import { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import { thunkManager } from '../../thunk/init.js';
@@ -73,7 +73,7 @@ export class SubscriptionHandler<State extends AnyState> {
           const sanitizedState = sanitizeState(state, serializationOptions);
 
           // Generate update ID and check if this state update is from a thunk action
-          const updateId = uuidv4();
+          const updateId = randomUUID();
           const currentThunkId = thunkManager.getCurrentThunkActionId();
 
           // Only track state updates caused by thunk actions, not all updates while thunk is active
@@ -106,7 +106,7 @@ export class SubscriptionHandler<State extends AnyState> {
         const initialState = sanitizeState(this.stateManager.getState(), serializationOptions);
 
         // Generate update ID for initial state
-        const updateId = uuidv4();
+        const updateId = randomUUID();
 
         // Initial state is never from a thunk action, so don't track it
         debug('core', `Sending initial state update ${updateId} (not tracked - initial state)`);

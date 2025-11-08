@@ -1,11 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
-import { v4 as uuidv4 } from 'uuid';
-import { ThunkSchedulerEvents } from '../constants.js';
 import { ActionExecutor } from '../action/ActionExecutor.js';
+import { ThunkSchedulerEvents } from '../constants.js';
 import { actionScheduler, thunkManager } from '../thunk/init.js';
-import type { Thunk as ThunkClass } from '../thunk/Thunk.js';
 import { ThunkRegistrationQueue } from '../thunk/registration/ThunkRegistrationQueue.js';
+import type { Thunk as ThunkClass } from '../thunk/Thunk.js';
 import type { ThunkTask } from '../types/thunk.js';
 
 /**
@@ -81,7 +81,7 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
 
     // Create a task for the ThunkScheduler
     const task: ThunkTask = {
-      id: uuidv4(),
+      id: randomUUID(),
       thunkId: thunkId,
       createdAt: Date.now(),
       priority: 0, // Default priority

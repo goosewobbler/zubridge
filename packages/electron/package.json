@@ -96,9 +96,10 @@
     "rollup": "^4.52.5",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.16.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.3",
+    "unenv": "^2.0.0-rc.24",
     "vitest": "^3.0.5",
     "zustand": "^5.0.3"
   },
@@ -109,6 +110,7 @@
     "README.md"
   ],
   "dependencies": {
+    "@oxc-project/runtime": "^0.96.0",
     "@types/debug": "^4.1.12",
     "@zubridge/core": "workspace:*",
     "dequal": "^2.0.3",

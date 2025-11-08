@@ -1,0 +1,63 @@
+{
+  "name": "electron-minimal-sandbox-true",
+  "version": "0.0.0",
+  "description": "Minimal Electron app demonstrating Zubridge with sandbox enabled",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "clean": "pnpm clean:cache && pnpx shx rm -rf ./node_modules pnpm-lock.yaml",
+    "clean:cache": "pnpx shx rm -rf .cache",
+    "clean:output": "pnpx shx rm -rf ./dist* ./out* && pnpm run clean:cache",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "pnpm build && electron-builder",
+    "dist:dir": "pnpm build && electron-builder --dir",
+    "test": "cross-env DEBUG=wdio-electron-service,webdriverio wdio run ./test/wdio.conf.ts",
+    "test:package": "cross-env DEBUG=wdio-electron-service,webdriverio wdio run ./test/wdio.conf.ts",
+    "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
+  },
+  "dependencies": {
+    "@zubridge/electron": "workspace:*",
+    "clsx": "^2.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "scheduler": "^0.27.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.8.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@wdio/cli": "9.20.0",
+    "@wdio/globals": "9.17.0",
+    "@wdio/local-runner": "9.20.0",
+    "@wdio/mocha-framework": "9.20.0",
+    "@wdio/spec-reporter": "9.20.0",
+    "@zubridge/types": "^2.0.1",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^10.1.0",
+    "electron": "38.3.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
+    "is-ci": "^4.1.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.10",
+    "wdio-electron-service": "^9.2.0",
+    "webdriverio": "9.20.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-winstaller",
+      "esbuild"
+    ]
+  }
+}

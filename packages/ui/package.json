@@ -39,14 +39,14 @@
   "scripts": {
     "build:plugin": "tsc scripts/vite-ui-watcher-plugin.ts --outDir dist/scripts --module ESNext --moduleResolution bundler --target ESNext --esModuleInterop",
     "build:css": "pnpx @tailwindcss/cli -i ./src/styles/tailwind.css -o ./dist/styles.css --postcss",
-    "build:lib": "tsup",
+    "build:lib": "tsdown",
     "build": "pnpm run build:lib && pnpm run build:plugin && pnpm run build:css",
     "prebuild": "shx rm -rf dist && tsx ../../scripts/clean-cache.ts || echo 'Cache clean skipped'",
     "clean": "pnpm run clean:output && pnpm run clean:cache && shx rm -rf node_modules",
     "clean:output": "shx rm -rf dist",
     "clean:cache": "tsx ../../scripts/clean-cache.ts",
     "dev:css": "pnpm run build:css -- --watch",
-    "dev:lib": "tsup --watch",
+    "dev:lib": "tsdown --watch",
     "dev": "mkdir -p dist && pnpm run dev:lib && pnpm run dev:css",
     "package": "pnpm pack"
   },
@@ -63,7 +63,7 @@
     "react": "^19.2.0",
     "shx": "^0.4.0",
     "tailwindcss": "^4.1.14",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.16.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.10"
   },

@@ -11,9 +11,7 @@ vi.mock('@zubridge/core', () => ({
   debug: vi.fn(),
 }));
 
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'mock-uuid'),
-}));
+// crypto.randomUUID is used for generating action IDs - no need to mock
 
 vi.mock('../../src/registry/stateManagerRegistry.js', () => ({
   getStateManager: vi.fn(),
@@ -165,16 +163,21 @@ describe('Dispatch', () => {
         {
           type: 'INCREMENT',
           payload: undefined,
-          __id: 'mock-uuid',
+          __id: expect.any(String),
           __isFromMainProcess: true,
         },
         undefined,
       );
 
+      const processedAction = (mockMainThunkProcessor.processAction as Mock).mock.calls[0][0];
+      expect(processedAction.__id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      );
+
       expect(result).toEqual({
         type: 'INCREMENT',
         payload: undefined,
-        __id: 'mock-uuid',
+        __id: expect.any(String),
         __isFromMainProcess: true,
       });
     });
@@ -189,10 +192,15 @@ describe('Dispatch', () => {
         {
           type: 'SET_COUNT',
           payload,
-          __id: 'mock-uuid',
+          __id: expect.any(String),
           __isFromMainProcess: true,
         },
         undefined,
+      );
+
+      const processedAction = (mockMainThunkProcessor.processAction as Mock).mock.calls[0][0];
+      expect(processedAction.__id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       );
     });
 
@@ -206,10 +214,15 @@ describe('Dispatch', () => {
         {
           type: 'ADMIN_ACTION',
           payload: { data: 'test' },
-          __id: 'mock-uuid',
+          __id: expect.any(String),
           __isFromMainProcess: true,
         },
         options,
+      );
+
+      const processedAction = (mockMainThunkProcessor.processAction as Mock).mock.calls[0][0];
+      expect(processedAction.__id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       );
     });
   });
@@ -225,16 +238,21 @@ describe('Dispatch', () => {
         {
           type: 'TEST_ACTION',
           payload: { test: true },
-          __id: 'mock-uuid',
+          __id: expect.any(String),
           __isFromMainProcess: true,
         },
         undefined,
       );
 
+      const processedAction = (mockMainThunkProcessor.processAction as Mock).mock.calls[0][0];
+      expect(processedAction.__id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      );
+
       expect(result).toEqual({
         type: 'TEST_ACTION',
         payload: { test: true },
-        __id: 'mock-uuid',
+        __id: expect.any(String),
         __isFromMainProcess: true,
       });
     });
@@ -269,10 +287,15 @@ describe('Dispatch', () => {
       expect(mockMainThunkProcessor.processAction).toHaveBeenCalledWith(
         {
           type: 'TEST_ACTION',
-          __id: 'mock-uuid',
+          __id: expect.any(String),
           __isFromMainProcess: true,
         },
         undefined,
+      );
+
+      const processedAction = (mockMainThunkProcessor.processAction as Mock).mock.calls[0][0];
+      expect(processedAction.__id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       );
     });
   });

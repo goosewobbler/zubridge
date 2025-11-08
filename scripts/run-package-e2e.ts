@@ -12,7 +12,7 @@
  * Usage: tsx scripts/run-package-e2e.ts [app-name] [--clean-logs]
  *
  * Arguments:
- *   app-name        Optional. Name of specific app to test (e.g., zustand-basic, custom, redux, zustand-handlers, zustand-reducers)
+ *   app-name        Optional. Name of specific app to test (e.g., zustand-basic, sandbox-true, custom, redux, zustand-handlers, zustand-reducers)
  *                   If not specified, runs all minimal apps
  *
  * Options:
@@ -32,6 +32,7 @@ const specificApp = args.find((arg) => !arg.startsWith('--'));
 // Map short names to full app names
 const APP_NAME_MAP = {
   'zustand-basic': 'minimal-zustand-basic',
+  'sandbox-true': 'minimal-sandbox-true',
   custom: 'minimal-custom',
   redux: 'minimal-redux',
   'zustand-handlers': 'minimal-zustand-handlers',

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type {
   Action,
@@ -7,7 +8,6 @@ import type {
   StateManager,
   Thunk,
 } from '@zubridge/types';
-import { v4 as uuidv4 } from 'uuid';
 import { thunkManager } from '../thunk/init.js';
 import { ThunkRegistrationQueue } from '../thunk/registration/ThunkRegistrationQueue.js';
 import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';
@@ -241,8 +241,8 @@ export class MainThunkProcessor extends BaseThunkProcessor {
     // Convert string actions to object form
     const actionObj: Action =
       typeof action === 'string'
-        ? { type: action, __id: uuidv4() }
-        : { ...action, __id: action.__id || uuidv4() };
+        ? { type: action, __id: randomUUID() }
+        : { ...action, __id: action.__id || randomUUID() };
 
     // Mark the action as originating from the main process
     actionObj.__isFromMainProcess = true;

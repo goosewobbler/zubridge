@@ -10,6 +10,10 @@ This directory contains examples demonstrating different state management patter
 
 The simplest Zustand implementation with basic store setup and state synchronization.
 
+### [sandbox-true](../apps/electron/minimal-sandbox-true)
+
+Demonstrates Zubridge running with Electron's sandbox mode enabled (`sandbox: true`), showing full compatibility with Electron's strictest security model.
+
 ### [zustand-handlers](../apps/electron/minimal-zustand-handlers)
 
 Zustand pattern using handlers detached from the store definition for improved separation of concerns.

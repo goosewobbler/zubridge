@@ -61,6 +61,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.3",
     "@types/shelljs": "^0.8.15",
+    "@wdio/logger": "^9.4.4",
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
@@ -68,7 +69,8 @@
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
     "tsx": "^4.20.5",
-    "turbo": "^2.5.6"
+    "turbo": "^2.5.6",
+    "weald": "^1.0.6"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,json,jsonc}": [

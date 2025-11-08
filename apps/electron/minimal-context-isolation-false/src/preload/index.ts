@@ -16,6 +16,12 @@ const electronAPI = {
   },
 };
 
+// Define window interface for non-context-isolated environments
+interface WindowWithAPIs extends Window {
+  zubridge: typeof handlers;
+  electronAPI: typeof electronAPI;
+}
+
 // Expose APIs based on context isolation setting
 if (process.contextIsolated) {
   // Standard secure path: use contextBridge
@@ -24,8 +30,8 @@ if (process.contextIsolated) {
   console.log('[Preload] APIs exposed via contextBridge (contextIsolation: true)');
 } else {
   // Legacy path: direct window assignment (SECURITY RISK)
-  (window as any).zubridge = handlers;
-  (window as any).electronAPI = electronAPI;
+  (window as WindowWithAPIs).zubridge = handlers;
+  (window as WindowWithAPIs).electronAPI = electronAPI;
   console.log('[Preload] APIs exposed via window (contextIsolation: false - INSECURE)');
 }
 

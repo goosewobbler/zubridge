@@ -78,8 +78,8 @@ jobs:
       - name: 🧪 Run Unit Tests
         run: pnpm test:unit
 
-  # E2E tests - using matrix strategy
-  e2e-tests:
+  # E2E + Package tests - Full test suite
+  e2e-and-package-tests:
     needs: [build-shared-packages, code-quality]
     name: ${{ matrix.app }}:${{ matrix.mode }}
     strategy:
@@ -110,6 +110,26 @@ jobs:
     with:
       app: ${{ matrix.app }}
       mode: ${{ matrix.mode }}
+      package_test_only: false
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_API: ${{ secrets.TURBO_API }}
+
+  # Package-only tests - Test minimal apps without E2E suite
+  package-only-tests:
+    needs: [build-shared-packages, code-quality]
+    name: ${{ matrix.app }}:${{ matrix.mode }}
+    strategy:
+      matrix:
+        app: [electron]
+        mode: [sandbox-true]
+      fail-fast: false
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+      app: ${{ matrix.app }}
+      mode: ${{ matrix.mode }}
+      package_test_only: true
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
@@ -121,7 +141,8 @@ jobs:
     needs: [
       build-shared-packages,
       code-quality,
-      e2e-tests
+      e2e-and-package-tests,
+      package-only-tests
     ]
     if: always()
     runs-on: ubuntu-latest

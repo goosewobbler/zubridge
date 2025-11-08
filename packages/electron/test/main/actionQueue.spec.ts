@@ -6,9 +6,7 @@ vi.mock('@zubridge/core', () => ({
   debug: vi.fn(),
 }));
 
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'test-uuid'),
-}));
+// crypto.randomUUID is used for generating action IDs - no need to mock
 
 vi.mock('../../src/constants.js', () => ({
   ThunkSchedulerEvents: {

@@ -141,6 +141,11 @@ export default defineConfig({
     build: {
       outDir: join(outDirName, 'main'),
       rollupOptions: {
+        external: [
+          // Externalize optional logging dependencies (they're loaded dynamically if available)
+          '@wdio/logger',
+          'weald',
+        ],
         output: {
           format: 'es',
           entryFileNames: '[name].js',

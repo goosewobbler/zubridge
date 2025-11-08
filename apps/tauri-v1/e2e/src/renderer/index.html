@@ -11,7 +11,7 @@
 
     <!-- Set the body class based on URL parameters -->
     <script>
-      (function () {
+      (() => {
         const urlParams = new URLSearchParams(window.location.search);
         const isRuntimeWindow = urlParams.get('runtime') === 'true';
         document.body.classList.add(isRuntimeWindow ? 'runtime-window' : 'main-window');

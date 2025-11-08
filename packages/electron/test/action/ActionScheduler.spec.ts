@@ -22,9 +22,7 @@ vi.mock('@zubridge/core', () => ({
   debug: vi.fn(),
 }));
 
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'mock-uuid'),
-}));
+// crypto.randomUUID is used for generating action IDs - no need to mock
 
 vi.mock('../../src/thunk/ThunkManager.js', () => ({
   ThunkManager: vi.fn().mockImplementation(() => ({
@@ -135,7 +133,12 @@ describe('ActionScheduler', () => {
 
       scheduler.enqueueAction(action, { sourceWindowId: 1, onComplete });
 
-      expect(action.__id).toBe('mock-uuid');
+      expect(action.__id).toBeDefined();
+      expect(typeof action.__id).toBe('string');
+      // Check it's a valid UUID format
+      expect(action.__id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      );
     });
 
     it('should handle queue overflow by dropping low priority actions', () => {

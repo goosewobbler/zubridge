@@ -1,6 +1,7 @@
 packages:
   - 'apps/electron/e2e'
   - 'apps/electron/minimal-context-isolation-false'
+  - 'apps/electron/minimal-sandbox-true'
   - 'apps/electron/minimal-custom'
   - 'apps/electron/minimal-redux'
   - 'apps/electron/minimal-zustand-basic'

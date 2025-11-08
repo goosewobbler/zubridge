@@ -94,12 +94,18 @@ describe('Preload Bridge', () => {
       // the specific execution path (contextBridge vs window assignment)
       const { preloadBridge } = await import('../src/preload.js');
 
+      interface MockWindow {
+        addEventListener: ReturnType<typeof vi.fn>;
+        removeEventListener: ReturnType<typeof vi.fn>;
+        __zubridge_subscriptionValidator?: unknown;
+      }
+
       // Setup a mock window to capture direct assignments
-      const mockWindow = {
+      const mockWindow: MockWindow = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as any;
-      (global as typeof globalThis).window = mockWindow;
+      };
+      (global as typeof globalThis & { window: MockWindow }).window = mockWindow;
 
       // Test that the preload bridge initializes successfully
       try {
@@ -165,12 +171,23 @@ describe('Preload Bridge', () => {
     it('should verify subscription validator API methods are functions', async () => {
       const { preloadBridge } = await import('../src/preload.js');
 
+      interface MockWindowWithValidator {
+        addEventListener: ReturnType<typeof vi.fn>;
+        removeEventListener: ReturnType<typeof vi.fn>;
+        __zubridge_subscriptionValidator?: {
+          getWindowSubscriptions: (...args: unknown[]) => unknown;
+          isSubscribedToKey: (...args: unknown[]) => unknown;
+          validateStateAccess: (...args: unknown[]) => unknown;
+          stateKeyExists: (state: unknown, key: string) => boolean;
+        };
+      }
+
       // Setup window mock
-      const mockWindow = {
+      const mockWindow: MockWindowWithValidator = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as any;
-      (global as typeof globalThis).window = mockWindow;
+      };
+      (global as typeof globalThis & { window: MockWindowWithValidator }).window = mockWindow;
 
       preloadBridge();
 

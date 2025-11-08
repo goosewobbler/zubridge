@@ -11,6 +11,11 @@ on:
         description: "Mode to build and test"
         required: true
         type: string
+      package_test_only:
+        description: "Skip build and E2E tests, only run package tests"
+        required: false
+        type: boolean
+        default: false
     secrets:
       TURBO_TOKEN:
         required: false
@@ -34,6 +39,7 @@ jobs:
   # Build on Linux
   linux-build:
     name: Linux Build
+    if: inputs.package_test_only == false
     runs-on: ubuntu-latest
     outputs:
       success: ${{ steps.build-result.outputs.success }}
@@ -192,6 +198,7 @@ jobs:
   # Build on macOS
   macos-build:
     name: macOS Build
+    if: inputs.package_test_only == false
     runs-on: macOS-latest
     outputs:
       success: ${{ steps.build-result.outputs.success }}
@@ -303,6 +310,7 @@ jobs:
   # Build on Windows
   windows-build:
     name: Windows Build
+    if: inputs.package_test_only == false
     runs-on: windows-latest
     outputs:
       success: ${{ steps.build-result.outputs.success }}
@@ -420,7 +428,7 @@ jobs:
   # E2E Tests for Linux
   linux-test:
     name: Linux E2E
-    if: needs.linux-build.outputs.success == 'true'
+    if: needs.linux-build.outputs.success == 'true' && inputs.package_test_only == false
     needs: [linux-build]
     uses: ./.github/workflows/_e2e-test.reusable.yml
     with:
@@ -436,7 +444,7 @@ jobs:
   # E2E Tests for macOS
   macos-test:
     name: macOS E2E
-    if: needs.macos-build.outputs.success == 'true'
+    if: needs.macos-build.outputs.success == 'true' && inputs.package_test_only == false
     needs: [macos-build]
     uses: ./.github/workflows/_e2e-test.reusable.yml
     with:
@@ -452,7 +460,7 @@ jobs:
   # E2E Tests for Windows
   windows-test:
     name: Windows E2E
-    if: needs.windows-build.outputs.success == 'true'
+    if: needs.windows-build.outputs.success == 'true' && inputs.package_test_only == false
     needs: [windows-build]
     uses: ./.github/workflows/_e2e-test.reusable.yml
     with:
@@ -468,7 +476,7 @@ jobs:
   # Package tests for Linux - test minimal apps with packaged dependencies
   linux-package-test:
     name: Linux Package Test
-    if: inputs.app == 'electron'
+    if: inputs.app == 'electron' && always()
     uses: ./.github/workflows/_package-test.reusable.yml
     needs: [linux-build]
     with:
@@ -482,7 +490,7 @@ jobs:
   # Package tests for macOS - test minimal apps with packaged dependencies
   macos-package-test:
     name: macOS Package Test
-    if: inputs.app == 'electron'
+    if: inputs.app == 'electron' && always()
     uses: ./.github/workflows/_package-test.reusable.yml
     needs: [macos-build]
     with:
@@ -496,7 +504,7 @@ jobs:
   # Package tests for Windows - test minimal apps with packaged dependencies
   windows-package-test:
     name: Windows Package Test
-    if: inputs.app == 'electron'
+    if: inputs.app == 'electron' && always()
     uses: ./.github/workflows/_package-test.reusable.yml
     needs: [windows-build]
     with:

@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   entry: ['src/index.ts', 'src/electron.ts', 'src/tauri.ts'],
@@ -14,4 +14,10 @@ export default defineConfig({
   ],
   noExternal: ['clsx'],
   clean: true,
+  outExtensions({ format }) {
+    return {
+      js: format === 'cjs' ? '.cjs' : '.js',
+      dts: format === 'cjs' ? '.d.cts' : '.d.ts',
+    };
+  },
 });

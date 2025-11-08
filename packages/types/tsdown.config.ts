@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   entry: {
@@ -9,11 +9,10 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
   clean: true,
-  splitting: false,
   sourcemap: false,
   minify: false,
   external: ['zustand', 'electron'],
-  outExtension({ format }) {
+  outExtensions({ format }) {
     return {
       js: format === 'cjs' ? '.cjs' : '.js',
       dts: format === 'cjs' ? '.d.cts' : '.d.ts',

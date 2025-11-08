@@ -18,7 +18,8 @@
     "clean:cache": "shx rm -rf .turbo",
     "test": "vitest run"
   },
-  "dependencies": {
+  "dependencies": {},
+  "optionalDependencies": {
     "@wdio/logger": "^9.4.4",
     "weald": "^1.0.6"
   },

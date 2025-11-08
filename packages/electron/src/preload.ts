@@ -9,12 +9,31 @@ import type {
 } from '@zubridge/types';
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
-import { v4 as uuidv4 } from 'uuid';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getPreloadOptions } from './utils/preloadOptions.js';
+
+// Use Web Crypto API for sandbox compatibility
+// In sandbox mode, Node.js modules are not available, but Web Crypto API is
+const uuidv4 = (): string => {
+  // Web Crypto API is available in preload scripts even in sandbox mode
+  return self.crypto.randomUUID();
+};
+
+// Sandbox-safe platform detection
+function detectPlatform(): 'linux' | 'darwin' | 'win32' | 'unknown' {
+  // In sandbox mode, PLATFORM is not available
+  // Use navigator.userAgent as a fallback
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes('win')) return 'win32';
+  if (ua.includes('mac')) return 'darwin';
+  if (ua.includes('linux')) return 'linux';
+  return 'unknown';
+}
+
+const PLATFORM = detectPlatform();
 
 // Type for the subscription validator API that gets exposed to window
 interface SubscriptionValidatorAPI {
@@ -55,7 +74,7 @@ export const preloadBridge = <S extends AnyState>(
   const getThunkProcessorWithConfig = (): RendererThunkProcessor => {
     debug(
       'core',
-      `Creating thunk processor with timeout: ${resolvedOptions.actionCompletionTimeoutMs}ms, maxQueueSize: ${resolvedOptions.maxQueueSize} for platform ${process.platform}`,
+      `Creating thunk processor with timeout: ${resolvedOptions.actionCompletionTimeoutMs}ms, maxQueueSize: ${resolvedOptions.maxQueueSize} for platform ${PLATFORM}`,
     );
     return new RendererThunkProcessor(resolvedOptions);
   };
@@ -326,10 +345,10 @@ export const preloadBridge = <S extends AnyState>(
         const actionId = actionObj.__id as string;
 
         // Set up a timeout in case we don't get an acknowledgment
-        const timeoutMs = process.platform === 'linux' ? 60000 : 30000; // Platform-specific timeout
+        const timeoutMs = PLATFORM === 'linux' ? 60000 : 30000; // Platform-specific timeout
         debug(
           'ipc',
-          `Setting up acknowledgment timeout of ${timeoutMs}ms for platform ${process.platform}`,
+          `Setting up acknowledgment timeout of ${timeoutMs}ms for platform ${PLATFORM}`,
         );
         const timeoutId = setTimeout(() => {
           // Remove the listener if we timed out
@@ -563,13 +582,14 @@ export const preloadBridge = <S extends AnyState>(
 
         // Expose the subscription validator API to the window
         debug('ipc', 'Exposing subscription validator API to window');
-        if (process.contextIsolated) {
-          // Context isolation enabled - use contextBridge
+        // Try using contextBridge first (required for context isolation)
+        // If it fails, fall back to direct window attachment
+        try {
           contextBridge.exposeInMainWorld(
             '__zubridge_subscriptionValidator',
             subscriptionValidatorAPI,
           );
-        } else {
+        } catch {
           // Context isolation disabled - directly attach to window
           (window as unknown as WindowWithZubridgeValidator).__zubridge_subscriptionValidator =
             subscriptionValidatorAPI;
