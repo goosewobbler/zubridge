@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { debug } from '@zubridge/core';
 import type {
   Action,
@@ -14,9 +15,6 @@ import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getPreloadOptions } from './utils/preloadOptions.js';
-
-// Use native crypto.randomUUID instead of uuid package for sandbox compatibility
-const uuidv4 = () => crypto.randomUUID();
 
 // Sandbox-safe platform detection
 function detectPlatform(): 'linux' | 'darwin' | 'win32' | 'unknown' {
@@ -286,21 +284,21 @@ export const preloadBridge = <S extends AnyState>(
           // If thunk returns a valid action, ensure it has an ID
           return {
             ...thunkResult,
-            __id: thunkResult.__id || uuidv4(),
+            __id: thunkResult.__id || randomUUID(),
           };
         }
         if (typeof thunkResult === 'string') {
           // If thunk returns a string, convert to action
           return {
             type: thunkResult,
-            __id: uuidv4(),
+            __id: randomUUID(),
           };
         }
         // If thunk returns undefined, null, or invalid result, create a default action
         return {
           type: 'THUNK_RESULT',
           payload: thunkResult,
-          __id: uuidv4(),
+          __id: randomUUID(),
         };
       }
 
@@ -310,11 +308,11 @@ export const preloadBridge = <S extends AnyState>(
           ? {
               type: action,
               payload: !isOptions ? payloadOrOptions : undefined,
-              __id: uuidv4(),
+              __id: randomUUID(),
             }
           : {
               ...action,
-              __id: action.__id || uuidv4(),
+              __id: action.__id || randomUUID(),
             };
 
       // Add bypass flags if specified
