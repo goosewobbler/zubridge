@@ -1,5 +1,6 @@
 import { defineConfig } from 'tsdown';
 import { defineEnv } from 'unenv';
+import { externalizeUnenvRuntime } from './scripts/build-utils.js';
 
 const { env } = defineEnv({
   nodeCompat: true,
@@ -10,16 +11,6 @@ const { env } = defineEnv({
 });
 
 const { alias } = env;
-
-// Externalize unenv runtime modules to avoid bundling issues
-const externalizeUnenvRuntime = (id: string) => {
-  return (
-    id.includes('unenv/dist/runtime') ||
-    id.includes('unenv/runtime') ||
-    id.includes('unenv\\dist\\runtime') ||
-    id.includes('unenv\\runtime')
-  );
-};
 
 export default defineConfig([
   // Renderer-safe entry point (default)
