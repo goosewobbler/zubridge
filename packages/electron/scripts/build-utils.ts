@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+
 /**
  * Checks if an ID should be externalized.
  * We externalize @oxc-project/runtime because it has bundling compatibility issues.
@@ -26,6 +28,20 @@ export function externalizeUnenvRuntime(id: string): boolean {
  * This allows unenv modules to be bundled while preventing Windows path issues.
  */
 export function createUnenvExternalPlugin() {
+  // Create require function for module resolution (synchronous)
+  const requireFn = createRequire(import.meta.url);
+
+  // Lazy-load fs module when needed (async)
+  let fs: typeof import('node:fs') | undefined;
+
+  const getFs = async (): Promise<typeof import('node:fs')> => {
+    if (!fs) {
+      const fsModule = await import('node:fs');
+      fs = fsModule.default || fsModule;
+    }
+    return fs;
+  };
+
   return {
     name: 'unenv-external',
     resolveId(id: string, importer?: string) {
@@ -44,15 +60,16 @@ export function createUnenvExternalPlugin() {
 
       return null;
     },
-    load(id: string) {
+    async load(id: string) {
       // Handle virtual modules created in resolveId
       if (id.startsWith('\0virtual:@oxc-project/runtime')) {
         // Extract the original module path and load it
         const originalPath = id.replace('\0virtual:', '');
         try {
-          const fs = require('fs');
+          const fsModule = await getFs();
           // Try to resolve and load the actual module
-          const code = fs.readFileSync(require.resolve(originalPath), 'utf8');
+          const resolvedPath = requireFn.resolve(originalPath);
+          const code = fsModule.readFileSync(resolvedPath, 'utf8');
           // Transform CommonJS to ESM
           const transformed = code.replace(/module\.exports\s*=\s*([^;]+);/g, 'export default $1;');
           return transformed;
@@ -65,8 +82,9 @@ export function createUnenvExternalPlugin() {
       // Intercept @oxc-project/runtime modules to transform them
       if (id.includes('@oxc-project/runtime') && !id.startsWith('\0')) {
         try {
-          const fs = require('fs');
-          const code = fs.readFileSync(require.resolve(id), 'utf8');
+          const fsModule = await getFs();
+          const resolvedPath = requireFn.resolve(id);
+          const code = fsModule.readFileSync(resolvedPath, 'utf8');
           // Transform CommonJS to ESM
           const transformed = code.replace(/module\.exports\s*=\s*([^;]+);/g, 'export default $1;');
           return transformed;
