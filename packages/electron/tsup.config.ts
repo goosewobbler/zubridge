@@ -82,6 +82,16 @@ export default defineConfig([
       options.banner = {
         js: '// Node.js build with bundled dependencies',
       };
+      // Replace process references for sandbox compatibility
+      options.define = {
+        ...options.define,
+        // Replace process.platform with "linux" to use 60000ms timeout for all platforms
+        'process.platform': '"linux"',
+        // Replace process.env references with undefined for sandbox compatibility
+        'process.env.WDIO': 'undefined',
+        'process.env.WDIO_LOG_LEVEL': 'undefined',
+        'process.env.DEBUG': 'undefined',
+      };
     },
     outExtension({ format }) {
       return {
