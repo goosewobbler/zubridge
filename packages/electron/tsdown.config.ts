@@ -1,16 +1,8 @@
 import { defineConfig } from 'tsdown';
-import { defineEnv } from 'unenv';
-import { externalizeUnenvRuntime } from './scripts/build-utils.js';
+import { createUnenvExternalPlugin, externalizeUnenvRuntime } from './scripts/build-utils.js';
 
-const { env } = defineEnv({
-  nodeCompat: true,
-  npmShims: true,
-  resolve: true,
-  overrides: {},
-  presets: [],
-});
-
-const { alias } = env;
+// Unenv is used via plugin transformation, not aliases
+// This prevents rolldown from resolving aliases to absolute paths
 
 export default defineConfig([
   // Renderer-safe entry point (default)
@@ -35,7 +27,7 @@ export default defineConfig([
     banner: {
       js: '// Renderer-safe build with polyfilled Node.js modules',
     },
-    alias,
+    plugins: [createUnenvExternalPlugin()],
     inputOptions(options) {
       options.resolve = {
         ...options.resolve,
@@ -88,7 +80,7 @@ export default defineConfig([
     treeshake: true,
     platform: 'node',
     target: 'node18',
-    alias,
+    plugins: [createUnenvExternalPlugin()],
     outExtensions({ format }) {
       return {
         js: format === 'cjs' ? '.cjs' : '.js',

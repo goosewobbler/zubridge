@@ -1,16 +1,8 @@
 import { defineConfig } from 'tsdown';
-import { defineEnv } from 'unenv';
-import { externalizeUnenvRuntime } from './scripts/build-utils.js';
+import { createUnenvExternalPlugin, externalizeUnenvRuntime } from './scripts/build-utils.js';
 
-const { env } = defineEnv({
-  nodeCompat: true,
-  npmShims: true,
-  resolve: true,
-  overrides: {},
-  presets: [],
-});
-
-const { alias } = env;
+// Unenv is used via plugin transformation, not aliases
+// This prevents rolldown from resolving aliases to absolute paths
 
 // Windows-specific config for renderer (browser context)
 export default defineConfig({
@@ -34,7 +26,7 @@ export default defineConfig({
   banner: {
     js: '// Renderer-safe build with polyfilled Node.js modules',
   },
-  alias,
+  plugins: [createUnenvExternalPlugin()],
   inputOptions(options) {
     options.resolve = {
       ...options.resolve,
