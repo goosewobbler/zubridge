@@ -1,23 +1,10 @@
-name: Manual Release Publish
+name: Release
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to release from'
-        required: true
-        default: 'main' # Default to main for most common case
-        type: choice
-        options:
-          - main # Current stable
-          - feature # Next major development
-      feature_branch_name:
-        description: 'Custom feature branch name (only used when branch is "feature")'
-        required: false
-        type: string
-        default: ''
       release_version:
-        description: 'Release type - patch, minor, or major'
+        description: 'Release type'
         required: true
         default: 'patch'
         type: choice
@@ -35,7 +22,7 @@ on:
           - tauri-plugin
           - types
       dry_run:
-        description: 'Do not touch or write anything. Show the commands.'
+        description: 'Dry run - no changes made'
         required: true
         default: false
         type: boolean
@@ -43,10 +30,8 @@ on:
 jobs:
   release:
     name: Release
-    uses: ./.github/workflows/_release-orchestration.reusable.yml
+    uses: ./.github/workflows/_release-publish.reusable.yml
     with:
-      branch: ${{ inputs.branch }}
-      feature_branch_name: ${{ inputs.feature_branch_name }}
       release_version: ${{ inputs.release_version }}
       packages: ${{ inputs.packages }}
       dry_run: ${{ inputs.dry_run }}

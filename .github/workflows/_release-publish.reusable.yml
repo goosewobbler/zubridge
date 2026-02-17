@@ -3,44 +3,53 @@ name: Publish Release
 on:
   workflow_call:
     inputs:
-      target_branch:
-        description: 'Target branch to release from'
-        required: true
-        type: string
       release_version:
         description: 'Release type (patch, minor, major, prepatch, preminor, premajor, prerelease)'
         required: true
         type: string
       dry_run:
-        description: 'Do not touch or write anything. Show the commands.'
+        description: 'Dry run - no changes made'
         required: true
         default: false
         type: boolean
-      branch_type:
-        description: 'Branch type (main, feature)'
-        required: true
-        type: string
       packages:
         description: 'Package directory name(s) to release (specific directories, or a comma-separated list)'
         required: false
         type: string
     secrets:
-      github_bot_token:
+      GITHUB_BOT_TOKEN:
         description: 'GitHub token for authentication'
         required: true
-      npm_token:
+      NPM_TOKEN:
         description: 'NPM token for publishing packages'
         required: true
-      deploy_key:
+      DEPLOY_KEY:
         description: 'SSH deploy key for pushing to the repository'
         required: true
-      crates_io_token:
+      CRATES_IO_TOKEN:
         description: 'Crates.io token for publishing Rust crates'
+        required: true
+      TURBO_TOKEN:
+        description: 'Vercel token for Turborepo remote caching'
+        required: true
+      TURBO_TEAM:
+        description: 'Vercel team/scope slug for Turborepo remote caching'
+        required: true
+      TURBO_API:
+        description: 'Vercel API endpoint for Turborepo remote caching'
         required: true
     outputs:
       release_tag:
         description: 'The created release tag'
         value: ${{ jobs.publish.outputs.release_tag }}
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_BOT_TOKEN }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
 
 jobs:
   publish:
@@ -48,13 +57,18 @@ jobs:
     outputs:
       release_tag: ${{ steps.push_tags.outputs.release_tag }}
     steps:
-      - name: 👷 Checkout target branch for release
+      - name: Verify official repository
+        if: github.repository != 'goosewobbler/zubridge'
+        run: |
+          echo "::error::This workflow can only be run in the official repository (goosewobbler/zubridge)"
+          exit 1
+
+      - name: 👷 Checkout main
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.deploy_key }}
-          # Always checkout the actual target branch passed from calculate job
-          ref: ${{ inputs.target_branch }}
-          fetch-depth: 0 # Full history needed for versioning
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+          ref: main
+          fetch-depth: 0
 
       - name: 🛠️ Setup workspace
         uses: ./.github/workflows/actions/setup-workspace
@@ -72,7 +86,7 @@ jobs:
           else
             # Set up NPM authentication for publishing
             pnpm set registry "https://registry.npmjs.org/"
-            pnpm set //registry.npmjs.org/:_authToken ${{ secrets.npm_token }}
+            pnpm set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
             pnpm whoami
           fi
 
@@ -80,11 +94,9 @@ jobs:
         id: versioning
         run: pnpx tsx .github/workflows/scripts/calculate-version.ts
         env:
-          # Pass inputs as environment variables, prefixed with INPUT_
           INPUT_PACKAGES: ${{ inputs.packages }}
           INPUT_RELEASE_VERSION: ${{ inputs.release_version }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
-          # GITHUB_WORKSPACE is automatically available
 
       - name: 📢 Publish to NPM
         shell: bash
@@ -254,8 +266,6 @@ jobs:
             echo "publish_status=success" >> $GITHUB_OUTPUT
           fi
         env:
-          # Pass the new version needed by the publish script (if it reads env vars)
-          # Or preferably, modify publish.ts to accept version as an argument
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
 
       - name: 🔍 Verify published NPM packages
@@ -263,11 +273,9 @@ jobs:
         if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) && (inputs.dry_run == 'true' || steps.npm_publish.outputs.publish_status != 'failed') }}
         run: bash .github/workflows/scripts/verify-published.sh
         env:
-          # Pass necessary variables to the script environment
           INPUT_PACKAGES: ${{ inputs.packages }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
-          # GITHUB_WORKSPACE is automatically available
 
       # Only publish Rust crates when explicitly selected
       - name: 🦀 Set up Rust
@@ -286,7 +294,7 @@ jobs:
       - name: 🔧 Login to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: |
-          echo '${{ secrets.crates_io_token }}' | cargo login
+          echo '${{ secrets.CRATES_IO_TOKEN }}' | cargo login
 
       - name: 📦 Publish Rust crates to crates.io
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) }}
@@ -305,11 +313,9 @@ jobs:
         if: ${{ contains(fromJson('["tauri-plugin", "middleware"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: bash .github/workflows/scripts/verify-crates-published.sh
         env:
-          # Pass necessary variables to the script environment
           INPUT_PACKAGES: ${{ inputs.packages }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
-          # GITHUB_WORKSPACE is automatically available
 
       - name: 🚀 Push Tags and Commits
         id: push_tags
@@ -328,7 +334,7 @@ jobs:
 
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             echo "DRY RUN: Would push tags created by package-versioner"
-            echo "DRY RUN: Would push branch ${{ inputs.target_branch }}"
+            echo "DRY RUN: Would push branch main"
             echo "release_tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
           else
             echo "Git log before push:"
@@ -336,7 +342,7 @@ jobs:
 
             echo "Pushing tags and commits created by package-versioner..."
             git push --tags --no-verify
-            git push origin "${{ inputs.target_branch }}" --no-verify
+            git push origin main --no-verify
 
             echo "release_tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
             echo "Successfully pushed tags and commits"
@@ -353,7 +359,7 @@ jobs:
             --title "Release ${{ steps.push_tags.outputs.release_tag }}" \
             ${{ contains(inputs.release_version, 'pre') && '--prerelease' || '' }}
         env:
-          GH_TOKEN: ${{ secrets.github_bot_token }}
+          GH_TOKEN: ${{ secrets.GITHUB_BOT_TOKEN }}
 
       - name: 📋 Log GitHub Release (dry run only)
         if: ${{ inputs.dry_run }}
@@ -365,7 +371,3 @@ jobs:
           echo "  - Prerelease: ${{ contains(inputs.release_version, 'pre') }}"
           echo "  - Repository: ${{ github.repository }}"
           echo "  - Title: Release ${{ steps.push_tags.outputs.release_tag }}"
-
-      - name: Export TAG for reference in debug outputs
-        if: ${{ !inputs.dry_run }}
-        run: echo "TAG=$TAG" >> $GITHUB_ENV

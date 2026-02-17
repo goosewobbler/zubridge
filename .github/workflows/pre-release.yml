@@ -1,31 +1,14 @@
-name: Manual Pre-Release Publish
+name: Pre-Release
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch for pre-release'
-        required: true
-        default: 'main'
-        type: choice
-        options:
-          - main
-          - feature
-      feature_branch_name:
-        description: 'Custom feature branch name (only used when branch is "feature")'
-        required: false
-        type: string
-        default: ''
       prerelease_version:
-        description: 'The new prerelease version to create.'
+        description: 'Pre-release type'
         required: true
         default: 'prerelease'
         type: choice
-        options:
-          - prepatch
-          - preminor
-          - premajor
-          - prerelease
+        options: ['prepatch', 'preminor', 'premajor', 'prerelease']
       packages:
         description: 'Package directory to release'
         required: true
@@ -39,7 +22,7 @@ on:
           - tauri-plugin
           - types
       dry_run:
-        description: 'Do not touch or write anything. Show the commands.'
+        description: 'Dry run - no changes made'
         required: false
         default: false
         type: boolean
@@ -47,10 +30,8 @@ on:
 jobs:
   pre-release:
     name: Pre-release
-    uses: ./.github/workflows/_release-orchestration.reusable.yml
+    uses: ./.github/workflows/_release-publish.reusable.yml
     with:
-      branch: ${{ inputs.branch }}
-      feature_branch_name: ${{ inputs.feature_branch_name }}
       release_version: ${{ inputs.prerelease_version }}
       packages: ${{ inputs.packages }}
       dry_run: ${{ inputs.dry_run }}
