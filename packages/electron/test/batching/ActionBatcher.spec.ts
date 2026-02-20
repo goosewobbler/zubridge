@@ -362,7 +362,7 @@ describe('ActionBatcher', () => {
     it('should reject removed action', () => {
       const action = createTestAction('TEST_ACTION');
       let rejected = false;
-      let rejectError: Error | null = null;
+      let rejectError: Error | undefined;
 
       batcher.enqueue(
         action,
@@ -378,7 +378,7 @@ describe('ActionBatcher', () => {
 
       expect(rejected).toBe(true);
       expect(rejectError).toBeInstanceOf(Error);
-      expect(rejectError?.message).toContain('cancelled');
+      expect((rejectError as Error).message).toContain('cancelled');
     });
 
     it('should return false for non-existent action', () => {
