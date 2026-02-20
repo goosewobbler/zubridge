@@ -185,11 +185,13 @@ describe('Batching Performance', () => {
       let totalBatchedActions = 0;
       for (const event of batchEvents) {
         try {
-          const payload = JSON.parse(event.action?.payload || '{}');
+          const rawPayload = event.action?.payload;
+          console.log(`  Raw payload: ${rawPayload}`);
+          const payload = JSON.parse(rawPayload || '{}');
           totalBatchedActions += payload.actionCount || 0;
           console.log(`  Batch ${payload.batchId}: ${payload.actionCount} actions`);
-        } catch {
-          // payload not parseable
+        } catch (err) {
+          console.log(`  Failed to parse payload: ${err}`);
         }
       }
 

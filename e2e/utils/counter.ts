@@ -2,6 +2,10 @@ import { browser } from 'wdio-electron-service';
 import { TIMING } from '../constants.js';
 import { getButtonInCurrentWindow } from './window.js';
 
+export async function waitForBatcherFlush(): Promise<void> {
+  await browser.pause(50);
+}
+
 /**
  * Waits for the counter to reach a specific expected value.
  * This is more reliable than waiting for changes when there might be multiple rapid changes.
@@ -157,33 +161,37 @@ export const getCounterValue = async () => {
 };
 
 export const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {
+  await waitForBatcherFlush();
   let currentValue = await getCounterValue();
   const incrementButton = await getButtonInCurrentWindow('increment');
   while (currentValue < targetValue) {
     await incrementButton.click();
-    await browser.pause(50);
+    await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
     const newValue = await getCounterValue();
     if (newValue === currentValue) {
-      await incrementButton.click();
       await browser.pause(100);
     }
     currentValue = await getCounterValue();
   }
+  await waitForBatcherFlush();
   return currentValue;
 };
 
 export const resetCounter = async () => {
-  const counterElement = await browser.$('h2');
-  const counterText = await counterElement.getText();
-  const currentCount = Number.parseInt(counterText.replace('Counter: ', ''), 10);
-  if (currentCount > 0) {
+  await waitForBatcherFlush();
+  let currentValue = await getCounterValue();
+  if (currentValue > 0) {
     const decrementButton = await browser.$('button=-');
-    for (let i = 0; i < currentCount; i++) {
+    while (currentValue > 0) {
       await decrementButton.click();
-      await browser.pause(50);
+      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+      const newValue = await getCounterValue();
+      if (newValue >= currentValue) {
+        await browser.pause(100);
+      }
+      currentValue = await getCounterValue();
     }
   }
-  const newCounterElement = await browser.$('h2');
-  const newCounterText = await newCounterElement.getText();
-  return Number.parseInt(newCounterText.replace('Counter: ', ''), 10);
+  await waitForBatcherFlush();
+  return currentValue;
 };
