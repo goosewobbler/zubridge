@@ -9,11 +9,13 @@ import type {
 } from '@zubridge/types';
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
+import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
+import type { BatchAckPayload, BatchPayload } from './batching/types.js';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
-import { getPreloadOptions } from './utils/preloadOptions.js';
+import { getBatchingConfig, getPreloadOptions } from './utils/preloadOptions.js';
 
 // Use Web Crypto API for sandbox compatibility
 // In sandbox mode, Node.js modules are not available, but Web Crypto API is
@@ -81,6 +83,42 @@ export const preloadBridge = <S extends AnyState>(
 
   // Get a properly configured thunk processor
   const thunkProcessor = getThunkProcessorWithConfig();
+
+  // Initialize action batcher if enabled
+  let actionBatcher: ActionBatcher | null = null;
+  const enableBatching = resolvedOptions.enableBatching !== false;
+
+  if (enableBatching) {
+    const batchingConfig = getBatchingConfig(resolvedOptions.batching);
+    debug('batching', 'Initializing ActionBatcher with config:', batchingConfig);
+
+    actionBatcher = new ActionBatcher(batchingConfig, async (batch: BatchPayload) => {
+      return new Promise<BatchAckPayload>((resolve, reject) => {
+        const timeoutMs = PLATFORM === 'linux' ? 60000 : 30000;
+        const timeoutId = setTimeout(() => {
+          ipcRenderer.removeListener(IpcChannel.BATCH_ACK, batchAckListener);
+          reject(new Error(`Timeout waiting for batch acknowledgment ${batch.batchId}`));
+        }, timeoutMs);
+
+        const batchAckListener = (_event: IpcRendererEvent, payload: unknown) => {
+          const ackPayload = payload as BatchAckPayload;
+          if (ackPayload && ackPayload.batchId === batch.batchId) {
+            clearTimeout(timeoutId);
+            ipcRenderer.removeListener(IpcChannel.BATCH_ACK, batchAckListener);
+
+            if (ackPayload.error) {
+              reject(new Error(ackPayload.error));
+            } else {
+              resolve(ackPayload);
+            }
+          }
+        };
+
+        ipcRenderer.on(IpcChannel.BATCH_ACK, batchAckListener);
+        ipcRenderer.send(IpcChannel.BATCH_DISPATCH, batch);
+      });
+    });
+  }
 
   // Map to track pending thunk registration promises
   const pendingThunkRegistrations = new Map<
@@ -451,12 +489,21 @@ export const preloadBridge = <S extends AnyState>(
         // Initialize the thunk processor with required functions
         thunkProcessor.initialize({
           windowId,
-          // Function to send actions to main process
+          // Function to send actions to main process (uses batcher if enabled)
           actionSender: async (action: Action, parentId?: string) => {
             debug(
               'ipc',
               `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}`,
             );
+
+            if (actionBatcher) {
+              const priority = calculatePriority(action);
+              const batcher = actionBatcher;
+              return new Promise<void>((resolve, reject) => {
+                batcher.enqueue(action, () => resolve(), reject, priority, parentId);
+              });
+            }
+
             ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
           },
           // Function to register thunks with main process
@@ -687,6 +734,12 @@ export const preloadBridge = <S extends AnyState>(
 
   const performCompleteCleanup = async (): Promise<void> => {
     debug('ipc', 'Performing complete cleanup of all resources');
+
+    // Add batcher cleanup
+    if (actionBatcher) {
+      actionBatcher.destroy();
+      actionBatcher = null;
+    }
 
     // Add thunk cleanup
     cleanupRegistry.thunks.add(async () => {
