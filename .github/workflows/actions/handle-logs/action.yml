@@ -22,7 +22,6 @@ runs:
         LOG_DIR="./e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}"
         
         if [ -d "$LOG_DIR" ]; then
-          # Find and display all log files in the directory
           find "$LOG_DIR" -name "*.log" -type f | sort | while read -r log_file; do
             log_name=$(basename "$log_file")
             echo "::group::📄 $log_name"
@@ -43,12 +42,10 @@ runs:
       run: |
         echo "=== Package Test Logs for ${{ inputs.mode }} ==="
 
-        # Find all wdio-logs directories in apps
         find apps -name "wdio-logs-*" -type d | sort | while read -r log_dir; do
           app_name=$(basename "$log_dir" | sed 's/wdio-logs-//')
           echo "::group::🔧 Logs for $app_name"
 
-          # Find and display all log files in the directory
           find "$log_dir" -name "*.log" -type f | sort | while read -r log_file; do
             log_name=$(basename "$log_file")
             echo "::group::📄 $log_name"
@@ -67,17 +64,19 @@ runs:
     - name: Upload E2E Test Logs
       uses: actions/upload-artifact@v4
       if: inputs.app == 'electron'
+      continue-on-error: true
       with:
         name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
-        path: e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}/*.log
-        retention-days: 30
+        path: e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}/**/*.log
+        retention-days: 90
         if-no-files-found: warn
 
     - name: Upload Package Test Logs
       uses: actions/upload-artifact@v4
       if: inputs.app == 'package-test'
+      continue-on-error: true
       with:
         name: package-test-logs-${{ inputs.os }}-${{ inputs.mode }}
-        path: apps/*/wdio-logs-*
-        retention-days: 30
+        path: apps/*/wdio-logs-*/**/*.log
+        retention-days: 90
         if-no-files-found: warn
