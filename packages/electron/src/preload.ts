@@ -378,9 +378,10 @@ export const preloadBridge = <S extends AnyState>(
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
 
-      // Route through batcher when available
+      // Route through batcher when available, EXCEPT for bypassThunkLock actions
+      // which need immediate execution and should use direct dispatch
       const batcher = actionBatcher;
-      if (batcher) {
+      if (batcher && !actionObj.__bypassThunkLock) {
         return new Promise<Action>((resolve, reject) => {
           batcher.enqueue(
             actionObj,
@@ -509,7 +510,8 @@ export const preloadBridge = <S extends AnyState>(
               `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}`,
             );
 
-            if (actionBatcher) {
+            // bypassThunkLock actions should use direct dispatch for immediate execution
+            if (actionBatcher && !action.__bypassThunkLock) {
               const priority = calculatePriority(action);
               const batcher = actionBatcher;
               return new Promise<void>((resolve, reject) => {
