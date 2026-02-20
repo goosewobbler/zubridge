@@ -41,18 +41,23 @@ function summarize(values: number[]) {
   return { mean, median, p95, p99, min, max, count: values.length };
 }
 
-// Skipped: requires @zubridge/middleware WebSocket server (not yet released).
+// Batching is a renderer→main transport optimization: N actions dispatched within the
+// batch window (default 16ms) are sent as 1 IPC call instead of N. However, the main
+// process still dispatches each action individually, so middleware sees N ActionDispatched
+// and N StateUpdated events regardless of batching. The IPC reduction is not directly
+// observable via middleware telemetry.
 //
-// Unlike the selective subscription comparison (where E2E can't isolate the difference),
-// batching is observable at the E2E level — fewer IPC calls is a real, countable reduction.
-// When middleware ships, these tests are valid for:
-// - Verifying batching reduces state update count (test 1 — behavioural)
-// - Establishing latency budgets for batched action processing (test 2 — NFR)
-// - Verifying batching works correctly across multiple windows (test 3 — behavioural)
+// These tests validate:
+// - Correctness under rapid synchronous dispatch (test 1 — exercises batch transport path)
+// - Establishing latency budgets for action processing (test 2 — NFR)
+// - Cross-window dispatch and state sync correctness (test 3 — behavioural)
 //
-// For measuring batcher overhead in isolation, use the vitest bench suite:
+// For measuring IPC call reduction and batcher overhead in isolation, use the vitest bench suite:
 //   cd packages/electron && pnpm bench
-describe.skip('Batching Performance', () => {
+//
+// Note: requires @zubridge/middleware WebSocket server on port 9000.
+// Tests gracefully skip middleware-dependent assertions when middleware is unavailable.
+describe('Batching Performance', () => {
   let ws: WebSocket;
   const logMessages: MiddlewareMessage[] = [];
 
@@ -114,58 +119,52 @@ describe.skip('Batching Performance', () => {
     }
   });
 
-  it('should batch rapid actions and reduce IPC calls', async function () {
+  it('should process rapid synchronous dispatches correctly via batch transport', async function () {
     this.timeout(30000);
-
-    if (ws.readyState !== WebSocket.OPEN) {
-      console.log('Skipping: WebSocket not connected');
-      return;
-    }
 
     await setupTestEnvironment(CORE_WINDOW_COUNT);
     await switchToWindow(0);
-
-    const incrementButton = await getButtonInCurrentWindow('increment');
-    expect(incrementButton).toBeExisting();
 
     const RAPID_ACTION_COUNT = 20;
 
-    // Perform rapid clicks without pausing between them to trigger batching
-    for (let i = 0; i < RAPID_ACTION_COUNT; i++) {
-      await incrementButton.click();
-    }
+    // Dispatch actions synchronously from within the renderer to exercise the batch
+    // transport path. All dispatches happen within a single JS task (well within the
+    // 16ms batch window), so the ActionBatcher groups them into a single IPC call.
+    // The main process still processes each action individually, so state updates = N.
+    await browser.execute((count) => {
+      const zubridge = (window as { zubridge?: { dispatch: (action: string) => void } }).zubridge;
+      if (!zubridge) throw new Error('zubridge handlers not found on window');
+      for (let i = 0; i < count; i++) {
+        zubridge.dispatch('COUNTER:INCREMENT');
+      }
+    }, RAPID_ACTION_COUNT);
 
-    // Wait for all actions to process and telemetry to arrive
-    await browser.pause(2000);
+    // Wait for all actions to process
+    await browser.pause(3000);
 
-    const dispatched = logMessages.filter((m) => m.entry_type === 'ActionDispatched');
-    const acknowledged = logMessages.filter((m) => m.entry_type === 'ActionAcknowledged');
-    const stateUpdates = logMessages.filter((m) => m.entry_type === 'StateUpdated');
-
-    console.log(`Actions dispatched: ${dispatched.length}`);
-    console.log(`Actions acknowledged: ${acknowledged.length}`);
-    console.log(`State updates: ${stateUpdates.length}`);
-
-    // We should see dispatched actions — the middleware tracks each one
-    assert(dispatched.length > 0, 'Should have dispatched actions tracked by middleware');
-
-    // With batching, we expect fewer state updates than individual actions
-    // because multiple actions in a batch may result in consolidated state updates
-    if (stateUpdates.length > 0 && stateUpdates.length < RAPID_ACTION_COUNT) {
-      console.log(
-        `Batching effect: ${RAPID_ACTION_COUNT} actions produced ${stateUpdates.length} state updates ` +
-          `(${((1 - stateUpdates.length / RAPID_ACTION_COUNT) * 100).toFixed(1)}% reduction)`,
-      );
-    }
-
-    // Verify counter reached the expected value
+    // Primary assertion: all actions were processed correctly through the batch transport
     const counterElement = await browser.$('h2');
     const counterText = await counterElement.getText();
-    console.log(`Counter value after ${RAPID_ACTION_COUNT} increments: ${counterText}`);
-    expect(counterText).toContain(String(RAPID_ACTION_COUNT));
+    console.log(`Counter value after ${RAPID_ACTION_COUNT} synchronous dispatches: ${counterText}`);
+    const counterValue = Number.parseInt(counterText.replace(/\D/g, ''), 10);
+    expect(counterValue).toBeGreaterThanOrEqual(RAPID_ACTION_COUNT);
+
+    // Secondary: verify middleware tracked all dispatches (when available)
+    if (ws?.readyState === WebSocket.OPEN) {
+      const dispatched = logMessages.filter((m) => m.entry_type === 'ActionDispatched');
+      const stateUpdates = logMessages.filter((m) => m.entry_type === 'StateUpdated');
+      console.log(
+        `Middleware: ${dispatched.length} dispatched, ${stateUpdates.length} state updates`,
+      );
+
+      if (dispatched.length > 0) {
+        // All N actions should be tracked — batching is transport-level only
+        expect(dispatched.length).toBeGreaterThanOrEqual(RAPID_ACTION_COUNT);
+      }
+    }
   });
 
-  it('should track round-trip latency for batched actions', async function () {
+  it('should track round-trip latency for actions', async function () {
     this.timeout(30000);
 
     if (ws.readyState !== WebSocket.OPEN) {
@@ -176,23 +175,20 @@ describe.skip('Batching Performance', () => {
     await setupTestEnvironment(CORE_WINDOW_COUNT);
     await switchToWindow(0);
 
+    const ACTION_COUNT = 30;
+
+    // Use click-based dispatches for latency measurement since each action
+    // completes its full round-trip before the next one starts
     const incrementButton = await getButtonInCurrentWindow('increment');
     expect(incrementButton).toBeExisting();
 
-    const ACTION_COUNT = 30;
-
-    // Rapid clicks to generate batched actions
     for (let i = 0; i < ACTION_COUNT; i++) {
       await incrementButton.click();
-      // Tiny pause to allow some batching windows to close
-      if (i % 5 === 4) {
-        await browser.pause(20);
-      }
     }
 
     await browser.pause(2000);
 
-    // Extract processing metrics from state updates
+    // Extract processing metrics from state updates (if middleware emits them)
     const latencies = logMessages
       .filter((m) => m.entry_type === 'StateUpdated' && m.processing_metrics)
       .map((m) => normalizeMetric(m.processing_metrics?.total_ms))
@@ -203,7 +199,7 @@ describe.skip('Batching Performance', () => {
     if (latencies.length > 0) {
       const stats = summarize(latencies);
       if (stats) {
-        console.log('=== Batching Latency Stats ===');
+        console.log('=== Action Latency Stats ===');
         console.log(`  Mean:   ${stats.mean.toFixed(2)}ms`);
         console.log(`  Median: ${stats.median.toFixed(2)}ms`);
         console.log(`  P95:    ${stats.p95.toFixed(2)}ms`);
@@ -211,19 +207,24 @@ describe.skip('Batching Performance', () => {
         console.log(`  Min:    ${stats.min.toFixed(2)}ms`);
         console.log(`  Max:    ${stats.max.toFixed(2)}ms`);
         console.log(`  Count:  ${stats.count}`);
-        console.log('==============================');
+        console.log('============================');
 
-        // Sanity check: latencies should be reasonable (< 5s for a counter increment)
-        expect(stats.mean).toBeLessThan(5000);
-        // P95 shouldn't be wildly different from the mean for simple counter ops
-        expect(stats.p95).toBeLessThan(10000);
+        // NFR: action processing should be under 100ms for simple counter increments
+        expect(stats.mean).toBeLessThan(100);
+        expect(stats.p95).toBeLessThan(500);
       }
     } else {
-      console.log('No latency metrics collected — middleware may not emit processing_metrics');
+      // processing_metrics not available — log state update count as a basic health check
+      const stateUpdates = logMessages.filter((m) => m.entry_type === 'StateUpdated');
+      console.log(
+        `No processing_metrics in middleware output. State updates received: ${stateUpdates.length}`,
+      );
+      // Still verify we got state updates as a baseline assertion
+      expect(stateUpdates.length).toBeGreaterThan(0);
     }
   });
 
-  it('should measure IPC efficiency across multiple windows', async function () {
+  it('should dispatch and sync state correctly across multiple windows', async function () {
     this.timeout(45000);
 
     if (ws.readyState !== WebSocket.OPEN) {
@@ -287,9 +288,7 @@ describe.skip('Batching Performance', () => {
     const counterElement = await browser.$('h2');
     const finalValue = await counterElement.getText();
     console.log(`Final counter value after actions from both windows: ${finalValue}`);
-    // Counter should reflect total actions from both windows
-    const expectedMin = ACTIONS_PER_WINDOW * 2;
     const parsedValue = Number.parseInt(finalValue.replace(/\D/g, ''), 10);
-    expect(parsedValue).toBeGreaterThanOrEqual(expectedMin);
+    expect(parsedValue).toBeGreaterThanOrEqual(ACTIONS_PER_WINDOW * 2);
   });
 });
