@@ -378,7 +378,20 @@ export const preloadBridge = <S extends AnyState>(
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
 
-      // Create a Promise that will resolve when we get an acknowledgment
+      // Route through batcher when available
+      const batcher = actionBatcher;
+      if (batcher) {
+        return new Promise<Action>((resolve, reject) => {
+          batcher.enqueue(
+            actionObj,
+            (resolvedAction) => resolve(resolvedAction),
+            reject,
+            calculatePriority(actionObj),
+          );
+        });
+      }
+
+      // Individual DISPATCH + DISPATCH_ACK flow (when batching disabled)
       return new Promise<Action>((resolve, reject) => {
         const actionId = actionObj.__id as string;
 
