@@ -32,6 +32,13 @@ vi.mock('../src/utils/preloadOptions.js', () => ({
   getPreloadOptions: vi.fn(() => ({
     actionCompletionTimeoutMs: 30000,
     maxQueueSize: 100,
+    enableBatching: true,
+    batching: {},
+  })),
+  getBatchingConfig: vi.fn(() => ({
+    windowMs: 16,
+    maxBatchSize: 50,
+    priorityFlushThreshold: 80,
   })),
 }));
 
