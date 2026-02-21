@@ -264,7 +264,8 @@ export const preloadBridge = <S extends AnyState>(
     // Get current state from main process
     async getState(options?: { bypassAccessControl?: boolean }): Promise<S> {
       debug('ipc', 'Getting state from main process');
-      return ipcRenderer.invoke(IpcChannel.GET_STATE, options) as Promise<S>;
+      const state = (await ipcRenderer.invoke(IpcChannel.GET_STATE, options)) as S;
+      return state;
     },
 
     // Dispatch actions to main process
@@ -319,31 +320,35 @@ export const preloadBridge = <S extends AnyState>(
           `[PRELOAD] Set bypassThunkLock: ${thunkOptions.bypassThunkLock} for thunk execution`,
         );
 
-        // Execute the thunk directly through the thunkProcessor implementation
-        // This avoids the circular reference where executeThunk calls back to preload
-        const thunkResult = (await thunkProcessor.executeThunk<S>(thunk, thunkOptions)) as Action;
-
-        // Ensure we always return a valid Action object
-        if (thunkResult && typeof thunkResult === 'object' && 'type' in thunkResult) {
-          // If thunk returns a valid action, ensure it has an ID
+        try {
+          // Execute the thunk directly through the thunkProcessor implementation
+          // This avoids the circular reference where executeThunk calls back to preload
+          const thunkResult = (await thunkProcessor.executeThunk<S>(thunk, thunkOptions)) as Action;
+          // Ensure we always return a valid Action object
+          if (thunkResult && typeof thunkResult === 'object' && 'type' in thunkResult) {
+            // If thunk returns a valid action, ensure it has an ID
+            return {
+              ...thunkResult,
+              __id: thunkResult.__id || uuidv4(),
+            };
+          }
+          if (typeof thunkResult === 'string') {
+            // If thunk returns a string, convert to action
+            return {
+              type: thunkResult,
+              __id: uuidv4(),
+            };
+          }
+          // If thunk returns undefined, null, or invalid result, create a default action
           return {
-            ...thunkResult,
-            __id: thunkResult.__id || uuidv4(),
-          };
-        }
-        if (typeof thunkResult === 'string') {
-          // If thunk returns a string, convert to action
-          return {
-            type: thunkResult,
+            type: 'THUNK_RESULT',
+            payload: thunkResult,
             __id: uuidv4(),
           };
+        } catch (thunkError) {
+          debug('ipc:error', 'Thunk execution error:', thunkError);
+          throw thunkError;
         }
-        // If thunk returns undefined, null, or invalid result, create a default action
-        return {
-          type: 'THUNK_RESULT',
-          payload: thunkResult,
-          __id: uuidv4(),
-        };
       }
 
       // For string or action object types, create a standardized action object

@@ -186,8 +186,9 @@ describe('Batching Performance', () => {
       for (const event of batchEvents) {
         try {
           const rawPayload = event.action?.payload;
-          console.log(`  Raw payload: ${rawPayload}`);
-          const payload = JSON.parse(rawPayload || '{}');
+          console.log(`  Raw payload type: ${typeof rawPayload}`);
+          const payload =
+            typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload || {};
           totalBatchedActions += payload.actionCount || 0;
           console.log(`  Batch ${payload.batchId}: ${payload.actionCount} actions`);
         } catch (err) {

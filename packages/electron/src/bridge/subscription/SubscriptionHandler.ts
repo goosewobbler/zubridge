@@ -3,7 +3,7 @@ import { debug } from '@zubridge/core';
 import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/types';
 import type { WebContents } from 'electron';
 import { IpcChannel } from '../../constants.js';
-import { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
+import { getPartialState, SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import { thunkManager } from '../../thunk/init.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import {
@@ -38,7 +38,7 @@ export class SubscriptionHandler<State extends AnyState> {
       const webContents = getWebContents(wrapper);
       if (!webContents || isDestroyed(webContents)) continue;
 
-      const tracked = this.windowTracker.track(webContents);
+      this.windowTracker.track(webContents);
       subscribedWebContents.push(webContents);
 
       let subManager = this.resourceManager.getSubscriptionManager(webContents.id);
@@ -98,26 +98,30 @@ export class SubscriptionHandler<State extends AnyState> {
       );
       unsubs.push(unsubscribe);
 
-      if (tracked) {
-        const serializationOptions: { maxDepth?: number } = {};
-        if (this.serializationMaxDepth !== undefined) {
-          serializationOptions.maxDepth = this.serializationMaxDepth;
-        }
-        const initialState = sanitizeState(this.stateManager.getState(), serializationOptions);
-
-        // Generate update ID for initial state
-        const updateId = randomUUID();
-
-        // Initial state is never from a thunk action, so don't track it
-        debug('core', `Sending initial state update ${updateId} (not tracked - initial state)`);
-
-        // Send initial state with tracking information
-        safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
-          updateId,
-          state: initialState,
-          thunkId: undefined, // Initial state is never from a thunk
-        });
+      // Always send current state when subscribing (not just on first track)
+      // This ensures the renderer gets the correct filtered state when resubscribing
+      const serializationOptions: { maxDepth?: number } = {};
+      if (this.serializationMaxDepth !== undefined) {
+        serializationOptions.maxDepth = this.serializationMaxDepth;
       }
+      const fullState = this.stateManager.getState();
+      const partialState = getPartialState(fullState, keys);
+      const currentState = sanitizeState(partialState, serializationOptions);
+
+      // Generate update ID for current state
+      const updateId = randomUUID();
+
+      debug(
+        'core',
+        `Sending current state update ${updateId} to window ${webContents.id} (keys: ${keys ? keys.join(', ') : 'all'})`,
+      );
+
+      // Send current state with tracking information
+      safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+        updateId,
+        state: currentState,
+        thunkId: undefined, // Initial/current state is never from a thunk
+      });
     }
 
     return {

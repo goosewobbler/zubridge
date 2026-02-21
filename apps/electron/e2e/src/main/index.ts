@@ -622,11 +622,13 @@ app
         windowType = 'browserView';
       }
 
+      const subscriptions = bridge.getWindowSubscriptions(event.sender.id);
+
       debug(
         'example-app:init',
-        `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}`,
+        `get-window-info for ${event.sender.id}: type=${windowType}, id=${windowId}, subscriptions=${JSON.stringify(subscriptions)}`,
       );
-      return { type: windowType, id: windowId };
+      return { type: windowType, id: windowId, subscriptions };
     });
 
     // IPC Handler for creating runtime windows
@@ -745,7 +747,8 @@ app
 
         debug('example-app:init', `[IPC] Unsubscribe completed for window ${event.sender.id}`);
 
-        return { success: true };
+        const subscriptions = bridge.getWindowSubscriptions(event.sender.id);
+        return { success: true, subscriptions };
       } catch (error) {
         debug('example-app:init', `[IPC] Error unsubscribing window ${event.sender.id}:`, error);
         return { success: false, error: String(error) };
@@ -777,7 +780,8 @@ app
 
         debug('example-app:init', `[IPC] Subscribe completed for window ${event.sender.id}`);
 
-        return { success: true };
+        const subscriptions = bridge.getWindowSubscriptions(event.sender.id);
+        return { success: true, subscriptions };
       } catch (error) {
         debug('example-app:init', `[IPC] Error subscribing window ${event.sender.id}:`, error);
         return { success: false, error: String(error) };

@@ -191,6 +191,7 @@ export interface BackendBridge extends BaseBridge {
   ) => {
     unsubscribe: () => void;
   };
+  getWindowSubscriptions: (windowId: number) => string[];
   destroy: () => void;
 }
 

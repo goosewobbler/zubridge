@@ -157,10 +157,12 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         // First try using the custom state provider if available
         if (this.stateProvider) {
           debug('ipc', `[RENDERER_THUNK] Using registered state provider for thunk ${thunk.id}`);
+          const bypassFlag = getStateOptions?.bypassAccessControl ?? thunk.bypassAccessControl;
           // Pass bypassAccessControl option if provided, otherwise use the thunk's flag
-          return this.stateProvider({
-            bypassAccessControl: getStateOptions?.bypassAccessControl ?? thunk.bypassAccessControl,
-          }) as Promise<S>;
+          const state = (await this.stateProvider({
+            bypassAccessControl: bypassFlag,
+          })) as S;
+          return state;
         }
 
         throw new Error('No state provider available');
@@ -278,9 +280,14 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
 
       // Execute the thunk with the local dispatch function and state
       debug('ipc', `[RENDERER_THUNK] Executing thunk function for ${thunk.id}`);
-      const result = await thunkFn(getState, dispatch);
-      debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} execution completed, result:`, result);
-      return result;
+      try {
+        const result = await thunkFn(getState, dispatch);
+        debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} execution completed, result:`, result);
+        return result;
+      } catch (thunkError) {
+        debug('ipc:error', `[RENDERER_THUNK] Thunk ${thunk.id} threw error:`, thunkError);
+        throw thunkError;
+      }
     } catch (error: unknown) {
       debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunk.id}:`, error);
       throw error; // Rethrow to be caught by caller

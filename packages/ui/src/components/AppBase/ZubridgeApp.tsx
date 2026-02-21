@@ -1,5 +1,5 @@
 import { debug } from '@zubridge/core';
-import type { Action, Dispatch } from '@zubridge/types';
+import type { Action, AnyState, Dispatch, Thunk } from '@zubridge/types';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import type { CounterMethod } from '../../types.js';
 import { BypassControls } from '../BypassControls';
@@ -11,6 +11,7 @@ import { SubscriptionControls } from '../SubscriptionControls';
 import { ThemeToggle } from '../ThemeToggle';
 import { WindowActions } from '../WindowActions';
 import { WindowDisplay } from '../WindowDisplay';
+import type { AppState } from './selectors.js';
 import { getBridgeStatusSelector, getCounterSelector, getThemeSelector } from './selectors.js';
 import type { ActionHandlers, WindowInfo, WindowType } from './WindowInfo.js';
 import { getWindowTitle } from './WindowInfo.js';
@@ -29,7 +30,7 @@ export interface ZubridgeAppProps {
   /**
    * Dispatch function for actions
    */
-  dispatch: Dispatch<Action>;
+  dispatch: Dispatch<AnyState>;
 
   /**
    * Platform-specific action handlers
@@ -105,9 +106,12 @@ export function ZubridgeApp({
   onSubscribe,
   onUnsubscribe,
 }: ZubridgeAppProps) {
+  // Cast store to AppState for selectors
+  const appState = store as AppState;
+
   // Extract data from store using selectors
-  const counter = getCounterSelector(store);
-  const isDarkMode = getThemeSelector(store);
+  const counter = getCounterSelector(appState);
+  const isDarkMode = getThemeSelector(appState);
 
   // Centralized error log state
   const [errorLog, setErrorLog] = useState<Array<{ message: string; timestamp: number }>>([]);
@@ -124,7 +128,7 @@ export function ZubridgeApp({
   if (externalBridgeStatus) {
     bridgeStatus = externalBridgeStatus;
   } else if (store) {
-    const storeStatus = getBridgeStatusSelector(store);
+    const storeStatus = getBridgeStatusSelector(appState);
     // Only assign if it's a valid status string, otherwise use default
     if (storeStatus === 'ready' || storeStatus === 'error' || storeStatus === 'initializing') {
       bridgeStatus = storeStatus;
@@ -167,11 +171,12 @@ export function ZubridgeApp({
       if (typeof variantOrOptions === 'string' || variantOrOptions === undefined) {
         const variant = variantOrOptions || 'medium';
         debug('ui', `Generating ${variant} test state`);
-        return await dispatch('STATE:GENERATE-FILLER', { variant });
+        await dispatch('STATE:GENERATE-FILLER', { variant });
+        return;
       }
       // We received detailed options
       debug('ui', 'Generating custom test state with options:', variantOrOptions);
-      return await dispatch('STATE:GENERATE-FILLER', variantOrOptions);
+      await dispatch('STATE:GENERATE-FILLER', variantOrOptions);
     },
     [dispatch],
   );
@@ -186,7 +191,11 @@ export function ZubridgeApp({
               'ui',
               `Using shared thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
             );
-            return await dispatch(actionHandlers.doubleCounter(counter), window.bypassFlags);
+            await dispatch(
+              actionHandlers.doubleCounter(counter) as Thunk<AnyState>,
+              window.bypassFlags,
+            );
+            return;
           }
         } else if (method === 'thunk-get-state-override') {
           // Use the actionHandlers thunk with getState override if available
@@ -195,10 +204,11 @@ export function ZubridgeApp({
               'ui',
               `Using shared thunk with getState override for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
             );
-            return await dispatch(
-              actionHandlers.doubleCounterWithGetStateOverride(counter),
+            await dispatch(
+              actionHandlers.doubleCounterWithGetStateOverride(counter) as Thunk<AnyState>,
               window.bypassFlags,
             );
+            return;
           }
         } else if (method === 'slow-thunk') {
           // Use the slow thunk if available
@@ -207,7 +217,11 @@ export function ZubridgeApp({
               'ui',
               `Using shared slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
             );
-            return await dispatch(actionHandlers.doubleCounterSlow(counter), window.bypassFlags);
+            await dispatch(
+              actionHandlers.doubleCounterSlow(counter) as Thunk<AnyState>,
+              window.bypassFlags,
+            );
+            return;
           }
         } else if (method === 'main-thunk') {
           debug('ui', `Starting ${method} execution`);
@@ -269,7 +283,6 @@ export function ZubridgeApp({
       } catch (error) {
         debug('ui:error', `Error in doubleCounter: ${error}`);
         handleError(`Error in doubleCounter: ${error}`);
-        return Promise.reject(error);
       }
     },
     [counter, dispatch, actionHandlers, handleError],
@@ -284,7 +297,11 @@ export function ZubridgeApp({
             'ui',
             `Using distinctive thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
           );
-          return await dispatch(actionHandlers.distinctiveCounter(counter), window.bypassFlags);
+          await dispatch(
+            actionHandlers.distinctiveCounter(counter) as Thunk<AnyState>,
+            window.bypassFlags,
+          );
+          return;
         }
       } else if (method === 'slow-thunk') {
         // Use the slow thunk if available
@@ -293,11 +310,15 @@ export function ZubridgeApp({
             'ui',
             `Using distinctive slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
           );
-          return await dispatch(actionHandlers.distinctiveCounterSlow(counter), window.bypassFlags);
+          await dispatch(
+            actionHandlers.distinctiveCounterSlow(counter) as Thunk<AnyState>,
+            window.bypassFlags,
+          );
+          return;
         }
       }
       debug('ui:error', `Distinctive counter handler not available for ${method}`);
-      return Promise.reject(new Error(`Distinctive counter handler not available for ${method}`));
+      throw new Error(`Distinctive counter handler not available for ${method}`);
     },
     [counter, dispatch, actionHandlers],
   );
@@ -358,8 +379,18 @@ export function ZubridgeApp({
                 <CounterActions
                   onIncrement={handleIncrement}
                   onDecrement={handleDecrement}
-                  onDouble={(method: CounterMethod) => handleDoubleCounter(method)}
-                  onDistinctive={(method: CounterMethod) => handleDistinctiveCounter(method)}
+                  onDouble={(method: CounterMethod) => {
+                    handleDoubleCounter(method).catch((err) => {
+                      debug('ui:error', `Unhandled error in doubleCounter: ${err}`);
+                      handleError(`Error in doubleCounter: ${err}`);
+                    });
+                  }}
+                  onDistinctive={(method: CounterMethod) => {
+                    handleDistinctiveCounter(method).catch((err) => {
+                      debug('ui:error', `Unhandled error in distinctiveCounter: ${err}`);
+                      handleError(`Error in distinctiveCounter: ${err}`);
+                    });
+                  }}
                   isLoading={bridgeStatus === 'initializing'}
                 />
               </div>
