@@ -4,8 +4,8 @@ import { getButtonInCurrentWindow } from './window.js';
 
 export async function waitForBatcherFlush(): Promise<void> {
   // Wait longer than the batching window (16ms) to ensure all actions are processed
-  // Include additional time for IPC round-trip
-  await browser.pause(100);
+  // Include additional time for IPC round-trip and renderer processing
+  await browser.pause(150);
 }
 
 /**
