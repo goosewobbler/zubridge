@@ -9,11 +9,13 @@ import type {
 } from '@zubridge/types';
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
+import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
+import type { BatchAckPayload, BatchPayload } from './batching/types.js';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
-import { getPreloadOptions } from './utils/preloadOptions.js';
+import { getBatchingConfig, getPreloadOptions } from './utils/preloadOptions.js';
 
 // Use Web Crypto API for sandbox compatibility
 // In sandbox mode, Node.js modules are not available, but Web Crypto API is
@@ -81,6 +83,42 @@ export const preloadBridge = <S extends AnyState>(
 
   // Get a properly configured thunk processor
   const thunkProcessor = getThunkProcessorWithConfig();
+
+  // Initialize action batcher if enabled
+  let actionBatcher: ActionBatcher | null = null;
+  const enableBatching = resolvedOptions.enableBatching !== false;
+
+  if (enableBatching) {
+    const batchingConfig = getBatchingConfig(resolvedOptions.batching);
+    debug('batching', 'Initializing ActionBatcher with config:', batchingConfig);
+
+    actionBatcher = new ActionBatcher(batchingConfig, async (batch: BatchPayload) => {
+      return new Promise<BatchAckPayload>((resolve, reject) => {
+        const timeoutMs = PLATFORM === 'linux' ? 60000 : 30000;
+        const timeoutId = setTimeout(() => {
+          ipcRenderer.removeListener(IpcChannel.BATCH_ACK, batchAckListener);
+          reject(new Error(`Timeout waiting for batch acknowledgment ${batch.batchId}`));
+        }, timeoutMs);
+
+        const batchAckListener = (_event: IpcRendererEvent, payload: unknown) => {
+          const ackPayload = payload as BatchAckPayload;
+          if (ackPayload && ackPayload.batchId === batch.batchId) {
+            clearTimeout(timeoutId);
+            ipcRenderer.removeListener(IpcChannel.BATCH_ACK, batchAckListener);
+
+            if (ackPayload.error) {
+              reject(new Error(ackPayload.error));
+            } else {
+              resolve(ackPayload);
+            }
+          }
+        };
+
+        ipcRenderer.on(IpcChannel.BATCH_ACK, batchAckListener);
+        ipcRenderer.send(IpcChannel.BATCH_DISPATCH, batch);
+      });
+    });
+  }
 
   // Map to track pending thunk registration promises
   const pendingThunkRegistrations = new Map<
@@ -226,7 +264,8 @@ export const preloadBridge = <S extends AnyState>(
     // Get current state from main process
     async getState(options?: { bypassAccessControl?: boolean }): Promise<S> {
       debug('ipc', 'Getting state from main process');
-      return ipcRenderer.invoke(IpcChannel.GET_STATE, options) as Promise<S>;
+      const state = (await ipcRenderer.invoke(IpcChannel.GET_STATE, options)) as S;
+      return state;
     },
 
     // Dispatch actions to main process
@@ -281,31 +320,35 @@ export const preloadBridge = <S extends AnyState>(
           `[PRELOAD] Set bypassThunkLock: ${thunkOptions.bypassThunkLock} for thunk execution`,
         );
 
-        // Execute the thunk directly through the thunkProcessor implementation
-        // This avoids the circular reference where executeThunk calls back to preload
-        const thunkResult = (await thunkProcessor.executeThunk<S>(thunk, thunkOptions)) as Action;
-
-        // Ensure we always return a valid Action object
-        if (thunkResult && typeof thunkResult === 'object' && 'type' in thunkResult) {
-          // If thunk returns a valid action, ensure it has an ID
+        try {
+          // Execute the thunk directly through the thunkProcessor implementation
+          // This avoids the circular reference where executeThunk calls back to preload
+          const thunkResult = (await thunkProcessor.executeThunk<S>(thunk, thunkOptions)) as Action;
+          // Ensure we always return a valid Action object
+          if (thunkResult && typeof thunkResult === 'object' && 'type' in thunkResult) {
+            // If thunk returns a valid action, ensure it has an ID
+            return {
+              ...thunkResult,
+              __id: thunkResult.__id || uuidv4(),
+            };
+          }
+          if (typeof thunkResult === 'string') {
+            // If thunk returns a string, convert to action
+            return {
+              type: thunkResult,
+              __id: uuidv4(),
+            };
+          }
+          // If thunk returns undefined, null, or invalid result, create a default action
           return {
-            ...thunkResult,
-            __id: thunkResult.__id || uuidv4(),
-          };
-        }
-        if (typeof thunkResult === 'string') {
-          // If thunk returns a string, convert to action
-          return {
-            type: thunkResult,
+            type: 'THUNK_RESULT',
+            payload: thunkResult,
             __id: uuidv4(),
           };
+        } catch (thunkError) {
+          debug('ipc:error', 'Thunk execution error:', thunkError);
+          throw thunkError;
         }
-        // If thunk returns undefined, null, or invalid result, create a default action
-        return {
-          type: 'THUNK_RESULT',
-          payload: thunkResult,
-          __id: uuidv4(),
-        };
       }
 
       // For string or action object types, create a standardized action object
@@ -340,7 +383,21 @@ export const preloadBridge = <S extends AnyState>(
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
 
-      // Create a Promise that will resolve when we get an acknowledgment
+      // Route through batcher when available, EXCEPT for bypassThunkLock actions
+      // which need immediate execution and should use direct dispatch
+      const batcher = actionBatcher;
+      if (batcher && !actionObj.__bypassThunkLock) {
+        return new Promise<Action>((resolve, reject) => {
+          batcher.enqueue(
+            actionObj,
+            (resolvedAction) => resolve(resolvedAction),
+            reject,
+            calculatePriority(actionObj),
+          );
+        });
+      }
+
+      // Individual DISPATCH + DISPATCH_ACK flow (when batching disabled)
       return new Promise<Action>((resolve, reject) => {
         const actionId = actionObj.__id as string;
 
@@ -451,12 +508,34 @@ export const preloadBridge = <S extends AnyState>(
         // Initialize the thunk processor with required functions
         thunkProcessor.initialize({
           windowId,
-          // Function to send actions to main process
+          // Function to send actions to main process (uses batcher if enabled)
           actionSender: async (action: Action, parentId?: string) => {
             debug(
               'ipc',
               `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}`,
             );
+
+            // bypassThunkLock actions should use direct dispatch for immediate execution
+            if (actionBatcher && !action.__bypassThunkLock) {
+              const priority = calculatePriority(action);
+              const batcher = actionBatcher;
+              const actionId = action.__id as string;
+              return new Promise<void>((resolve, reject) => {
+                batcher.enqueue(
+                  action,
+                  () => {
+                    // Notify thunk processor of action completion for batched actions
+                    // This is needed because BATCH_ACK doesn't trigger the DISPATCH_ACK handler
+                    thunkProcessor.completeAction(actionId, action);
+                    resolve();
+                  },
+                  reject,
+                  priority,
+                  parentId,
+                );
+              });
+            }
+
             ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
           },
           // Function to register thunks with main process
@@ -687,6 +766,12 @@ export const preloadBridge = <S extends AnyState>(
 
   const performCompleteCleanup = async (): Promise<void> => {
     debug('ipc', 'Performing complete cleanup of all resources');
+
+    // Add batcher cleanup
+    if (actionBatcher) {
+      actionBatcher.destroy();
+      actionBatcher = null;
+    }
 
     // Add thunk cleanup
     cleanupRegistry.thunks.add(async () => {

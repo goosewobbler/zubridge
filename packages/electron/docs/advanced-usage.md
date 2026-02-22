@@ -251,7 +251,7 @@ test('Counter component increments when button is clicked', () => {
 
 ## Selective Subscriptions
 
-Zubridge supports selective subscriptions using keys, this is useful for separation of concerns - restricting the state access of a given renderer process to just the section of state that it needs to function.  Note that performance testing shows no significant improvement over full state updates.
+Zubridge supports selective subscriptions using keys. The primary benefit is **separation of concerns** — restricting the state access of a given renderer process to only the section of state that it needs to function.
 
 ### Key-Based Subscriptions
 
@@ -281,14 +281,79 @@ dispatch('NOTIFICATION', message, { keys: ['user', 'admin'] });
 
 ### Performance Considerations
 
-While selective subscriptions work correctly, performance testing reveals:
+Selective subscriptions reduce the amount of data processed by `sanitizeState` (the recursive serialization step before IPC), which can be significant for large state trees. However, the end-to-end round-trip is dominated by Electron's structured clone in `webContents.send()`, so the JS-level savings may not be observable for typical application state sizes.
 
-- **Full state transmission** performs equally well due to efficient serialization
-- **Network overhead** is minimal for typical application state sizes
-- **Complexity** of key management may not justify the implementation cost
+For detailed benchmark results, see the [Performance](./performance.md) documentation.
 
-**Recommendation**: Use full state updates unless you have specific separation of concerns / security or bandwidth requirements.
+**Recommendation**: Use selective subscriptions when you need to restrict renderer access to specific state keys (separation of concerns, security). For most applications, full state updates work equally well.
 
+
+## Action Batching
+
+Zubridge includes built-in action batching that groups multiple renderer actions into single IPC calls to the main process, reducing cross-process overhead for high-frequency updates.
+
+### How It Works
+
+Without batching, each dispatched action results in a separate IPC call. With batching enabled, actions dispatched within a configurable time window are collected and sent as a single `batch-dispatch` IPC call.
+
+```
+Without Batching:
+Renderer → IPC:dispatch → Main    (one call per action)
+
+With Batching:
+Renderer → [queue actions for windowMs] → IPC:batch-dispatch → Main    (one call per window)
+```
+
+All actions dispatched within the batch window (default: 16ms) are grouped into one IPC call. For example, 10 actions dispatched in rapid succession become 1 IPC call instead of 10. The batch is also flushed early when it reaches `maxBatchSize` or when a high-priority action is enqueued.
+
+### Configuration
+
+Action batching is enabled by default. You can configure it in your preload script:
+
+```typescript
+import { preloadBridge } from '@zubridge/electron/preload';
+
+const bridge = preloadBridge({
+  enableBatching: true, // Default: true
+  batching: {
+    windowMs: 16,            // Batch window in ms (default: 16ms)
+    maxBatchSize: 50,        // Max actions per batch (default: 50)
+    priorityFlushThreshold: 80, // Priority threshold for immediate flush (default: 80)
+  },
+});
+```
+
+### Disabling Batching
+
+To disable batching and use direct dispatch for all actions:
+
+```typescript
+const bridge = preloadBridge({
+  enableBatching: false,
+});
+```
+
+### Priority-Based Flushing
+
+Actions with a priority at or above `priorityFlushThreshold` (default: 80) trigger an immediate flush of the current batch. This ensures time-sensitive actions like `bypassThunkLock` (priority 100) are not delayed by the batch window:
+
+```typescript
+dispatch({ type: 'URGENT_ACTION', __bypassThunkLock: true });
+```
+
+The priority levels are:
+- **100** — `__bypassThunkLock` actions (immediate flush)
+- **70** — thunk child actions (`__thunkParentId` set)
+- **50** — normal actions (batched within the window)
+
+### Benchmarking
+
+Run `pnpm bench` in the electron package to measure batching throughput on your system:
+
+```bash
+cd packages/electron
+pnpm bench
+```
 
 ## Next Steps
 

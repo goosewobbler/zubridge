@@ -2,6 +2,7 @@ import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
+import type { BatchAckPayload, BatchPayload } from '../../batching/types.js';
 import { IpcChannel } from '../../constants.js';
 import { IpcCommunicationError } from '../../errors/index.js';
 import { actionQueue } from '../../main/actionQueue.js';
@@ -56,6 +57,135 @@ export class IpcHandler<State extends AnyState> {
 
     // Handle requests for current global thunk state
     ipcMain.handle(IpcChannel.GET_THUNK_STATE, this.handleGetThunkState.bind(this));
+
+    // Handle batch dispatch from renderers
+    ipcMain.on(IpcChannel.BATCH_DISPATCH, this.handleBatchDispatch.bind(this));
+  }
+
+  public async handleBatchDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
+    try {
+      const batchPayload = data as BatchPayload;
+      const { batchId, actions } = batchPayload || {};
+
+      if (!batchId || !Array.isArray(actions) || actions.length === 0) {
+        debug('ipc:error', 'Invalid batch dispatch payload:', data);
+        return;
+      }
+
+      debug(
+        'batching',
+        `Received batch ${batchId} with ${actions.length} actions from renderer ${event.sender.id}`,
+      );
+
+      // Track batch receipt for telemetry — enables E2E measurement of IPC reduction
+      const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
+      if (middlewareCallbacks.trackActionDispatch) {
+        const batchAction: Action = {
+          type: '__BATCH_RECEIVED',
+          payload: JSON.stringify({ batchId, actionCount: actions.length }),
+          __sourceWindowId: event.sender.id,
+          __id: batchId,
+        };
+        void middlewareCallbacks.trackActionDispatch(batchAction);
+      }
+
+      const results: BatchAckPayload['results'] = [];
+      const processAction = async (
+        actionItem: (typeof actions)[number],
+      ): Promise<{ actionId: string; success: boolean; error?: string }> => {
+        const { action, id, parentId } = actionItem;
+
+        return new Promise((resolve) => {
+          if (!action || typeof action !== 'object' || !action.type) {
+            resolve({
+              actionId: id,
+              success: false,
+              error: 'Invalid action',
+            });
+            return;
+          }
+
+          const actionWithSource: Action = {
+            ...action,
+            __sourceWindowId: event.sender.id,
+          };
+
+          if (parentId && !thunkManager.hasThunk(parentId)) {
+            const thunkObj = new ThunkClass({
+              id: parentId,
+              sourceWindowId: event.sender.id,
+              source: 'renderer',
+            });
+            this.thunkRegistrationQueue.registerThunk(thunkObj).catch((err) => {
+              debug('ipc:error', `Failed to register thunk ${parentId}:`, err);
+            });
+          }
+
+          actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId, (error) => {
+            if (error) {
+              resolve({
+                actionId: id,
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            } else {
+              // Track action acknowledged with middleware
+              const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
+              if (middlewareCallbacks.trackActionAcknowledged && action.__id) {
+                void middlewareCallbacks.trackActionAcknowledged(action.__id as string);
+              }
+
+              resolve({
+                actionId: id,
+                success: true,
+              });
+            }
+          });
+        });
+      };
+
+      const settledResults = await Promise.allSettled(actions.map(processAction));
+
+      for (const result of settledResults) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          results.push({
+            actionId: 'unknown',
+            success: false,
+            error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+          });
+        }
+      }
+
+      debug(
+        'batching',
+        `Batch ${batchId} processed with ${results.filter((r) => r.success).length}/${results.length} successful`,
+      );
+
+      if (!isDestroyed(event.sender)) {
+        safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
+          batchId,
+          results,
+        } as BatchAckPayload);
+      }
+    } catch (error) {
+      const ipcError = new IpcCommunicationError('Error handling batch dispatch', {
+        channel: IpcChannel.BATCH_DISPATCH,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
+
+      const batchPayload = data as BatchPayload;
+      if (batchPayload?.batchId && !isDestroyed(event.sender)) {
+        safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
+          batchId: batchPayload.batchId,
+          results: [],
+          error: serializeError(ipcError),
+        });
+      }
+    }
   }
 
   public async handleDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
@@ -497,5 +627,6 @@ export class IpcHandler<State extends AnyState> {
     ipcMain.removeAllListeners(IpcChannel.TRACK_ACTION_DISPATCH);
     ipcMain.removeAllListeners(IpcChannel.REGISTER_THUNK);
     ipcMain.removeAllListeners(IpcChannel.COMPLETE_THUNK);
+    ipcMain.removeAllListeners(IpcChannel.BATCH_DISPATCH);
   }
 }

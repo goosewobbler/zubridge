@@ -217,6 +217,10 @@ export function createCoreBridge<State extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
+    getWindowSubscriptions: (windowId: number) => {
+      const subManager = resourceManager.getSubscriptionManager(windowId);
+      return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
+    },
     destroy,
   };
 }

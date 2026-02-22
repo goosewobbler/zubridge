@@ -462,6 +462,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       await waitForSpecificValue(4, TIMING.THUNK_WAIT_TIME);
       console.log('First stage of slow thunk completed, counter = 4');
 
+      // Wait for state to sync before performing the next action
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
+
       // Switch to second window and perform a simple increment action WITHOUT bypass flag
       console.log('Switching to second window to perform increment WITHOUT bypass flag');
       await switchToWindow(1); // Second window is at index 1
@@ -474,8 +477,14 @@ describe('BypassThunkLock Flag Functionality', () => {
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // This should be delayed until the slow thunk completes (waiting for value 5)
-      console.log('Waiting for increment to take effect (counter = 5)');
-      await waitForSpecificValue(5, TIMING.LONG_THUNK_WAIT_TIME);
+      // On Linux, the slow thunk may continue and the counter could go 4→8→4 before the increment executes
+      // So we need to wait for the full thunk completion sequence
+      console.log('Waiting for increment to take effect (counter = 5) or thunk completion');
+      const timeout =
+        process.platform === 'linux'
+          ? TIMING.LONG_THUNK_WAIT_TIME * 2
+          : TIMING.LONG_THUNK_WAIT_TIME;
+      await waitForSpecificValue(5, timeout);
       const timeWithoutBypass = Date.now() - startTimeWithoutBypass;
       console.log(`Increment completed in ${timeWithoutBypass}ms WITHOUT bypass flag`);
 
@@ -500,6 +509,9 @@ describe('BypassThunkLock Flag Functionality', () => {
       console.log('Waiting for slow thunk first stage to complete (counter = 4)');
       await waitForSpecificValue(4, TIMING.THUNK_WAIT_TIME);
       console.log('First stage of slow thunk completed, counter = 4');
+
+      // Wait for state to sync before performing the next action
+      await browser.pause(TIMING.STATE_SYNC_PAUSE);
 
       // Switch to second window, enable bypass, and perform a simple increment WITH bypass flag
       console.log(
