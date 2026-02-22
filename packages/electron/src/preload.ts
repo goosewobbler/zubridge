@@ -519,8 +519,20 @@ export const preloadBridge = <S extends AnyState>(
             if (actionBatcher && !action.__bypassThunkLock) {
               const priority = calculatePriority(action);
               const batcher = actionBatcher;
+              const actionId = action.__id as string;
               return new Promise<void>((resolve, reject) => {
-                batcher.enqueue(action, () => resolve(), reject, priority, parentId);
+                batcher.enqueue(
+                  action,
+                  () => {
+                    // Notify thunk processor of action completion for batched actions
+                    // This is needed because BATCH_ACK doesn't trigger the DISPATCH_ACK handler
+                    thunkProcessor.completeAction(actionId, action);
+                    resolve();
+                  },
+                  reject,
+                  priority,
+                  parentId,
+                );
               });
             }
 
