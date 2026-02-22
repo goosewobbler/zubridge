@@ -150,49 +150,9 @@ app.on('before-quit', (event) => {
 app
   .whenReady()
   .then(async () => {
-    debug('example-app:init', 'App is ready, initializing windows');
+    debug('example-app:init', 'App is ready, initializing');
 
-    // Initialize all windows
-    debug('example-app:init', 'Initializing main window');
-    const initialMainWindow = await windows.initMainWindow(isAppQuitting);
-    debug('example-app:init', `Main window created with ID: ${initialMainWindow.id}`);
-
-    debug('example-app:init', 'Initializing direct WebContents window');
-    const initialDirectWebContentsWindow = await windows.initDirectWebContentsWindow();
-    debug(
-      'example-app:init',
-      `Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`,
-    );
-
-    debug('example-app:init', 'Initializing BrowserView window');
-    const { window: initialBrowserViewWindow, browserView } = await windows.initBrowserViewWindow();
-    if (initialBrowserViewWindow && browserView) {
-      debug(
-        'example-app:init',
-        `BrowserView window created with ID: ${initialBrowserViewWindow.id}`,
-      );
-      debug('example-app:init', `BrowserView WebContents ID: ${browserView.webContents.id}`);
-    } else {
-      debug('example-app:init', 'BrowserView window skipped (disabled in test mode)');
-    }
-
-    debug('example-app:init', 'Initializing WebContentsView window');
-    const { window: initialWebContentsViewWindow, webContentsView } =
-      await windows.initWebContentsViewWindow();
-    if (initialWebContentsViewWindow && webContentsView) {
-      debug(
-        'example-app:init',
-        `WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`,
-      );
-      debug(
-        'example-app:init',
-        `WebContentsView WebContents ID: ${webContentsView.webContents.id}`,
-      );
-    } else {
-      debug('example-app:init', 'WebContentsView window skipped (disabled in test mode)');
-    }
-
-    // Initialize the store
+    // Initialize the store FIRST (before creating bridge)
     debug('example-app:init', 'Initializing store');
     await initStore();
     debug('store', 'Store initialized');
@@ -287,6 +247,49 @@ app
     } else {
       debug('core', 'CRITICAL ERROR - Bridge or bridge.subscribe is not available!');
       throw new Error('Bridge or bridge.subscribe not available');
+    }
+
+    // Now that the bridge is created (and IPC handlers are registered), create windows
+    debug('example-app:init', 'Initializing windows');
+
+    // Initialize all windows
+    debug('example-app:init', 'Initializing main window');
+    const initialMainWindow = await windows.initMainWindow(isAppQuitting);
+    debug('example-app:init', `Main window created with ID: ${initialMainWindow.id}`);
+
+    debug('example-app:init', 'Initializing direct WebContents window');
+    const initialDirectWebContentsWindow = await windows.initDirectWebContentsWindow();
+    debug(
+      'example-app:init',
+      `Direct WebContents window created with ID: ${initialDirectWebContentsWindow.id}`,
+    );
+
+    debug('example-app:init', 'Initializing BrowserView window');
+    const { window: initialBrowserViewWindow, browserView } = await windows.initBrowserViewWindow();
+    if (initialBrowserViewWindow && browserView) {
+      debug(
+        'example-app:init',
+        `BrowserView window created with ID: ${initialBrowserViewWindow.id}`,
+      );
+      debug('example-app:init', `BrowserView WebContents ID: ${browserView.webContents.id}`);
+    } else {
+      debug('example-app:init', 'BrowserView window skipped (disabled in test mode)');
+    }
+
+    debug('example-app:init', 'Initializing WebContentsView window');
+    const { window: initialWebContentsViewWindow, webContentsView } =
+      await windows.initWebContentsViewWindow();
+    if (initialWebContentsViewWindow && webContentsView) {
+      debug(
+        'example-app:init',
+        `WebContentsView window created with ID: ${initialWebContentsViewWindow.id}`,
+      );
+      debug(
+        'example-app:init',
+        `WebContentsView WebContents ID: ${webContentsView.webContents.id}`,
+      );
+    } else {
+      debug('example-app:init', 'WebContentsView window skipped (disabled in test mode)');
     }
 
     // Create a more general array that accepts different window/view types

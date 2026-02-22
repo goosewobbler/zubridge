@@ -81,7 +81,9 @@ export class ActionScheduler extends EventEmitter {
     debug('scheduler', 'ActionScheduler initialized');
 
     // Listen for thunk completion events to process queued actions
-    this.thunkManager.on('thunk:completed', () => {
+    // Use ROOT_THUNK_COMPLETED to ensure queue is processed when the blocking thunk finishes
+    this.thunkManager.on('thunk:root:completed', () => {
+      debug('scheduler', 'Root thunk completed, processing queue');
       this.processQueue();
     });
   }
