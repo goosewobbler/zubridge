@@ -3,7 +3,9 @@ import { TIMING } from '../constants.js';
 import { getButtonInCurrentWindow } from './window.js';
 
 export async function waitForBatcherFlush(): Promise<void> {
-  await browser.pause(50);
+  // Wait longer than the batching window (16ms) to ensure all actions are processed
+  // Include additional time for IPC round-trip
+  await browser.pause(100);
 }
 
 /**
