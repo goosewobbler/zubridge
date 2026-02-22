@@ -85,7 +85,7 @@ describe('ActionScheduler', () => {
 
   describe('constructor', () => {
     it('should initialize with thunk manager', () => {
-      expect(thunkManager.on).toHaveBeenCalledWith('thunk:completed', expect.any(Function));
+      expect(thunkManager.on).toHaveBeenCalledWith('thunk:root:completed', expect.any(Function));
     });
   });
 
@@ -514,7 +514,7 @@ describe('ActionScheduler', () => {
 
       // Simulate thunk completion event
       const eventHandler = thunkManager.on.mock.calls.find(
-        ([event]) => event === 'thunk:completed',
+        ([event]) => event === 'thunk:root:completed',
       )[1];
       eventHandler();
 
