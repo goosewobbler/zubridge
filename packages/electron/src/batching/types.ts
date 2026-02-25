@@ -51,3 +51,28 @@ export interface BatchStats {
 }
 
 export type SendBatchFn = (batch: BatchPayload) => Promise<BatchAckPayload>;
+
+/**
+ * Priority levels for action scheduling and batching.
+ * Higher values indicate higher priority.
+ *
+ * Priority assignment rules:
+ * - BYPASS_THUNK_LOCK (100): Actions with __bypassThunkLock flag, always execute immediately
+ * - ROOT_THUNK_ACTION (70): Actions belonging to the active root thunk
+ * - NORMAL_THUNK_ACTION (50): Regular thunk-dispatched actions
+ * - NORMAL_ACTION (0): Regular actions without special flags
+ *
+ * These priorities are used by:
+ * - ActionBatcher: For determining immediate flush and queue ordering
+ * - ActionScheduler: For determining execution priority when processing queued actions
+ */
+export const PRIORITY_LEVELS = {
+  /** Actions with bypassThunkLock - highest priority, skip all queues */
+  BYPASS_THUNK_LOCK: 100,
+  /** Actions belonging to the active root thunk - high priority */
+  ROOT_THUNK_ACTION: 70,
+  /** Regular thunk-dispatched actions - medium priority */
+  NORMAL_THUNK_ACTION: 50,
+  /** Regular actions without special flags - lowest priority */
+  NORMAL_ACTION: 0,
+} as const;

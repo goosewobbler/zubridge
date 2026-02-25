@@ -7,6 +7,7 @@ import type {
   QueuedAction,
   SendBatchFn,
 } from './types.js';
+import { PRIORITY_LEVELS } from './types.js';
 
 const uuidv4 = (): string => {
   return self.crypto.randomUUID();
@@ -175,6 +176,9 @@ export class ActionBatcher {
   /**
    * Flush pending actions and return result with batch stats.
    * This is used for manual flush from thunks.
+   *
+   * Note: The lastFlushResult is cleared after retrieval to prevent memory accumulation
+   * in long-running processes where flushWithResult is called infrequently.
    */
   async flushWithResult(force = false): Promise<FlushResult> {
     if (this.queue.length === 0 && !this.isFlushing) {
@@ -184,8 +188,10 @@ export class ActionBatcher {
     // Perform the flush
     await this.flush(force);
 
-    // Return the stored result
-    return this.lastFlushResult || { batchId: '', actionsSent: 0, actionIds: [] };
+    // Return the stored result and clear it to prevent memory accumulation
+    const result = this.lastFlushResult || { batchId: '', actionsSent: 0, actionIds: [] };
+    this.lastFlushResult = null;
+    return result;
   }
 
   private prepareBatch(): QueuedAction[] {
@@ -253,8 +259,21 @@ export class ActionBatcher {
   }
 }
 
+/**
+ * Calculate the priority for an action based on its flags.
+ * Uses centralized PRIORITY_LEVELS constants for consistency across the system.
+ *
+ * Priority rules:
+ * - Actions with __bypassThunkLock get BYPASS_THUNK_LOCK priority (100)
+ * - Actions with __thunkParentId get ROOT_THUNK_ACTION priority (70)
+ * - All other actions get NORMAL_THUNK_ACTION priority (50)
+ *
+ * Note: This function is used in the renderer process (ActionBatcher).
+ * The main process (ActionScheduler) has a more complex priority calculation
+ * that also considers the active root thunk context.
+ */
 export function calculatePriority(action: Action): number {
-  if (action.__bypassThunkLock) return 100;
-  if (action.__thunkParentId) return 70;
-  return 50;
+  if (action.__bypassThunkLock) return PRIORITY_LEVELS.BYPASS_THUNK_LOCK;
+  if (action.__thunkParentId) return PRIORITY_LEVELS.ROOT_THUNK_ACTION;
+  return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
 }

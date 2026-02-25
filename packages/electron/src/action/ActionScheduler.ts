@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { PRIORITY_LEVELS } from '../batching/types.js';
 import { ResourceManagementError } from '../errors/index.js';
 import type { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
 import type { ThunkManager } from '../thunk/ThunkManager.js';
@@ -453,38 +454,37 @@ export class ActionScheduler extends EventEmitter {
   /**
    * Get the priority for an action
    * Higher priority actions are executed first
+   *
+   * This method uses PRIORITY_LEVELS constants for consistency with ActionBatcher.
+   * However, ActionScheduler has additional context-aware logic:
+   * - It can determine if a thunk action belongs to the active root thunk
+   * - It distinguishes between thunk actions with and without bypass flags
+   *
+   * Priority assignment:
+   * - BYPASS_THUNK_LOCK (100): Actions with __bypassThunkLock flag
+   * - ROOT_THUNK_ACTION (70): Actions belonging to the active root thunk
+   * - NORMAL_THUNK_ACTION (50): Other thunk-dispatched actions
+   * - NORMAL_ACTION (0): Regular actions
    */
   private getPriorityForAction(action: Action): number {
-    // Priority levels (higher is more important):
-    // 100: System actions (bypass thunk lock)
-    // 80: Root thunk actions
-    // 60: Child thunk actions that can run concurrently
-    // 50: Child thunk actions (normal)
-    // 30: Regular actions with bypassThunkLock
-    // 0: Regular actions
-
     // Bypass thunk lock actions get highest priority
     if (action.__bypassThunkLock) {
-      // Extra priority for thunk actions with bypass
-      if (action.__thunkParentId) {
-        return 100; // System-level thunk action with bypass
-      }
-      return 80; // Regular action with bypass
+      return PRIORITY_LEVELS.BYPASS_THUNK_LOCK;
     }
 
     // Actions belonging to the active root thunk get high priority
     const rootThunkId = this.thunkManager.getRootThunkId();
     if (rootThunkId && action.__thunkParentId === rootThunkId) {
-      return 70; // Actions in active root thunk
+      return PRIORITY_LEVELS.ROOT_THUNK_ACTION;
     }
 
     // Actions with thunk parents get medium priority
     if (action.__thunkParentId) {
-      return 50; // Regular thunk actions
+      return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
     }
 
     // Default priority for regular actions
-    return 0;
+    return PRIORITY_LEVELS.NORMAL_ACTION;
   }
 
   /**
@@ -500,14 +500,14 @@ export class ActionScheduler extends EventEmitter {
     // Determine priority of new action
     const newPriority = this.getPriorityForAction(newAction);
 
-    // Find low-priority actions that can be dropped (priority < 50)
+    // Find low-priority actions that can be dropped (priority < NORMAL_THUNK_ACTION)
     const droppableActions = this.queue
-      .filter((queuedAction) => queuedAction.priority < 50)
+      .filter((queuedAction) => queuedAction.priority < PRIORITY_LEVELS.NORMAL_THUNK_ACTION)
       .sort((a, b) => a.priority - b.priority || a.receivedTime - b.receivedTime); // Lowest priority and oldest first
 
     if (droppableActions.length === 0) {
       // No low-priority actions to drop
-      if (newPriority < 50) {
+      if (newPriority < PRIORITY_LEVELS.NORMAL_THUNK_ACTION) {
         // New action is also low priority, reject it
         debug(
           'scheduler:overflow',
@@ -579,7 +579,12 @@ export class ActionScheduler extends EventEmitter {
 
     for (const queuedAction of this.queue) {
       const priority = queuedAction.priority;
-      const priorityName = priority >= 80 ? 'High' : priority >= 50 ? 'Normal' : 'Low';
+      const priorityName =
+        priority >= PRIORITY_LEVELS.ROOT_THUNK_ACTION
+          ? 'High'
+          : priority >= PRIORITY_LEVELS.NORMAL_THUNK_ACTION
+            ? 'Normal'
+            : 'Low';
       priorityDistribution[priorityName] = (priorityDistribution[priorityName] || 0) + 1;
     }
 
