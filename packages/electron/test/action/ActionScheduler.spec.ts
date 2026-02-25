@@ -273,12 +273,17 @@ describe('ActionScheduler', () => {
     });
 
     it('should return false when blocking tasks are running', () => {
-      thunkManager.getRootThunkId.mockReturnValue(null);
+      thunkManager.getRootThunkId.mockReturnValue('active-thunk');
+      thunkManager.isThunkActive.mockReturnValue(true);
       thunkManager.getScheduler.mockReturnValue({
         getRunningTasks: vi.fn(() => [{ canRunConcurrently: false }]),
       });
 
-      const action: Action = { type: 'TEST_ACTION', __id: 'test-id' };
+      const action: Action = {
+        type: 'TEST_ACTION',
+        __id: 'test-id',
+        __thunkParentId: 'active-thunk',
+      };
 
       const result = scheduler.canExecuteImmediately(action);
 
@@ -286,12 +291,17 @@ describe('ActionScheduler', () => {
     });
 
     it('should return true when only concurrent tasks are running', () => {
-      thunkManager.getRootThunkId.mockReturnValue(null);
+      thunkManager.getRootThunkId.mockReturnValue('active-thunk');
+      thunkManager.isThunkActive.mockReturnValue(true);
       thunkManager.getScheduler.mockReturnValue({
         getRunningTasks: vi.fn(() => [{ canRunConcurrently: true }, { canRunConcurrently: true }]),
       });
 
-      const action: Action = { type: 'TEST_ACTION', __id: 'test-id' };
+      const action: Action = {
+        type: 'TEST_ACTION',
+        __id: 'test-id',
+        __thunkParentId: 'active-thunk',
+      };
 
       const result = scheduler.canExecuteImmediately(action);
 

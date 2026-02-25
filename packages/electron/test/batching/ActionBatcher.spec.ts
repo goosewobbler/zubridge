@@ -514,6 +514,73 @@ describe('ActionBatcher', () => {
       expect(sendBatchCalls[1].actions[0].action.type).toBe('HIGH_PRIORITY');
     });
   });
+
+  describe('flushWithResult', () => {
+    it('should return FlushResult with batch stats', async () => {
+      const actions = [
+        createTestAction('ACTION_1'),
+        createTestAction('ACTION_2'),
+        createTestAction('ACTION_3'),
+      ];
+
+      actions.forEach((action) => {
+        batcher.enqueue(
+          action,
+          () => {},
+          () => {},
+          50,
+        );
+      });
+
+      const result = await batcher.flushWithResult(true);
+
+      expect(result.actionsSent).toBe(3);
+      expect(result.batchId).toBeDefined();
+      expect(result.actionIds).toHaveLength(3);
+      expect(result.actionIds).toContain(actions[0].__id);
+      expect(result.actionIds).toContain(actions[1].__id);
+      expect(result.actionIds).toContain(actions[2].__id);
+    });
+
+    it('should return empty result when queue is empty', async () => {
+      const result = await batcher.flushWithResult(true);
+
+      expect(result.actionsSent).toBe(0);
+      expect(result.batchId).toBe('');
+      expect(result.actionIds).toHaveLength(0);
+    });
+
+    it('should force flush when force=true', async () => {
+      batcher.enqueue(
+        createTestAction('ACTION_1'),
+        () => {},
+        () => {},
+        50,
+      );
+
+      // Don't advance timers - flushWithResult with force should still flush
+      const result = await batcher.flushWithResult(true);
+
+      expect(result.actionsSent).toBe(1);
+      expect(mockSendBatch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return result with zero actions on batch failure', async () => {
+      mockSendBatch.mockRejectedValue(new Error('Batch failed'));
+
+      batcher.enqueue(
+        createTestAction('ACTION_1'),
+        () => {},
+        () => {},
+        50,
+      );
+
+      const result = await batcher.flushWithResult(true);
+
+      expect(result.actionsSent).toBe(0);
+      expect(result.actionIds).toHaveLength(0);
+    });
+  });
 });
 
 describe('calculatePriority', () => {
