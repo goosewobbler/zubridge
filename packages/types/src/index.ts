@@ -138,11 +138,7 @@ export type Dispatch<S> = {
  * Dispatch function available inside thunks with batch support.
  * Provides dispatch.batch() for opt-in batching and dispatch.flush() for manual flush.
  */
-export interface ThunkDispatch {
-  // Standard dispatch
-  (action: Action): Promise<void>;
-  (action: Action, options: DispatchOptions): Promise<void>;
-
+export interface ThunkDispatch<S = AnyState> extends Dispatch<S> {
   // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
   batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
 

@@ -524,14 +524,14 @@ export const preloadBridge = <S extends AnyState>(
             // Thunk actions use direct dispatch by default to avoid deadlock
             // unless explicitly opted in via options.batch
             const isThunkAction = !!parentId;
-            const shouldBatch =
-              actionBatcher &&
-              !action.__bypassThunkLock &&
-              (!isThunkAction || options?.batch === true);
+            const batcher = actionBatcher;
 
-            if (shouldBatch) {
+            if (
+              batcher &&
+              !action.__bypassThunkLock &&
+              (!isThunkAction || options?.batch === true)
+            ) {
               const priority = calculatePriority(action);
-              const batcher = actionBatcher;
               const actionId = action.__id as string;
               return new Promise<void>((resolve, reject) => {
                 batcher.enqueue(
