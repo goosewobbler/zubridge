@@ -3,6 +3,7 @@ import type {
   Action,
   AnyState,
   DispatchOptions,
+  FlushResult,
   Handlers,
   InternalThunk,
   Thunk,
@@ -509,14 +510,26 @@ export const preloadBridge = <S extends AnyState>(
         thunkProcessor.initialize({
           windowId,
           // Function to send actions to main process (uses batcher if enabled)
-          actionSender: async (action: Action, parentId?: string) => {
+          actionSender: async (
+            action: Action,
+            parentId?: string,
+            options?: { batch?: boolean },
+          ) => {
             debug(
               'ipc',
-              `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}`,
+              `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}${options?.batch ? ', batched' : ''}`,
             );
 
-            // bypassThunkLock actions should use direct dispatch for immediate execution
-            if (actionBatcher && !action.__bypassThunkLock) {
+            // Determine if we should batch this action
+            // Thunk actions use direct dispatch by default to avoid deadlock
+            // unless explicitly opted in via options.batch
+            const isThunkAction = !!parentId;
+            const shouldBatch =
+              actionBatcher &&
+              !action.__bypassThunkLock &&
+              (!isThunkAction || options?.batch === true);
+
+            if (shouldBatch) {
               const priority = calculatePriority(action);
               const batcher = actionBatcher;
               const actionId = action.__id as string;
@@ -537,6 +550,13 @@ export const preloadBridge = <S extends AnyState>(
             }
 
             ipcRenderer.send(IpcChannel.DISPATCH, { action, parentId });
+          },
+          // Function to flush pending batched actions
+          batchFlusher: async (): Promise<FlushResult> => {
+            if (!actionBatcher) {
+              return { batchId: '', actionsSent: 0, actionIds: [] };
+            }
+            return actionBatcher.flushWithResult(true);
           },
           // Function to register thunks with main process
           thunkRegistrar: async (

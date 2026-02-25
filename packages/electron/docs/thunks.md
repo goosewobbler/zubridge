@@ -414,3 +414,148 @@ For more information on integrating thunks with your application:
 - [API Reference](./api-reference.md) - Complete reference including DispatchOptions for bypass flags
 - [Main Process](./main-process.md) - Detailed guide for using Zubridge in the main process
 - [Renderer Process](./renderer-process.md) - Detailed guide for using Zubridge in the renderer process
+
+## Batched Dispatch for Thunks
+
+By default, thunk actions use direct dispatch to avoid potential deadlocks when actions are queued in the main process. However, you can opt into batching for thunk actions to reduce IPC overhead when dispatching multiple actions in quick succession.
+
+### Basic Usage
+
+Use `dispatch.batch()` to opt into batching for a specific action:
+
+```typescript
+const batchThunk = async (getState, dispatch) => {
+  // Direct dispatch (default) - each action is sent immediately
+  await dispatch({ type: 'FIRST_ACTION' });
+
+  // Batched dispatch - actions are grouped together
+  void dispatch.batch({ type: 'SECOND_ACTION' });  // Fire-and-forget
+  void dispatch.batch({ type: 'THIRD_ACTION' });   // Fire-and-forget
+
+  // Manually flush the batch
+  const result = await dispatch.flush();
+  console.log(`Sent ${result.actionsSent} actions in batch ${result.batchId}`);
+};
+```
+
+### Await Semantics
+
+The `await` keyword controls when the promise resolves:
+
+| Pattern | Waits For |
+|---------|-----------|
+| `await dispatch.batch(action)` | Action completion in main process |
+| `void dispatch.batch(action)` | Batch ACK only (fire-and-forget) |
+| `await dispatch.flush()` | All pending actions to complete |
+| `void dispatch.flush()` | Batch ACK only |
+
+```typescript
+const exampleThunk = async (getState, dispatch) => {
+  // Waits for action to complete
+  await dispatch.batch({ type: 'WAIT_FOR_ME' });
+
+  // Fire-and-forget - continues immediately after ACK
+  void dispatch.batch({ type: 'BACKGROUND_TASK' });
+
+  // Flush and wait for all to complete
+  const result = await dispatch.flush();
+};
+```
+
+### Options-Based Batching
+
+You can also use the `batch` option with the standard dispatch:
+
+```typescript
+const thunkWithOptions = async (getState, dispatch) => {
+  // These are equivalent:
+  await dispatch({ type: 'ACTION' }, { batch: true });
+  await dispatch.batch({ type: 'ACTION' });
+
+  // Combine with other options
+  await dispatch.batch({ type: 'URGENT' }, { bypassThunkLock: true });
+};
+```
+
+### Manual Flush
+
+Actions batched with `dispatch.batch()` are automatically flushed after the configured batch window (default: 16ms). You can force an immediate flush with `dispatch.flush()`:
+
+```typescript
+const flushThunk = async (getState, dispatch) => {
+  // Queue multiple actions
+  void dispatch.batch({ type: 'UPDATE_1' });
+  void dispatch.batch({ type: 'UPDATE_2' });
+  void dispatch.batch({ type: 'UPDATE_3' });
+
+  // Force immediate send and wait for completion
+  const result = await dispatch.flush();
+  // result: { batchId: string, actionsSent: 3, actionIds: string[] }
+};
+```
+
+### When to Use Batched Dispatch
+
+**Good use cases:**
+- Dispatching many actions in rapid succession (e.g., syncing a large dataset)
+- Bulk updates where individual action timing doesn't matter
+- Background operations where fire-and-forget is acceptable
+
+**Avoid when:**
+- You need precise timing between actions
+- Actions have dependencies on each other's state updates
+- Error handling for individual actions is critical
+
+### Error Handling
+
+Errors behave differently depending on how you dispatch:
+
+```typescript
+try {
+  // Errors are caught
+  await dispatch.batch({ type: 'MIGHT_FAIL' });
+} catch (error) {
+  console.error('Action failed:', error);
+}
+
+// Fire-and-forget: errors after ACK are lost
+void dispatch.batch({ type: 'BACKGROUND' });
+```
+
+### Performance Considerations
+
+Batching reduces IPC overhead by grouping multiple actions into a single message. For thunks that dispatch many actions, this can significantly improve performance:
+
+```typescript
+// Without batching: 100 IPC calls
+const slowThunk = async (getState, dispatch) => {
+  for (let i = 0; i < 100; i++) {
+    await dispatch({ type: 'UPDATE', payload: { id: i } });
+  }
+};
+
+// With batching: ~1 IPC call (depending on timing)
+const fastThunk = async (getState, dispatch) => {
+  for (let i = 0; i < 100; i++) {
+    void dispatch.batch({ type: 'UPDATE', payload: { id: i } });
+  }
+  await dispatch.flush();
+};
+```
+
+### FlushResult
+
+The `dispatch.flush()` method returns a `FlushResult` object:
+
+```typescript
+interface FlushResult {
+  /** Unique identifier for the batch that was sent */
+  batchId: string;
+  /** Number of actions that were sent in the batch */
+  actionsSent: number;
+  /** IDs of the actions that were sent */
+  actionIds: string[];
+}
+```
+
+This can be useful for logging, debugging, or correlating batch sends with other operations.

@@ -204,8 +204,8 @@ export class ThunkLifecycleManager extends EventEmitter {
     // Check if this was the root thunk
     if (this.rootThunkId === thunkId) {
       debug('thunk', `Root thunk ${thunkId} completed`);
-      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, thunk);
       this.rootThunkId = undefined;
+      this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, thunk);
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, undefined);
     }
 

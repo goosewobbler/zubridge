@@ -222,6 +222,17 @@ export class ActionScheduler extends EventEmitter {
       }
     }
 
+    // If there's no active thunk, the action can execute immediately
+    // This is important because ThunkScheduler.runningTasks might still have stale entries
+    // that haven't been cleaned up yet when a thunk just completed
+    if (!hasActiveThunk) {
+      debug(
+        'scheduler',
+        `No active thunk, action ${action.type} (${action.__id}) can execute immediately`,
+      );
+      return true;
+    }
+
     // Get running tasks from scheduler
     const runningTasks = this.getScheduler().getRunningTasks();
     debug('scheduler-debug', `[DECISION] Running tasks: ${runningTasks.length}`);

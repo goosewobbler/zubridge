@@ -1,5 +1,5 @@
 import { debug } from '@zubridge/core';
-import type { Action } from '@zubridge/types';
+import type { Action, FlushResult } from '@zubridge/types';
 import type {
   BatchingConfig,
   BatchPayload,
@@ -17,6 +17,7 @@ export class ActionBatcher {
   private flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
   private pendingForceFlush = false;
+  private lastFlushResult: FlushResult | null = null;
   private stats = {
     totalBatches: 0,
     totalActions: 0,
@@ -112,6 +113,7 @@ export class ActionBatcher {
 
     const batch = this.prepareBatch();
     const batchId = uuidv4();
+    const actionIds = batch.map((item) => item.id);
 
     debug('batching', `Flushing batch ${batchId} with ${batch.length} actions`);
 
@@ -147,11 +149,15 @@ export class ActionBatcher {
           item.resolve(item.action);
         }
       }
+
+      // Store the result for flushWithResult to retrieve
+      this.lastFlushResult = { batchId, actionsSent: batch.length, actionIds };
     } catch (error) {
       debug('batching:error', `Batch ${batchId} failed:`, error);
       batch.forEach((item) => {
         item.reject(error);
       });
+      this.lastFlushResult = { batchId, actionsSent: 0, actionIds: [] };
     } finally {
       this.isFlushing = false;
 
@@ -164,6 +170,22 @@ export class ActionBatcher {
         this.scheduleFlush();
       }
     }
+  }
+
+  /**
+   * Flush pending actions and return result with batch stats.
+   * This is used for manual flush from thunks.
+   */
+  async flushWithResult(force = false): Promise<FlushResult> {
+    if (this.queue.length === 0 && !this.isFlushing) {
+      return { batchId: '', actionsSent: 0, actionIds: [] };
+    }
+
+    // Perform the flush
+    await this.flush(force);
+
+    // Return the stored result
+    return this.lastFlushResult || { batchId: '', actionsSent: 0, actionIds: [] };
   }
 
   private prepareBatch(): QueuedAction[] {

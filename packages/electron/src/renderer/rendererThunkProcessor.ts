@@ -1,5 +1,12 @@
 import { debug } from '@zubridge/core';
-import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from '@zubridge/types';
+import type {
+  Action,
+  AnyState,
+  DispatchOptions,
+  FlushResult,
+  InternalThunk,
+  ThunkDispatch,
+} from '@zubridge/types';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
 import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';
@@ -15,7 +22,14 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
   private currentWindowId?: number;
 
   // Function to send actions to main process
-  private actionSender?: (action: Action, parentId?: string) => Promise<void>;
+  private actionSender?: (
+    action: Action,
+    parentId?: string,
+    options?: { batch?: boolean },
+  ) => Promise<void>;
+
+  // Function to flush pending batched actions
+  private batchFlusher?: () => Promise<FlushResult>;
 
   // Function to register thunks with main process
   private thunkRegistrar?: (
@@ -44,7 +58,12 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
    */
   public initialize(options: {
     windowId: number;
-    actionSender: (action: Action, parentId?: string) => Promise<void>;
+    actionSender: (
+      action: Action,
+      parentId?: string,
+      options?: { batch?: boolean },
+    ) => Promise<void>;
+    batchFlusher?: () => Promise<FlushResult>;
     thunkRegistrar: (
       thunkId: string,
       parentId?: string,
@@ -58,6 +77,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
     debug('ipc', '[RENDERER_THUNK] Initializing with options:', options);
     this.currentWindowId = options.windowId;
     this.actionSender = options.actionSender;
+    this.batchFlusher = options.batchFlusher;
     this.thunkRegistrar = options.thunkRegistrar;
     this.thunkCompleter = options.thunkCompleter;
 
@@ -169,13 +189,41 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       };
 
       // Create a dispatch function for this thunk that tracks each action
-      const dispatch: Dispatch<S> = async (
+      const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
-        payload?: unknown,
-      ) => {
+        payloadOrOptions?: unknown | DispatchOptions,
+        maybeOptions?: DispatchOptions,
+      ): Promise<unknown> => {
+        // Determine if second arg is payload or options
+        let payload: unknown;
+        let dispatchOptions: DispatchOptions | undefined;
+
+        if (payloadOrOptions !== undefined) {
+          // Check if it looks like DispatchOptions
+          if (
+            payloadOrOptions &&
+            typeof payloadOrOptions === 'object' &&
+            !Array.isArray(payloadOrOptions) &&
+            ('batch' in payloadOrOptions ||
+              'bypassAccessControl' in payloadOrOptions ||
+              'bypassThunkLock' in payloadOrOptions ||
+              'keys' in payloadOrOptions)
+          ) {
+            dispatchOptions = payloadOrOptions as DispatchOptions;
+          } else {
+            // It's payload
+            payload = payloadOrOptions;
+            dispatchOptions = maybeOptions;
+          }
+        } else {
+          dispatchOptions = maybeOptions;
+        }
+
+        const isBatched = dispatchOptions?.batch === true;
+
         debug(
           'ipc',
-          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (bypassThunkLock=${thunk.bypassThunkLock})`,
+          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (bypassThunkLock=${thunk.bypassThunkLock}, batch=${isBatched})`,
           action,
         );
 
@@ -183,17 +231,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         if (typeof action === 'function') {
           debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunk.id}`);
           // For nested thunks, we use the current thunk ID as the parent
-          return this.executeThunk(action, options, thunk.id);
+          return this.executeThunk(action, dispatchOptions, thunk.id);
         }
 
         // Handle string actions by converting to action objects
         const actionObj = this.ensureActionId(action, payload);
 
-        // Pass through bypass flags from the thunk to the action
-        if (thunk.bypassThunkLock) {
+        // Pass through bypass flags from options or thunk
+        if (dispatchOptions?.bypassThunkLock ?? thunk.bypassThunkLock) {
           actionObj.__bypassThunkLock = true;
         }
-        if (thunk.bypassAccessControl) {
+        if (dispatchOptions?.bypassAccessControl ?? thunk.bypassAccessControl) {
           actionObj.__bypassAccessControl = true;
         }
 
@@ -214,8 +262,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         // Check queue size before adding
         this.checkQueueCapacity(this.pendingDispatches.size);
 
-        // Add to pending dispatches BEFORE creating the promise to ensure
-        // getState can find it immediately
+        // Add to pending dispatches BEFORE creating the promise
         this.pendingDispatches.add(actionId);
         debug(
           'ipc',
@@ -258,7 +305,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         if (this.actionSender) {
           try {
             debug('ipc', `[RENDERER_THUNK] Sending action ${actionId} to main process`);
-            await this.actionSender(actionObj, thunk.id);
+            await this.actionSender(actionObj, thunk.id, { batch: isBatched });
             debug('ipc', `[RENDERER_THUNK] Action ${actionId} sent to main process`);
           } catch (error: unknown) {
             // If sending fails, complete the action with error and clean up
@@ -277,6 +324,24 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
 
         return actionPromise;
       };
+
+      // Create the ThunkDispatch with batch and flush methods
+      const dispatch = Object.assign(baseDispatch, {
+        // Batched dispatch shorthand
+        batch: async (action: Action, opts?: Omit<DispatchOptions, 'batch'>): Promise<void> => {
+          await baseDispatch(action, { ...opts, batch: true });
+        },
+
+        // Flush pending batched actions
+        flush: async (): Promise<FlushResult> => {
+          debug('ipc', `[RENDERER_THUNK] [${thunk.id}] Flushing pending batched actions`);
+          if (!this.batchFlusher) {
+            debug('ipc', '[RENDERER_THUNK] No batch flusher available');
+            return { batchId: '', actionsSent: 0, actionIds: [] };
+          }
+          return this.batchFlusher();
+        },
+      }) as ThunkDispatch<S>;
 
       // Execute the thunk with the local dispatch function and state
       debug('ipc', `[RENDERER_THUNK] Executing thunk function for ${thunk.id}`);

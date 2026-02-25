@@ -109,7 +109,21 @@ export type DispatchOptions = {
   keys?: string[];
   bypassAccessControl?: boolean;
   bypassThunkLock?: boolean;
+  /** Enable batching for this thunk action. Default: false (direct dispatch) */
+  batch?: boolean;
 };
+
+/**
+ * Result of flushing pending batched actions
+ */
+export interface FlushResult {
+  /** Unique identifier for the batch that was sent */
+  batchId: string;
+  /** Number of actions that were sent in the batch */
+  actionsSent: number;
+  /** IDs of the actions that were sent */
+  actionIds: string[];
+}
 
 export type Dispatch<S> = {
   // String action with optional payload and options
@@ -119,6 +133,24 @@ export type Dispatch<S> = {
   // Thunk with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 };
+
+/**
+ * Dispatch function available inside thunks with batch support.
+ * Provides dispatch.batch() for opt-in batching and dispatch.flush() for manual flush.
+ */
+export interface ThunkDispatch {
+  // Standard dispatch
+  (action: Action): Promise<void>;
+  (action: Action, options: DispatchOptions): Promise<void>;
+
+  // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
+  batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
+
+  // Flush pending batched actions immediately
+  // - await dispatch.flush() waits for all actions to complete
+  // - void dispatch.flush() waits for ACK only
+  flush(): Promise<FlushResult>;
+}
 
 interface BaseHandler<S> {
   dispatch: Dispatch<S>;

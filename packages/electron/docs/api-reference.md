@@ -498,6 +498,7 @@ type DispatchOptions = {
   keys?: string[];                  // Selective subscription keys
   bypassAccessControl?: boolean;    // Skip access control checks
   bypassThunkLock?: boolean;        // Skip thunk locking mechanism
+  batch?: boolean;                  // Enable batching for thunk actions
 };
 ```
 
@@ -506,6 +507,62 @@ These options allow for advanced control over action dispatch:
 - `keys`: When provided, only subscribers with matching keys will receive state updates
 - `bypassAccessControl`: Allows actions to bypass normal access control restrictions
 - `bypassThunkLock`: Allows actions to execute even when thunks are currently running, bypassing the normal action sequencing
+- `batch`: When `true`, enables batching for thunk actions. By default, thunk actions use direct dispatch to avoid deadlocks. Set this to `true` to opt into batching for reduced IPC overhead.
+
+### `ThunkDispatch`
+
+Extended dispatch function available inside thunks, with batch support.
+
+```ts
+interface ThunkDispatch<S = AnyState> {
+  // Standard dispatch
+  (action: Action): Promise<void>;
+  (action: Action, options: DispatchOptions): Promise<void>;
+  
+  // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
+  batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
+  
+  // Flush pending batched actions immediately
+  flush(): Promise<FlushResult>;
+}
+```
+
+**Usage inside thunks:**
+
+```ts
+const myThunk = async (getState, dispatch) => {
+  // Direct dispatch (default)
+  await dispatch({ type: 'A' });
+  
+  // Batched dispatch
+  void dispatch.batch({ type: 'B' });
+  
+  // Flush and wait for completion
+  const result = await dispatch.flush();
+};
+```
+
+### `FlushResult`
+
+Result returned by `dispatch.flush()` when flushing pending batched actions.
+
+```ts
+interface FlushResult {
+  /** Unique identifier for the batch that was sent */
+  batchId: string;
+  /** Number of actions that were sent in the batch */
+  actionsSent: number;
+  /** IDs of the actions that were sent */
+  actionIds: string[];
+}
+```
+
+**Example:**
+
+```ts
+const result = await dispatch.flush();
+console.log(`Batch ${result.batchId} sent ${result.actionsSent} actions`);
+```
 
 ### `CoreBridgeOptions`
 

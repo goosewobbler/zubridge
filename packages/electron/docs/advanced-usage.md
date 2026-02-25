@@ -355,6 +355,25 @@ cd packages/electron
 pnpm bench
 ```
 
+### Batching Thunk Actions
+
+By default, thunk actions bypass batching to avoid potential deadlocks. However, you can opt into batching for thunk actions when needed. This is useful for thunks that dispatch many actions in quick succession.
+
+```typescript
+const bulkUpdateThunk = async (getState, dispatch) => {
+  // Opt into batching for thunk actions
+  void dispatch.batch({ type: 'UPDATE', payload: { id: 1 } });
+  void dispatch.batch({ type: 'UPDATE', payload: { id: 2 } });
+  void dispatch.batch({ type: 'UPDATE', payload: { id: 3 } });
+  
+  // Flush immediately or let the batch window handle it
+  const result = await dispatch.flush();
+  console.log(`Sent ${result.actionsSent} actions in one batch`);
+};
+```
+
+For detailed documentation on batched dispatch for thunks, including await semantics and error handling, see the [Thunks guide](./thunks.md#batched-dispatch-for-thunks).
+
 ## Next Steps
 
 For more detailed information:

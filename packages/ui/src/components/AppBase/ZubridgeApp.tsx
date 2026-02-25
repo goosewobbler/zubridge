@@ -1,5 +1,5 @@
 import { debug } from '@zubridge/core';
-import type { Action, AnyState, Dispatch, Thunk } from '@zubridge/types';
+import type { AnyState, Dispatch, Thunk } from '@zubridge/types';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import type { CounterMethod } from '../../types.js';
 import { BypassControls } from '../BypassControls';
