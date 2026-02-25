@@ -64,6 +64,14 @@ export class ActionScheduler extends EventEmitter {
   private processing = false;
 
   /**
+   * Flag to indicate queue needs sorting before processing
+   * This deferred sorting approach avoids O(n log n) sort on every enqueue,
+   * instead sorting only once when processing the queue.
+   * Performance improvement: O(n log n) per process vs O(n² log n) for n enqueues
+   */
+  private needsSort = false;
+
+  /**
    * ThunkManager reference for concurrency decisions
    */
   private thunkManager: ThunkManager;
@@ -158,8 +166,9 @@ export class ActionScheduler extends EventEmitter {
       onComplete,
     });
 
-    // Sort queue by priority (highest first) and then by received time (earliest first)
-    this.sortQueue();
+    // Mark queue as needing sort (deferred sorting for performance)
+    // Sort will happen once when processQueue() is called
+    this.needsSort = true;
 
     // Emit event
     this.emit(ActionSchedulerEvents.ACTION_ENQUEUED, action);
@@ -306,6 +315,13 @@ export class ActionScheduler extends EventEmitter {
 
     try {
       debug('scheduler', `Processing queue with ${this.queue.length} actions`);
+
+      // Sort queue if needed (deferred sorting for performance)
+      // This ensures we only sort once per process cycle, not on every enqueue
+      if (this.needsSort) {
+        this.sortQueue();
+        this.needsSort = false;
+      }
 
       // Find all actions that can be executed now
       const executableActions: QueuedAction[] = [];

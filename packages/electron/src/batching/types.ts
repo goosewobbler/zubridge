@@ -48,6 +48,8 @@ export interface BatchStats {
   averageBatchSize: number;
   currentQueueSize: number;
   isFlushing: boolean;
+  rejectedActions: number;
+  queueLimit: number;
 }
 
 export type SendBatchFn = (batch: BatchPayload) => Promise<BatchAckPayload>;

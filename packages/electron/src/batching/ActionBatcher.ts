@@ -14,6 +14,13 @@ const uuidv4 = (): string => {
 };
 
 export class ActionBatcher {
+  /**
+   * Hard limit for queue size to prevent DoS attacks.
+   * Set to 4x maxBatchSize to allow some buffering while preventing unbounded growth.
+   * If queue exceeds this limit, new actions are rejected immediately.
+   */
+  private readonly HARD_QUEUE_LIMIT: number;
+
   private queue: QueuedAction[] = [];
   private flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
@@ -22,12 +29,17 @@ export class ActionBatcher {
   private stats = {
     totalBatches: 0,
     totalActions: 0,
+    rejectedActions: 0,
   };
 
   constructor(
     private config: Required<BatchingConfig>,
     private sendBatch: SendBatchFn,
-  ) {}
+  ) {
+    // Set hard limit to 4x maxBatchSize, minimum 100
+    this.HARD_QUEUE_LIMIT = Math.max(this.config.maxBatchSize * 4, 100);
+    debug('batching', `ActionBatcher initialized with hard queue limit: ${this.HARD_QUEUE_LIMIT}`);
+  }
 
   enqueue(
     action: Action,
@@ -37,6 +49,22 @@ export class ActionBatcher {
     parentId?: string,
   ): string {
     const id = (action.__id as string) || uuidv4();
+
+    // Check hard queue limit BEFORE enqueueing to prevent DoS
+    if (this.queue.length >= this.HARD_QUEUE_LIMIT) {
+      const error = new Error(
+        `ActionBatcher queue exceeded hard limit (${this.HARD_QUEUE_LIMIT}). ` +
+          'This may indicate a memory leak or DoS attack. ' +
+          `Current queue size: ${this.queue.length}`,
+      );
+      this.stats.rejectedActions++;
+      debug(
+        'batching:error',
+        `Action ${action.type} rejected: queue at hard limit (${this.queue.length}/${this.HARD_QUEUE_LIMIT})`,
+      );
+      reject(error);
+      return id;
+    }
 
     if (this.shouldFlushNow(priority)) {
       debug('batching', `Immediate flush triggered for high-priority action ${action.type}`);
@@ -238,6 +266,8 @@ export class ActionBatcher {
         this.stats.totalBatches > 0 ? this.stats.totalActions / this.stats.totalBatches : 0,
       currentQueueSize: this.queue.length,
       isFlushing: this.isFlushing,
+      rejectedActions: this.stats.rejectedActions,
+      queueLimit: this.HARD_QUEUE_LIMIT,
     };
   }
 
