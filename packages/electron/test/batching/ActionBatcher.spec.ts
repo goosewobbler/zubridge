@@ -581,6 +581,120 @@ describe('ActionBatcher', () => {
       expect(result.actionIds).toHaveLength(0);
     });
   });
+
+  describe('hard queue limit', () => {
+    it('should reject actions when queue exceeds hard limit', () => {
+      // Test with config where maxBatchSize is very large to prevent auto-flush
+      // Hard limit will be hit first (at 100 in this test, minimum hardLimit is 100)
+      const config = { ...BATCHING_DEFAULTS, maxBatchSize: 10, windowMs: 999999 };
+      batcher.destroy();
+      batcher = new ActionBatcher(config, mockSendBatch);
+
+      // Hard limit is max(maxBatchSize * 4, 100) = max(40, 100) = 100
+      const hardLimit = 100;
+
+      // Fill to exactly the hard limit
+      for (let i = 0; i < hardLimit; i++) {
+        batcher.enqueue(
+          createTestAction(`ACTION_${i}`),
+          () => {},
+          () => {},
+          50,
+        );
+      }
+
+      // Should have hit the hard limit (some items may have been flushed at maxBatchSize=10)
+      expect(batcher.getStats().queueLimit).toBe(hardLimit);
+
+      // Next action should be rejected because queue is at or near hard limit
+      let rejectedError: Error | undefined;
+      const rejectsSeen: Error[] = [];
+
+      // Keep trying to add until we get a rejection due to hard limit
+      for (let i = 0; i < 200; i++) {
+        batcher.enqueue(
+          createTestAction(`OVERFLOW_${i}`),
+          () => {},
+          (err) => {
+            rejectsSeen.push(err as Error);
+            if (!rejectedError && (err as Error).message.includes('exceeded hard limit')) {
+              rejectedError = err as Error;
+            }
+          },
+          50,
+        );
+      }
+
+      // Should have rejected some actions due to hard limit
+      expect(rejectedError).toBeDefined();
+      expect(rejectedError?.message).toContain('exceeded hard limit');
+      expect(batcher.getStats().rejectedActions).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should track rejected actions in stats', () => {
+      const config = { ...BATCHING_DEFAULTS, maxBatchSize: 10, windowMs: 999999 };
+      batcher.destroy();
+      batcher = new ActionBatcher(config, mockSendBatch);
+
+      const hardLimit = 100;
+
+      // Fill queue by adding many items quickly
+      for (let i = 0; i < hardLimit + 50; i++) {
+        batcher.enqueue(
+          createTestAction(`ACTION_${i}`),
+          () => {},
+          () => {},
+          50,
+        );
+      }
+
+      // Should have rejected some actions
+      expect(batcher.getStats().rejectedActions).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should include queue limit in stats', () => {
+      const stats = batcher.getStats();
+      expect(stats.queueLimit).toBeDefined();
+      expect(stats.queueLimit).toBe(BATCHING_DEFAULTS.maxBatchSize * 4);
+    });
+
+    it('should allow enqueue after queue is flushed below limit', async () => {
+      const hardLimit = BATCHING_DEFAULTS.maxBatchSize * 4;
+
+      // Fill to limit
+      for (let i = 0; i < hardLimit; i++) {
+        batcher.enqueue(
+          createTestAction(`ACTION_${i}`),
+          () => {},
+          () => {},
+          50,
+        );
+      }
+
+      // Flush the queue
+      vi.advanceTimersByTime(BATCHING_DEFAULTS.windowMs);
+      await vi.runAllTimersAsync();
+
+      // Queue should be empty or much smaller now
+      expect(batcher.getStats().currentQueueSize).toBeLessThan(hardLimit);
+
+      // Should be able to enqueue again
+      let resolved = false;
+      batcher.enqueue(
+        createTestAction('AFTER_FLUSH'),
+        () => {
+          resolved = true;
+        },
+        () => {},
+        50,
+      );
+
+      vi.advanceTimersByTime(BATCHING_DEFAULTS.windowMs);
+      await vi.runAllTimersAsync();
+
+      expect(resolved).toBe(true);
+    });
+  });
 });
 
 describe('calculatePriority', () => {

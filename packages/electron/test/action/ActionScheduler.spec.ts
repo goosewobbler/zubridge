@@ -382,6 +382,13 @@ describe('ActionScheduler', () => {
         { sourceWindowId: 1 },
       );
 
+      // With deferred sorting, sortQueue is only called when processQueue is called
+      expect(sortSpy).not.toHaveBeenCalled(); // Not called yet
+
+      // Trigger processing
+      scheduler.processQueue();
+
+      // Now sorting should have happened
       expect(sortSpy).toHaveBeenCalled();
     });
   });
