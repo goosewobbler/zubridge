@@ -842,8 +842,8 @@ describe('ActionBatcher', () => {
 });
 
 describe('calculatePriority', () => {
-  it('should return 100 for bypassThunkLock actions', () => {
-    const action = createTestAction('TEST', { __bypassThunkLock: true });
+  it('should return 100 for immediate actions', () => {
+    const action = createTestAction('TEST', { __immediate: true });
     expect(calculatePriority(action)).toBe(100);
   });
 
@@ -857,9 +857,9 @@ describe('calculatePriority', () => {
     expect(calculatePriority(action)).toBe(50);
   });
 
-  it('should prioritize bypassThunkLock over thunk parent', () => {
+  it('should prioritize immediate over thunk parent', () => {
     const action = createTestAction('TEST', {
-      __bypassThunkLock: true,
+      __immediate: true,
       __thunkParentId: 'parent-id',
     });
     expect(calculatePriority(action)).toBe(100);

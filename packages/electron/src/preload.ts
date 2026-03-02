@@ -300,7 +300,7 @@ export const preloadBridge = <S extends AnyState>(
         payloadOrOptions &&
         typeof payloadOrOptions === 'object' &&
         !Array.isArray(payloadOrOptions) &&
-        ('bypassAccessControl' in payloadOrOptions || 'bypassThunkLock' in payloadOrOptions);
+        ('bypassAccessControl' in payloadOrOptions || 'immediate' in payloadOrOptions);
 
       if (isOptions) {
         dispatchOptions = payloadOrOptions as DispatchOptions;
@@ -310,18 +310,18 @@ export const preloadBridge = <S extends AnyState>(
 
       // Extract bypass flags
       const bypassAccessControl = dispatchOptions.bypassAccessControl;
-      const bypassThunkLock = dispatchOptions.bypassThunkLock;
+      const immediate = dispatchOptions.immediate;
 
       debug(
         'ipc',
-        `Dispatch called with bypass flags: accessControl=${bypassAccessControl}, thunkLock=${bypassThunkLock}`,
+        `Dispatch called with bypass flags: accessControl=${bypassAccessControl}, immediate=${immediate}`,
       );
 
       // Handle thunks (functions)
       if (typeof action === 'function') {
         debug(
           'ipc',
-          `Executing thunk in renderer, bypassAccessControl=${bypassAccessControl}, bypassThunkLock=${bypassThunkLock}`,
+          `Executing thunk in renderer, bypassAccessControl=${bypassAccessControl}, immediate=${immediate}`,
         );
 
         const thunk = action as InternalThunk<S>;
@@ -329,13 +329,10 @@ export const preloadBridge = <S extends AnyState>(
         // Store the bypass flags in the options
         const thunkOptions: DispatchOptions = {
           bypassAccessControl: !!bypassAccessControl,
-          bypassThunkLock: !!bypassThunkLock,
+          immediate: !!immediate,
         };
 
-        debug(
-          'ipc',
-          `[PRELOAD] Set bypassThunkLock: ${thunkOptions.bypassThunkLock} for thunk execution`,
-        );
+        debug('ipc', `[PRELOAD] Set immediate: ${thunkOptions.immediate} for thunk execution`);
 
         try {
           // Execute the thunk directly through the thunkProcessor implementation
@@ -386,21 +383,21 @@ export const preloadBridge = <S extends AnyState>(
         actionObj.__bypassAccessControl = true;
       }
 
-      if (bypassThunkLock) {
-        actionObj.__bypassThunkLock = true;
+      if (immediate) {
+        actionObj.__immediate = true;
       }
 
       debug(
         'ipc',
         `Dispatching action: ${
           actionObj.type
-        }, bypassAccessControl=${!!actionObj.__bypassAccessControl}, bypassThunkLock=${!!actionObj.__bypassThunkLock}`,
+        }, bypassAccessControl=${!!actionObj.__bypassAccessControl}, immediate=${!!actionObj.__immediate}`,
       );
 
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
 
-      // Route through batcher when available — high-priority actions (e.g. bypassThunkLock)
+      // Route through batcher when available — high-priority actions (e.g. immediate)
       // trigger an immediate flush via the batcher's priority system, so all actions benefit
       const batcher = actionBatcher;
       if (batcher) {
@@ -542,7 +539,7 @@ export const preloadBridge = <S extends AnyState>(
             const isThunkAction = !!parentId;
             const batcher = actionBatcher;
 
-            // Route through batcher — bypassThunkLock actions get immediate flush via priority system
+            // Route through batcher — immediate actions get immediate flush via priority system
             if (batcher && (!isThunkAction || options?.batch === true)) {
               const priority = calculatePriority(action);
               const actionId = action.__id as string;
@@ -575,19 +572,16 @@ export const preloadBridge = <S extends AnyState>(
           thunkRegistrar: async (
             thunkId: string,
             parentId?: string,
-            bypassThunkLock?: boolean,
+            immediate?: boolean,
             bypassAccessControl?: boolean,
           ) => {
-            debug(
-              'ipc',
-              `[PRELOAD] Registering thunk: thunkId=${thunkId}, bypassThunkLock=${bypassThunkLock}`,
-            );
+            debug('ipc', `[PRELOAD] Registering thunk: thunkId=${thunkId}, immediate=${immediate}`);
             return new Promise<void>((resolve, reject) => {
               pendingThunkRegistrations.set(thunkId, { resolve, reject });
               ipcRenderer.send(IpcChannel.REGISTER_THUNK, {
                 thunkId,
                 parentId,
-                bypassThunkLock,
+                immediate,
                 bypassAccessControl,
               });
             });

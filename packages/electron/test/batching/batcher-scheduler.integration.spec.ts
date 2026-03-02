@@ -76,8 +76,8 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       expect(calculatePriority(createTestAction('THUNK', { __thunkParentId: 'thunk-1' }))).toBe(
         PRIORITY_LEVELS.ROOT_THUNK_ACTION,
       );
-      expect(calculatePriority(createTestAction('BYPASS', { __bypassThunkLock: true }))).toBe(
-        PRIORITY_LEVELS.BYPASS_THUNK_LOCK,
+      expect(calculatePriority(createTestAction('BYPASS', { __immediate: true }))).toBe(
+        PRIORITY_LEVELS.IMMEDIATE,
       );
     });
 
@@ -85,7 +85,7 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       // Enqueue actions with different priorities
       const normalAction = createTestAction('NORMAL');
       const thunkAction = createTestAction('THUNK', { __thunkParentId: 'thunk-1' });
-      const bypassAction = createTestAction('BYPASS', { __bypassThunkLock: true });
+      const bypassAction = createTestAction('BYPASS', { __immediate: true });
 
       // Add normal action first
       batcher.enqueue(
@@ -120,12 +120,12 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       // Verify priority values are from PRIORITY_LEVELS
       expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION);
       expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION);
-      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.BYPASS_THUNK_LOCK);
+      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.IMMEDIATE);
     });
 
     it('should immediately flush high-priority actions', async () => {
       const normalAction = createTestAction('NORMAL');
-      const highPriorityAction = createTestAction('HIGH', { __bypassThunkLock: true });
+      const highPriorityAction = createTestAction('HIGH', { __immediate: true });
 
       // Enqueue normal action
       batcher.enqueue(
@@ -191,7 +191,7 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
         createTestAction('THUNK_1', { __thunkParentId: thunkId }),
         createTestAction('NORMAL'),
         createTestAction('THUNK_2', { __thunkParentId: thunkId }),
-        createTestAction('BYPASS', { __bypassThunkLock: true }),
+        createTestAction('BYPASS', { __immediate: true }),
       ];
 
       // Enqueue all actions
@@ -212,7 +212,7 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_1
       expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION); // NORMAL
       expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_2
-      expect(processedActions[3].priority).toBe(PRIORITY_LEVELS.BYPASS_THUNK_LOCK); // BYPASS
+      expect(processedActions[3].priority).toBe(PRIORITY_LEVELS.IMMEDIATE); // BYPASS
     });
   });
 
@@ -264,10 +264,10 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
 
       // Enqueue action that meets priority threshold (>= 80)
       batcher.enqueue(
-        createTestAction('URGENT', { __bypassThunkLock: true }),
+        createTestAction('URGENT', { __immediate: true }),
         () => {},
         () => {},
-        PRIORITY_LEVELS.BYPASS_THUNK_LOCK,
+        PRIORITY_LEVELS.IMMEDIATE,
       );
 
       await vi.runAllTimersAsync();
@@ -281,7 +281,7 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
   describe('ActionScheduler priority logic', () => {
     it('should always allow bypass actions to execute immediately', () => {
       // Action with bypass flag should always execute, regardless of thunk state
-      const action = createTestAction('BYPASS_ACTION', { __bypassThunkLock: true });
+      const action = createTestAction('BYPASS_ACTION', { __immediate: true });
 
       // Check if action can execute immediately
       const canExecute = scheduler.canExecuteImmediately(action);
@@ -291,10 +291,10 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
     });
 
     it('should calculate correct priority for bypass actions', () => {
-      const action = createTestAction('BYPASS', { __bypassThunkLock: true });
+      const action = createTestAction('BYPASS', { __immediate: true });
 
-      // Verify priority is BYPASS_THUNK_LOCK level
-      expect(calculatePriority(action)).toBe(PRIORITY_LEVELS.BYPASS_THUNK_LOCK);
+      // Verify priority is IMMEDIATE level
+      expect(calculatePriority(action)).toBe(PRIORITY_LEVELS.IMMEDIATE);
     });
 
     it('should allow actions when no thunk is active', () => {
@@ -315,7 +315,7 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       expect(queueStats.currentSize).toBe(0);
 
       // Verify priority distribution for queued actions
-      const highPriorityAction = createTestAction('HIGH', { __bypassThunkLock: true });
+      const highPriorityAction = createTestAction('HIGH', { __immediate: true });
       const lowPriorityAction = createTestAction('LOW');
 
       expect(calculatePriority(highPriorityAction)).toBeGreaterThanOrEqual(
@@ -335,8 +335,8 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
           expected: PRIORITY_LEVELS.ROOT_THUNK_ACTION,
         },
         {
-          action: createTestAction('BYPASS_1', { __bypassThunkLock: true }),
-          expected: PRIORITY_LEVELS.BYPASS_THUNK_LOCK,
+          action: createTestAction('BYPASS_1', { __immediate: true }),
+          expected: PRIORITY_LEVELS.IMMEDIATE,
         },
         { action: createTestAction('NORMAL_2'), expected: PRIORITY_LEVELS.NORMAL_THUNK_ACTION },
       ];

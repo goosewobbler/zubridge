@@ -35,7 +35,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
   private thunkRegistrar?: (
     thunkId: string,
     parentId?: string,
-    bypassThunkLock?: boolean,
+    immediate?: boolean,
     bypassAccessControl?: boolean,
   ) => Promise<void>;
 
@@ -67,7 +67,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
     thunkRegistrar: (
       thunkId: string,
       parentId?: string,
-      bypassThunkLock?: boolean,
+      immediate?: boolean,
       bypassAccessControl?: boolean,
     ) => Promise<void>;
     thunkCompleter: (thunkId: string) => Promise<void>;
@@ -140,28 +140,25 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       source: 'renderer',
       parentId,
       bypassAccessControl: options?.bypassAccessControl ?? false,
-      bypassThunkLock: options?.bypassThunkLock ?? false,
+      immediate: options?.immediate ?? false,
     });
-    debug(
-      'ipc',
-      `[RENDERER_THUNK] Executing thunk ${thunk.id} (bypassThunkLock=${thunk.bypassThunkLock})`,
-    );
+    debug('ipc', `[RENDERER_THUNK] Executing thunk ${thunk.id} (immediate=${thunk.immediate})`);
 
     // Track if this is the first action in the thunk
     let isFirstAction = true;
 
-    debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} bypassThunkLock: ${thunk.bypassThunkLock}`);
+    debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} immediate: ${thunk.immediate}`);
     // Register the thunk with main process
     if (this.thunkRegistrar && this.currentWindowId) {
       try {
         debug(
           'ipc',
-          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (bypassThunkLock=${thunk.bypassThunkLock})`,
+          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (immediate=${thunk.immediate})`,
         );
         await this.thunkRegistrar(
           thunk.id,
           parentId,
-          options?.bypassThunkLock,
+          options?.immediate,
           options?.bypassAccessControl,
         );
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
@@ -206,7 +203,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
             !Array.isArray(payloadOrOptions) &&
             ('batch' in payloadOrOptions ||
               'bypassAccessControl' in payloadOrOptions ||
-              'bypassThunkLock' in payloadOrOptions ||
+              'immediate' in payloadOrOptions ||
               'keys' in payloadOrOptions)
           ) {
             dispatchOptions = payloadOrOptions as DispatchOptions;
@@ -223,7 +220,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
 
         debug(
           'ipc',
-          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (bypassThunkLock=${thunk.bypassThunkLock}, batch=${isBatched})`,
+          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (immediate=${thunk.immediate}, batch=${isBatched})`,
           action,
         );
 
@@ -238,8 +235,8 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         const actionObj = this.ensureActionId(action, payload);
 
         // Pass through bypass flags from options or thunk
-        if (dispatchOptions?.bypassThunkLock ?? thunk.bypassThunkLock) {
-          actionObj.__bypassThunkLock = true;
+        if (dispatchOptions?.immediate ?? thunk.immediate) {
+          actionObj.__immediate = true;
         }
         if (dispatchOptions?.bypassAccessControl ?? thunk.bypassAccessControl) {
           actionObj.__bypassAccessControl = true;

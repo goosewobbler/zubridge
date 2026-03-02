@@ -95,6 +95,45 @@ Implement delta calculation to send only the changed portions of state, rather t
 - [ ] Works across all platforms (Electron, Tauri, future targets)
 - [ ] Configuration option to enable/disable delta updates (for debugging/compatibility)
 
+## Interaction with Immediate Dispatch (`immediate` flag)
+
+### The Problem
+
+The `immediate` dispatch option allows actions to skip all queuing and execute immediately, even while a thunk is running. This creates **out-of-order state mutations** that can corrupt delta baselines.
+
+Delta calculation requires an accurate "last state sent to renderer" baseline. When immediate actions interleave with normal thunk execution, the baseline can become stale:
+
+```
+T=0:  Thunk starts, state.messages = [A, B, C]
+T=1:  Delta baseline for renderer = [A, B, C]
+T=5:  Immediate action fires → state.messages = [A, B, C, URGENT]
+T=6:  Delta sent? Against what baseline? [A, B, C]?
+T=10: Thunk completes → state.messages = [A, B, C, URGENT, D]
+T=11: Delta sent? Baseline should be [A, B, C, URGENT] but may not be
+```
+
+Potential issues:
+- **Duplicate additions**: Delta includes `URGENT` again because the baseline wasn't updated after the immediate send
+- **Missed diffs**: Delta calculator doesn't know `URGENT` was already sent
+- **Race conditions**: Concurrent delta calculations from immediate and normal paths racing on the same baseline
+
+### Mitigation Strategies
+
+**Option 1: Per-renderer "last sent" tracking (Recommended)**
+
+Maintain a per-renderer state snapshot that tracks the last state *actually sent* to each window, regardless of whether it was sent via normal flow or immediate dispatch. Both paths update the same baseline after sending. This keeps immediate dispatch and delta orthogonal.
+
+**Option 2: Full-state fallback for immediate actions**
+
+Immediate actions always send full state (not deltas) and reset the delta baseline. This is safe, simple, and acceptable since immediate actions are intended to be rare/urgent. The delta system only optimizes the normal path.
+
+### Design Requirement
+
+Whichever approach is chosen, the delta system must ensure that:
+- Delta calculation is serialized per renderer (no concurrent diff races)
+- The "last sent" baseline is updated atomically after each send, regardless of dispatch path
+- Immediate actions do not leave the baseline in an inconsistent state
+
 ## Implementation Notes
 
 - Consider using a library like `fast-diff` or `deep-diff` for efficient comparison
@@ -104,8 +143,4 @@ Implement delta calculation to send only the changed portions of state, rather t
 ## Priority
 
 **High** - Directly addresses performance concerns for real-world use cases with large state structures. Should be prioritized alongside or before call batching for applications with large arrays/objects.
-
-
-
-
 

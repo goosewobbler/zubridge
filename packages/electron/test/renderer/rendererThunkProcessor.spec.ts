@@ -402,7 +402,7 @@ describe('RendererThunkProcessor', () => {
 
       // Execute with bypass flags
       const result = await processor.executeThunk(simpleThunk, {
-        bypassThunkLock: true,
+        immediate: true,
         bypassAccessControl: true,
       });
 
@@ -410,7 +410,7 @@ describe('RendererThunkProcessor', () => {
       expect(mockThunkRegistrar).toHaveBeenCalledWith(
         expect.any(String),
         undefined,
-        true, // bypassThunkLock
+        true, // immediate
         true, // bypassAccessControl
       );
     });
@@ -882,7 +882,7 @@ describe('RendererThunkProcessor', () => {
       global.window = originalWindow;
     });
 
-    it('should handle thunk with bypassThunkLock and bypassAccessControl options', async () => {
+    it('should handle thunk with immediate and bypassAccessControl options', async () => {
       const bypassProcessor = new RendererThunkProcessor({
         ...defaultPreloadOptions,
       });
@@ -896,7 +896,7 @@ describe('RendererThunkProcessor', () => {
       const bypassThunk = vi.fn(async () => 'bypass-result');
 
       const result = await bypassProcessor.executeThunk(bypassThunk, {
-        bypassThunkLock: true,
+        immediate: true,
         bypassAccessControl: true,
       });
 
@@ -904,7 +904,7 @@ describe('RendererThunkProcessor', () => {
       expect(mockThunkRegistrar).toHaveBeenCalledWith(
         expect.any(String),
         undefined, // parentId
-        true, // bypassThunkLock
+        true, // immediate
         true, // bypassAccessControl
       );
     });
@@ -1133,7 +1133,7 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
-    it('should support dispatch with bypassThunkLock option', async () => {
+    it('should support dispatch with immediate option', async () => {
       mockThunkRegistrar.mockResolvedValue(undefined);
       mockThunkCompleter.mockResolvedValue(undefined);
       mockActionSender.mockClear();
@@ -1149,20 +1149,20 @@ describe('RendererThunkProcessor', () => {
       );
 
       const bypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BYPASS_ACTION' }, { bypassThunkLock: true });
+        await dispatch({ type: 'BYPASS_ACTION' }, { immediate: true });
         return 'bypassed';
       });
 
       await processor.executeThunk(bypassThunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'BYPASS_ACTION', __bypassThunkLock: true }),
+        expect.objectContaining({ type: 'BYPASS_ACTION', __immediate: true }),
         expect.any(String),
         { batch: false },
       );
     });
 
-    it('should support dispatch.batch with bypassThunkLock option', async () => {
+    it('should support dispatch.batch with immediate option', async () => {
       mockThunkRegistrar.mockResolvedValue(undefined);
       mockThunkCompleter.mockResolvedValue(undefined);
       mockActionSender.mockClear();
@@ -1178,14 +1178,14 @@ describe('RendererThunkProcessor', () => {
       );
 
       const batchBypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch.batch({ type: 'BATCHED_BYPASS' }, { bypassThunkLock: true });
+        await dispatch.batch({ type: 'BATCHED_BYPASS' }, { immediate: true });
         return 'batched-bypass';
       });
 
       await processor.executeThunk(batchBypassThunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'BATCHED_BYPASS', __bypassThunkLock: true }),
+        expect.objectContaining({ type: 'BATCHED_BYPASS', __immediate: true }),
         expect.any(String),
         { batch: true },
       );

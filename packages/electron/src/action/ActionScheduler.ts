@@ -188,14 +188,14 @@ export class ActionScheduler extends EventEmitter {
     );
     debug(
       'scheduler-debug',
-      `[DECISION] Action details: parentThunkId=${action.__thunkParentId}, bypassThunkLock=${action.__bypassThunkLock}`,
+      `[DECISION] Action details: parentThunkId=${action.__thunkParentId}, immediate=${action.__immediate}`,
     );
 
-    // Actions with bypassThunkLock can always execute immediately
-    if (action.__bypassThunkLock) {
+    // Actions with immediate can always execute immediately
+    if (action.__immediate) {
       debug(
         'scheduler',
-        `Action ${action.type} (${action.__id}) has bypassThunkLock, can execute immediately`,
+        `Action ${action.type} (${action.__id}) has immediate, can execute immediately`,
       );
       return true;
     }
@@ -477,15 +477,15 @@ export class ActionScheduler extends EventEmitter {
    * - It distinguishes between thunk actions with and without bypass flags
    *
    * Priority assignment:
-   * - BYPASS_THUNK_LOCK (100): Actions with __bypassThunkLock flag
+   * - IMMEDIATE (100): Actions with __immediate flag
    * - ROOT_THUNK_ACTION (70): Actions belonging to the active root thunk
    * - NORMAL_THUNK_ACTION (50): Other thunk-dispatched actions
    * - NORMAL_ACTION (0): Regular actions
    */
   private getPriorityForAction(action: Action): number {
-    // Bypass thunk lock actions get highest priority
-    if (action.__bypassThunkLock) {
-      return PRIORITY_LEVELS.BYPASS_THUNK_LOCK;
+    // Immediate actions get highest priority
+    if (action.__immediate) {
+      return PRIORITY_LEVELS.IMMEDIATE;
     }
 
     // Actions belonging to the active root thunk get high priority

@@ -154,11 +154,11 @@ export function ZubridgeApp({
 
   // Action handlers with logging
   const handleIncrement = useCallback(async () => {
-    await dispatch('COUNTER:INCREMENT', window.bypassFlags);
+    await dispatch('COUNTER:INCREMENT', window.dispatchFlags);
   }, [dispatch]);
 
   const handleDecrement = useCallback(async () => {
-    await dispatch('COUNTER:DECREMENT', window.bypassFlags);
+    await dispatch('COUNTER:DECREMENT', window.dispatchFlags);
   }, [dispatch]);
 
   const handleResetState = useCallback(async () => {
@@ -189,11 +189,11 @@ export function ZubridgeApp({
           if (actionHandlers.doubleCounter) {
             debug(
               'ui',
-              `Using shared thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+              `Using shared thunk for method: ${method} with dispatchFlags: ${JSON.stringify(window.dispatchFlags)}`,
             );
             await dispatch(
               actionHandlers.doubleCounter(counter) as Thunk<AnyState>,
-              window.bypassFlags,
+              window.dispatchFlags,
             );
             return;
           }
@@ -202,11 +202,11 @@ export function ZubridgeApp({
           if (actionHandlers.doubleCounterWithGetStateOverride) {
             debug(
               'ui',
-              `Using shared thunk with getState override for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+              `Using shared thunk with getState override for method: ${method} with dispatchFlags: ${JSON.stringify(window.dispatchFlags)}`,
             );
             await dispatch(
               actionHandlers.doubleCounterWithGetStateOverride(counter) as Thunk<AnyState>,
-              window.bypassFlags,
+              window.dispatchFlags,
             );
             return;
           }
@@ -215,11 +215,11 @@ export function ZubridgeApp({
           if (actionHandlers.doubleCounterSlow) {
             debug(
               'ui',
-              `Using shared slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+              `Using shared slow thunk for method: ${method} with dispatchFlags: ${JSON.stringify(window.dispatchFlags)}`,
             );
             await dispatch(
               actionHandlers.doubleCounterSlow(counter) as Thunk<AnyState>,
-              window.bypassFlags,
+              window.dispatchFlags,
             );
             return;
           }
@@ -264,7 +264,7 @@ export function ZubridgeApp({
               type: 'COUNTER:SET:SLOW',
               payload: counter * 2,
             },
-            window.bypassFlags,
+            window.dispatchFlags,
           );
           debug('ui', 'Slow action dispatch returned:', result);
           return result;
@@ -275,7 +275,7 @@ export function ZubridgeApp({
               type: 'COUNTER:SET',
               payload: counter * 2,
             },
-            window.bypassFlags,
+            window.dispatchFlags,
           );
           debug('ui', 'Regular action dispatch returned:', result);
           return result;
@@ -295,11 +295,11 @@ export function ZubridgeApp({
         if (actionHandlers.distinctiveCounter) {
           debug(
             'ui',
-            `Using distinctive thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+            `Using distinctive thunk for method: ${method} with dispatchFlags: ${JSON.stringify(window.dispatchFlags)}`,
           );
           await dispatch(
             actionHandlers.distinctiveCounter(counter) as Thunk<AnyState>,
-            window.bypassFlags,
+            window.dispatchFlags,
           );
           return;
         }
@@ -308,11 +308,11 @@ export function ZubridgeApp({
         if (actionHandlers.distinctiveCounterSlow) {
           debug(
             'ui',
-            `Using distinctive slow thunk for method: ${method} with bypassFlags: ${JSON.stringify(window.bypassFlags)}`,
+            `Using distinctive slow thunk for method: ${method} with dispatchFlags: ${JSON.stringify(window.dispatchFlags)}`,
           );
           await dispatch(
             actionHandlers.distinctiveCounterSlow(counter) as Thunk<AnyState>,
-            window.bypassFlags,
+            window.dispatchFlags,
           );
           return;
         }

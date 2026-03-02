@@ -299,7 +299,7 @@ export class ThunkLifecycleManager extends EventEmitter {
    * Check if we can process an action immediately or need to queue it
    */
   canProcessActionImmediately(action: Action): boolean {
-    if (action.__bypassThunkLock) {
+    if (action.__immediate) {
       return true;
     }
 

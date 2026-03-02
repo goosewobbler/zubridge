@@ -336,14 +336,14 @@ const bridge = preloadBridge({
 
 ### Priority-Based Flushing
 
-Actions with a priority at or above `priorityFlushThreshold` (default: 80) trigger an immediate flush of the current batch. This ensures time-sensitive actions like `bypassThunkLock` (priority 100) are not delayed by the batch window:
+Actions with a priority at or above `priorityFlushThreshold` (default: 80) trigger an immediate flush of the current batch. This ensures time-sensitive actions with `immediate: true` (priority 100) are not delayed by the batch window:
 
 ```typescript
-dispatch({ type: 'URGENT_ACTION', __bypassThunkLock: true });
+dispatch('URGENT_ACTION', payload, { immediate: true });
 ```
 
 The priority levels are:
-- **100** — `__bypassThunkLock` actions (immediate flush)
+- **100** — `immediate` actions (immediate flush)
 - **70** — thunk child actions (`__thunkParentId` set)
 - **50** — normal actions (batched within the window)
 

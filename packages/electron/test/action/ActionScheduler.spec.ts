@@ -202,11 +202,11 @@ describe('ActionScheduler', () => {
       thunkManager.getScheduler.mockReset();
     });
 
-    it('should return true for actions with bypassThunkLock', () => {
+    it('should return true for actions with immediate', () => {
       const action: Action = {
         type: 'TEST_ACTION',
         __id: 'test-id',
-        __bypassThunkLock: true,
+        __immediate: true,
       };
 
       const result = scheduler.canExecuteImmediately(action);
@@ -353,7 +353,7 @@ describe('ActionScheduler', () => {
       const getPrioritySpy = vi.spyOn(scheduler, 'getPriorityForAction');
 
       // Test different action types
-      const bypassThunkAction: Action = { type: 'BYPASS', __bypassThunkLock: true };
+      const bypassThunkAction: Action = { type: 'BYPASS', __immediate: true };
       const rootThunkAction: Action = { type: 'ROOT_THUNK', __thunkParentId: 'root' };
       const regularAction: Action = { type: 'REGULAR' };
 
@@ -378,7 +378,7 @@ describe('ActionScheduler', () => {
       // Add actions in reverse priority order
       scheduler.enqueueAction({ type: 'LOW', __id: 'low' }, { sourceWindowId: 1 });
       scheduler.enqueueAction(
-        { type: 'HIGH', __id: 'high', __bypassThunkLock: true },
+        { type: 'HIGH', __id: 'high', __immediate: true },
         { sourceWindowId: 1 },
       );
 
@@ -489,7 +489,7 @@ describe('ActionScheduler', () => {
       // Add some actions
       scheduler.enqueueAction({ type: 'ACTION_1', __id: 'id-1' }, { sourceWindowId: 1 });
       scheduler.enqueueAction(
-        { type: 'ACTION_2', __id: 'id-2', __bypassThunkLock: true },
+        { type: 'ACTION_2', __id: 'id-2', __immediate: true },
         { sourceWindowId: 1 },
       );
 

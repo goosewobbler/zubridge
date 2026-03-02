@@ -467,10 +467,10 @@ export class IpcHandler<State extends AnyState> {
       const thunkData = data as {
         thunkId?: string;
         parentId?: string;
-        bypassThunkLock?: boolean;
+        immediate?: boolean;
         bypassAccessControl?: boolean;
       };
-      const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = thunkData;
+      const { thunkId, parentId, immediate, bypassAccessControl } = thunkData;
       const sourceWindowId = event.sender.id;
 
       debug(
@@ -486,7 +486,7 @@ export class IpcHandler<State extends AnyState> {
         sourceWindowId: sourceWindowId,
         source: 'renderer',
         parentId: parentId,
-        bypassThunkLock,
+        immediate,
         bypassAccessControl,
       });
       await this.thunkRegistrationQueue.registerThunk(thunkObj);

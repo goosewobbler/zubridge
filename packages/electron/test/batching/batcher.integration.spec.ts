@@ -111,7 +111,7 @@ describe('Batching Integration', () => {
         calculatePriority(createTestAction('NORMAL_2')),
       );
       batcher.enqueue(
-        createTestAction('HIGH', { __bypassThunkLock: true }),
+        createTestAction('HIGH', { __immediate: true }),
         () => {},
         () => {},
         100,
@@ -127,8 +127,8 @@ describe('Batching Integration', () => {
     });
   });
 
-  describe('bypassThunkLock immediate flush', () => {
-    it('should trigger immediate flush for bypassThunkLock actions', async () => {
+  describe('immediate flush', () => {
+    it('should trigger immediate flush for immediate actions', async () => {
       const { ActionBatcher } = await import('../../src/batching/ActionBatcher.js');
       const mockSendBatch = createSuccessMock();
       const batcher = new ActionBatcher(getBatchingConfig(), mockSendBatch);
@@ -145,7 +145,7 @@ describe('Batching Integration', () => {
       expect(mockSendBatch).not.toHaveBeenCalled();
 
       batcher.enqueue(
-        createTestAction('BYPASS', { __bypassThunkLock: true }),
+        createTestAction('BYPASS', { __immediate: true }),
         () => {},
         () => {},
         100,

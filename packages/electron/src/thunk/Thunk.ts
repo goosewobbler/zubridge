@@ -14,7 +14,7 @@ export interface ThunkOptions {
   source: 'main' | 'renderer';
   parentId?: string;
   keys?: string[];
-  bypassThunkLock?: boolean;
+  immediate?: boolean;
   bypassAccessControl?: boolean;
   contextId?: string; // Optional linked execution context ID
 }
@@ -50,8 +50,8 @@ export class Thunk {
   /** Keys this thunk will affect (for key-based locking) */
   public keys?: string[];
 
-  /** Flag for lock bypass */
-  public bypassThunkLock?: boolean;
+  /** Flag for immediate execution, bypassing all queues */
+  public immediate?: boolean;
 
   /** Flag for access control bypass */
   public bypassAccessControl?: boolean;
@@ -68,14 +68,11 @@ export class Thunk {
     this.startTime = Date.now();
     this.children = new Set();
     this.keys = options.keys;
-    this.bypassThunkLock = options.bypassThunkLock;
+    this.immediate = options.immediate;
     this.bypassAccessControl = options.bypassAccessControl;
     this._contextId = options.contextId;
 
-    debug(
-      'thunk',
-      `Created thunk ${this.id} (type: ${this.source}, bypassThunkLock: ${this.bypassThunkLock})`,
-    );
+    debug('thunk', `Created thunk ${this.id} (type: ${this.source}, immediate: ${this.immediate})`);
   }
 
   /**

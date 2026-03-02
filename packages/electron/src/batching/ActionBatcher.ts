@@ -312,7 +312,7 @@ export class ActionBatcher {
  * Uses centralized PRIORITY_LEVELS constants for consistency across the system.
  *
  * Priority rules:
- * - Actions with __bypassThunkLock get BYPASS_THUNK_LOCK priority (100)
+ * - Actions with __immediate get IMMEDIATE priority (100)
  * - Actions with __thunkParentId get ROOT_THUNK_ACTION priority (70)
  * - All other actions get NORMAL_THUNK_ACTION priority (50)
  *
@@ -321,7 +321,7 @@ export class ActionBatcher {
  * that also considers the active root thunk context.
  */
 export function calculatePriority(action: Action): number {
-  if (action.__bypassThunkLock) return PRIORITY_LEVELS.BYPASS_THUNK_LOCK;
+  if (action.__immediate) return PRIORITY_LEVELS.IMMEDIATE;
   if (action.__thunkParentId) return PRIORITY_LEVELS.ROOT_THUNK_ACTION;
   return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
 }

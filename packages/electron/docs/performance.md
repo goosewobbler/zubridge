@@ -21,7 +21,7 @@ The enqueue-and-flush cycle adds minimal overhead per action. Typical results:
 
 ### Priority Flush
 
-High-priority actions (`__bypassThunkLock`, priority 100) trigger an immediate flush. The overhead of immediate flush vs normal queued dispatch is negligible.
+High-priority actions (`immediate`, priority 100) trigger an immediate flush. The overhead of immediate flush vs normal queued dispatch is negligible.
 
 ## Selective Subscriptions vs Full State
 

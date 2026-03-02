@@ -433,7 +433,7 @@ describe('IpcHandler', () => {
       const thunkData = {
         thunkId: 'test-thunk',
         parentId: 'parent-thunk',
-        bypassThunkLock: true,
+        immediate: true,
         bypassAccessControl: false,
       };
 
@@ -447,7 +447,7 @@ describe('IpcHandler', () => {
         sourceWindowId: 123,
         source: 'renderer',
         parentId: 'parent-thunk',
-        bypassThunkLock: true,
+        immediate: true,
         bypassAccessControl: false,
       });
       expect(mockRegistrationQueue.registerThunk).toHaveBeenCalled();

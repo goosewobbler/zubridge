@@ -8,7 +8,7 @@
   - 80-95% reduction in IPC calls for high-frequency updates
   - 20-40% improvement in action latency
   - Configurable batch window (default: 16ms), max batch size (default: 50), and priority flush threshold (default: 80)
-  - Automatic flush for high-priority actions (bypassThunkLock)
+  - Automatic flush for high-priority actions (immediate dispatch)
   - Backpressure handling for actions during active flush
   - Action cancellation support
 

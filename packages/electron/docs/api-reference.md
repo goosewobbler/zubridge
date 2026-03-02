@@ -402,9 +402,9 @@ function Counter() {
     dispatch('SET_COUNTER', data.value);
   });
 
-  // Dispatch with options to bypass thunk locking
+  // Dispatch with immediate execution, bypassing all queues
   const handleUrgentAction = () => dispatch('URGENT_ACTION', null, {
-    bypassThunkLock: true
+    immediate: true
   });
 
   // Dispatch with selective subscription keys
@@ -515,7 +515,7 @@ Options that can be passed to dispatch functions to control execution behavior.
 type DispatchOptions = {
   keys?: string[];                  // Selective subscription keys
   bypassAccessControl?: boolean;    // Skip access control checks
-  bypassThunkLock?: boolean;        // Skip thunk locking mechanism
+  immediate?: boolean;              // Execute immediately, bypassing all queues
   batch?: boolean;                  // Enable batching for thunk actions
 };
 ```
@@ -524,7 +524,7 @@ These options allow for advanced control over action dispatch:
 
 - `keys`: When provided, only subscribers with matching keys will receive state updates
 - `bypassAccessControl`: Allows actions to bypass normal access control restrictions
-- `bypassThunkLock`: Allows actions to execute even when thunks are currently running, bypassing the normal action sequencing
+- `immediate`: Allows actions to execute immediately, bypassing the batch window, action queue, and thunk lock
 - `batch`: When `true`, enables batching for thunk actions. By default, thunk actions use direct dispatch to avoid deadlocks. Set this to `true` to opt into batching for reduced IPC overhead.
 
 ### `ThunkDispatch`

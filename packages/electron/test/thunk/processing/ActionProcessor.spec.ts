@@ -66,7 +66,7 @@ describe('ActionProcessor', () => {
     it('should return false for actions with bypass flag', () => {
       const action: Action = {
         type: 'TEST_ACTION',
-        __bypassThunkLock: true,
+        __immediate: true,
       };
 
       expect(processor.requiresQueue(action)).toBe(false);
@@ -83,7 +83,7 @@ describe('ActionProcessor', () => {
     it('should return true for actions with bypass flag set to false', () => {
       const action: Action = {
         type: 'TEST_ACTION',
-        __bypassThunkLock: false,
+        __immediate: false,
       };
 
       expect(processor.requiresQueue(action)).toBe(true);

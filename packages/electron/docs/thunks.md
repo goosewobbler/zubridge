@@ -268,15 +268,15 @@ The queueing mechanism works by:
 
 This ensures predictable state updates and prevents race conditions in multi-window applications.
 
-### Bypassing Thunk Queueing
+### Immediate Dispatch
 
-Use the `bypassThunkLock` flag to override the default queueing behavior:
+Use the `immediate` flag to override the default queueing behavior:
 
 ```typescript
-// Bypass thunk locking - allows actions to skip the queue
+// Immediate dispatch - allows actions to skip the queue
 // and be processed immediately, even during thunk execution
 bridge.dispatch('URGENT_ACTION', payload, {
-  bypassThunkLock: true
+  immediate: true
 });
 
 // This also works for thunks - they will execute immediately
@@ -284,7 +284,7 @@ bridge.dispatch('URGENT_ACTION', payload, {
 bridge.dispatch(async (getState, dispatch) => {
   dispatch('IMMEDIATE_UPDATE', 'urgent');
 }, {
-  bypassThunkLock: true
+  immediate: true
 });
 ```
 
@@ -473,7 +473,7 @@ const thunkWithOptions = async (getState, dispatch) => {
   await dispatch.batch({ type: 'ACTION' });
 
   // Combine with other options
-  await dispatch.batch({ type: 'URGENT' }, { bypassThunkLock: true });
+  await dispatch.batch({ type: 'URGENT' }, { immediate: true });
 };
 ```
 
