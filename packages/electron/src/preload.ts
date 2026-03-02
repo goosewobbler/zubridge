@@ -93,29 +93,43 @@ export const preloadBridge = <S extends AnyState>(
     const batchingConfig = getBatchingConfig(resolvedOptions.batching);
     debug('batching', 'Initializing ActionBatcher with config:', batchingConfig);
 
+    // Single persistent listener for all batch acks, keyed by batchId.
+    // Avoids accumulating per-batch listeners that can trigger MaxListenersExceededWarning.
+    const pendingBatches = new Map<
+      string,
+      {
+        resolve: (ack: BatchAckPayload) => void;
+        reject: (err: Error) => void;
+        timeoutId: ReturnType<typeof setTimeout>;
+      }
+    >();
+
+    ipcRenderer.on(IpcChannel.BATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
+      const ackPayload = payload as BatchAckPayload;
+      if (!ackPayload?.batchId) return;
+
+      const pending = pendingBatches.get(ackPayload.batchId);
+      if (!pending) return;
+
+      clearTimeout(pending.timeoutId);
+      pendingBatches.delete(ackPayload.batchId);
+
+      if (ackPayload.error) {
+        pending.reject(new Error(ackPayload.error));
+      } else {
+        pending.resolve(ackPayload);
+      }
+    });
+
     actionBatcher = new ActionBatcher(batchingConfig, async (batch: BatchPayload) => {
       return new Promise<BatchAckPayload>((resolve, reject) => {
         const timeoutMs = PLATFORM === 'linux' ? 60000 : 30000;
         const timeoutId = setTimeout(() => {
-          ipcRenderer.removeListener(IpcChannel.BATCH_ACK, batchAckListener);
+          pendingBatches.delete(batch.batchId);
           reject(new Error(`Timeout waiting for batch acknowledgment ${batch.batchId}`));
         }, timeoutMs);
 
-        const batchAckListener = (_event: IpcRendererEvent, payload: unknown) => {
-          const ackPayload = payload as BatchAckPayload;
-          if (ackPayload && ackPayload.batchId === batch.batchId) {
-            clearTimeout(timeoutId);
-            ipcRenderer.removeListener(IpcChannel.BATCH_ACK, batchAckListener);
-
-            if (ackPayload.error) {
-              reject(new Error(ackPayload.error));
-            } else {
-              resolve(ackPayload);
-            }
-          }
-        };
-
-        ipcRenderer.on(IpcChannel.BATCH_ACK, batchAckListener);
+        pendingBatches.set(batch.batchId, { resolve, reject, timeoutId });
         ipcRenderer.send(IpcChannel.BATCH_DISPATCH, batch);
       });
     });

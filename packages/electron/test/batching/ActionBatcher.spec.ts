@@ -452,6 +452,150 @@ describe('ActionBatcher', () => {
 
       expect(mockSendBatch).not.toHaveBeenCalled();
     });
+
+    it('should reject enqueue calls after destroy', () => {
+      batcher.destroy();
+
+      let rejected = false;
+      let rejectError: Error | undefined;
+
+      const id = batcher.enqueue(
+        createTestAction('LATE_ACTION'),
+        () => {},
+        (err) => {
+          rejected = true;
+          rejectError = err as Error;
+        },
+        50,
+      );
+
+      expect(rejected).toBe(true);
+      expect(rejectError?.message).toContain('destroyed');
+      expect(id).toBe('');
+      expect(batcher.getStats().currentQueueSize).toBe(0);
+    });
+
+    it('should not double-reject in-flight batch items when sendBatch resolves after destroy', async () => {
+      let resolveSendBatch: (() => void) | undefined;
+      mockSendBatch.mockImplementation(
+        (payload: BatchPayload) =>
+          new Promise<BatchAckPayload>((resolve) => {
+            resolveSendBatch = () =>
+              resolve({
+                batchId: payload.batchId,
+                results: payload.actions.map((a) => ({
+                  actionId: a.id,
+                  success: true,
+                })),
+              });
+          }),
+      );
+
+      const rejectCalls: string[] = [];
+      const resolveCalls: string[] = [];
+
+      batcher.enqueue(
+        createTestAction('IN_FLIGHT'),
+        (action) => {
+          resolveCalls.push(action.type);
+        },
+        (err) => {
+          rejectCalls.push((err as Error).message);
+        },
+        50,
+      );
+
+      // Start the flush
+      vi.advanceTimersByTime(BATCHING_DEFAULTS.windowMs);
+      expect(batcher.getStats().isFlushing).toBe(true);
+
+      // Destroy while sendBatch is in-flight
+      batcher.destroy();
+
+      // sendBatch resolves after destroy — should NOT call resolve/reject on batch items
+      resolveSendBatch?.();
+      await vi.runAllTimersAsync();
+
+      // flush's result processing is skipped because isDestroyed is true
+      expect(resolveCalls).toHaveLength(0);
+      expect(rejectCalls).toHaveLength(0);
+    });
+
+    it('should not double-reject in-flight batch items when sendBatch rejects after destroy', async () => {
+      let rejectSendBatch: (() => void) | undefined;
+      mockSendBatch.mockImplementation(
+        () =>
+          new Promise<BatchAckPayload>((_resolve, reject) => {
+            rejectSendBatch = () => reject(new Error('Network error'));
+          }),
+      );
+
+      const rejectCalls: string[] = [];
+
+      batcher.enqueue(
+        createTestAction('IN_FLIGHT'),
+        () => {},
+        (err) => {
+          rejectCalls.push((err as Error).message);
+        },
+        50,
+      );
+
+      vi.advanceTimersByTime(BATCHING_DEFAULTS.windowMs);
+      expect(batcher.getStats().isFlushing).toBe(true);
+
+      batcher.destroy();
+
+      // sendBatch rejects after destroy — should not call reject on batch items
+      rejectSendBatch?.();
+      await vi.runAllTimersAsync();
+
+      expect(rejectCalls).toHaveLength(0);
+    });
+
+    it('should not schedule new flushes after destroy', async () => {
+      let resolveSendBatch: (() => void) | undefined;
+      mockSendBatch.mockImplementation(
+        (payload: BatchPayload) =>
+          new Promise<BatchAckPayload>((resolve) => {
+            resolveSendBatch = () =>
+              resolve({
+                batchId: payload.batchId,
+                results: payload.actions.map((a) => ({
+                  actionId: a.id,
+                  success: true,
+                })),
+              });
+          }),
+      );
+
+      // Enqueue and start flushing first batch
+      batcher.enqueue(
+        createTestAction('BATCH_1'),
+        () => {},
+        () => {},
+        50,
+      );
+      vi.advanceTimersByTime(BATCHING_DEFAULTS.windowMs);
+
+      // Enqueue more while flushing — these go into the queue
+      batcher.enqueue(
+        createTestAction('BATCH_2'),
+        () => {},
+        () => {},
+        50,
+      );
+
+      // Destroy while flush is active and queue has items
+      batcher.destroy();
+
+      // Resolve the in-flight batch — normally this would trigger a follow-up flush
+      resolveSendBatch?.();
+      await vi.runAllTimersAsync();
+
+      // sendBatch should only have been called once — no follow-up flush after destroy
+      expect(mockSendBatch).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('shouldFlushNow', () => {

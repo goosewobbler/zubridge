@@ -24,6 +24,7 @@ export class ActionBatcher {
   private queue: QueuedAction[] = [];
   private flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
+  private isDestroyed = false;
   private pendingForceFlush = false;
   private lastFlushResult: FlushResult | null = null;
   private stats = {
@@ -48,6 +49,11 @@ export class ActionBatcher {
     priority: number,
     parentId?: string,
   ): string {
+    if (this.isDestroyed) {
+      reject(new Error('ActionBatcher is destroyed'));
+      return '';
+    }
+
     const id = (action.__id as string) || uuidv4();
 
     // Check hard queue limit BEFORE enqueueing to prevent DoS
@@ -161,21 +167,24 @@ export class ActionBatcher {
 
       const ackPayload = await this.sendBatch(payload);
 
-      const resultMap = new Map<string, { success: boolean; error?: string }>();
-      if (ackPayload.results) {
-        for (const result of ackPayload.results) {
-          resultMap.set(result.actionId, result);
+      // If destroyed mid-flush, skip result processing — destroy() already rejected all queued items
+      if (!this.isDestroyed) {
+        const resultMap = new Map<string, { success: boolean; error?: string }>();
+        if (ackPayload.results) {
+          for (const result of ackPayload.results) {
+            resultMap.set(result.actionId, result);
+          }
         }
-      }
 
-      for (const item of batch) {
-        const result = resultMap.get(item.id);
-        if (!result) {
-          item.reject(new Error(`No result received for action ${item.id}`));
-        } else if (!result.success) {
-          item.reject(new Error(result.error || `Action ${item.id} failed`));
-        } else {
-          item.resolve(item.action);
+        for (const item of batch) {
+          const result = resultMap.get(item.id);
+          if (!result) {
+            item.reject(new Error(`No result received for action ${item.id}`));
+          } else if (!result.success) {
+            item.reject(new Error(result.error || `Action ${item.id} failed`));
+          } else {
+            item.resolve(item.action);
+          }
         }
       }
 
@@ -183,20 +192,25 @@ export class ActionBatcher {
       this.lastFlushResult = { batchId, actionsSent: batch.length, actionIds };
     } catch (error) {
       debug('batching:error', `Batch ${batchId} failed:`, error);
-      batch.forEach((item) => {
-        item.reject(error);
-      });
+      if (!this.isDestroyed) {
+        batch.forEach((item) => {
+          item.reject(error);
+        });
+      }
       this.lastFlushResult = { batchId, actionsSent: 0, actionIds: [] };
     } finally {
       this.isFlushing = false;
 
-      if (this.pendingForceFlush) {
-        this.pendingForceFlush = false;
-        if (this.queue.length > 0) {
-          void this.flush(true);
+      // Skip post-flush scheduling if destroyed
+      if (!this.isDestroyed) {
+        if (this.pendingForceFlush) {
+          this.pendingForceFlush = false;
+          if (this.queue.length > 0) {
+            void this.flush(true);
+          }
+        } else if (this.queue.length > 0) {
+          this.scheduleFlush();
         }
-      } else if (this.queue.length > 0) {
-        this.scheduleFlush();
       }
     }
   }
@@ -272,6 +286,8 @@ export class ActionBatcher {
   }
 
   destroy(): void {
+    this.isDestroyed = true;
+
     if (this.flushTimeoutId) {
       clearTimeout(this.flushTimeoutId);
       this.flushTimeoutId = null;
@@ -283,7 +299,6 @@ export class ActionBatcher {
       item.reject(new Error('ActionBatcher destroyed'));
     });
     this.queue = [];
-    this.isFlushing = false;
 
     debug('batching', 'ActionBatcher destroyed');
   }
