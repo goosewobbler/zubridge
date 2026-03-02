@@ -11,7 +11,7 @@ import type {
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
 import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
-import type { BatchAckPayload, BatchPayload } from './batching/types.js';
+import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types.js';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
@@ -55,6 +55,8 @@ type WindowWithZubridgeValidator = Window & {
 export interface PreloadZustandBridgeReturn<S extends AnyState> {
   handlers: Handlers<S>;
   initialized: boolean;
+  /** Returns current batch stats, or null if batching is disabled. */
+  getBatchStats: () => BatchStats | null;
 }
 
 /**
@@ -398,10 +400,10 @@ export const preloadBridge = <S extends AnyState>(
       // Track action dispatch for performance metrics
       trackActionDispatch(actionObj);
 
-      // Route through batcher when available, EXCEPT for bypassThunkLock actions
-      // which need immediate execution and should use direct dispatch
+      // Route through batcher when available — high-priority actions (e.g. bypassThunkLock)
+      // trigger an immediate flush via the batcher's priority system, so all actions benefit
       const batcher = actionBatcher;
-      if (batcher && !actionObj.__bypassThunkLock) {
+      if (batcher) {
         return new Promise<Action>((resolve, reject) => {
           batcher.enqueue(
             actionObj,
@@ -540,11 +542,8 @@ export const preloadBridge = <S extends AnyState>(
             const isThunkAction = !!parentId;
             const batcher = actionBatcher;
 
-            if (
-              batcher &&
-              !action.__bypassThunkLock &&
-              (!isThunkAction || options?.batch === true)
-            ) {
+            // Route through batcher — bypassThunkLock actions get immediate flush via priority system
+            if (batcher && (!isThunkAction || options?.batch === true)) {
               const priority = calculatePriority(action);
               const actionId = action.__id as string;
               return new Promise<void>((resolve, reject) => {
@@ -838,6 +837,7 @@ export const preloadBridge = <S extends AnyState>(
   return {
     handlers,
     initialized,
+    getBatchStats: () => actionBatcher?.getStats() ?? null,
   };
 };
 
