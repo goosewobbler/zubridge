@@ -123,8 +123,25 @@ export const preloadBridge = <S extends AnyState>(
       }
     });
 
+    const PENDING_BATCHES_LIMIT = 1000;
+
     actionBatcher = new ActionBatcher(batchingConfig, async (batch: BatchPayload) => {
       return new Promise<BatchAckPayload>((resolve, reject) => {
+        // Evict oldest pending batch if at capacity to prevent unbounded growth
+        if (pendingBatches.size >= PENDING_BATCHES_LIMIT) {
+          const oldestKey = pendingBatches.keys().next().value as string;
+          const oldest = pendingBatches.get(oldestKey);
+          if (oldest) {
+            clearTimeout(oldest.timeoutId);
+            oldest.reject(new Error(`Batch ${oldestKey} evicted: pending batches limit reached`));
+            pendingBatches.delete(oldestKey);
+          }
+          debug(
+            'batching:error',
+            `Pending batches at limit (${PENDING_BATCHES_LIMIT}), evicted oldest batch ${oldestKey}`,
+          );
+        }
+
         const timeoutMs = batchingConfig.ackTimeoutMs;
         const timeoutId = setTimeout(() => {
           pendingBatches.delete(batch.batchId);

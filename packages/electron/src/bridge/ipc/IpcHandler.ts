@@ -2,7 +2,11 @@ import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
-import type { BatchAckPayload, BatchPayload } from '../../batching/types.js';
+import {
+  BATCHING_DEFAULTS,
+  type BatchAckPayload,
+  type BatchPayload,
+} from '../../batching/types.js';
 import { IpcChannel } from '../../constants.js';
 import { IpcCommunicationError } from '../../errors/index.js';
 import { actionQueue } from '../../main/actionQueue.js';
@@ -72,6 +76,21 @@ export class IpcHandler<State extends AnyState> {
         return;
       }
 
+      // Reject oversized batches from potentially compromised renderers
+      const maxBatchSize = BATCHING_DEFAULTS.maxBatchSize;
+      if (actions.length > maxBatchSize * 4) {
+        debug(
+          'ipc:error',
+          `Batch ${batchId} rejected: ${actions.length} actions exceeds server limit (${maxBatchSize * 4})`,
+        );
+        event.sender.send(IpcChannel.BATCH_ACK, {
+          batchId,
+          results: [],
+          error: `Batch size ${actions.length} exceeds server limit`,
+        } satisfies BatchAckPayload);
+        return;
+      }
+
       debug(
         'batching',
         `Received batch ${batchId} with ${actions.length} actions from renderer ${event.sender.id}`,
@@ -107,6 +126,10 @@ export class IpcHandler<State extends AnyState> {
           };
 
           if (parentId && !thunkManager.hasThunk(parentId)) {
+            // Best-effort fallback: the thunk should already be registered via REGISTER_THUNK
+            // before its actions arrive. This handles race conditions where actions arrive first.
+            // Failure here is non-fatal — the action is still enqueued and the thunk manager
+            // will handle the missing parent gracefully.
             const thunkObj = new ThunkClass({
               id: parentId,
               sourceWindowId: event.sender.id,
@@ -166,7 +189,7 @@ export class IpcHandler<State extends AnyState> {
         safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
           batchId,
           results,
-        } as BatchAckPayload);
+        } satisfies BatchAckPayload);
       }
     } catch (error) {
       const ipcError = new IpcCommunicationError('Error handling batch dispatch', {
