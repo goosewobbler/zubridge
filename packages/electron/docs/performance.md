@@ -94,6 +94,143 @@ This approach is **not suitable** for comparing selective subscriptions vs full 
 
 These tests depend on the `@zubridge/middleware` package (not yet released) and are currently skipped.
 
+## Action Priority System
+
+Zubridge uses a unified priority system across both the renderer process (ActionBatcher) and main process (ActionScheduler) to ensure actions are processed in the correct order while respecting concurrency constraints.
+
+### Priority Levels
+
+The system defines four priority levels in `PRIORITY_LEVELS` (from `@zubridge/electron/batching/types`):
+
+| Priority | Value | Description | Example |
+|----------|-------|-------------|---------|
+| `BYPASS_THUNK_LOCK` | 100 | Actions with `__bypassThunkLock` flag that skip all queuing | Critical system actions, UI updates during long operations |
+| `ROOT_THUNK_ACTION` | 70 | Actions dispatched by the currently active root thunk | Actions within a running thunk's execution context |
+| `NORMAL_THUNK_ACTION` | 50 | Actions dispatched by thunks (general case) | Most thunk-dispatched actions |
+| `NORMAL_ACTION` | 0 | Regular actions without special flags | Standard user actions, simple state updates |
+
+### How Priority Works in ActionBatcher (Renderer)
+
+The `ActionBatcher` in the renderer process uses priorities to:
+
+1. **Determine immediate flush**: Actions with priority ≥ `priorityFlushThreshold` (default: 80) trigger an immediate batch send
+2. **Queue ordering**: Higher priority actions are processed first within a batch window
+
+```typescript
+// In renderer process
+import { calculatePriority } from '@zubridge/electron/batching';
+
+const action = { type: 'UPDATE', __bypassThunkLock: true };
+const priority = calculatePriority(action); // Returns 100
+
+batcher.enqueue(action, resolve, reject, priority);
+// This immediately flushes due to high priority
+```
+
+### How Priority Works in ActionScheduler (Main)
+
+The `ActionScheduler` in the main process uses priorities to:
+
+1. **Queue management during thunk execution**: When a thunk is running, lower-priority actions are queued
+2. **Overflow handling**: If the queue fills up, actions with priority < 50 are dropped first
+3. **Execution ordering**: Queued actions are sorted by priority (highest first), then by arrival time
+
+The main process priority calculation is **context-aware**:
+
+```typescript
+// ActionScheduler checks if a thunk action belongs to the ACTIVE root thunk
+const rootThunkId = this.thunkManager.getRootThunkId();
+if (rootThunkId && action.__thunkParentId === rootThunkId) {
+  return PRIORITY_LEVELS.ROOT_THUNK_ACTION; // 70
+}
+```
+
+This means:
+- Actions from the **active** root thunk get priority 70
+- Actions from **other** thunks (queued for later) get priority 50
+- The renderer's `calculatePriority` returns 70 for **all** thunk actions since it doesn't know which thunk is active
+
+### Priority System Example
+
+Consider this scenario with Window A running a thunk while Window B tries to dispatch actions:
+
+```typescript
+// Window A - runs a thunk
+dispatch(async (getState, dispatch) => {
+  dispatch({ type: 'STEP_1' }); // Priority: 70 (active root thunk)
+  await delay(1000);
+  dispatch({ type: 'STEP_2' }); // Priority: 70 (active root thunk)
+});
+
+// Window B - during the thunk above
+dispatch({ type: 'NORMAL_UPDATE' });
+// Priority: 0 → queued behind Window A's thunk
+
+dispatch({ type: 'URGENT' }, { bypassThunkLock: true });
+// Priority: 100 → executes immediately, bypassing queue
+```
+
+**Execution order:**
+1. Window A: `STEP_1` (70) - executes immediately (belongs to active thunk)
+2. Window B: `URGENT` (100) - executes immediately (bypass flag)
+3. Window A: `STEP_2` (70) - executes when thunk resumes
+4. Window B: `NORMAL_UPDATE` (0) - executes after Window A's thunk completes
+
+### Priority in Queue Overflow
+
+When the ActionScheduler queue reaches capacity (default: 1000 actions), the overflow handler drops low-priority actions first:
+
+- **Droppable**: Actions with priority < 50 (NORMAL_ACTION)
+- **Protected**: Actions with priority ≥ 50 (thunk actions, bypass actions)
+
+```typescript
+// Queue at capacity (1000 actions)
+dispatch({ type: 'LOW_PRIORITY' }); // Priority 0 - may be dropped
+dispatch({ type: 'THUNK_ACTION', __thunkParentId: 'x' }); // Priority 50+ - protected
+```
+
+### When to Use Priority Flags
+
+**Use `bypassThunkLock: true` when:**
+- An action must execute immediately regardless of running thunks
+- Example: Critical UI updates, cancellation signals, error recovery
+
+```typescript
+dispatch({ type: 'CANCEL_OPERATION' }, { bypassThunkLock: true });
+```
+
+**Avoid using bypass flags for:**
+- Regular state updates that can wait
+- Actions that depend on thunk completion
+- Bulk operations that should be queued
+
+### Priority and Batching Interaction
+
+When batching is enabled, priorities work across both systems:
+
+1. **Renderer**: `ActionBatcher` groups actions by batch window, but high-priority actions trigger immediate flush
+2. **IPC**: The batch is sent to the main process with per-action priority metadata
+3. **Main**: `ActionScheduler` respects the priority when deciding whether to execute or queue the batch
+
+```typescript
+// In a thunk with batching enabled
+void dispatch.batch({ type: 'UPDATE_1' }); // Priority 70, batched
+void dispatch.batch({ type: 'UPDATE_2' }); // Priority 70, batched
+void dispatch.batch({ type: 'URGENT', __bypassThunkLock: true }); // Priority 100, flushes immediately
+
+// The flush sends a batch with mixed priorities, and ActionScheduler processes each action by priority
+```
+
+### Implementation Details
+
+The priority system is implemented in:
+
+- **Types**: `packages/electron/src/batching/types.ts` - `PRIORITY_LEVELS` constants
+- **Renderer**: `packages/electron/src/batching/ActionBatcher.ts` - `calculatePriority()` function
+- **Main**: `packages/electron/src/action/ActionScheduler.ts` - `getPriorityForAction()` method
+
+Both implementations use the same constants for consistency, but the main process has additional context about the active thunk hierarchy.
+
 ## Running Benchmarks
 
 ```bash
@@ -102,3 +239,9 @@ pnpm bench
 ```
 
 This runs all benchmark files in `benchmarks/` using vitest's built-in bench runner, which reports ops/sec, p75, p99, and statistical variance.
+
+## Related Documentation
+
+- [Validation](./validation.md) - Action validation rules, limits, and security
+- [Thunks](./thunks.md) - Async action handling and priority
+- [Security Review](./SECURITY_PERFORMANCE_REVIEW.md) - Security and performance analysis

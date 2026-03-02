@@ -18,6 +18,7 @@ import { logZubridgeError, serializeError } from '../../utils/errorHandling.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import { isDestroyed, safelySendToWindow } from '../../utils/windows.js';
 import type { ResourceManager } from '../resources/ResourceManager.js';
+import { validateBatchDispatch, validateSingleDispatch } from './validation.js';
 
 export class IpcHandler<State extends AnyState> {
   private thunkRegistrationQueue: ThunkRegistrationQueue;
@@ -66,30 +67,31 @@ export class IpcHandler<State extends AnyState> {
     ipcMain.on(IpcChannel.BATCH_DISPATCH, this.handleBatchDispatch.bind(this));
   }
 
+  /**
+   * Validate batch payload structure and contents to prevent injection attacks
+   * @returns true if valid, false otherwise
+   */
   public async handleBatchDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
     try {
-      const batchPayload = data as BatchPayload;
-      const { batchId, actions } = batchPayload || {};
+      // Validate batch payload using Zod schema
+      const validationResult = validateBatchDispatch(data);
 
-      if (!batchId || !Array.isArray(actions) || actions.length === 0) {
-        debug('ipc:error', 'Invalid batch dispatch payload:', data);
+      if (!validationResult.success) {
+        debug('ipc:error', `Invalid batch dispatch payload: ${validationResult.error}`);
+
+        // Send error response if possible
+        if (data && typeof data === 'object' && 'batchId' in data && !isDestroyed(event.sender)) {
+          safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
+            batchId: (data as { batchId?: string }).batchId || 'unknown',
+            results: [],
+            error: `Validation failed: ${validationResult.error}`,
+          } as BatchAckPayload);
+        }
         return;
       }
 
-      // Reject oversized batches from potentially compromised renderers
-      const maxBatchSize = BATCHING_DEFAULTS.maxBatchSize;
-      if (actions.length > maxBatchSize * 4) {
-        debug(
-          'ipc:error',
-          `Batch ${batchId} rejected: ${actions.length} actions exceeds server limit (${maxBatchSize * 4})`,
-        );
-        event.sender.send(IpcChannel.BATCH_ACK, {
-          batchId,
-          results: [],
-          error: `Batch size ${actions.length} exceeds server limit`,
-        } satisfies BatchAckPayload);
-        return;
-      }
+      // Now data is type-safe
+      const { batchId, actions } = validationResult.data;
 
       debug(
         'batching',
@@ -110,16 +112,10 @@ export class IpcHandler<State extends AnyState> {
       ): Promise<{ actionId: string; success: boolean; error?: string }> => {
         const { action, id, parentId } = actionItem;
 
-        return new Promise((resolve) => {
-          if (!action || typeof action !== 'object' || !action.type) {
-            resolve({
-              actionId: id,
-              success: false,
-              error: 'Invalid action',
-            });
-            return;
-          }
+        // Note: Action validation is already done by Zod schema in validateBatchDispatch
+        // No need for redundant inline validation
 
+        return new Promise((resolve) => {
           const actionWithSource: Action = {
             ...action,
             __sourceWindowId: event.sender.id,
@@ -214,17 +210,28 @@ export class IpcHandler<State extends AnyState> {
     try {
       debug('ipc', `Received action data from renderer ${event.sender.id}:`, data);
 
-      // Extract the action from the wrapper object
-      const actionData = data as { action?: unknown; parentId?: string };
-      const { action, parentId } = actionData || {};
+      // Validate payload using Zod schema
+      const validationResult = validateSingleDispatch(data);
 
-      if (!action || typeof action !== 'object') {
-        debug('ipc', '[BRIDGE DEBUG] Invalid action received:', data);
+      if (!validationResult.success) {
+        debug('ipc:error', `Invalid action dispatch payload: ${validationResult.error}`);
+
+        // Try to extract action ID for acknowledgment even on validation failure
+        const actionData = data as { action?: { __id?: string } };
+        const actionId = actionData?.action?.__id;
+
+        if (actionId && !isDestroyed(event.sender)) {
+          safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
+            actionId,
+            thunkState: { version: 0, thunks: [] },
+            error: `Validation failed: ${validationResult.error}`,
+          });
+        }
         return;
       }
 
-      // Cast action to Action type after validation
-      const actionObj = action as Action;
+      // Now data is type-safe
+      const { action: actionObj, parentId } = validationResult.data;
 
       debug('ipc', `[BRIDGE DEBUG] Received action from renderer ${event.sender.id}:`, {
         type: actionObj.type,
@@ -232,11 +239,6 @@ export class IpcHandler<State extends AnyState> {
         payload: actionObj.payload,
         parentId: parentId,
       });
-
-      if (!actionObj.type) {
-        debug('ipc', '[BRIDGE DEBUG] Action missing type:', data);
-        return;
-      }
 
       // Add the source window ID to the action for acknowledgment purposes
       const actionWithSource: Action = {

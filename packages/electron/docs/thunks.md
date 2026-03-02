@@ -409,6 +409,7 @@ console.log('All windows have received the final state update');
 
 For more information on integrating thunks with your application:
 
+- [Validation](./validation.md) - Action validation, security, and troubleshooting
 - [Advanced Usage](./advanced-usage.md) - Application architecture, middleware, testing, and TypeScript patterns
 - [Getting Started](./getting-started.md) - Basic setup and usage patterns
 - [API Reference](./api-reference.md) - Complete reference including DispatchOptions for bypass flags
@@ -508,18 +509,140 @@ const flushThunk = async (getState, dispatch) => {
 
 ### Error Handling
 
-Errors behave differently depending on how you dispatch:
+Error handling behavior differs based on whether you await the dispatch and whether batching is used. Understanding these scenarios is critical for reliable error recovery.
+
+#### Error Scenarios
+
+| Scenario | Batched (`await dispatch.batch()`) | Fire-and-forget (`void dispatch.batch()`) | Direct (`await dispatch()`) |
+|----------|-----------------------------------|------------------------------------------|----------------------------|
+| **IPC send fails** | Promise rejects with send error | Error logged, promise resolves after ACK | Promise rejects with send error |
+| **Action fails in main process** | Promise rejects with action error | Promise resolves after ACK, error lost | Promise rejects with action error |
+| **Batch send timeout** | Promise rejects with timeout error | Promise resolves after ACK, timeout ignored | Promise rejects with timeout error |
+| **Per-action result indicates failure** | Promise rejects with result error message | Promise resolves after ACK, failure lost | Promise rejects with action error |
+| **Network/IPC interrupted** | Promise rejects with communication error | Error logged, may resolve or reject depending on timing | Promise rejects with communication error |
+
+#### Detailed Scenarios
+
+**Scenario 1: IPC Send Fails**
 
 ```typescript
+// Network/IPC failure before the action is sent
 try {
-  // Errors are caught
-  await dispatch.batch({ type: 'MIGHT_FAIL' });
+  await dispatch.batch({ type: 'UPDATE' });
 } catch (error) {
-  console.error('Action failed:', error);
+  console.error('Failed to send action:', error);
+  // Error caught - can retry or fallback
 }
 
-// Fire-and-forget: errors after ACK are lost
-void dispatch.batch({ type: 'BACKGROUND' });
+// Fire-and-forget: error logged but not propagated
+void dispatch.batch({ type: 'UPDATE' });
+// Promise resolves after ACK, send failure not visible to caller
+```
+
+**Scenario 2: Action Fails in Main Process**
+
+```typescript
+// Action sent successfully, but main process rejects it
+try {
+  await dispatch.batch({ type: 'MIGHT_FAIL' });
+} catch (error) {
+  console.error('Action failed in main process:', error);
+  // Error caught - can handle business logic failure
+}
+
+// Fire-and-forget: main process error is lost
+void dispatch.batch({ type: 'MIGHT_FAIL' });
+// Promise resolves after ACK, no indication of failure
+```
+
+**Scenario 3: Batch Acknowledgment Timeout**
+
+```typescript
+// Main process is slow or unresponsive
+try {
+  await dispatch.batch({ type: 'SLOW_ACTION' });
+} catch (error) {
+  console.error('Action timed out:', error);
+  // Timeout error caught after 30-60s (platform-dependent)
+}
+
+// Fire-and-forget: timeout ignored
+void dispatch.batch({ type: 'SLOW_ACTION' });
+// Promise resolves after ACK (if it arrives), or hangs if timeout
+```
+
+**Scenario 4: Per-Action Result Indicates Failure**
+
+When using batching, the main process can return per-action success/failure status:
+
+```typescript
+// Batch succeeds but individual action fails
+try {
+  await dispatch.batch({ type: 'CONDITIONAL_UPDATE' });
+} catch (error) {
+  console.error('Action rejected:', error);
+  // Individual action failure caught
+}
+
+// Fire-and-forget: individual failure lost
+void dispatch.batch({ type: 'CONDITIONAL_UPDATE' });
+// Promise resolves after batch ACK, per-action failure ignored
+```
+
+#### Best Practices
+
+**Always await for critical operations:**
+
+```typescript
+// Good: Error handling for important state changes
+try {
+  await dispatch.batch({ type: 'SAVE_USER_DATA', payload: userData });
+  console.log('Data saved successfully');
+} catch (error) {
+  showErrorNotification('Failed to save data');
+  // Retry logic here
+}
+```
+
+**Use fire-and-forget only for non-critical updates:**
+
+```typescript
+// Acceptable: Fire-and-forget for analytics or logging
+void dispatch.batch({ type: 'TRACK_EVENT', payload: { event: 'click' } });
+
+// Bad: Fire-and-forget for critical operations
+void dispatch.batch({ type: 'SAVE_USER_DATA', payload: userData });
+// If this fails, user loses data with no indication!
+```
+
+**Combine with proper error recovery:**
+
+```typescript
+async function saveDataWithRetry(data: UserData, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await dispatch.batch({ type: 'SAVE_DATA', payload: data });
+      return; // Success
+    } catch (error) {
+      console.error(`Save attempt ${attempt} failed:`, error);
+      if (attempt === maxRetries) {
+        throw error; // All retries exhausted
+      }
+      await delay(1000 * attempt); // Exponential backoff
+    }
+  }
+}
+```
+
+**Monitor fire-and-forget errors in development:**
+
+```typescript
+// Use debug mode to see fire-and-forget errors during development
+if (process.env.NODE_ENV === 'development') {
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+  });
+}
 ```
 
 ### Performance Considerations

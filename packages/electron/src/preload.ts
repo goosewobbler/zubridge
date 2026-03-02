@@ -12,6 +12,7 @@ import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
 import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
 import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types.js';
+import { validateActionInRenderer } from './bridge/ipc/validation.js';
 import { IpcChannel } from './constants.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
@@ -476,6 +477,9 @@ export const preloadBridge = <S extends AnyState>(
         // Register the acknowledgment listener
         ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
 
+        // Validate action in renderer (development only)
+        validateActionInRenderer(actionObj);
+
         // Send the action to the main process
         debug('ipc', `Sending action ${actionId} to main process`);
         ipcRenderer.send(IpcChannel.DISPATCH, { action: actionObj });
@@ -549,6 +553,9 @@ export const preloadBridge = <S extends AnyState>(
               'ipc',
               `Sending action: ${action.type}, id: ${action.__id}${parentId ? `, parent: ${parentId}` : ''}${options?.batch ? ', batched' : ''}`,
             );
+
+            // Validate action in renderer (development only)
+            validateActionInRenderer(action, parentId);
 
             // Determine if we should batch this action
             // Thunk actions use direct dispatch by default to avoid deadlock
