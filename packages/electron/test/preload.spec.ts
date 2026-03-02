@@ -39,6 +39,7 @@ vi.mock('../src/utils/preloadOptions.js', () => ({
     windowMs: 16,
     maxBatchSize: 50,
     priorityFlushThreshold: 80,
+    ackTimeoutMs: 30000,
   })),
 }));
 

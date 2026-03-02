@@ -90,9 +90,9 @@ export const preloadBridge = <S extends AnyState>(
   // Initialize action batcher if enabled
   let actionBatcher: ActionBatcher | null = null;
   const enableBatching = resolvedOptions.enableBatching !== false;
+  const batchingConfig = getBatchingConfig(resolvedOptions.batching);
 
   if (enableBatching) {
-    const batchingConfig = getBatchingConfig(resolvedOptions.batching);
     debug('batching', 'Initializing ActionBatcher with config:', batchingConfig);
 
     // Single persistent listener for all batch acks, keyed by batchId.
@@ -125,7 +125,7 @@ export const preloadBridge = <S extends AnyState>(
 
     actionBatcher = new ActionBatcher(batchingConfig, async (batch: BatchPayload) => {
       return new Promise<BatchAckPayload>((resolve, reject) => {
-        const timeoutMs = PLATFORM === 'linux' ? 60000 : 30000;
+        const timeoutMs = batchingConfig.ackTimeoutMs;
         const timeoutId = setTimeout(() => {
           pendingBatches.delete(batch.batchId);
           reject(new Error(`Timeout waiting for batch acknowledgment ${batch.batchId}`));
@@ -419,7 +419,7 @@ export const preloadBridge = <S extends AnyState>(
         const actionId = actionObj.__id as string;
 
         // Set up a timeout in case we don't get an acknowledgment
-        const timeoutMs = PLATFORM === 'linux' ? 60000 : 30000; // Platform-specific timeout
+        const timeoutMs = batchingConfig.ackTimeoutMs;
         debug(
           'ipc',
           `Setting up acknowledgment timeout of ${timeoutMs}ms for platform ${PLATFORM}`,

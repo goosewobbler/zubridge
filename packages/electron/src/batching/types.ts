@@ -4,12 +4,16 @@ export interface BatchingConfig {
   windowMs: number;
   maxBatchSize: number;
   priorityFlushThreshold: number;
+  /** Timeout (ms) for waiting on batch/dispatch acknowledgments from the main process. */
+  ackTimeoutMs: number;
 }
 
 export const BATCHING_DEFAULTS: Required<BatchingConfig> = {
   windowMs: 16,
   maxBatchSize: 50,
   priorityFlushThreshold: 80,
+  // Linux CI/Wayland environments exhibit higher IPC latency, so use a longer default.
+  ackTimeoutMs: typeof process !== 'undefined' && process.platform === 'linux' ? 60000 : 30000,
 };
 
 export interface QueuedAction {
