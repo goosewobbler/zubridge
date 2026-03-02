@@ -144,6 +144,9 @@ export class IpcHandler<State extends AnyState> {
         });
       };
 
+      // Actions are enqueued to actionQueue in iteration order. Promise.allSettled runs
+      // them concurrently, but actionQueue.enqueueAction preserves insertion order for
+      // sequential processing, so action ordering within a batch is maintained.
       const settledResults = await Promise.allSettled(actions.map(processAction));
 
       for (const result of settledResults) {
