@@ -104,7 +104,7 @@ The system defines four priority levels in `PRIORITY_LEVELS` (from `@zubridge/el
 
 | Priority | Value | Description | Example |
 |----------|-------|-------------|---------|
-| `BYPASS_THUNK_LOCK` | 100 | Actions with `__bypassThunkLock` flag that skip all queuing | Critical system actions, UI updates during long operations |
+| `IMMEDIATE` | 100 | Actions with `__immediate` flag that skip all queuing | Critical system actions, UI updates during long operations |
 | `ROOT_THUNK_ACTION` | 70 | Actions dispatched by the currently active root thunk | Actions within a running thunk's execution context |
 | `NORMAL_THUNK_ACTION` | 50 | Actions dispatched by thunks (general case) | Most thunk-dispatched actions |
 | `NORMAL_ACTION` | 0 | Regular actions without special flags | Standard user actions, simple state updates |
@@ -120,7 +120,7 @@ The `ActionBatcher` in the renderer process uses priorities to:
 // In renderer process
 import { calculatePriority } from '@zubridge/electron/batching';
 
-const action = { type: 'UPDATE', __bypassThunkLock: true };
+const action = { type: 'UPDATE', __immediate: true };
 const priority = calculatePriority(action); // Returns 100
 
 batcher.enqueue(action, resolve, reject, priority);
@@ -166,7 +166,7 @@ dispatch(async (getState, dispatch) => {
 dispatch({ type: 'NORMAL_UPDATE' });
 // Priority: 0 → queued behind Window A's thunk
 
-dispatch({ type: 'URGENT' }, { bypassThunkLock: true });
+dispatch({ type: 'URGENT' }, { immediate: true });
 // Priority: 100 → executes immediately, bypassing queue
 ```
 
@@ -191,12 +191,12 @@ dispatch({ type: 'THUNK_ACTION', __thunkParentId: 'x' }); // Priority 50+ - prot
 
 ### When to Use Priority Flags
 
-**Use `bypassThunkLock: true` when:**
+**Use `immediate: true` when:**
 - An action must execute immediately regardless of running thunks
 - Example: Critical UI updates, cancellation signals, error recovery
 
 ```typescript
-dispatch({ type: 'CANCEL_OPERATION' }, { bypassThunkLock: true });
+dispatch({ type: 'CANCEL_OPERATION' }, { immediate: true });
 ```
 
 **Avoid using bypass flags for:**
@@ -216,7 +216,7 @@ When batching is enabled, priorities work across both systems:
 // In a thunk with batching enabled
 void dispatch.batch({ type: 'UPDATE_1' }); // Priority 70, batched
 void dispatch.batch({ type: 'UPDATE_2' }); // Priority 70, batched
-void dispatch.batch({ type: 'URGENT', __bypassThunkLock: true }); // Priority 100, flushes immediately
+void dispatch.batch({ type: 'URGENT', __immediate: true }); // Priority 100, flushes immediately
 
 // The flush sends a batch with mixed priorities, and ActionScheduler processes each action by priority
 ```
@@ -244,4 +244,4 @@ This runs all benchmark files in `benchmarks/` using vitest's built-in bench run
 
 - [Validation](./validation.md) - Action validation rules, limits, and security
 - [Thunks](./thunks.md) - Async action handling and priority
-- [Security Review](./SECURITY_PERFORMANCE_REVIEW.md) - Security and performance analysis
+

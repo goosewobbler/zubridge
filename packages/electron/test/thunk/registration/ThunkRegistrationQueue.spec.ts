@@ -143,7 +143,7 @@ describe('ThunkRegistrationQueue', () => {
       expect(mainCallback).toHaveBeenCalled();
     });
 
-    it('should handle bypass thunk lock', async () => {
+    it('should handle immediate dispatch', async () => {
       const thunk = createMockThunk();
       thunk.immediate = true;
 

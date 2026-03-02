@@ -59,6 +59,46 @@ describe('validation', () => {
 
       expect(result.success).toBe(false);
     });
+
+    it('should accept action with __immediate flag', () => {
+      const result = validateSingleDispatch({
+        action: { type: 'URGENT', __immediate: true },
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept action with __bypassAccessControl flag', () => {
+      const result = validateSingleDispatch({
+        action: { type: 'TEST', __bypassAccessControl: true },
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept action with __startsThunk flag', () => {
+      const result = validateSingleDispatch({
+        action: { type: 'TEST', __startsThunk: true },
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject action with unknown properties', () => {
+      const result = validateSingleDispatch({
+        action: { type: 'TEST', unknownField: 'bad' },
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject non-boolean __immediate flag', () => {
+      const result = validateSingleDispatch({
+        action: { type: 'TEST', __immediate: 'yes' },
+      });
+
+      expect(result.success).toBe(false);
+    });
   });
 
   describe('validateBatchDispatch', () => {

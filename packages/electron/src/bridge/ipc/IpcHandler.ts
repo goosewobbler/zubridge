@@ -2,11 +2,7 @@ import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
-import {
-  BATCHING_DEFAULTS,
-  type BatchAckPayload,
-  type BatchPayload,
-} from '../../batching/types.js';
+import type { BatchAckPayload, BatchPayload } from '../../batching/types.js';
 import { IpcChannel } from '../../constants.js';
 import { IpcCommunicationError } from '../../errors/index.js';
 import { actionQueue } from '../../main/actionQueue.js';

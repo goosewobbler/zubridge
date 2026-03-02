@@ -44,7 +44,8 @@ All actions must conform to this structure:
   payload?: unknown,      // Optional, any JSON-serializable data
   __id?: string,          // Optional, max 100 characters
   __bypassAccessControl?: boolean,  // Optional
-  immediate?: boolean,    // Optional (v3.0: renamed from __bypassThunkLock)
+  __immediate?: boolean,  // Optional (execute immediately, bypassing all queues)
+  __startsThunk?: boolean,// Optional (marks first action in a thunk)
   __sourceWindowId?: number  // Optional (added by framework)
 }
 ```
@@ -266,16 +267,6 @@ ZUBRIDGE_RENDERER_VALIDATION=off npm start
 npm start
 ```
 
-### Renamed Flag
-
-```typescript
-// v2.x
-dispatch({ type: 'ACTION', __bypassThunkLock: true });
-
-// v3.0
-dispatch({ type: 'ACTION', immediate: true });
-```
-
 ## Technical Details
 
 ### Implementation
@@ -291,7 +282,8 @@ export const ActionPayloadSchema = z.object({
   payload: z.unknown().optional(),
   __id: z.string().max(100).optional(),
   __bypassAccessControl: z.boolean().optional(),
-  immediate: z.boolean().optional(),
+  __immediate: z.boolean().optional(),
+  __startsThunk: z.boolean().optional(),
   __sourceWindowId: z.number().optional(),
 }).strict(); // Rejects unknown properties
 
@@ -460,7 +452,7 @@ Strict validation catches these early.
 
 - [Performance & Batching](./performance.md) - Action batching and optimization
 - [Thunk System](./thunks.md) - Async action handling
-- [Security Review](./SECURITY_PERFORMANCE_REVIEW.md) - Security analysis
+
 - [Migration Guide v3.0](./MIGRATION_V3.md) - Upgrading from v2.x
 
 ## Examples
@@ -483,11 +475,8 @@ dispatch({
   __id: 'fetch-123'
 });
 
-// Immediate execution (bypass thunk lock)
-dispatch({
-  type: 'URGENT_ACTION',
-  immediate: true
-});
+// Immediate execution (bypasses all queues)
+dispatch('URGENT_ACTION', payload, { immediate: true });
 ```
 
 ### Invalid Actions (Will be rejected)

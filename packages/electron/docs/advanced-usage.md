@@ -379,8 +379,9 @@ For detailed documentation on batched dispatch for thunks, including await seman
 
 For more detailed information:
 
-- [Getting Started](./getting-started.md) - Basic setup and usage patterns
 - [Thunks](./thunks.md) - Complete thunk guide including advanced patterns, error handling, and async actions
+- [Performance](./performance.md) - Action batching, selective subscriptions, and priority system
+- [Validation](./validation.md) - Action validation rules, limits, and security
 - [How It Works](./how-it-works.md) - Detailed explanation of how Zubridge manages state synchronization
 - [API Reference](./api-reference.md) - Complete reference for all API functions and types
 - [Main Process](./main-process.md) - Detailed guide for using Zubridge in the main process

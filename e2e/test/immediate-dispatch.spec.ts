@@ -34,7 +34,7 @@ async function toggleImmediateDispatch(enable: boolean): Promise<void> {
 
   // Toggle only if current state doesn't match desired state
   if (isEnabled !== enable) {
-    console.log(`${enable ? 'Enabling' : 'Disabling'} bypass thunk lock flag`);
+    console.log(`${enable ? 'Enabling' : 'Disabling'} immediate dispatch flag`);
     await immediateButton.click();
     await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
@@ -44,11 +44,11 @@ async function toggleImmediateDispatch(enable: boolean): Promise<void> {
     });
     expect(newState).toBe(enable);
   } else {
-    console.log(`Bypass thunk lock flag already ${enable ? 'enabled' : 'disabled'}`);
+    console.log(`Immediate dispatch flag already ${enable ? 'enabled' : 'disabled'}`);
   }
 }
 
-describe('BypassThunkLock Flag Functionality', () => {
+describe('Immediate Dispatch Flag Functionality', () => {
   before(async () => {
     await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
   });
@@ -206,8 +206,8 @@ describe('BypassThunkLock Flag Functionality', () => {
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
 
-      // Enable bypass thunk lock
-      console.log('Enabling bypass thunk lock');
+      // Enable immediate dispatch
+      console.log('Enabling immediate dispatch');
       await toggleImmediateDispatch(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
@@ -294,8 +294,8 @@ describe('BypassThunkLock Flag Functionality', () => {
       await waitForSpecificValue(4, TIMING.THUNK_WAIT_TIME);
       console.log('First stage of slow thunk completed, counter = 4');
 
-      // Switch to the second window and enable bypass thunk lock
-      console.log('Switching to second window to enable bypass thunk lock');
+      // Switch to the second window and enable immediate dispatch
+      console.log('Switching to second window to enable immediate dispatch');
       await switchToWindow(1); // Second window is at index 1
       await toggleImmediateDispatch(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
@@ -356,8 +356,8 @@ describe('BypassThunkLock Flag Functionality', () => {
         'This test explicitly documents the state synchronization issue with concurrent thunks',
       );
 
-      // Enable bypass thunk lock
-      console.log('Enabling bypass thunk lock');
+      // Enable immediate dispatch
+      console.log('Enabling immediate dispatch');
       await toggleImmediateDispatch(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 

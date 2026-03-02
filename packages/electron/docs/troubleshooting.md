@@ -138,7 +138,7 @@ The default is 30 seconds (60 seconds on Linux). If you're running in a resource
 
 **Symptoms**: Actions dispatched inside a thunk still result in individual IPC calls, even with batching enabled.
 
-**Cause**: This is by design. When batching is enabled, **direct dispatches** from components (e.g., `dispatch('INCREMENT')` in an onClick handler) are automatically batched. However, actions dispatched **inside thunks** use direct IPC by default to avoid potential deadlocks with the thunk lock mechanism.
+**Cause**: This is by design. When batching is enabled, **direct dispatches** from components (e.g., `dispatch('INCREMENT')` in an onClick handler) are automatically batched. However, actions dispatched **inside thunks** use direct IPC by default to avoid potential deadlocks with the concurrency control mechanism.
 
 **Fix**: Opt into batching for thunk actions using `dispatch.batch()`:
 
@@ -192,3 +192,8 @@ If action handlers aren't being invoked:
 3. Ensure your handlers are registered before the first action is dispatched
 
 For additional help, please [open an issue](https://github.com/goosewobbler/zubridge/issues) with detailed reproduction steps.
+
+## Related Documentation
+
+- [Validation](./validation.md) - Action validation rules, limits, and common error messages
+- [Debugging](./debugging.md) - Debug logging and diagnostic tools

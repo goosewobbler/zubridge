@@ -49,7 +49,8 @@ export const ActionPayloadSchema = z
     payload: z.unknown().optional(),
     __id: z.string().max(MAX_STRING_LENGTH.ACTION_ID).optional(),
     __bypassAccessControl: z.boolean().optional(),
-    __bypassThunkLock: z.boolean().optional(),
+    __immediate: z.boolean().optional(),
+    __startsThunk: z.boolean().optional(),
     __sourceWindowId: z.number().optional(),
   })
   .strict(); // Reject unknown properties
@@ -146,16 +147,18 @@ export function validateBatchDispatch(data: unknown): ValidationResult<Validated
  * @returns Formatted error message
  */
 function formatZodError(error: z.ZodError): string {
-  const firstIssue = error.issues[0];
-
-  if (!firstIssue) {
+  if (error.issues.length === 0) {
     return 'Invalid payload structure';
   }
 
-  const path = firstIssue.path.join('.');
-  const message = firstIssue.message;
+  const uniqueIssues = [
+    ...new Set(
+      error.issues.map((i) => (i.path.length ? `${i.path.join('.')}: ${i.message}` : i.message)),
+    ),
+  ];
 
-  return path ? `${path}: ${message}` : message;
+  const summary = uniqueIssues.slice(0, 3).join('; ');
+  return uniqueIssues.length > 3 ? `${summary} (+${uniqueIssues.length - 3} more)` : summary;
 }
 
 /**

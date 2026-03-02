@@ -524,7 +524,7 @@ These options allow for advanced control over action dispatch:
 
 - `keys`: When provided, only subscribers with matching keys will receive state updates
 - `bypassAccessControl`: Allows actions to bypass normal access control restrictions
-- `immediate`: Allows actions to execute immediately, bypassing the batch window, action queue, and thunk lock
+- `immediate`: Allows actions to execute immediately, bypassing the batch window, action queue, and concurrency controls
 - `batch`: When `true`, enables batching for thunk actions. By default, thunk actions use direct dispatch to avoid deadlocks. Set this to `true` to opt into batching for reduced IPC overhead.
 
 ### `ThunkDispatch`
@@ -733,3 +733,10 @@ interface Handlers<State extends AnyState> extends BaseHandler<State> {
   subscribe(callback: (newState: State) => void): () => void;
 }
 ```
+
+## Related Documentation
+
+- [Advanced Usage](./advanced-usage.md) - Multi-window, selective subscriptions, and dispatch options
+- [Validation](./validation.md) - Action validation rules, limits, and security
+- [Performance](./performance.md) - Action batching and priority system
+- [Thunks](./thunks.md) - Async action handling and thunk lifecycle
