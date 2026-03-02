@@ -114,6 +114,65 @@ Zubridge includes polyfills for common Node.js modules (via `unenv`), but not al
 
 For more information about sandbox mode, see the [Sandbox Mode section](./getting-started.md#sandbox-mode) in the Getting Started guide.
 
+## Action Batching
+
+### Batch Acknowledgment Timeouts
+
+**Symptoms**: Rejected promises or timeout errors when dispatching actions from thunks.
+
+**Cause**: The main process didn't acknowledge a batch within the configured timeout. This is more common on Linux/CI environments with higher IPC latency.
+
+**Fix**: Increase `ackTimeoutMs` in your preload configuration:
+
+```typescript
+const bridge = preloadBridge({
+  batching: {
+    ackTimeoutMs: 60000, // 60 seconds (this is already the default on Linux)
+  },
+});
+```
+
+The default is 30 seconds (60 seconds on Linux). If you're running in a resource-constrained CI environment, you may need to increase this further.
+
+### Thunk Actions Not Being Batched
+
+**Symptoms**: Actions dispatched inside a thunk still result in individual IPC calls, even with batching enabled.
+
+**Cause**: This is by design. When batching is enabled, **direct dispatches** from components (e.g., `dispatch('INCREMENT')` in an onClick handler) are automatically batched. However, actions dispatched **inside thunks** use direct IPC by default to avoid potential deadlocks with the thunk lock mechanism.
+
+**Fix**: Opt into batching for thunk actions using `dispatch.batch()`:
+
+```typescript
+// Thunk actions batched: 10 actions sent as 1 IPC call
+dispatch(async (getState, dispatch) => {
+  for (let i = 0; i < 10; i++) {
+    void dispatch.batch({ type: 'UPDATE', payload: i });
+  }
+  await dispatch.flush();
+});
+```
+
+### Debugging Batching
+
+Enable debug logging to see batch activity:
+
+```bash
+DEBUG=zubridge:* electron .
+```
+
+You can also inspect the batcher state programmatically using `getBatchStats()`:
+
+```typescript
+const { getBatchStats } = preloadBridge();
+
+// Later, check stats
+const stats = getBatchStats();
+if (stats) {
+  console.log(`Batches sent: ${stats.totalBatches}, Actions: ${stats.totalActions}`);
+  console.log(`Avg batch size: ${stats.averageBatchSize}, Queue: ${stats.currentQueueSize}`);
+}
+```
+
 ## Other Common Issues
 
 ### State Not Synchronizing Between Main and Renderer

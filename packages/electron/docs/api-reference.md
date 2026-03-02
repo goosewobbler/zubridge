@@ -272,13 +272,25 @@ There's also an internal overload that accepts a state manager directly, but thi
 
 ### Preload Script APIs
 
-#### `preloadBridge()`
+#### `preloadBridge(options?)`
 
 Creates handlers for the renderer process to interact with the main process through the backend contract.
 
+##### Parameters:
+
+- `options?`: Optional `PreloadOptions` configuration object
+  - `enableBatching?: boolean` — Enable action batching (default: `true`)
+  - `batching?: Partial<BatchingConfig>` — Batching configuration (see [BatchingConfig](#batchingconfig))
+  - `maxQueueSize?: number` — Maximum pending actions in the queue (default: `100`)
+  - `actionCompletionTimeoutMs?: number` — Timeout for action completion in ms (default: `30000`, Linux: `60000`)
+
 ##### Returns:
 
-An object with a `handlers` property that should be exposed to the renderer process.
+A `PreloadZustandBridgeReturn` object with:
+
+- `handlers`: The `Handlers<State>` object to expose to the renderer process
+- `initialized`: Whether the bridge initialized successfully
+- `getBatchStats()`: Returns current [BatchStats](#batchstats), or `null` if batching is disabled
 
 ##### Example:
 
@@ -287,7 +299,13 @@ An object with a `handlers` property that should be exposed to the renderer proc
 import { contextBridge } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
 
-const { handlers } = preloadBridge();
+const { handlers, getBatchStats } = preloadBridge({
+  enableBatching: true,
+  batching: {
+    windowMs: 16,
+    maxBatchSize: 50,
+  },
+});
 
 // Expose the handlers to the renderer process
 contextBridge.exposeInMainWorld('zubridge', handlers);
@@ -562,6 +580,48 @@ interface FlushResult {
 ```ts
 const result = await dispatch.flush();
 console.log(`Batch ${result.batchId} sent ${result.actionsSent} actions`);
+```
+
+### `BatchingConfig`
+
+Configuration for the action batcher, passed via `preloadBridge({ batching: { ... } })`.
+
+```ts
+interface BatchingConfig {
+  /** Batch window in milliseconds. Actions within this window are grouped. Default: 16 */
+  windowMs: number;
+  /** Maximum actions per batch before forcing a flush. Default: 50 */
+  maxBatchSize: number;
+  /** Priority at or above which an action triggers an immediate flush. Default: 80 */
+  priorityFlushThreshold: number;
+  /** Timeout (ms) for batch/dispatch acknowledgments from the main process. Default: 30000 (Linux: 60000) */
+  ackTimeoutMs: number;
+}
+```
+
+All fields are optional when passed to `preloadBridge` — unset fields use the defaults shown above.
+
+### `BatchStats`
+
+Snapshot of the batcher's current state, returned by `getBatchStats()`.
+
+```ts
+interface BatchStats {
+  /** Total batches sent since initialization */
+  totalBatches: number;
+  /** Total actions sent across all batches */
+  totalActions: number;
+  /** Average actions per batch (0 if no batches sent) */
+  averageBatchSize: number;
+  /** Number of actions currently queued awaiting flush */
+  currentQueueSize: number;
+  /** Whether a flush is currently in progress */
+  isFlushing: boolean;
+  /** Number of actions rejected (e.g., queue overflow, post-destroy enqueue) */
+  rejectedActions: number;
+  /** Hard queue limit (actions beyond this are rejected) */
+  queueLimit: number;
+}
 ```
 
 ### `CoreBridgeOptions`

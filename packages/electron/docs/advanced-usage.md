@@ -316,9 +316,10 @@ import { preloadBridge } from '@zubridge/electron/preload';
 const bridge = preloadBridge({
   enableBatching: true, // Default: true
   batching: {
-    windowMs: 16,            // Batch window in ms (default: 16ms)
-    maxBatchSize: 50,        // Max actions per batch (default: 50)
-    priorityFlushThreshold: 80, // Priority threshold for immediate flush (default: 80)
+    windowMs: 16,               // Batch window in ms (default: 16ms)
+    maxBatchSize: 50,            // Max actions per batch (default: 50)
+    priorityFlushThreshold: 80,  // Priority threshold for immediate flush (default: 80)
+    ackTimeoutMs: 30000,         // Batch ack timeout in ms (default: 30000, Linux: 60000)
   },
 });
 ```
