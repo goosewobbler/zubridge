@@ -50,8 +50,9 @@ function summarize(values: number[]) {
 
 // Batching is a renderer→main transport optimization: N actions dispatched within the
 // batch window (default 16ms) are sent as 1 IPC call instead of N. The main process
-// emits a __BATCH_RECEIVED telemetry event for each batch it receives, allowing E2E
-// measurement of IPC reduction by comparing batch count to action count.
+// calls trackBatchReceived() on the middleware for each batch it receives. To measure
+// IPC reduction in E2E, the middleware must implement trackBatchReceived and surface
+// batch metadata via WebSocket (not yet implemented in @zubridge/middleware).
 //
 // These tests validate:
 // - IPC reduction: N rapid dispatches arrive as few batches (test 1 — measurable)
@@ -140,8 +141,8 @@ describe('Batching Performance', () => {
 
     // Dispatch actions synchronously from within the renderer. All dispatches happen
     // within a single JS task (well within the 16ms batch window), so the ActionBatcher
-    // groups them into a single IPC call. The main process emits a __BATCH_RECEIVED
-    // telemetry event for each batch it receives.
+    // groups them into a single IPC call. The main process calls trackBatchReceived()
+    // on the middleware for each batch it receives.
     await browser.execute((count) => {
       const zubridge = (window as { zubridge?: { dispatch: (action: string) => void } }).zubridge;
       if (!zubridge) throw new Error('zubridge handlers not found on window');
@@ -160,13 +161,11 @@ describe('Batching Performance', () => {
     const counterValue = Number.parseInt(counterText.replace(/\D/g, ''), 10);
     expect(counterValue).toBeGreaterThanOrEqual(RAPID_ACTION_COUNT);
 
-    // Measure IPC reduction: count __BATCH_RECEIVED events vs individual action dispatches
-    const batchEvents = logMessages.filter(
-      (m) => m.entry_type === 'ActionDispatched' && m.action?.action_type === '__BATCH_RECEIVED',
-    );
-    const actionDispatches = logMessages.filter(
-      (m) => m.entry_type === 'ActionDispatched' && m.action?.action_type !== '__BATCH_RECEIVED',
-    );
+    // Measure IPC reduction: count BatchReceived events vs individual action dispatches.
+    // Requires @zubridge/middleware to implement trackBatchReceived and emit 'BatchReceived'
+    // entries via WebSocket. Until then, batchEvents will be empty.
+    const batchEvents = logMessages.filter((m) => m.entry_type === 'BatchReceived');
+    const actionDispatches = logMessages.filter((m) => m.entry_type === 'ActionDispatched');
 
     console.log(
       `Batch events: ${batchEvents.length}, Action dispatches: ${actionDispatches.length}`,
@@ -206,7 +205,7 @@ describe('Batching Performance', () => {
       expect(batchEvents.length).toBeLessThanOrEqual(5);
       expect(totalBatchedActions).toBeGreaterThanOrEqual(RAPID_ACTION_COUNT);
     } else {
-      console.log('No __BATCH_RECEIVED events — batching telemetry may not be wired');
+      console.log('No BatchReceived events — middleware trackBatchReceived not yet implemented');
     }
   });
 

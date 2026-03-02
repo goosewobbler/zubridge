@@ -100,6 +100,15 @@ export function createCoreBridge<State extends AnyState>(
         await options.middleware?.trackActionAcknowledged?.(actionId);
       };
     }
+    if (options?.middleware?.trackBatchReceived) {
+      callbacks.trackBatchReceived = async (
+        batchId: string,
+        actionCount: number,
+        sourceWindowId: number,
+      ) => {
+        await options.middleware?.trackBatchReceived?.(batchId, actionCount, sourceWindowId);
+      };
+    }
     resourceManager.setMiddlewareCallbacks(callbacks);
   }
 

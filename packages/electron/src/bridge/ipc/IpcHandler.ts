@@ -77,16 +77,12 @@ export class IpcHandler<State extends AnyState> {
         `Received batch ${batchId} with ${actions.length} actions from renderer ${event.sender.id}`,
       );
 
-      // Track batch receipt for telemetry — enables E2E measurement of IPC reduction
+      // Track batch receipt for telemetry — enables E2E measurement of IPC reduction.
+      // Uses a dedicated callback instead of a synthetic action to avoid polluting
+      // action logs and replay systems with internal telemetry events.
       const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
-      if (middlewareCallbacks.trackActionDispatch) {
-        const batchAction: Action = {
-          type: '__BATCH_RECEIVED',
-          payload: JSON.stringify({ batchId, actionCount: actions.length }),
-          __sourceWindowId: event.sender.id,
-          __id: batchId,
-        };
-        void middlewareCallbacks.trackActionDispatch(batchAction);
+      if (middlewareCallbacks.trackBatchReceived) {
+        void middlewareCallbacks.trackBatchReceived(batchId, actions.length, event.sender.id);
       }
 
       const results: BatchAckPayload['results'] = [];
