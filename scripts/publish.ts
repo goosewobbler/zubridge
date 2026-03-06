@@ -174,17 +174,47 @@ packagesToPublish.forEach((pkg) => {
   console.log(`- ${pkg}`);
 });
 
-// Construct filter argument for pnpm publish
-const filterArgs = packagesToPublish.map((pkg) => `--filter ./${pkg}`).join(' ');
+// Check if we're using OIDC (NPM_ID_TOKEN is set)
+const useOidc = !!process.env.NPM_ID_TOKEN;
 
-// Create and run the publish command
-const publishCommand = `pnpm publish ${filterArgs} --access public --no-git-checks --provenance --tag ${tag} ${options.join(' ')}`;
+if (useOidc) {
+  console.log('\nUsing OIDC authentication (NPM_ID_TOKEN detected)\n');
 
-console.log(`\nRunning: ${publishCommand}\n`);
+  // Publish each package individually using npm (which supports OIDC)
+  for (const pkg of packagesToPublish) {
+    const publishCommand = `npm publish --access public --provenance --tag ${tag} ${options.join(' ')}`;
 
-try {
-  execSync(publishCommand, { stdio: 'inherit' });
-  console.log('Packages published successfully!');
-} catch (error) {
-  handleError(`Failed to publish packages: ${error}`);
+    console.log(`\nPublishing ${pkg}...`);
+    console.log(`Running: ${publishCommand}\n`);
+
+    try {
+      execSync(publishCommand, {
+        stdio: 'inherit',
+        cwd: pkg,
+        env: {
+          ...process.env,
+          // Ensure NPM_ID_TOKEN is passed through for OIDC authentication
+          NPM_ID_TOKEN: process.env.NPM_ID_TOKEN,
+        },
+      });
+      console.log(`Successfully published ${pkg}!`);
+    } catch (error) {
+      handleError(`Failed to publish ${pkg}: ${error}`);
+    }
+  }
+
+  console.log('\nAll packages published successfully!');
+} else {
+  // Use pnpm publish with filters for non-OIDC auth
+  const filterArgs = packagesToPublish.map((pkg) => `--filter ./${pkg}`).join(' ');
+  const publishCommand = `pnpm publish ${filterArgs} --access public --no-git-checks --provenance --tag ${tag} ${options.join(' ')}`;
+
+  console.log(`\nRunning: ${publishCommand}\n`);
+
+  try {
+    execSync(publishCommand, { stdio: 'inherit' });
+    console.log('Packages published successfully!');
+  } catch (error) {
+    handleError(`Failed to publish packages: ${error}`);
+  }
 }

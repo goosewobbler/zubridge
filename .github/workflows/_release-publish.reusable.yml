@@ -84,6 +84,17 @@ jobs:
           INPUT_RELEASE_VERSION: ${{ inputs.release_version }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
 
+      - name: 🔑 Request OIDC token for NPM
+        id: oidc_token
+        if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) && inputs.dry_run != 'true' }}
+        run: |
+          # Request OIDC token from GitHub Actions
+          TOKEN=$(curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r '.value')
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+          # Also set it as env var for subsequent steps
+          echo "NPM_ID_TOKEN=$TOKEN" >> $GITHUB_ENV
+
       - name: 📢 Publish to NPM
         shell: bash
         id: npm_publish
@@ -253,6 +264,7 @@ jobs:
           fi
         env:
           NEW_VERSION: ${{ steps.versioning.outputs.new_version }}
+          NPM_ID_TOKEN: ${{ steps.oidc_token.outputs.token }}
 
       - name: 🔍 Verify published NPM packages
         shell: bash
