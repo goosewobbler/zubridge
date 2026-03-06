@@ -197,7 +197,7 @@ export const getButtonInCurrentWindow = async (
     | 'thunk-error-btn'
     | 'clear-errors-btn'
     | 'update-unsubscribed-btn'
-    | 'bypass-thunk-lock-btn'
+    | 'immediate-dispatch-btn'
     | 'bypass-access-control-btn'
     | 'distinctive-pattern-btn'
     | 'distinctive-pattern-slow-btn',
@@ -273,8 +273,8 @@ export const getButtonInCurrentWindow = async (
     case 'update-unsubscribed-btn':
       selector = '[data-testid="update-unsubscribed-btn"]';
       break;
-    case 'bypass-thunk-lock-btn':
-      selector = 'button=Bypass Thunk Lock';
+    case 'immediate-dispatch-btn':
+      selector = 'button=Immediate Dispatch';
       break;
     case 'bypass-access-control-btn':
       selector = 'button=Bypass Access Control';

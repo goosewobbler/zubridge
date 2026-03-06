@@ -1,5 +1,5 @@
-import type { Action } from '@zubridge/types';
 import { EventEmitter } from 'node:events';
+import type { Action } from '@zubridge/types';
 import { ThunkPriority } from '../constants.js';
 import type { ThunkAction, ThunkTask } from '../types/thunk.js';
 import {
@@ -104,6 +104,13 @@ export class ThunkManager extends EventEmitter {
               break;
           }
         }
+      }
+
+      // Copy source property from provided thunk to internal thunk
+      // This is critical for renderer thunks which should not be auto-completed
+      const internalThunk = this.lifecycleManager.getThunk(handle.id);
+      if (internalThunk && thunk.source) {
+        internalThunk.source = thunk.source;
       }
 
       return handle;
@@ -211,7 +218,14 @@ export class ThunkManager extends EventEmitter {
         new Map([[thunkId, thunk]]),
       );
       for (const completedThunkId of completedThunkIds) {
-        this.lifecycleManager.completeThunk(completedThunkId);
+        // Only auto-complete main process thunks
+        // Renderer thunks dispatch actions one-at-a-time with delays between them,
+        // so pending actions will be 0 between dispatches. They should only complete
+        // when the renderer explicitly calls completeThunk()
+        const completedThunk = this.lifecycleManager.getThunk(completedThunkId);
+        if (completedThunk && completedThunk.source === 'main') {
+          this.lifecycleManager.completeThunk(completedThunkId);
+        }
       }
     });
   }

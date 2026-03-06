@@ -100,6 +100,15 @@ export function createCoreBridge<State extends AnyState>(
         await options.middleware?.trackActionAcknowledged?.(actionId);
       };
     }
+    if (options?.middleware?.trackBatchReceived) {
+      callbacks.trackBatchReceived = async (
+        batchId: string,
+        actionCount: number,
+        sourceWindowId: number,
+      ) => {
+        await options.middleware?.trackBatchReceived?.(batchId, actionCount, sourceWindowId);
+      };
+    }
     resourceManager.setMiddlewareCallbacks(callbacks);
   }
 
@@ -216,6 +225,10 @@ export function createCoreBridge<State extends AnyState>(
         args[0] as WrapperOrWebContents[] | WrapperOrWebContents | undefined,
         args[1] as string[] | undefined,
       );
+    },
+    getWindowSubscriptions: (windowId: number) => {
+      const subManager = resourceManager.getSubscriptionManager(windowId);
+      return subManager ? subManager.getCurrentSubscriptionKeys(windowId) : [];
     },
     destroy,
   };

@@ -1,3 +1,4 @@
+name: 'Setup Workspace'
 description: 'Sets up Node.js environment with PNPM for CI/CD workflows'
 inputs:
   node-version:

@@ -28,10 +28,10 @@ const createStore = <S extends AnyState>(bridge: Handlers<S>): StoreApi<S> => {
   // Create a new store if one doesn't exist
   const newStore = createZustandStore<S>((setState: StoreApi<S>['setState']) => {
     // subscribe to changes
-    bridge.subscribe((state: S) => setState(state));
+    bridge.subscribe((state: S) => setState(state, true));
 
     // get initial state
-    bridge.getState().then((state: S) => setState(state));
+    bridge.getState().then((state: S) => setState(state, true));
 
     // no state keys - they will all come from main
     return {} as S;

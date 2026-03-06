@@ -182,7 +182,7 @@ describe('MainThunkProcessor', () => {
 
     it('should handle actions with bypass flag', async () => {
       const thunk: Thunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BYPASS_ACTION', __bypassThunkLock: true });
+        await dispatch({ type: 'BYPASS_ACTION', __immediate: true });
         return 'bypassed';
       });
 
@@ -262,14 +262,14 @@ describe('MainThunkProcessor', () => {
 
       processor.processAction(action, {
         keys: ['key1'],
-        bypassThunkLock: true,
+        immediate: true,
       });
 
       expect(mockStateManager.processAction).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'OPTIONS_ACTION',
           __keys: ['key1'],
-          __bypassThunkLock: true,
+          __immediate: true,
           __isFromMainProcess: true,
         }),
       );

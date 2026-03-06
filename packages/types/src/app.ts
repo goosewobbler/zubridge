@@ -13,11 +13,11 @@ export interface ZubridgeAppWindow {
   };
 
   /**
-   * Bypass flags for testing access control and thunk locking
+   * Dispatch option flags for testing access control and immediate dispatch
    */
-  bypassFlags?: {
+  dispatchFlags?: {
     bypassAccessControl: boolean;
-    bypassThunkLock: boolean;
+    immediate: boolean;
   };
 
   /**

@@ -433,7 +433,7 @@ describe('IpcHandler', () => {
       const thunkData = {
         thunkId: 'test-thunk',
         parentId: 'parent-thunk',
-        bypassThunkLock: true,
+        immediate: true,
         bypassAccessControl: false,
       };
 
@@ -447,7 +447,7 @@ describe('IpcHandler', () => {
         sourceWindowId: 123,
         source: 'renderer',
         parentId: 'parent-thunk',
-        bypassThunkLock: true,
+        immediate: true,
         bypassAccessControl: false,
       });
       expect(mockRegistrationQueue.registerThunk).toHaveBeenCalled();
@@ -627,6 +627,388 @@ describe('IpcHandler', () => {
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.TRACK_ACTION_DISPATCH);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.COMPLETE_THUNK);
+    });
+  });
+
+  describe('handleBatchDispatch', () => {
+    let mockEvent: IpcMainEvent;
+
+    beforeEach(() => {
+      mockEvent = {
+        sender: mockWebContents,
+      } as IpcMainEvent;
+
+      // Reset actionQueue.enqueueAction to default behavior
+      (actionQueue.enqueueAction as Mock).mockImplementation(
+        (_action, _windowId, _parentId, callback) => {
+          if (callback) {
+            callback(null); // Simulate successful completion
+          }
+        },
+      );
+
+      // Ensure registerThunk returns a resolved promise by default
+      const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+      if (mockRegistrationQueue) {
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+      }
+    });
+
+    describe('validation', () => {
+      it('should reject non-object payloads', async () => {
+        const invalidPayloads = [null, undefined, 'string', 123, true, []];
+
+        for (const payload of invalidPayloads) {
+          vi.clearAllMocks();
+          await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+          // Should not process any actions
+          expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should reject payloads with missing batchId', async () => {
+        const payload = {
+          actions: [{ action: { type: 'TEST' }, id: 'action-1' }],
+        };
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        expect(safelySendToWindow).not.toHaveBeenCalled();
+      });
+
+      it('should reject payloads with invalid batchId', async () => {
+        const invalidBatchIds = [
+          '', // empty
+          'x'.repeat(101), // too long
+          123, // not a string
+          null, // null
+        ];
+
+        for (const batchId of invalidBatchIds) {
+          vi.clearAllMocks();
+          const payload = {
+            batchId,
+            actions: [{ action: { type: 'TEST' }, id: 'action-1' }],
+          };
+
+          await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+          expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should reject payloads with missing actions array', async () => {
+        const payload = {
+          batchId: 'batch-123',
+        };
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        expect(safelySendToWindow).toHaveBeenCalledWith(
+          mockWebContents,
+          IpcChannel.BATCH_ACK,
+          expect.objectContaining({
+            batchId: 'batch-123',
+            error: expect.stringContaining('Validation failed'),
+          }),
+        );
+      });
+
+      it('should reject payloads with empty actions array', async () => {
+        const payload = {
+          batchId: 'batch-123',
+          actions: [],
+        };
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        expect(safelySendToWindow).toHaveBeenCalledWith(
+          mockWebContents,
+          IpcChannel.BATCH_ACK,
+          expect.objectContaining({
+            batchId: 'batch-123',
+            error: expect.stringContaining('Validation failed'),
+          }),
+        );
+      });
+
+      it('should reject payloads with too many actions (>200)', async () => {
+        const actions = Array.from({ length: 201 }, (_, i) => ({
+          action: { type: 'TEST' },
+          id: `action-${i}`,
+        }));
+
+        const payload = {
+          batchId: 'batch-123',
+          actions,
+        };
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        expect(safelySendToWindow).toHaveBeenCalledWith(
+          mockWebContents,
+          IpcChannel.BATCH_ACK,
+          expect.objectContaining({
+            batchId: 'batch-123',
+            error: expect.stringContaining('Validation failed'),
+          }),
+        );
+      });
+
+      it('should reject payloads with invalid action items', async () => {
+        const invalidActions = [
+          null, // null action item
+          'string', // string instead of object
+          { id: 'test' }, // missing action
+          { action: null, id: 'test' }, // null action
+        ];
+
+        for (const invalidAction of invalidActions) {
+          vi.clearAllMocks();
+          const payload = {
+            batchId: 'batch-123',
+            actions: [invalidAction],
+          };
+
+          await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+          expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should reject payloads with invalid action IDs', async () => {
+        const invalidIds = [
+          '', // empty
+          'x'.repeat(101), // too long
+          123, // not a string
+        ];
+
+        for (const id of invalidIds) {
+          vi.clearAllMocks();
+          const payload = {
+            batchId: 'batch-123',
+            actions: [{ action: { type: 'TEST' }, id }],
+          };
+
+          await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+          expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should reject payloads with invalid action types', async () => {
+        const invalidTypes = [
+          undefined, // missing type
+          '', // empty type
+          null, // null type
+          123, // not a string
+        ];
+
+        for (const type of invalidTypes) {
+          vi.clearAllMocks();
+          const payload = {
+            batchId: 'batch-123',
+            actions: [{ action: { type }, id: 'action-1' }],
+          };
+
+          await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+          expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should reject payloads with invalid parentId', async () => {
+        const invalidParentIds = [
+          'x'.repeat(101), // too long
+          123, // not a string
+        ];
+
+        for (const parentId of invalidParentIds) {
+          vi.clearAllMocks();
+          const payload = {
+            batchId: 'batch-123',
+            actions: [
+              {
+                action: { type: 'TEST' },
+                id: 'action-1',
+                parentId,
+              },
+            ],
+          };
+
+          await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+          expect(actionQueue.enqueueAction).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should accept valid batch payload', async () => {
+        const payload = {
+          batchId: 'batch-123',
+          actions: [
+            {
+              action: { type: 'TEST_ACTION_1', __id: 'action-1' },
+              id: 'action-1',
+            },
+            {
+              action: { type: 'TEST_ACTION_2', __id: 'action-2' },
+              id: 'action-2',
+              parentId: 'parent-thunk',
+            },
+          ],
+        };
+
+        // Mock thunk existence check
+        (thunkManager.hasThunk as Mock).mockReturnValue(false);
+
+        // Ensure registerThunk returns a resolved promise
+        const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        // Should process both actions
+        expect(actionQueue.enqueueAction).toHaveBeenCalledTimes(2);
+
+        // Should send acknowledgment
+        expect(safelySendToWindow).toHaveBeenCalledWith(
+          mockWebContents,
+          IpcChannel.BATCH_ACK,
+          expect.objectContaining({
+            batchId: 'batch-123',
+            results: expect.arrayContaining([
+              { actionId: 'action-1', success: true },
+              { actionId: 'action-2', success: true },
+            ]),
+          }),
+        );
+      });
+
+      it('should accept batch with maximum allowed actions (200)', async () => {
+        const actions = Array.from({ length: 200 }, (_, i) => ({
+          action: { type: 'TEST', __id: `action-${i}` },
+          id: `action-${i}`,
+        }));
+
+        const payload = {
+          batchId: 'batch-200',
+          actions,
+        };
+
+        // Ensure registerThunk returns a resolved promise
+        const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        // Should process all 200 actions
+        expect(actionQueue.enqueueAction).toHaveBeenCalledTimes(200);
+      });
+
+      it('should accept parentId as undefined', async () => {
+        const payload = {
+          batchId: 'batch-123',
+          actions: [
+            {
+              action: { type: 'TEST', __id: 'action-1' },
+              id: 'action-1',
+              parentId: undefined,
+            },
+          ],
+        };
+
+        // Ensure registerThunk returns a resolved promise
+        const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(actionQueue.enqueueAction).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('processing', () => {
+      it('should add __sourceWindowId to each action', async () => {
+        const payload = {
+          batchId: 'batch-123',
+          actions: [
+            {
+              action: { type: 'TEST', __id: 'action-1' },
+              id: 'action-1',
+            },
+          ],
+        };
+
+        // Ensure registerThunk returns a resolved promise
+        const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(actionQueue.enqueueAction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'TEST',
+            __id: 'action-1',
+            __sourceWindowId: 123,
+          }),
+          123,
+          undefined,
+          expect.any(Function),
+        );
+      });
+
+      it('should register missing parent thunks', async () => {
+        const payload = {
+          batchId: 'batch-123',
+          actions: [
+            {
+              action: { type: 'TEST', __id: 'action-1' },
+              id: 'action-1',
+              parentId: 'new-thunk',
+            },
+          ],
+        };
+
+        (thunkManager.hasThunk as Mock).mockReturnValue(false);
+        const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(Thunk).toHaveBeenCalledWith({
+          id: 'new-thunk',
+          sourceWindowId: 123,
+          source: 'renderer',
+        });
+        expect(mockRegistrationQueue.registerThunk).toHaveBeenCalled();
+      });
+
+      it('should not register existing parent thunks', async () => {
+        const payload = {
+          batchId: 'batch-123',
+          actions: [
+            {
+              action: { type: 'TEST', __id: 'action-1' },
+              id: 'action-1',
+              parentId: 'existing-thunk',
+            },
+          ],
+        };
+
+        (thunkManager.hasThunk as Mock).mockReturnValue(true);
+        const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+        mockRegistrationQueue.registerThunk.mockClear();
+        mockRegistrationQueue.registerThunk.mockResolvedValue(undefined);
+
+        await ipcHandler.handleBatchDispatch(mockEvent, payload);
+
+        expect(mockRegistrationQueue.registerThunk).not.toHaveBeenCalled();
+      });
     });
   });
 

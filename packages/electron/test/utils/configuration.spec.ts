@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { BATCHING_DEFAULTS } from '../../src/batching/types.js';
 import {
-  getPreloadOptions,
   getThunkProcessorOptions,
-  PRELOAD_DEFAULTS,
   THUNK_PROCESSOR_DEFAULTS,
 } from '../../src/utils/configuration.js';
+import {
+  getBatchingConfig,
+  getPreloadOptions,
+  PRELOAD_DEFAULTS,
+} from '../../src/utils/preloadOptions.js';
 
 // Mock process.platform for consistent testing
 const originalPlatform = process.platform;
@@ -92,10 +96,12 @@ describe('Configuration', () => {
   });
 
   describe('PRELOAD_DEFAULTS', () => {
-    it('should extend THUNK_PROCESSOR_DEFAULTS', () => {
+    it('should extend THUNK_PROCESSOR_DEFAULTS with batching options', () => {
       expect(PRELOAD_DEFAULTS).toEqual({
         maxQueueSize: 100,
         actionCompletionTimeoutMs: originalPlatform === 'linux' ? 60000 : 30000,
+        enableBatching: true,
+        batching: {},
       });
     });
   });
@@ -106,6 +112,8 @@ describe('Configuration', () => {
       expect(result).toEqual({
         maxQueueSize: 100,
         actionCompletionTimeoutMs: originalPlatform === 'linux' ? 60000 : 30000,
+        enableBatching: true,
+        batching: {},
       });
     });
 
@@ -118,19 +126,58 @@ describe('Configuration', () => {
       expect(result).toEqual({
         maxQueueSize: 25,
         actionCompletionTimeoutMs: 5000,
+        enableBatching: true,
+        batching: {},
       });
     });
 
     it('should use thunk processor option merging internally', () => {
       const userOptions = {
         maxQueueSize: 200,
-        // actionCompletionTimeoutMs not provided
       };
       const result = getPreloadOptions(userOptions);
       expect(result).toEqual({
         maxQueueSize: 200,
         actionCompletionTimeoutMs: originalPlatform === 'linux' ? 60000 : 30000,
+        enableBatching: true,
+        batching: {},
       });
+    });
+
+    it('should allow disabling batching', () => {
+      const userOptions = {
+        enableBatching: false,
+      };
+      const result = getPreloadOptions(userOptions);
+      expect(result.enableBatching).toBe(false);
+    });
+
+    it('should allow custom batching config', () => {
+      const userOptions = {
+        batching: {
+          windowMs: 32,
+          maxBatchSize: 100,
+        },
+      };
+      const result = getPreloadOptions(userOptions);
+      expect(result.batching).toEqual({
+        windowMs: 32,
+        maxBatchSize: 100,
+      });
+    });
+  });
+
+  describe('getBatchingConfig', () => {
+    it('should return defaults when no config provided', () => {
+      const config = getBatchingConfig();
+      expect(config).toEqual(BATCHING_DEFAULTS);
+    });
+
+    it('should merge user config with defaults', () => {
+      const config = getBatchingConfig({ windowMs: 32 });
+      expect(config.windowMs).toBe(32);
+      expect(config.maxBatchSize).toBe(BATCHING_DEFAULTS.maxBatchSize);
+      expect(config.priorityFlushThreshold).toBe(BATCHING_DEFAULTS.priorityFlushThreshold);
     });
   });
 });

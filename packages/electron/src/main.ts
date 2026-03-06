@@ -44,6 +44,7 @@ export { isDev } from './utils/environment.js';
 export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBridge {
   subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
   unsubscribe: (...args: unknown[]) => void;
+  getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
@@ -54,6 +55,7 @@ export interface ZustandBridge<S extends AnyState = AnyState> extends BackendBri
 export interface ReduxBridge<S extends AnyState = AnyState> extends BackendBridge {
   subscribe: (windows: WrapperOrWebContents[], keys?: string[]) => { unsubscribe: () => void };
   unsubscribe: (...args: unknown[]) => void;
+  getWindowSubscriptions: (windowId: number) => string[];
   dispatch: Dispatch<S>;
   destroy: () => void;
 }
@@ -80,6 +82,7 @@ export function createZustandBridge<S extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
+    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
       coreBridge.destroy();
       // Clean up the state manager from the registry
@@ -111,6 +114,7 @@ export function createReduxBridge<S extends AnyState>(
         args[1] as string[] | undefined,
       );
     },
+    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
     destroy: () => {
       coreBridge.destroy();
       // Clean up the state manager from the registry

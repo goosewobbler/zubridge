@@ -364,6 +364,7 @@ describe('IPC Traffic Logging Middleware', () => {
     }
   });
 
+  // Skipped: requires @zubridge/middleware to emit processing_metrics (not yet released)
   it.skip('should include performance metrics when counter is incremented', async () => {
     if (ws.readyState !== WebSocket.OPEN) {
       console.log('Skipping test: WebSocket not connected');
@@ -416,6 +417,19 @@ describe('IPC Traffic Logging Middleware', () => {
     }
   });
 
+  // Skipped: requires @zubridge/middleware (not yet released).
+  //
+  // This test compares selective-vs-full subscription processing time via middleware telemetry.
+  // E2E round-trip measurements cannot isolate the JS-level savings — Electron's structured
+  // clone IPC dominates the timing. Vitest benchmarks show a 2-3x JS-level speedup for
+  // selective subscriptions on large state, but this is not detectable at E2E level.
+  //
+  // When middleware ships, repurpose this test for:
+  // - Regression detection: establish a baseline processing time and fail if it degrades
+  // - Latency budgets: verify action processing stays under a threshold for large state
+  // - Scaling behaviour: measure processing time growth as state size increases
+  //
+  // See packages/electron/docs/performance.md for detailed findings.
   describe.skip('performance with large state', () => {
     // Store performance metrics for analysis
     const performanceMetrics: Record<string, unknown>[] = [];

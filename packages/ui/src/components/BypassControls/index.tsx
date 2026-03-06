@@ -9,31 +9,29 @@ interface BypassControlsProps {
 export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }) => {
   // Initialize state from window object or default values
   const [bypassAccessControl, setBypassAccessControl] = useState(
-    () => window.bypassFlags?.bypassAccessControl || false,
+    () => window.dispatchFlags?.bypassAccessControl || false,
   );
 
-  const [bypassThunkLock, setBypassThunkLock] = useState(
-    () => window.bypassFlags?.bypassThunkLock || false,
-  );
+  const [immediate, setImmediate] = useState(() => window.dispatchFlags?.immediate || false);
 
   // Update the window object when state changes
   useEffect(() => {
     // Initialize the global object if it doesn't exist
-    if (!window.bypassFlags) {
-      window.bypassFlags = {
+    if (!window.dispatchFlags) {
+      window.dispatchFlags = {
         bypassAccessControl: false,
-        bypassThunkLock: false,
+        immediate: false,
       };
     }
 
     // Update the global flags
-    window.bypassFlags.bypassAccessControl = bypassAccessControl;
-    window.bypassFlags.bypassThunkLock = bypassThunkLock;
-  }, [bypassAccessControl, bypassThunkLock]);
+    window.dispatchFlags.bypassAccessControl = bypassAccessControl;
+    window.dispatchFlags.immediate = immediate;
+  }, [bypassAccessControl, immediate]);
 
   return (
     <div className={`bypass-controls ${className}`}>
-      <h3 className="mb-3 text-lg font-semibold">Bypass Flags</h3>
+      <h3 className="mb-3 text-lg font-semibold">Dispatch Flags</h3>
       <div className="flex flex-col gap-3">
         <div className="flex items-center">
           <Button
@@ -53,14 +51,14 @@ export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }
 
         <div className="flex items-center">
           <Button
-            onClick={() => setBypassThunkLock(!bypassThunkLock)}
-            variant={bypassThunkLock ? 'primary' : 'secondary'}
+            onClick={() => setImmediate(!immediate)}
+            variant={immediate ? 'primary' : 'secondary'}
             className="flex-1"
           >
-            Bypass Thunk Lock
+            Immediate Dispatch
           </Button>
 
-          {bypassThunkLock && (
+          {immediate && (
             <div className="px-2 py-1 ml-2 text-xs text-green-800 bg-green-100 rounded-md dark:bg-green-900 dark:text-green-200">
               Enabled
             </div>
@@ -74,8 +72,7 @@ export const BypassControls: React.FC<BypassControlsProps> = ({ className = '' }
           subscribed to
         </p>
         <p>
-          <strong>bypassThunkLock</strong>: Allows actions to execute even when a thunk is in
-          progress
+          <strong>immediate</strong>: Execute actions immediately, bypassing all queues and locks
         </p>
       </div>
     </div>
