@@ -20,9 +20,6 @@ on:
       GITHUB_BOT_TOKEN:
         description: 'GitHub token for authentication'
         required: true
-      NPM_TOKEN:
-        description: 'NPM token for publishing packages'
-        required: true
       DEPLOY_KEY:
         description: 'SSH deploy key for pushing to the repository'
         required: true
@@ -45,7 +42,6 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_BOT_TOKEN }}
-  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   TURBO_TELEMETRY_DISABLED: 1
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
@@ -54,6 +50,8 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     outputs:
       release_tag: ${{ steps.push_tags.outputs.release_tag }}
     steps:
@@ -77,18 +75,6 @@ jobs:
 
       - name: 🏗️ Build packages
         uses: ./.github/workflows/actions/build-verify
-
-      - name: 📦 Configure NPM registry
-        shell: bash
-        run: |
-          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-            echo "DRY RUN: Would configure NPM registry for publishing"
-          else
-            # Set up NPM authentication for publishing
-            pnpm set registry "https://registry.npmjs.org/"
-            pnpm set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
-            pnpm whoami
-          fi
 
       - name: 🔄 Calculate version & create tag
         id: versioning

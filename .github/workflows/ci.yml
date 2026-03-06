@@ -28,7 +28,7 @@ jobs:
       - name: 🛠️ Setup workspace
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: "20.x"
+          node-version: "24.x"
 
       - name: 🏗️ Build shared packages
         run: pnpm run build:packages
@@ -57,7 +57,7 @@ jobs:
       - name: 🛠️ Setup workspace
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: "20.x"
+          node-version: "24.x"
 
       - name: 📦 Download shared packages
         uses: actions/download-artifact@v4

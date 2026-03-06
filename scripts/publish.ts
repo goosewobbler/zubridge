@@ -178,7 +178,7 @@ packagesToPublish.forEach((pkg) => {
 const filterArgs = packagesToPublish.map((pkg) => `--filter ./${pkg}`).join(' ');
 
 // Create and run the publish command
-const publishCommand = `pnpm publish ${filterArgs} --access public --no-git-checks --tag ${tag} ${options.join(' ')}`;
+const publishCommand = `pnpm publish ${filterArgs} --access public --no-git-checks --provenance --tag ${tag} ${options.join(' ')}`;
 
 console.log(`\nRunning: ${publishCommand}\n`);
 
