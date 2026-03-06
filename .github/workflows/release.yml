@@ -32,7 +32,7 @@ jobs:
     name: Release
     permissions:
       id-token: write
-      contents: read
+      contents: write
     uses: ./.github/workflows/_release-publish.reusable.yml
     with:
       release_version: ${{ inputs.release_version }}

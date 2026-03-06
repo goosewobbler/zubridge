@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: write
     outputs:
       release_tag: ${{ steps.push_tags.outputs.release_tag }}
     steps:
