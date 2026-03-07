@@ -90,8 +90,10 @@ jobs:
         if: ${{ !contains(fromJson('["tauri-plugin"]'), inputs.packages) && inputs.dry_run != 'true' }}
         run: |
           # Request OIDC token from GitHub Actions
+          echo "Requesting OIDC token for npm registry..."
           TOKEN=$(curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r '.value')
+          echo "Token received: ${#TOKEN} characters"
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
           # Also set it as env var for subsequent steps
           echo "NPM_ID_TOKEN=$TOKEN" >> $GITHUB_ENV

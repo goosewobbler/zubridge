@@ -177,9 +177,17 @@ packagesToPublish.forEach((pkg) => {
 // Check if we're using OIDC (NPM_ID_TOKEN is set)
 const useOidc = !!process.env.NPM_ID_TOKEN;
 
-if (useOidc) {
-  console.log('\nUsing OIDC authentication (NPM_ID_TOKEN detected)\n');
+console.log('\n--- Auth Debug ---');
+console.log(`NPM_ID_TOKEN present: ${!!process.env.NPM_ID_TOKEN}`);
+if (process.env.NPM_ID_TOKEN) {
+  console.log(`NPM_ID_TOKEN value: ${process.env.NPM_ID_TOKEN.substring(0, 20)}...`);
+  console.log('Will use: npm with OIDC\n');
+} else {
+  console.log('Will use: pnpm with token\n');
+}
+console.log('-----------------\n');
 
+if (useOidc) {
   // Publish each package individually using npm (which supports OIDC)
   for (const pkg of packagesToPublish) {
     const publishCommand = `npm publish --access public --provenance --tag ${tag} ${options.join(' ')}`;
