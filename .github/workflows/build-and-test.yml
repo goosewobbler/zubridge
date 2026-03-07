@@ -95,7 +95,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: "20"
+          node-version: "24"
 
       # Download shared packages
       - name: Download shared packages
@@ -213,7 +213,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: "20"
+          node-version: "24"
 
       # Download shared packages
       - name: Download shared packages
@@ -325,7 +325,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: "20"
+          node-version: "24"
 
       # Download shared packages
       - name: Download shared packages

@@ -114,8 +114,6 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/workflows/actions/setup-workspace
-        with:
-          node-version: "20"
 
       - name: Download shared packages
         uses: actions/download-artifact@v4

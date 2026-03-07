@@ -72,7 +72,7 @@ jobs:
       - name: 🛠️ Setup workspace
         uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: 🏗️ Build packages
         uses: ./.github/workflows/actions/build-verify
