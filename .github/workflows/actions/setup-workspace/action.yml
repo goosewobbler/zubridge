@@ -2,8 +2,9 @@ name: 'Setup Workspace'
 description: 'Sets up Node.js environment with PNPM for CI/CD workflows'
 inputs:
   node-version:
-    description: 'Node.js version to use (e.g., "20")'
-    required: true
+    description: 'Node.js version to use (e.g., "24")'
+    required: false
+    default: '24'
 
 runs:
   using: composite

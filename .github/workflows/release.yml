@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release type'
+        description: 'Release type (patch/minor/major for stable, prepatch/preminor/premajor/prerelease for pre-release)'
         required: true
         default: 'patch'
         type: choice
-        options: ['patch', 'minor', 'major']
+        options: ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
       packages:
         description: 'Package directory to release'
         required: true
@@ -30,6 +30,9 @@ on:
 jobs:
   release:
     name: Release
+    permissions:
+      id-token: write
+      contents: write
     uses: ./.github/workflows/_release-publish.reusable.yml
     with:
       release_version: ${{ inputs.release_version }}
@@ -37,7 +40,6 @@ jobs:
       dry_run: ${{ inputs.dry_run }}
     secrets:
       GITHUB_BOT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
       CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
