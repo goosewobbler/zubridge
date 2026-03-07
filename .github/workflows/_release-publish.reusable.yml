@@ -97,6 +97,8 @@ jobs:
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
           # Also set it as env var for subsequent steps
           echo "NPM_ID_TOKEN=$TOKEN" >> $GITHUB_ENV
+          # Configure npm to use the token directly
+          npm config set //registry.npmjs.org/:_authToken "$TOKEN"
 
       - name: 📢 Publish to NPM
         shell: bash
