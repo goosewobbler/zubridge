@@ -3,6 +3,9 @@ import { debug } from '@zubridge/core';
 import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/types';
 import type { WebContents } from 'electron';
 import { IpcChannel } from '../../constants.js';
+import { DeltaCalculator } from '../../deltas/DeltaCalculator.js';
+import type { Delta } from '../../deltas/types.js';
+import { getDeltaConfig } from '../../deltas/types.js';
 import { getPartialState, SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import { thunkManager } from '../../thunk/init.js';
 import { sanitizeState } from '../../utils/serialization.js';
@@ -16,12 +19,20 @@ import {
 import type { ResourceManager } from '../resources/ResourceManager.js';
 
 export class SubscriptionHandler<State extends AnyState> {
+  private deltaCalculator: DeltaCalculator<State>;
+  private deltaConfig: ReturnType<typeof getDeltaConfig>;
+  private prevStates: Map<number, State> = new Map();
+
   constructor(
     private stateManager: StateManager<State>,
     private resourceManager: ResourceManager<State>,
     private windowTracker: WebContentsTracker,
     private serializationMaxDepth?: number,
-  ) {}
+    deltaOptions?: { enabled?: boolean },
+  ) {
+    this.deltaCalculator = new DeltaCalculator<State>();
+    this.deltaConfig = getDeltaConfig(deltaOptions);
+  }
 
   /**
    * Subscribe windows to state updates for specific keys.
@@ -55,6 +66,7 @@ export class SubscriptionHandler<State extends AnyState> {
             `Window ${webContents.id} destroyed, cleaning up subscriptions and pending state updates`,
           );
           this.resourceManager.removeSubscriptionManager(webContents.id);
+          this.prevStates.delete(webContents.id);
           // Clean up dead renderer from pending state updates to prevent hanging acknowledgments
           thunkManager.cleanupDeadRenderer(webContents.id);
         });
@@ -62,10 +74,11 @@ export class SubscriptionHandler<State extends AnyState> {
       }
 
       // Register a subscription for the keys with an actual callback that sends state updates
+      const windowId = webContents.id;
       const unsubscribe = subManager.subscribe(
         keys,
         (state) => {
-          debug('core', `Sending state update to window ${webContents.id}`);
+          debug('core', `Sending state update to window ${windowId}`);
           const serializationOptions: { maxDepth?: number } = {};
           if (this.serializationMaxDepth !== undefined) {
             serializationOptions.maxDepth = this.serializationMaxDepth;
@@ -78,7 +91,7 @@ export class SubscriptionHandler<State extends AnyState> {
 
           // Only track state updates caused by thunk actions, not all updates while thunk is active
           if (currentThunkId) {
-            thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [webContents.id]);
+            thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [windowId]);
             debug(
               'core',
               `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`,
@@ -87,14 +100,35 @@ export class SubscriptionHandler<State extends AnyState> {
             debug('core', `State update ${updateId} not tracked (not from thunk action)`);
           }
 
-          // Send enhanced state update with tracking information
-          safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
-            updateId,
-            state: sanitizedState,
-            thunkId: currentThunkId,
-          });
+          // Calculate delta if enabled
+          const prevState = this.prevStates.get(windowId);
+          if (this.deltaConfig.enabled && prevState !== undefined) {
+            const delta = this.deltaCalculator.calculate(prevState, state as State, keys);
+            const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
+
+            debug('core', `Sending delta update to window ${windowId}:`, delta);
+
+            safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+              updateId,
+              delta: sanitizedDelta,
+              state: sanitizedState, // Keep for backward compatibility
+              thunkId: currentThunkId,
+            });
+          } else {
+            // Fallback to full state (initial state or deltas disabled)
+            debug('core', `Sending full state update to window ${windowId}`);
+
+            safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+              updateId,
+              state: sanitizedState,
+              thunkId: currentThunkId,
+            });
+          }
+
+          // Update previous state for next delta calculation
+          this.prevStates.set(windowId, state as State);
         },
-        webContents.id,
+        windowId,
       );
       unsubs.push(unsubscribe);
 
@@ -159,12 +193,33 @@ export class SubscriptionHandler<State extends AnyState> {
     return this.selectiveSubscribe(windows, keys);
   }
 
+  private sanitizeDelta(delta: Delta<State>, options: { maxDepth?: number }): Delta<State> {
+    if (delta.type === 'full') {
+      return {
+        type: 'full',
+        version: delta.version,
+        fullState: delta.fullState
+          ? (sanitizeState(delta.fullState as State, options) as Partial<State>)
+          : undefined,
+      };
+    }
+
+    return {
+      type: 'delta',
+      version: delta.version,
+      changed: delta.changed
+        ? (sanitizeState(delta.changed as State, options) as Record<string, unknown>)
+        : undefined,
+    };
+  }
+
   /**
    * Unsubscribe windows from state updates.
    */
   unsubscribe(windows?: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
     // If windows is not provided, unsubscribe all windows
     if (!windows) {
+      this.prevStates.clear();
       this.resourceManager.clearAll();
       this.windowTracker.cleanup();
       return;
@@ -174,11 +229,13 @@ export class SubscriptionHandler<State extends AnyState> {
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents) continue;
-      const subManager = this.resourceManager.getSubscriptionManager(webContents.id);
+      const windowId = webContents.id;
+      const subManager = this.resourceManager.getSubscriptionManager(windowId);
       if (subManager) {
-        subManager.unsubscribe(keys, () => {}, webContents.id);
-        if (subManager.getCurrentSubscriptionKeys(webContents.id).length === 0) {
-          this.resourceManager.removeSubscriptionManager(webContents.id);
+        subManager.unsubscribe(keys, () => {}, windowId);
+        if (subManager.getCurrentSubscriptionKeys(windowId).length === 0) {
+          this.resourceManager.removeSubscriptionManager(windowId);
+          this.prevStates.delete(windowId);
         }
       }
       this.windowTracker.untrack(webContents);

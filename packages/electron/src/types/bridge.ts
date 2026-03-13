@@ -2,6 +2,12 @@ import type { Action, AnyState } from '@zubridge/types';
 import type { ZubridgeMiddleware } from '../middleware.js';
 
 export interface CoreBridgeOptions {
+  // Delta update configuration
+  deltas?: {
+    /** Enable delta updates (default: true) */
+    enabled?: boolean;
+  };
+
   // Middleware hooks
   middleware?: ZubridgeMiddleware;
   beforeProcessAction?: (action: Action, windowId?: number) => Promise<Action> | Action;

@@ -20,6 +20,38 @@ import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getBatchingConfig, getPreloadOptions } from './utils/preloadOptions.js';
 
+function mergeDelta<S>(
+  currentState: S,
+  delta: {
+    type: 'delta' | 'full';
+    version: number;
+    changed?: Record<string, unknown>;
+    fullState?: Partial<S>;
+  },
+): S {
+  if (delta.type === 'full' || !delta.changed) {
+    return (delta.fullState ?? currentState) as S;
+  }
+
+  const merged = { ...currentState } as Record<string, unknown>;
+
+  for (const [keyPath, value] of Object.entries(delta.changed)) {
+    setDeep(merged, keyPath, value);
+  }
+
+  return merged as S;
+}
+
+function setDeep(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const keys = path.split('.');
+  let curr = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (!curr[keys[i]]) curr[keys[i]] = {};
+    curr = curr[keys[i]] as Record<string, unknown>;
+  }
+  curr[keys[keys.length - 1]] = value;
+}
+
 // Use Web Crypto API for sandbox compatibility
 // In sandbox mode, Node.js modules are not available, but Web Crypto API is
 const uuidv4 = (): string => {
@@ -191,16 +223,39 @@ export const preloadBridge = <S extends AnyState>(
 
         // Set up state update tracking listener (now handles ALL state updates)
         registerIpcListener(IpcChannel.STATE_UPDATE, async (_event, payload) => {
-          const { updateId, state, thunkId } = payload as {
+          const { updateId, state, delta, thunkId } = payload as {
             updateId: string;
-            state: S;
+            state?: S;
+            delta?: {
+              type: 'delta' | 'full';
+              version: number;
+              changed?: Record<string, unknown>;
+              fullState?: Partial<S>;
+            };
             thunkId?: string;
           };
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
+          let newState: S;
+
+          if (delta && delta.type === 'delta' && delta.changed) {
+            // Delta update - merge into current state
+            const currentStoreState = await handlers.getState();
+            newState = mergeDelta(currentStoreState, delta);
+            debug('ipc', `Merging delta for update ${updateId}:`, delta.changed);
+          } else if (delta && delta.type === 'full' && delta.fullState) {
+            // Full state from delta format
+            newState = delta.fullState as S;
+            debug('ipc', `Received full state update ${updateId}`);
+          } else {
+            // Regular full state update (backward compatible)
+            newState = state as S;
+            debug('ipc', `Received regular state update ${updateId}`);
+          }
+
           // Notify all subscribers of the state change
           listeners.forEach((fn) => {
-            fn(state);
+            fn(newState);
           });
 
           // Send acknowledgment back to main process

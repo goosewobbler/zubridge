@@ -156,6 +156,34 @@ Zubridge includes built-in action batching that groups renderer actions within a
 
 For configuration options, priority-based flushing, and performance details, see [Action Batching](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md#action-batching) in the Advanced Usage guide.
 
+## Delta Updates
+
+Zubridge includes delta updates that send only changed portions of state instead of complete state values, reducing IPC payload size by 70-80% for typical updates.
+
+### Configuration
+
+```typescript
+const bridge = createZubridgeBridge(store, {
+  deltas: {
+    enabled: true, // Enabled by default
+  }
+});
+```
+
+### How It Works
+
+When enabled, Zubridge calculates the diff between the previous and current state, sending only the changed keys via IPC. The renderer process automatically merges these deltas into the local state.
+
+### Payload Reduction
+
+| Scenario | Full State | Delta | Reduction |
+|----------|-----------|-------|-----------|
+| Counter update | ~100 bytes | ~50 bytes | 50% |
+| Profile change (deep) | ~500 bytes | ~100 bytes | 80% |
+| Large array append (10,000 items) | ~500KB | ~200 bytes | 99.96% |
+
+For more details, see the [Performance documentation](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/performance.md).
+
 ## Development
 
 For information about contributing to this project, see the [Developer Guide](https://github.com/goosewobbler/zubridge/blob/main/docs/developer.md).
