@@ -28,15 +28,22 @@ async function build() {
     try {
       // Build renderer (browser context)
       console.log('Building renderer...');
-      await runTsdown(['--config', 'tsdown.win32.renderer.config.ts']);
+      await runTsdown(['--config', 'tsdown.win32.renderer.config.ts', '--config-loader', 'unrun']);
 
       // Build main (node context)
       console.log('Building main...');
-      await runTsdown(['--config', 'tsdown.win32.node.config.ts', '--entry.main', 'src/main.ts']);
+      await runTsdown([
+        '--config',
+        'tsdown.win32.node.config.ts',
+        '--config-loader',
+        'unrun',
+        '--entry.main',
+        'src/main.ts',
+      ]);
 
       // Build preload (sandboxed context, needs polyfills)
       console.log('Building preload...');
-      await runTsdown(['--config', 'tsdown.win32.preload.config.ts']);
+      await runTsdown(['--config', 'tsdown.win32.preload.config.ts', '--config-loader', 'unrun']);
 
       console.log('Windows build completed successfully');
       process.exit(0);
@@ -54,9 +61,9 @@ async function build() {
       process.exit(1);
     }
   } else {
-    // On macOS and other Unix systems, use default config with parallel builds
+    // On macOS and other Unix systems, use the same unrun config loader as Linux
     try {
-      await runTsdown();
+      await runTsdown(['--config', 'tsdown.config.ts', '--config-loader', 'unrun']);
       process.exit(0);
     } catch (error) {
       console.error('Build failed:', error);
