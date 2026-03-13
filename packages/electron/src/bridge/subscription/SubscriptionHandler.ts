@@ -193,7 +193,8 @@ export class SubscriptionHandler<State extends AnyState> {
       });
 
       // Seed per-subscription prevState so the first change can be sent as a delta
-      subscriptionPrevState = fullState as State;
+      // Use sanitized currentState (not raw fullState) to match what gets sent to renderer
+      subscriptionPrevState = currentState as State;
     }
 
     return {
