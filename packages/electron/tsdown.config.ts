@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsdown';
 import { defineEnv } from 'unenv';
-import { createUnenvExternalPlugin, externalizeUnenvRuntime } from './scripts/build-utils.js';
+import { createUnenvExternalPlugin, externalizeUnenvRuntime } from './scripts/build-utils';
 
 const { env } = defineEnv({
   nodeCompat: true,
