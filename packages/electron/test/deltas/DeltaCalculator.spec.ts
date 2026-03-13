@@ -49,8 +49,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(undefined, next, '*');
 
-      expect(result.type).toBe('full');
-      expect(result.fullState).toEqual(next);
+      expect(result).toEqual({
+        type: 'full',
+        version: 1,
+        fullState: next,
+      });
     });
 
     it('should return delta with changed top-level keys for full subscription', () => {
@@ -67,8 +70,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, '*');
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({ counter: 2 });
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2 },
+      });
     });
 
     it('should return top-level key deltas for full subscription with multiple changes', () => {
@@ -85,10 +91,13 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, '*');
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({
-        counter: 2,
-        user: { name: 'Bob', profile: { theme: 'light' } },
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: {
+          counter: 2,
+          user: { name: 'Bob', profile: { theme: 'light' } },
+        },
       });
     });
 
@@ -106,8 +115,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['counter']);
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({ counter: 2 });
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2 },
+      });
     });
 
     it('should detect changes in deep key paths', () => {
@@ -124,8 +136,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['user.profile.theme']);
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({ 'user.profile.theme': 'light' });
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: { 'user.profile.theme': 'light' },
+      });
     });
 
     it('should return null when nothing changed (selective keys)', () => {
@@ -176,8 +191,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['counter', 'user.name']);
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({ counter: 2, 'user.name': 'Bob' });
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2, 'user.name': 'Bob' },
+      });
     });
 
     it('should handle nested object changes', () => {
@@ -194,9 +212,12 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['user']);
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({
-        user: { name: 'Alice', profile: { theme: 'light' } },
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: {
+          user: { name: 'Alice', profile: { theme: 'light' } },
+        },
       });
     });
 
@@ -214,8 +235,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['items']);
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({ items: ['a', 'b', 'c'] });
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: { items: ['a', 'b', 'c'] },
+      });
     });
 
     it('should work with pre-normalized deduplicated keys', () => {
@@ -233,10 +257,13 @@ describe('DeltaCalculator', () => {
       const normalizedKeys = calculator.normalizeKeys(['user', 'counter', 'user']);
       const result = calculator.calculate(prev, next, normalizedKeys as string[]);
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({
-        counter: 2,
-        user: { name: 'Bob', profile: { theme: 'light' } },
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: {
+          counter: 2,
+          user: { name: 'Bob', profile: { theme: 'light' } },
+        },
       });
     });
   });
@@ -257,9 +284,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, '*');
 
-      expect(result.type).toBe('delta');
-      expect(result.removed).toEqual(['temp']);
-      expect(result.changed).toBeUndefined();
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        removed: ['temp'],
+      });
     });
 
     it('should track removed keys in selective subscription', () => {
@@ -276,9 +305,11 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['user.profile.theme']);
 
-      expect(result.type).toBe('delta');
-      expect(result.removed).toEqual(['user.profile.theme']);
-      expect(result.changed).toBeUndefined();
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        removed: ['user.profile.theme'],
+      });
     });
 
     it('should track both changed and removed keys', () => {
@@ -296,9 +327,12 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, '*');
 
-      expect(result.type).toBe('delta');
-      expect(result.changed).toEqual({ counter: 2 });
-      expect(result.removed).toEqual(['temp']);
+      expect(result).toEqual({
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2 },
+        removed: ['temp'],
+      });
     });
   });
 });
