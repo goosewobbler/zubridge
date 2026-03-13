@@ -34,7 +34,7 @@ export class DeltaMerger<S> {
 
     if (delta.removed) {
       for (const keyPath of delta.removed) {
-        this.deleteDeep(result, keyPath);
+        this.deleteDeep(result, currentState as Record<string, unknown>, keyPath);
       }
     }
 
@@ -93,7 +93,11 @@ export class DeltaMerger<S> {
     current[finalKey] = value;
   }
 
-  private deleteDeep(obj: Record<string, unknown>, path: string): void {
+  private deleteDeep(
+    obj: Record<string, unknown>,
+    original: Record<string, unknown>,
+    path: string,
+  ): void {
     const keys = path.split('.');
 
     if (keys.length === 1) {
@@ -102,12 +106,22 @@ export class DeltaMerger<S> {
     }
 
     let current = obj;
+    let originalCurrent = original;
     for (let i = 0; i < keys.length - 1; i++) {
       const next = current[keys[i]];
       if (!next || typeof next !== 'object') return;
-      const cloned = { ...(next as Record<string, unknown>) };
-      current[keys[i]] = cloned;
-      current = cloned;
+      const originalValue = originalCurrent[keys[i]] as Record<string, unknown> | undefined;
+
+      if (next !== originalValue) {
+        // Already cloned by setDeepWithStructuralSharing — reuse it
+        current = next as Record<string, unknown>;
+        originalCurrent = originalValue ?? (next as Record<string, unknown>);
+      } else {
+        const cloned = { ...(next as Record<string, unknown>) };
+        current[keys[i]] = cloned;
+        current = cloned;
+        originalCurrent = originalValue ?? (next as Record<string, unknown>);
+      }
     }
     delete current[keys[keys.length - 1]];
   }
