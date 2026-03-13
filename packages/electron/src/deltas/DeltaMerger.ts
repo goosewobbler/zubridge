@@ -13,7 +13,11 @@ export class DeltaMerger<S> {
     const hasRemovals = delta.removed && delta.removed.length > 0;
 
     if (delta.type === 'full' || (!hasChanges && !hasRemovals)) {
-      return delta.fullState || currentState;
+      // Guard against empty fullState ({}) which is truthy but should not replace current state
+      if (delta.fullState && Object.keys(delta.fullState).length > 0) {
+        return delta.fullState;
+      }
+      return currentState;
     }
 
     const result = this.cloneWithStructuralSharing(currentState as Record<string, unknown>);
