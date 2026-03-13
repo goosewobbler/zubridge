@@ -14,42 +14,11 @@ import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
 import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types.js';
 import { validateActionInRenderer } from './bridge/ipc/validation.js';
 import { IpcChannel } from './constants.js';
+import { DeltaMerger } from './deltas/DeltaMerger.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
 import { getBatchingConfig, getPreloadOptions } from './utils/preloadOptions.js';
-
-function mergeDelta<S>(
-  currentState: S,
-  delta: {
-    type: 'delta' | 'full';
-    version: number;
-    changed?: Record<string, unknown>;
-    fullState?: Partial<S>;
-  },
-): S {
-  if (delta.type === 'full' || !delta.changed) {
-    return (delta.fullState ?? currentState) as S;
-  }
-
-  const merged = { ...currentState } as Record<string, unknown>;
-
-  for (const [keyPath, value] of Object.entries(delta.changed)) {
-    setDeep(merged, keyPath, value);
-  }
-
-  return merged as S;
-}
-
-function setDeep(obj: Record<string, unknown>, path: string, value: unknown): void {
-  const keys = path.split('.');
-  let curr = obj;
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (!curr[keys[i]]) curr[keys[i]] = {};
-    curr = curr[keys[i]] as Record<string, unknown>;
-  }
-  curr[keys[keys.length - 1]] = value;
-}
 
 // Use Web Crypto API for sandbox compatibility
 // In sandbox mode, Node.js modules are not available, but Web Crypto API is
@@ -103,6 +72,8 @@ export const preloadBridge = <S extends AnyState>(
   setupRendererErrorHandlers();
 
   const listeners = new Set<(state: S) => void>();
+  const deltaMerger = new DeltaMerger<S>();
+  let cachedState: S | null = null;
   let initialized = false;
 
   // Resolve options once at the start
@@ -289,6 +260,7 @@ export const preloadBridge = <S extends AnyState>(
               type: 'delta' | 'full';
               version: number;
               changed?: Record<string, unknown>;
+              removed?: string[];
               fullState?: Partial<S>;
             };
             thunkId?: string;
@@ -297,19 +269,34 @@ export const preloadBridge = <S extends AnyState>(
 
           let newState: S;
 
-          if (delta && delta.type === 'delta' && delta.changed) {
-            // Delta update - merge into current state
-            const currentStoreState = await handlers.getState();
-            newState = mergeDelta(currentStoreState, delta);
-            debug('ipc', `Merging delta for update ${updateId}:`, delta.changed);
+          if (
+            delta &&
+            delta.type === 'delta' &&
+            (delta.changed || delta.removed) &&
+            cachedState !== null
+          ) {
+            // Delta update - merge into cached state (no IPC call)
+            newState = deltaMerger.merge(cachedState, delta) as S;
+            cachedState = newState;
+            debug('ipc', `Merging delta for update ${updateId}`);
           } else if (delta && delta.type === 'full' && delta.fullState) {
             // Full state from delta format
             newState = delta.fullState as S;
+            cachedState = newState;
             debug('ipc', `Received full state update ${updateId}`);
-          } else {
+          } else if (state) {
             // Regular full state update (backward compatible)
             newState = state as S;
+            cachedState = newState;
             debug('ipc', `Received regular state update ${updateId}`);
+          } else {
+            // Fallback: get state via IPC if no delta and no full state
+            debug(
+              'ipc',
+              `No delta or full state, falling back to IPC getState for update ${updateId}`,
+            );
+            newState = await handlers.getState();
+            cachedState = newState;
           }
 
           // Notify all subscribers of the state change
@@ -339,7 +326,7 @@ export const preloadBridge = <S extends AnyState>(
         debug('ipc', 'Unsubscribing from state changes');
         listeners.delete(callback);
 
-        // If no more listeners, clean up IPC listener
+        // If no more listeners, clean up IPC listener and cached state
         if (listeners.size === 0) {
           debug('ipc', 'Last subscriber removed - cleaning up IPC listeners');
           const stateUpdateListener = ipcListeners.get(IpcChannel.STATE_UPDATE);
@@ -347,6 +334,7 @@ export const preloadBridge = <S extends AnyState>(
             ipcRenderer.removeListener(IpcChannel.STATE_UPDATE, stateUpdateListener);
             ipcListeners.delete(IpcChannel.STATE_UPDATE);
           }
+          cachedState = null;
         }
       };
     },
@@ -857,6 +845,7 @@ export const preloadBridge = <S extends AnyState>(
 
     // Only essential synchronous cleanup here
     listeners.clear();
+    cachedState = null;
 
     // Cancel pending registrations immediately
     for (const [thunkId, { reject }] of pendingThunkRegistrations) {

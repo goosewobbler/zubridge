@@ -13,11 +13,12 @@ interface TestState {
   [key: string]: unknown;
 }
 
-function createSmallState() {
+function createSmallState(): TestState {
   return {
     counter: 42,
     theme: 'dark',
     user: { name: 'Alice', profile: { theme: 'dark' } },
+    items: [],
   };
 }
 
@@ -35,7 +36,7 @@ function createMediumState() {
   };
 }
 
-function createLargeState() {
+function createLargeState(): TestState {
   const collections: Record<string, unknown> = {};
   for (let c = 0; c < 20; c++) {
     const items: string[] = [];
@@ -48,6 +49,7 @@ function createLargeState() {
     counter: 42,
     theme: 'dark',
     user: { name: 'Alice', profile: { theme: 'dark' } },
+    items: [],
     ...collections,
   };
 }
@@ -145,24 +147,23 @@ describe('Delta payload size comparison', () => {
     JSON.stringify(delta);
   });
 
-  bench('delta payload (medium) - single key', () => {
+  bench('delta payload (medium) - deep key', () => {
     const prev = createMediumState();
-    const next = { ...prev, counter: 43 };
-    const delta = calculator.calculate(prev, next, ['counter']);
+    const next = { ...prev, settings: { ...prev.settings, volume: 90 } };
+    const delta = calculator.calculate(prev, next, ['settings.volume']);
     JSON.stringify(delta);
   });
 
-  bench('full state payload (large)', () => {
+  bench('full state payload (large) - multi key', () => {
     const prev = createLargeState();
-    const next = { ...prev, counter: 43 };
-    const fullState = { ...next };
+    const fullState = { ...prev, counter: 43, theme: 'light' };
     JSON.stringify(fullState);
   });
 
-  bench('delta payload (large) - single key', () => {
+  bench('delta payload (large) - multi key', () => {
     const prev = createLargeState();
-    const next = { ...prev, counter: 43 };
-    const delta = calculator.calculate(prev, next, ['counter']);
+    const next = { ...prev, counter: 43, theme: 'light' };
+    const delta = calculator.calculate(prev, next, ['counter', 'theme']);
     JSON.stringify(delta);
   });
 });
