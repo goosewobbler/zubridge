@@ -243,8 +243,9 @@ export const preloadBridge = <S extends AnyState>(
             cachedState = newState;
             debug('ipc', `Received full state update ${updateId}`);
           } else if (state) {
-            // Regular full state update (backward compatible)
-            newState = state as S;
+            // Merge into existing cached state to handle multiple selective subscriptions
+            // that each send a partial initial state (e.g. { counter: 1 } then { user: ... })
+            newState = cachedState !== null ? ({ ...cachedState, ...state } as S) : (state as S);
             cachedState = newState;
             debug('ipc', `Received regular state update ${updateId}`);
           } else {
