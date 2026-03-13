@@ -44,6 +44,7 @@ export class SubscriptionHandler<State extends AnyState> {
     const wrappers = Array.isArray(windows) ? windows : [windows];
     const unsubs: Array<() => void> = [];
     const subscribedWebContents: WebContents[] = [];
+    const normalizedKeys = this.deltaCalculator.normalizeKeys(keys);
 
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
@@ -83,7 +84,6 @@ export class SubscriptionHandler<State extends AnyState> {
           if (this.serializationMaxDepth !== undefined) {
             serializationOptions.maxDepth = this.serializationMaxDepth;
           }
-          const sanitizedState = sanitizeState(state, serializationOptions);
 
           // Generate update ID and check if this state update is from a thunk action
           const updateId = randomUUID();
@@ -100,10 +100,10 @@ export class SubscriptionHandler<State extends AnyState> {
             debug('core', `State update ${updateId} not tracked (not from thunk action)`);
           }
 
-          // Calculate delta if enabled
+          // Calculate delta if enabled and we have a previous state to diff against
           const prevState = this.prevStates.get(windowId);
           if (this.deltaConfig.enabled && prevState !== undefined) {
-            const delta = this.deltaCalculator.calculate(prevState, state as State, keys);
+            const delta = this.deltaCalculator.calculate(prevState, state as State, normalizedKeys);
             const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
 
             debug('core', `Sending delta update to window ${windowId}:`, delta);
@@ -111,11 +111,11 @@ export class SubscriptionHandler<State extends AnyState> {
             safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
               updateId,
               delta: sanitizedDelta,
-              state: sanitizedState, // Keep for backward compatibility
               thunkId: currentThunkId,
             });
           } else {
-            // Fallback to full state (initial state or deltas disabled)
+            // Full state for initial update or when deltas are disabled
+            const sanitizedState = sanitizeState(state, serializationOptions);
             debug('core', `Sending full state update to window ${windowId}`);
 
             safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
@@ -210,6 +210,7 @@ export class SubscriptionHandler<State extends AnyState> {
       changed: delta.changed
         ? (sanitizeState(delta.changed as State, options) as Record<string, unknown>)
         : undefined,
+      removed: delta.removed,
     };
   }
 
