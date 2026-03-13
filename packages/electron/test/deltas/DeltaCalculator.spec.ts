@@ -257,6 +257,26 @@ describe('DeltaCalculator', () => {
         },
       });
     });
+
+    it('should correctly detect changes from/to falsy values', () => {
+      const prev: TestState = {
+        counter: 0,
+        user: { name: '', profile: { theme: 'dark' } },
+        items: [],
+      };
+      const next: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = calculator.calculate(prev, next, ['counter', 'user.name']);
+
+      expect(result).toEqual({
+        type: 'delta',
+        changed: { counter: 1, 'user.name': 'Alice' },
+      });
+    });
   });
 
   describe('removed keys', () => {
