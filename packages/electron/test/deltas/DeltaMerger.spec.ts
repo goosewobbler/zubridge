@@ -367,5 +367,27 @@ describe('DeltaMerger', () => {
       expect(result.counter).toBe(2);
       expect(result).not.toHaveProperty('temp');
     });
+
+    it('should handle changed and removed paths sharing a common ancestor', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark', fontSize: 14 } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { 'user.name': 'Bob' },
+        removed: ['user.profile.fontSize'],
+      });
+
+      expect(result.user.name).toBe('Bob');
+      expect(result.user.profile.theme).toBe('dark');
+      expect(result.user.profile).not.toHaveProperty('fontSize');
+      expect(result).not.toBe(currentState);
+      expect(result.user).not.toBe(currentState.user);
+      expect(result.user.profile).not.toBe(currentState.user.profile);
+    });
   });
 });
