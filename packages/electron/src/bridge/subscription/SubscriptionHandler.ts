@@ -85,22 +85,7 @@ export class SubscriptionHandler<State extends AnyState> {
             serializationOptions.maxDepth = this.serializationMaxDepth;
           }
 
-          // Generate update ID and check if this state update is from a thunk action
-          const updateId = randomUUID();
-          const currentThunkId = thunkManager.getCurrentThunkActionId();
-
-          // Only track state updates caused by thunk actions, not all updates while thunk is active
-          if (currentThunkId) {
-            thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [windowId]);
-            debug(
-              'core',
-              `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`,
-            );
-          } else {
-            debug('core', `State update ${updateId} not tracked (not from thunk action)`);
-          }
-
-          // Calculate delta if enabled and we have a previous state to diff against
+          // Calculate delta first to determine if an update should be sent
           const prevState = this.prevStates.get(windowId);
           if (this.deltaConfig.enabled && prevState !== undefined) {
             const delta = this.deltaCalculator.calculate(prevState, state as State, normalizedKeys);
@@ -112,8 +97,21 @@ export class SubscriptionHandler<State extends AnyState> {
               return;
             }
 
-            const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
+            // Generate update ID and track thunk only when we will actually send
+            const updateId = randomUUID();
+            const currentThunkId = thunkManager.getCurrentThunkActionId();
 
+            if (currentThunkId) {
+              thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [windowId]);
+              debug(
+                'core',
+                `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`,
+              );
+            } else {
+              debug('core', `State update ${updateId} not tracked (not from thunk action)`);
+            }
+
+            const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
             debug('core', `Sending delta update to window ${windowId}:`, delta);
 
             safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
@@ -123,6 +121,19 @@ export class SubscriptionHandler<State extends AnyState> {
             });
           } else {
             // Full state for initial update or when deltas are disabled
+            const updateId = randomUUID();
+            const currentThunkId = thunkManager.getCurrentThunkActionId();
+
+            if (currentThunkId) {
+              thunkManager.trackStateUpdateForThunk(currentThunkId, updateId, [windowId]);
+              debug(
+                'core',
+                `Tracking state update ${updateId} for thunk ${currentThunkId} (thunk-generated)`,
+              );
+            } else {
+              debug('core', `State update ${updateId} not tracked (not from thunk action)`);
+            }
+
             const sanitizedState = sanitizeState(state, serializationOptions);
             debug('core', `Sending full state update to window ${windowId}`);
 
