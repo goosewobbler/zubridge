@@ -235,7 +235,6 @@ export class SubscriptionHandler<State extends AnyState> {
     if (delta.type === 'full') {
       return {
         type: 'full',
-        version: delta.version,
         fullState: delta.fullState
           ? (sanitizeState(delta.fullState as State, options) as Partial<State>)
           : undefined,
@@ -244,7 +243,6 @@ export class SubscriptionHandler<State extends AnyState> {
 
     return {
       type: 'delta',
-      version: delta.version,
       changed: delta.changed
         ? (sanitizeState(delta.changed as State, options) as Record<string, unknown>)
         : undefined,

@@ -29,7 +29,6 @@ export class DeltaCalculator<S> {
     if (prev === undefined) {
       return {
         type: 'full',
-        version: 1,
         fullState: this.getPartialState(next, normalizedKeys),
       };
     }
@@ -59,7 +58,6 @@ export class DeltaCalculator<S> {
 
     return {
       type: 'delta',
-      version: 1,
       changed: hasChanges ? changed : undefined,
       removed: hasRemovals ? removed : undefined,
     };
@@ -69,7 +67,6 @@ export class DeltaCalculator<S> {
     if (prev === undefined) {
       return {
         type: 'full',
-        version: 1,
         fullState: next as Partial<S>,
       };
     }
@@ -99,7 +96,6 @@ export class DeltaCalculator<S> {
 
     return {
       type: 'delta',
-      version: 1,
       changed: hasChanges ? changed : undefined,
       removed: hasRemovals ? removed : undefined,
     };

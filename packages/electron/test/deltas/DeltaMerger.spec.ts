@@ -32,7 +32,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'full',
-        version: 1,
         fullState: newState,
       });
 
@@ -48,7 +47,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { counter: 5 },
       });
 
@@ -65,7 +63,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { 'user.profile.theme': 'light' },
       });
 
@@ -82,7 +79,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { counter: 10, 'user.name': 'Bob' },
       });
 
@@ -99,7 +95,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { user: { name: 'Bob', profile: { theme: 'light' } } },
       });
 
@@ -115,7 +110,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { items: ['a', 'b', 'c'] },
       });
 
@@ -131,7 +125,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: {},
       });
 
@@ -147,7 +140,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'full',
-        version: 1,
         fullState: undefined,
       });
 
@@ -163,7 +155,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'full',
-        version: 1,
         fullState: {} as Partial<TestState>,
       });
 
@@ -183,7 +174,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { counter: 2 },
       });
 
@@ -202,7 +192,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { 'user.profile.theme': 'light' },
       });
 
@@ -223,7 +212,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { 'user.profile.theme': 'light' },
       });
 
@@ -244,7 +232,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { counter: 2, 'user.name': 'Bob' },
       });
 
@@ -264,7 +251,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { 'user.name': 'Bob', 'user.profile': { theme: 'light' } },
       });
 
@@ -284,7 +270,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { 'user.name': 'Bob', 'user.profile.theme': 'light' },
       });
 
@@ -302,7 +287,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { user: { name: 'Bob', profile: { theme: 'light' } } },
       });
 
@@ -323,7 +307,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         removed: ['temp'],
       });
 
@@ -341,7 +324,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         removed: ['user.profile.fontSize'],
       });
 
@@ -359,7 +341,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { counter: 2 },
         removed: ['temp'],
       });
@@ -377,7 +358,6 @@ describe('DeltaMerger', () => {
 
       const result = merger.merge(currentState, {
         type: 'delta',
-        version: 1,
         changed: { 'user.name': 'Bob' },
         removed: ['user.profile.fontSize'],
       });

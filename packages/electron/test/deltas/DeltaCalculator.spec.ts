@@ -51,7 +51,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'full',
-        version: 1,
         fullState: next,
       });
     });
@@ -72,7 +71,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: { counter: 2 },
       });
     });
@@ -93,7 +91,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: {
           counter: 2,
           user: { name: 'Bob', profile: { theme: 'light' } },
@@ -117,7 +114,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: { counter: 2 },
       });
     });
@@ -138,7 +134,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: { 'user.profile.theme': 'light' },
       });
     });
@@ -193,7 +188,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: { counter: 2, 'user.name': 'Bob' },
       });
     });
@@ -214,7 +208,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: {
           user: { name: 'Alice', profile: { theme: 'light' } },
         },
@@ -237,7 +230,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: { items: ['a', 'b', 'c'] },
       });
     });
@@ -259,7 +251,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: {
           counter: 2,
           user: { name: 'Bob', profile: { theme: 'light' } },
@@ -286,7 +277,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         removed: ['temp'],
       });
     });
@@ -307,7 +297,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         removed: ['user.profile.theme'],
       });
     });
@@ -329,7 +318,6 @@ describe('DeltaCalculator', () => {
 
       expect(result).toEqual({
         type: 'delta',
-        version: 1,
         changed: { counter: 2 },
         removed: ['temp'],
       });
