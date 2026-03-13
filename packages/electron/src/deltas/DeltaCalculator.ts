@@ -123,7 +123,7 @@ export class DeltaCalculator<S> {
     const keys = path.split('.');
     let curr = obj;
     for (let i = 0; i < keys.length - 1; i++) {
-      if (!curr[keys[i]]) curr[keys[i]] = {};
+      if (curr[keys[i]] == null || typeof curr[keys[i]] !== 'object') curr[keys[i]] = {};
       curr = curr[keys[i]] as Record<string, unknown>;
     }
     curr[keys[keys.length - 1]] = value;

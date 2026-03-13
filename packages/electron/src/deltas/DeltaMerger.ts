@@ -67,9 +67,18 @@ export class DeltaMerger<S> {
 
     for (let i = 0; i < pathToParent.length; i++) {
       const key = pathToParent[i];
+      const existingInResult = current[key];
       const originalValue = originalCurrent[key] as Record<string, unknown> | undefined;
 
-      if (originalValue && typeof originalValue === 'object') {
+      if (
+        existingInResult &&
+        typeof existingInResult === 'object' &&
+        existingInResult !== originalValue
+      ) {
+        // Already cloned by a prior call — reuse the in-progress clone
+        current = existingInResult as Record<string, unknown>;
+        originalCurrent = originalValue ?? (existingInResult as Record<string, unknown>);
+      } else if (originalValue && typeof originalValue === 'object') {
         const cloned = { ...originalValue };
         current[key] = cloned;
         current = cloned;
