@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DeltaMerger } from '../../src/deltas/DeltaMerger.js';
 
 interface TestState {
   counter: number;
@@ -6,44 +7,16 @@ interface TestState {
     name: string;
     profile: {
       theme: string;
+      fontSize?: number;
     };
   };
   items: string[];
+  [key: string]: unknown;
 }
 
-function mergeDelta<S>(
-  currentState: S,
-  delta: {
-    type: 'delta' | 'full';
-    version: number;
-    changed?: Record<string, unknown>;
-    fullState?: Partial<S>;
-  },
-): S {
-  if (delta.type === 'full' || !delta.changed) {
-    return (delta.fullState ?? currentState) as S;
-  }
+describe('DeltaMerger', () => {
+  const merger = new DeltaMerger<TestState>();
 
-  const merged = { ...currentState } as Record<string, unknown>;
-
-  for (const [keyPath, value] of Object.entries(delta.changed)) {
-    setDeep(merged, keyPath, value);
-  }
-
-  return merged as S;
-}
-
-function setDeep(obj: Record<string, unknown>, path: string, value: unknown): void {
-  const keys = path.split('.');
-  let curr = obj;
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (!curr[keys[i]]) curr[keys[i]] = {};
-    curr = curr[keys[i]] as Record<string, unknown>;
-  }
-  curr[keys[keys.length - 1]] = value;
-}
-
-describe('DeltaMerger (inline)', () => {
   describe('merge', () => {
     it('should return full state when type is full', () => {
       const currentState: TestState = {
@@ -57,7 +30,7 @@ describe('DeltaMerger (inline)', () => {
         items: ['a'],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'full',
         version: 1,
         fullState: newState,
@@ -73,7 +46,7 @@ describe('DeltaMerger (inline)', () => {
         items: [],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'delta',
         version: 1,
         changed: { counter: 5 },
@@ -90,7 +63,7 @@ describe('DeltaMerger (inline)', () => {
         items: [],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'delta',
         version: 1,
         changed: { 'user.profile.theme': 'light' },
@@ -107,7 +80,7 @@ describe('DeltaMerger (inline)', () => {
         items: [],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'delta',
         version: 1,
         changed: { counter: 10, 'user.name': 'Bob' },
@@ -124,7 +97,7 @@ describe('DeltaMerger (inline)', () => {
         items: [],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'delta',
         version: 1,
         changed: { user: { name: 'Bob', profile: { theme: 'light' } } },
@@ -140,7 +113,7 @@ describe('DeltaMerger (inline)', () => {
         items: ['a', 'b'],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'delta',
         version: 1,
         changed: { items: ['a', 'b', 'c'] },
@@ -156,7 +129,7 @@ describe('DeltaMerger (inline)', () => {
         items: [],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'delta',
         version: 1,
         changed: {},
@@ -172,13 +145,171 @@ describe('DeltaMerger (inline)', () => {
         items: [],
       };
 
-      const result = mergeDelta(currentState, {
+      const result = merger.merge(currentState, {
         type: 'full',
         version: 1,
         fullState: undefined,
       });
 
       expect(result).toEqual(currentState);
+    });
+  });
+
+  describe('structural sharing', () => {
+    it('should preserve immutability for top-level key change', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2 },
+      });
+
+      expect(result.counter).toBe(2);
+      expect(result).not.toBe(currentState);
+      expect(result.user).toBe(currentState.user);
+      expect(result.items).toBe(currentState.items);
+    });
+
+    it('should preserve immutability for nested key change', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { 'user.profile.theme': 'light' },
+      });
+
+      expect(result.user.profile.theme).toBe('light');
+      expect(result).not.toBe(currentState);
+      expect(result.user).not.toBe(currentState.user);
+      expect(result.user.profile).not.toBe(currentState.user.profile);
+      expect(result.counter).toBe(currentState.counter);
+      expect(result.items).toBe(currentState.items);
+    });
+
+    it('should preserve sibling properties at intermediate levels', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark', fontSize: 14 } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { 'user.profile.theme': 'light' },
+      });
+
+      expect(result.user.profile.theme).toBe('light');
+      expect(result.user.profile.fontSize).toBe(14);
+      expect(result.user.name).toBe('Alice');
+      expect(result).not.toBe(currentState);
+      expect(result.user).not.toBe(currentState.user);
+      expect(result.user.profile).not.toBe(currentState.user.profile);
+    });
+
+    it('should preserve immutability for multiple nested changes', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2, 'user.name': 'Bob' },
+      });
+
+      expect(result).not.toBe(currentState);
+      expect(result.counter).toBe(2);
+      expect(result.user).not.toBe(currentState.user);
+      expect(result.user.name).toBe('Bob');
+      expect(result.user.profile).toBe(currentState.user.profile);
+    });
+
+    it('should create new reference for entire changed nested object', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { user: { name: 'Bob', profile: { theme: 'light' } } },
+      });
+
+      expect(result).not.toBe(currentState);
+      expect(result.user).not.toBe(currentState.user);
+      expect(result.user.profile).not.toBe(currentState.user.profile);
+    });
+  });
+
+  describe('removed keys', () => {
+    it('should remove a top-level key', () => {
+      const currentState = {
+        counter: 1,
+        temp: 'value',
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      } as TestState;
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        removed: ['temp'],
+      });
+
+      expect(result).not.toHaveProperty('temp');
+      expect(result.counter).toBe(1);
+      expect(result.user).toBe(currentState.user);
+    });
+
+    it('should remove a nested key', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark', fontSize: 14 } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        removed: ['user.profile.fontSize'],
+      });
+
+      expect(result.user.profile).not.toHaveProperty('fontSize');
+      expect(result.user.profile.theme).toBe('dark');
+    });
+
+    it('should handle both changed and removed keys', () => {
+      const currentState = {
+        counter: 1,
+        temp: 'value',
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      } as TestState;
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { counter: 2 },
+        removed: ['temp'],
+      });
+
+      expect(result.counter).toBe(2);
+      expect(result).not.toHaveProperty('temp');
     });
   });
 });
