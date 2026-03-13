@@ -55,7 +55,7 @@ async function build() {
   } else if (process.platform === 'linux') {
     // On Linux, use unrun config loader to avoid issues with .ts config imports
     try {
-      await runTsdown(['--config-loader', 'unrun']);
+      await runTsdown(['--config', 'tsdown.config.ts', '--config-loader', 'unrun']);
       process.exit(0);
     } catch (error) {
       console.error('Build failed:', error);
