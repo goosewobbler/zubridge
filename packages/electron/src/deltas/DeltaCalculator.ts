@@ -1,61 +1,11 @@
-import { debug } from '@zubridge/core';
 import { dequal } from 'dequal';
 import { deepGet } from '../utils/deepGet.js';
+import type { Delta } from './types.js';
 
-export interface Delta<S> {
-  type: 'delta' | 'full';
-  version: number;
-  changed?: Record<string, unknown>;
-  fullState?: Partial<S>;
-}
+export type NormalizedKeys = string[] | '*';
 
 export class DeltaCalculator<S> {
-  calculate(prev: S | undefined, next: S, keys?: string[]): Delta<S> {
-    const normalized = this.normalizeKeys(keys);
-
-    if (normalized === '*') {
-      return {
-        type: 'full',
-        version: 1,
-        fullState: next as Partial<S>,
-      };
-    }
-
-    if (prev === undefined) {
-      return {
-        type: 'full',
-        version: 1,
-        fullState: this.getPartialState(next, keys),
-      };
-    }
-
-    const changed: Record<string, unknown> = {};
-
-    for (const key of normalized) {
-      const prevValue = deepGet(prev as Record<string, unknown>, key);
-      const nextValue = deepGet(next as Record<string, unknown>, key);
-
-      if (!dequal(prevValue, nextValue)) {
-        changed[key] = nextValue;
-      }
-    }
-
-    if (Object.keys(changed).length === 0) {
-      return {
-        type: 'full',
-        version: 1,
-        fullState: {} as Partial<S>,
-      };
-    }
-
-    return {
-      type: 'delta',
-      version: 1,
-      changed,
-    };
-  }
-
-  private normalizeKeys(keys?: string[]): string[] | '*' {
+  normalizeKeys(keys?: string[]): NormalizedKeys {
     if (!keys) {
       return '*';
     }
@@ -71,13 +21,104 @@ export class DeltaCalculator<S> {
     return [...new Set(keys.map((k) => k.trim()).filter((k) => k.length > 0))].sort();
   }
 
-  private getPartialState(state: S, keys?: string[]): Partial<S> {
-    const normalized = this.normalizeKeys(keys);
-    if (normalized === '*') return { ...state };
-    if (normalized.length === 0) return {};
+  calculate(prev: S | undefined, next: S, normalizedKeys: NormalizedKeys): Delta<S> {
+    if (normalizedKeys === '*') {
+      return this.calculateTopLevelDelta(prev, next);
+    }
+
+    if (prev === undefined) {
+      return {
+        type: 'full',
+        version: 1,
+        fullState: this.getPartialState(next, normalizedKeys),
+      };
+    }
+
+    const changed: Record<string, unknown> = {};
+    const removed: string[] = [];
+
+    for (const key of normalizedKeys) {
+      const prevValue = deepGet(prev as Record<string, unknown>, key);
+      const nextValue = deepGet(next as Record<string, unknown>, key);
+
+      if (!dequal(prevValue, nextValue)) {
+        if (nextValue === undefined && prevValue !== undefined) {
+          removed.push(key);
+        } else {
+          changed[key] = nextValue;
+        }
+      }
+    }
+
+    const hasChanges = Object.keys(changed).length > 0;
+    const hasRemovals = removed.length > 0;
+
+    if (!hasChanges && !hasRemovals) {
+      return {
+        type: 'full',
+        version: 1,
+        fullState: {} as Partial<S>,
+      };
+    }
+
+    return {
+      type: 'delta',
+      version: 1,
+      changed: hasChanges ? changed : undefined,
+      removed: hasRemovals ? removed : undefined,
+    };
+  }
+
+  private calculateTopLevelDelta(prev: S | undefined, next: S): Delta<S> {
+    if (prev === undefined) {
+      return {
+        type: 'full',
+        version: 1,
+        fullState: next as Partial<S>,
+      };
+    }
+
+    const prevObj = prev as Record<string, unknown>;
+    const nextObj = next as Record<string, unknown>;
+    const allKeys = new Set([...Object.keys(prevObj), ...Object.keys(nextObj)]);
+    const changed: Record<string, unknown> = {};
+    const removed: string[] = [];
+
+    for (const key of allKeys) {
+      if (!dequal(prevObj[key], nextObj[key])) {
+        if (!(key in nextObj)) {
+          removed.push(key);
+        } else {
+          changed[key] = nextObj[key];
+        }
+      }
+    }
+
+    const hasChanges = Object.keys(changed).length > 0;
+    const hasRemovals = removed.length > 0;
+
+    if (!hasChanges && !hasRemovals) {
+      return {
+        type: 'full',
+        version: 1,
+        fullState: {} as Partial<S>,
+      };
+    }
+
+    return {
+      type: 'delta',
+      version: 1,
+      changed: hasChanges ? changed : undefined,
+      removed: hasRemovals ? removed : undefined,
+    };
+  }
+
+  private getPartialState(state: S, normalizedKeys: NormalizedKeys): Partial<S> {
+    if (normalizedKeys === '*') return { ...state };
+    if (normalizedKeys.length === 0) return {};
 
     const result: Partial<S> = {};
-    for (const key of normalized) {
+    for (const key of normalizedKeys) {
       const value = deepGet(state as Record<string, unknown>, key);
       if (value !== undefined) {
         this.setDeep(result as Record<string, unknown>, key, value);
