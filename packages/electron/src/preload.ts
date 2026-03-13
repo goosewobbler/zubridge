@@ -245,7 +245,14 @@ export const preloadBridge = <S extends AnyState>(
           } else if (state) {
             // Merge into existing cached state to handle multiple selective subscriptions
             // that each send a partial initial state (e.g. { counter: 1 } then { user: ... })
-            newState = cachedState !== null ? ({ ...cachedState, ...state } as S) : (state as S);
+            // Use deltaMerger to do a proper deep merge
+            newState =
+              cachedState !== null
+                ? (deltaMerger.merge(cachedState, {
+                    type: 'delta',
+                    changed: state as Record<string, unknown>,
+                  }) as S)
+                : (state as S);
             cachedState = newState;
             debug('ipc', `Received regular state update ${updateId}`);
           } else {
