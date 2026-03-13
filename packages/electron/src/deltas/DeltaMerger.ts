@@ -3,7 +3,6 @@ export class DeltaMerger<S> {
     currentState: S,
     delta: {
       type: 'delta' | 'full';
-      version: number;
       changed?: Record<string, unknown>;
       removed?: string[];
       fullState?: Partial<S>;

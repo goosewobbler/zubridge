@@ -4,7 +4,6 @@ export interface DeltaConfig {
 
 export interface Delta<S> {
   type: 'delta' | 'full';
-  version: number;
   changed?: Record<string, unknown>;
   removed?: string[];
   fullState?: Partial<S>;
