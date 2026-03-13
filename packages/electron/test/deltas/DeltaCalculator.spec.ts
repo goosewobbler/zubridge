@@ -128,7 +128,7 @@ describe('DeltaCalculator', () => {
       expect(result.changed).toEqual({ 'user.profile.theme': 'light' });
     });
 
-    it('should return empty delta when nothing changed', () => {
+    it('should return null when nothing changed (selective keys)', () => {
       const prev: TestState = {
         counter: 1,
         user: { name: 'Alice', profile: { theme: 'dark' } },
@@ -142,8 +142,24 @@ describe('DeltaCalculator', () => {
 
       const result = calculator.calculate(prev, next, ['counter', 'user']);
 
-      expect(result.type).toBe('full');
-      expect(result.fullState).toEqual({});
+      expect(result).toBeNull();
+    });
+
+    it('should return null when nothing changed (full subscription)', () => {
+      const prev: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: ['a', 'b'],
+      };
+      const next: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: ['a', 'b'],
+      };
+
+      const result = calculator.calculate(prev, next, '*');
+
+      expect(result).toBeNull();
     });
 
     it('should handle multiple key changes', () => {

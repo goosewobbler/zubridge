@@ -153,6 +153,24 @@ describe('DeltaMerger', () => {
 
       expect(result).toEqual(currentState);
     });
+
+    it('should not wipe state when fullState is empty object', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: ['a', 'b'],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'full',
+        version: 1,
+        fullState: {} as Partial<TestState>,
+      });
+
+      expect(result).toEqual(currentState);
+      expect(result.counter).toBe(1);
+      expect(result.items).toEqual(['a', 'b']);
+    });
   });
 
   describe('structural sharing', () => {
