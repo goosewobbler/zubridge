@@ -66,6 +66,7 @@ export function createCoreBridge<State extends AnyState>(
     resourceManager,
     windowTracker,
     serializationMaxDepth,
+    options?.deltas,
   );
 
   // Process options with middleware if provided
