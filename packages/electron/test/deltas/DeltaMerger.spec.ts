@@ -369,5 +369,30 @@ describe('DeltaMerger', () => {
       expect(result.user).not.toBe(currentState.user);
       expect(result.user.profile).not.toBe(currentState.user.profile);
     });
+
+    it('should not double-clone when deleteDeep traverses a path already cloned by setDeep', () => {
+      const originalProfile = { theme: 'dark', fontSize: 14 };
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: originalProfile },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: { 'user.profile.theme': 'light' },
+        removed: ['user.profile.fontSize'],
+      });
+
+      // Both changed and removed operate under user.profile.
+      // deleteDeep must reuse the clone created by setDeepWithStructuralSharing,
+      // not create a second one that discards the theme change.
+      expect(result.user.profile.theme).toBe('light');
+      expect(result.user.profile).not.toHaveProperty('fontSize');
+      // The profile in result must be a single clone, different from original
+      expect(result.user.profile).not.toBe(originalProfile);
+      // Unchanged siblings should be preserved
+      expect(result.items).toBe(currentState.items);
+    });
   });
 });
