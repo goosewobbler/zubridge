@@ -21,7 +21,7 @@ import type { ResourceManager } from '../resources/ResourceManager.js';
 export class SubscriptionHandler<State extends AnyState> {
   private deltaCalculator: DeltaCalculator<State>;
   private deltaConfig: ReturnType<typeof getDeltaConfig>;
-  private prevStates: Map<number, State> = new Map();
+  private windowSeqs: Map<number, number> = new Map();
 
   constructor(
     private stateManager: StateManager<State>,
@@ -32,6 +32,13 @@ export class SubscriptionHandler<State extends AnyState> {
   ) {
     this.deltaCalculator = new DeltaCalculator<State>();
     this.deltaConfig = getDeltaConfig(deltaOptions);
+  }
+
+  private nextSeq(windowId: number): number {
+    const current = this.windowSeqs.get(windowId) ?? 0;
+    const next = current + 1;
+    this.windowSeqs.set(windowId, next);
+    return next;
   }
 
   /**
@@ -67,7 +74,7 @@ export class SubscriptionHandler<State extends AnyState> {
             `Window ${webContents.id} destroyed, cleaning up subscriptions and pending state updates`,
           );
           this.resourceManager.removeSubscriptionManager(webContents.id);
-          this.prevStates.delete(webContents.id);
+          this.windowSeqs.delete(webContents.id);
           // Clean up dead renderer from pending state updates to prevent hanging acknowledgments
           thunkManager.cleanupDeadRenderer(webContents.id);
         });
@@ -76,6 +83,9 @@ export class SubscriptionHandler<State extends AnyState> {
 
       // Register a subscription for the keys with an actual callback that sends state updates
       const windowId = webContents.id;
+      // Per-subscription previous state to avoid corruption when multiple subscriptions
+      // exist for the same window (each subscription tracks its own diff baseline)
+      let subscriptionPrevState: State | undefined;
       const unsubscribe = subManager.subscribe(
         keys,
         (state) => {
@@ -86,14 +96,17 @@ export class SubscriptionHandler<State extends AnyState> {
           }
 
           // Calculate delta first to determine if an update should be sent
-          const prevState = this.prevStates.get(windowId);
-          if (this.deltaConfig.enabled && prevState !== undefined) {
-            const delta = this.deltaCalculator.calculate(prevState, state as State, normalizedKeys);
+          if (this.deltaConfig.enabled && subscriptionPrevState !== undefined) {
+            const delta = this.deltaCalculator.calculate(
+              subscriptionPrevState,
+              state as State,
+              normalizedKeys,
+            );
 
             if (!delta) {
               // Nothing changed — skip sending an update entirely
               debug('core', `No changes detected for window ${windowId}, skipping update`);
-              this.prevStates.set(windowId, state as State);
+              subscriptionPrevState = state as State;
               return;
             }
 
@@ -118,6 +131,7 @@ export class SubscriptionHandler<State extends AnyState> {
               updateId,
               delta: sanitizedDelta,
               thunkId: currentThunkId,
+              seq: this.nextSeq(windowId),
             });
           } else {
             // Full state for initial update or when deltas are disabled
@@ -141,11 +155,12 @@ export class SubscriptionHandler<State extends AnyState> {
               updateId,
               state: sanitizedState,
               thunkId: currentThunkId,
+              seq: this.nextSeq(windowId),
             });
           }
 
           // Update previous state for next delta calculation
-          this.prevStates.set(windowId, state as State);
+          subscriptionPrevState = state as State;
         },
         windowId,
       );
@@ -174,10 +189,11 @@ export class SubscriptionHandler<State extends AnyState> {
         updateId,
         state: currentState,
         thunkId: undefined, // Initial/current state is never from a thunk
+        seq: this.nextSeq(webContents.id),
       });
 
-      // Seed prevStates so the first change can be sent as a delta
-      this.prevStates.set(webContents.id, fullState as State);
+      // Seed per-subscription prevState so the first change can be sent as a delta
+      subscriptionPrevState = fullState as State;
     }
 
     return {
@@ -242,7 +258,7 @@ export class SubscriptionHandler<State extends AnyState> {
   unsubscribe(windows?: WrapperOrWebContents[] | WrapperOrWebContents, keys?: string[]): void {
     // If windows is not provided, unsubscribe all windows
     if (!windows) {
-      this.prevStates.clear();
+      this.windowSeqs.clear();
       this.resourceManager.clearAll();
       this.windowTracker.cleanup();
       return;
@@ -258,7 +274,7 @@ export class SubscriptionHandler<State extends AnyState> {
         subManager.unsubscribe(keys, () => {}, windowId);
         if (subManager.getCurrentSubscriptionKeys(windowId).length === 0) {
           this.resourceManager.removeSubscriptionManager(windowId);
-          this.prevStates.delete(windowId);
+          this.windowSeqs.delete(windowId);
         }
       }
       this.windowTracker.untrack(webContents);
