@@ -255,6 +255,44 @@ describe('DeltaMerger', () => {
       expect(result.user.profile).toBe(currentState.user.profile);
     });
 
+    it('should not corrupt state when multiple paths share a common ancestor', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { 'user.name': 'Bob', 'user.profile': { theme: 'light' } },
+      });
+
+      // Both changes under 'user' must survive
+      expect(result.user.name).toBe('Bob');
+      expect(result.user.profile).toEqual({ theme: 'light' });
+      expect(result).not.toBe(currentState);
+      expect(result.user).not.toBe(currentState.user);
+    });
+
+    it('should handle overlapping parent-child paths', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark', fontSize: 14 } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        version: 1,
+        changed: { 'user.name': 'Bob', 'user.profile.theme': 'light' },
+      });
+
+      expect(result.user.name).toBe('Bob');
+      expect(result.user.profile.theme).toBe('light');
+      expect(result.user.profile.fontSize).toBe(14);
+    });
+
     it('should create new reference for entire changed nested object', () => {
       const currentState: TestState = {
         counter: 1,
