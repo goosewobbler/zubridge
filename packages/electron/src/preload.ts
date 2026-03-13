@@ -74,6 +74,7 @@ export const preloadBridge = <S extends AnyState>(
   const listeners = new Set<(state: S) => void>();
   const deltaMerger = new DeltaMerger<S>();
   let cachedState: S | null = null;
+  let expectedSeq = 0;
   let initialized = false;
 
   // Resolve options once at the start
@@ -253,7 +254,7 @@ export const preloadBridge = <S extends AnyState>(
 
         // Set up state update tracking listener (now handles ALL state updates)
         registerIpcListener(IpcChannel.STATE_UPDATE, async (_event, payload) => {
-          const { updateId, state, delta, thunkId } = payload as {
+          const { updateId, state, delta, thunkId, seq } = payload as {
             updateId: string;
             state?: S;
             delta?: {
@@ -264,12 +265,24 @@ export const preloadBridge = <S extends AnyState>(
               fullState?: Partial<S>;
             };
             thunkId?: string;
+            seq?: number;
           };
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
           let newState: S;
 
-          if (
+          // Detect sequence gaps — if we missed updates, the cached state is stale
+          // and deltas cannot be safely applied
+          const hasSeqGap = seq !== undefined && expectedSeq > 0 && seq > expectedSeq + 1;
+
+          if (hasSeqGap) {
+            debug(
+              'ipc',
+              `Sequence gap detected (expected ${expectedSeq + 1}, got ${seq}), resyncing via getState`,
+            );
+            newState = await handlers.getState();
+            cachedState = newState;
+          } else if (
             delta &&
             delta.type === 'delta' &&
             (delta.changed || delta.removed) &&
@@ -302,6 +315,11 @@ export const preloadBridge = <S extends AnyState>(
             );
             newState = await handlers.getState();
             cachedState = newState;
+          }
+
+          // Track sequence for gap detection
+          if (seq !== undefined) {
+            expectedSeq = seq;
           }
 
           // Notify all subscribers of the state change
@@ -340,6 +358,7 @@ export const preloadBridge = <S extends AnyState>(
             ipcListeners.delete(IpcChannel.STATE_UPDATE);
           }
           cachedState = null;
+          expectedSeq = 0;
         }
       };
     },
@@ -851,6 +870,7 @@ export const preloadBridge = <S extends AnyState>(
     // Only essential synchronous cleanup here
     listeners.clear();
     cachedState = null;
+    expectedSeq = 0;
 
     // Cancel pending registrations immediately
     for (const [thunkId, { reject }] of pendingThunkRegistrations) {
