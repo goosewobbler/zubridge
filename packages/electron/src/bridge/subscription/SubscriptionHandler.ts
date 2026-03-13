@@ -104,6 +104,14 @@ export class SubscriptionHandler<State extends AnyState> {
           const prevState = this.prevStates.get(windowId);
           if (this.deltaConfig.enabled && prevState !== undefined) {
             const delta = this.deltaCalculator.calculate(prevState, state as State, normalizedKeys);
+
+            if (!delta) {
+              // Nothing changed — skip sending an update entirely
+              debug('core', `No changes detected for window ${windowId}, skipping update`);
+              this.prevStates.set(windowId, state as State);
+              return;
+            }
+
             const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
 
             debug('core', `Sending delta update to window ${windowId}:`, delta);
@@ -156,6 +164,9 @@ export class SubscriptionHandler<State extends AnyState> {
         state: currentState,
         thunkId: undefined, // Initial/current state is never from a thunk
       });
+
+      // Seed prevStates so the first change can be sent as a delta
+      this.prevStates.set(webContents.id, fullState as State);
     }
 
     return {

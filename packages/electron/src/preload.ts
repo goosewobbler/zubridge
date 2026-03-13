@@ -279,8 +279,13 @@ export const preloadBridge = <S extends AnyState>(
             newState = deltaMerger.merge(cachedState, delta) as S;
             cachedState = newState;
             debug('ipc', `Merging delta for update ${updateId}`);
-          } else if (delta && delta.type === 'full' && delta.fullState) {
-            // Full state from delta format
+          } else if (
+            delta &&
+            delta.type === 'full' &&
+            delta.fullState &&
+            Object.keys(delta.fullState).length > 0
+          ) {
+            // Full state from delta format (guard against empty object)
             newState = delta.fullState as S;
             cachedState = newState;
             debug('ipc', `Received full state update ${updateId}`);

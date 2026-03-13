@@ -21,7 +21,7 @@ export class DeltaCalculator<S> {
     return [...new Set(keys.map((k) => k.trim()).filter((k) => k.length > 0))].sort();
   }
 
-  calculate(prev: S | undefined, next: S, normalizedKeys: NormalizedKeys): Delta<S> {
+  calculate(prev: S | undefined, next: S, normalizedKeys: NormalizedKeys): Delta<S> | null {
     if (normalizedKeys === '*') {
       return this.calculateTopLevelDelta(prev, next);
     }
@@ -54,11 +54,7 @@ export class DeltaCalculator<S> {
     const hasRemovals = removed.length > 0;
 
     if (!hasChanges && !hasRemovals) {
-      return {
-        type: 'full',
-        version: 1,
-        fullState: {} as Partial<S>,
-      };
+      return null;
     }
 
     return {
@@ -69,7 +65,7 @@ export class DeltaCalculator<S> {
     };
   }
 
-  private calculateTopLevelDelta(prev: S | undefined, next: S): Delta<S> {
+  private calculateTopLevelDelta(prev: S | undefined, next: S): Delta<S> | null {
     if (prev === undefined) {
       return {
         type: 'full',
@@ -98,11 +94,7 @@ export class DeltaCalculator<S> {
     const hasRemovals = removed.length > 0;
 
     if (!hasChanges && !hasRemovals) {
-      return {
-        type: 'full',
-        version: 1,
-        fullState: {} as Partial<S>,
-      };
+      return null;
     }
 
     return {
