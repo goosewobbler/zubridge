@@ -430,6 +430,10 @@ export const preloadBridge = <S extends AnyState>(
       }
 
       // Individual DISPATCH + DISPATCH_ACK flow (when batching disabled)
+      // Validate action BEFORE creating promise and registering listeners
+      // to prevent dangling listeners if validation throws
+      validateActionInRenderer(actionObj);
+
       return new Promise<Action>((resolve, reject) => {
         const actionId = actionObj.__id as string;
 
@@ -476,9 +480,6 @@ export const preloadBridge = <S extends AnyState>(
 
         // Register the acknowledgment listener
         ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
-
-        // Validate action in renderer (development only)
-        validateActionInRenderer(actionObj);
 
         // Send the action to the main process
         debug('ipc', `Sending action ${actionId} to main process`);
