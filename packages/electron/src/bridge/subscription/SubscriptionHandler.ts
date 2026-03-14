@@ -193,7 +193,6 @@ export class SubscriptionHandler<State extends AnyState> {
         updateId,
         delta: {
           type: 'delta',
-          version: 1,
           changed: deltaChanged,
         },
         thunkId: undefined,
