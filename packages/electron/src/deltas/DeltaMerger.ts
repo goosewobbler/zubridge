@@ -54,7 +54,9 @@ export class DeltaMerger<S> {
     const keys = path.split('.');
 
     if (keys.length === 1) {
-      result[keys[0]] = value;
+      // Clone the value before storing to avoid mutating the caller's state
+      // when this key is later processed as a parent of another path
+      result[keys[0]] = this.cloneValue(value);
       return;
     }
 
@@ -90,7 +92,20 @@ export class DeltaMerger<S> {
       }
     }
 
-    current[finalKey] = value;
+    current[finalKey] = this.cloneValue(value);
+  }
+
+  private cloneValue(value: unknown): unknown {
+    if (value === null || value === undefined) {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.cloneValue(item));
+    }
+    if (typeof value === 'object') {
+      return { ...(value as Record<string, unknown>) };
+    }
+    return value;
   }
 
   private deleteDeep(
