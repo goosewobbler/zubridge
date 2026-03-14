@@ -112,7 +112,7 @@ describe('ThunkManager', () => {
       expect(thunkManager.canProcessActionImmediately(action)).toBe(false);
     });
 
-    it('should handle actions with immediate flag', () => {
+    it('should handle actions with bypassThunkLock flag', () => {
       mockScheduler.getQueueStatus.mockReturnValue({
         isIdle: false,
         queuedTasks: 2,
@@ -120,7 +120,7 @@ describe('ThunkManager', () => {
         highestPriorityQueued: 1,
       });
 
-      const action = { type: 'BYPASS_ACTION', __immediate: true };
+      const action = { type: 'BYPASS_ACTION', __bypassThunkLock: true };
       expect(thunkManager.canProcessActionImmediately(action)).toBe(true);
     });
 
@@ -320,7 +320,7 @@ describe('ThunkManager', () => {
     });
 
     it('should check if action can be processed', () => {
-      const action = { type: 'TEST_ACTION', __immediate: true };
+      const action = { type: 'TEST_ACTION', __bypassThunkLock: true };
 
       const result = thunkManager.canProcessAction(action);
 
@@ -346,7 +346,7 @@ describe('ThunkManager', () => {
         type: 'TEST_ACTION',
         __id: 'test-id',
         __thunkParentId: parentThunkId,
-        __immediate: true,
+        __bypassThunkLock: true,
       };
 
       const result = thunkManager.processThunkAction(action);

@@ -29,6 +29,5 @@ export const createCustomBridge = (
     unsubscribe: coreBridge.unsubscribe,
     destroy: coreBridge.destroy,
     dispatch: dispatchFn,
-    getWindowSubscriptions: coreBridge.getWindowSubscriptions,
   };
 };

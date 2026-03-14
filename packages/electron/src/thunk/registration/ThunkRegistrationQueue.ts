@@ -51,7 +51,7 @@ export class ThunkRegistrationQueue {
   ): Promise<T> {
     debug(
       'queue',
-      `[THUNK-QUEUE] Registering thunk ${thunk.id} from ${thunk.source}${thunk.immediate ? ' (bypass)' : ''}`,
+      `[THUNK-QUEUE] Registering thunk ${thunk.id} from ${thunk.source}${thunk.bypassThunkLock ? ' (bypass)' : ''}`,
     );
 
     return new Promise<T>((resolve, reject) => {
@@ -83,7 +83,7 @@ export class ThunkRegistrationQueue {
     const nextThunk = this.thunkRegistrationQueue[0]?.thunk;
 
     // Special handling for bypass thunks - they proceed regardless of the current state
-    if (nextThunk?.immediate) {
+    if (nextThunk?.bypassThunkLock) {
       this.processingThunkRegistration = true;
       const registration = this.thunkRegistrationQueue.shift();
       if (registration) {
@@ -141,13 +141,13 @@ export class ThunkRegistrationQueue {
 
     debug(
       'queue',
-      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.source}, immediate=${thunk.immediate}`,
+      `[THUNK-QUEUE] Processing thunk registration: id=${thunk.id}, windowId=${thunk.sourceWindowId}, type=${thunk.source}, bypassThunkLock=${thunk.bypassThunkLock}`,
     );
 
     try {
       // Check if there are no active thunks (scheduler is idle) or if this is a bypass thunk
       const status = this.thunkManager.getActiveThunksSummary();
-      const canRegister = status.thunks.length === 0 || thunk.immediate;
+      const canRegister = status.thunks.length === 0 || thunk.bypassThunkLock;
 
       if (!canRegister) {
         debug('queue', `[THUNK-QUEUE] Thunk ${thunk.id} cannot register, queueing for later`);
@@ -159,7 +159,7 @@ export class ThunkRegistrationQueue {
       // Register with the ThunkManager
       debug(
         'thunk',
-        `Registering thunk: id=${thunk.id}, parentId=${thunk.parentId}, immediate=${thunk.immediate}`,
+        `Registering thunk: id=${thunk.id}, parentId=${thunk.parentId}, bypassThunkLock=${thunk.bypassThunkLock}`,
       );
 
       // Register the thunk with the manager using the old signature for compatibility

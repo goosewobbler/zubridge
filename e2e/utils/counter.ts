@@ -2,12 +2,6 @@ import { browser } from 'wdio-electron-service';
 import { TIMING } from '../constants.js';
 import { getButtonInCurrentWindow } from './window.js';
 
-export async function waitForBatcherFlush(): Promise<void> {
-  // Wait longer than the batching window (16ms) to ensure all actions are processed
-  // Include additional time for IPC round-trip and renderer processing
-  await browser.pause(150);
-}
-
 /**
  * Waits for the counter to reach a specific expected value.
  * This is more reliable than waiting for changes when there might be multiple rapid changes.
@@ -163,37 +157,33 @@ export const getCounterValue = async () => {
 };
 
 export const incrementCounterAndVerify = async (targetValue: number): Promise<number> => {
-  await waitForBatcherFlush();
   let currentValue = await getCounterValue();
   const incrementButton = await getButtonInCurrentWindow('increment');
   while (currentValue < targetValue) {
     await incrementButton.click();
-    await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
+    await browser.pause(50);
     const newValue = await getCounterValue();
     if (newValue === currentValue) {
+      await incrementButton.click();
       await browser.pause(100);
     }
     currentValue = await getCounterValue();
   }
-  await waitForBatcherFlush();
   return currentValue;
 };
 
 export const resetCounter = async () => {
-  await waitForBatcherFlush();
-  let currentValue = await getCounterValue();
-  if (currentValue > 0) {
+  const counterElement = await browser.$('h2');
+  const counterText = await counterElement.getText();
+  const currentCount = Number.parseInt(counterText.replace('Counter: ', ''), 10);
+  if (currentCount > 0) {
     const decrementButton = await browser.$('button=-');
-    while (currentValue > 0) {
+    for (let i = 0; i < currentCount; i++) {
       await decrementButton.click();
-      await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-      const newValue = await getCounterValue();
-      if (newValue >= currentValue) {
-        await browser.pause(100);
-      }
-      currentValue = await getCounterValue();
+      await browser.pause(50);
     }
   }
-  await waitForBatcherFlush();
-  return currentValue;
+  const newCounterElement = await browser.$('h2');
+  const newCounterText = await newCounterElement.getText();
+  return Number.parseInt(newCounterText.replace('Counter: ', ''), 10);
 };

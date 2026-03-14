@@ -1,12 +1,5 @@
 import { debug } from '@zubridge/core';
-import type {
-  Action,
-  AnyState,
-  DispatchOptions,
-  FlushResult,
-  InternalThunk,
-  ThunkDispatch,
-} from '@zubridge/types';
+import type { Action, AnyState, Dispatch, DispatchOptions, InternalThunk } from '@zubridge/types';
 // Import internal window augmentations
 import type {} from '@zubridge/types/internal';
 import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';
@@ -22,20 +15,13 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
   private currentWindowId?: number;
 
   // Function to send actions to main process
-  private actionSender?: (
-    action: Action,
-    parentId?: string,
-    options?: { batch?: boolean },
-  ) => Promise<void>;
-
-  // Function to flush pending batched actions
-  private batchFlusher?: () => Promise<FlushResult>;
+  private actionSender?: (action: Action, parentId?: string) => Promise<void>;
 
   // Function to register thunks with main process
   private thunkRegistrar?: (
     thunkId: string,
     parentId?: string,
-    immediate?: boolean,
+    bypassThunkLock?: boolean,
     bypassAccessControl?: boolean,
   ) => Promise<void>;
 
@@ -58,16 +44,11 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
    */
   public initialize(options: {
     windowId: number;
-    actionSender: (
-      action: Action,
-      parentId?: string,
-      options?: { batch?: boolean },
-    ) => Promise<void>;
-    batchFlusher?: () => Promise<FlushResult>;
+    actionSender: (action: Action, parentId?: string) => Promise<void>;
     thunkRegistrar: (
       thunkId: string,
       parentId?: string,
-      immediate?: boolean,
+      bypassThunkLock?: boolean,
       bypassAccessControl?: boolean,
     ) => Promise<void>;
     thunkCompleter: (thunkId: string) => Promise<void>;
@@ -77,7 +58,6 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
     debug('ipc', '[RENDERER_THUNK] Initializing with options:', options);
     this.currentWindowId = options.windowId;
     this.actionSender = options.actionSender;
-    this.batchFlusher = options.batchFlusher;
     this.thunkRegistrar = options.thunkRegistrar;
     this.thunkCompleter = options.thunkCompleter;
 
@@ -140,25 +120,28 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       source: 'renderer',
       parentId,
       bypassAccessControl: options?.bypassAccessControl ?? false,
-      immediate: options?.immediate ?? false,
+      bypassThunkLock: options?.bypassThunkLock ?? false,
     });
-    debug('ipc', `[RENDERER_THUNK] Executing thunk ${thunk.id} (immediate=${thunk.immediate})`);
+    debug(
+      'ipc',
+      `[RENDERER_THUNK] Executing thunk ${thunk.id} (bypassThunkLock=${thunk.bypassThunkLock})`,
+    );
 
     // Track if this is the first action in the thunk
     let isFirstAction = true;
 
-    debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} immediate: ${thunk.immediate}`);
+    debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} bypassThunkLock: ${thunk.bypassThunkLock}`);
     // Register the thunk with main process
     if (this.thunkRegistrar && this.currentWindowId) {
       try {
         debug(
           'ipc',
-          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (immediate=${thunk.immediate})`,
+          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (bypassThunkLock=${thunk.bypassThunkLock})`,
         );
         await this.thunkRegistrar(
           thunk.id,
           parentId,
-          options?.immediate,
+          options?.bypassThunkLock,
           options?.bypassAccessControl,
         );
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
@@ -174,53 +157,23 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         // First try using the custom state provider if available
         if (this.stateProvider) {
           debug('ipc', `[RENDERER_THUNK] Using registered state provider for thunk ${thunk.id}`);
-          const bypassFlag = getStateOptions?.bypassAccessControl ?? thunk.bypassAccessControl;
           // Pass bypassAccessControl option if provided, otherwise use the thunk's flag
-          const state = (await this.stateProvider({
-            bypassAccessControl: bypassFlag,
-          })) as S;
-          return state;
+          return this.stateProvider({
+            bypassAccessControl: getStateOptions?.bypassAccessControl ?? thunk.bypassAccessControl,
+          }) as Promise<S>;
         }
 
         throw new Error('No state provider available');
       };
 
       // Create a dispatch function for this thunk that tracks each action
-      const baseDispatch = async (
+      const dispatch: Dispatch<S> = async (
         action: string | Action | InternalThunk<S>,
-        payloadOrOptions?: unknown | DispatchOptions,
-        maybeOptions?: DispatchOptions,
-      ): Promise<unknown> => {
-        // Determine if second arg is payload or options
-        let payload: unknown;
-        let dispatchOptions: DispatchOptions | undefined;
-
-        if (payloadOrOptions !== undefined) {
-          // Check if it looks like DispatchOptions
-          if (
-            payloadOrOptions &&
-            typeof payloadOrOptions === 'object' &&
-            !Array.isArray(payloadOrOptions) &&
-            ('batch' in payloadOrOptions ||
-              'bypassAccessControl' in payloadOrOptions ||
-              'immediate' in payloadOrOptions ||
-              'keys' in payloadOrOptions)
-          ) {
-            dispatchOptions = payloadOrOptions as DispatchOptions;
-          } else {
-            // It's payload
-            payload = payloadOrOptions;
-            dispatchOptions = maybeOptions;
-          }
-        } else {
-          dispatchOptions = maybeOptions;
-        }
-
-        const isBatched = dispatchOptions?.batch === true;
-
+        payload?: unknown,
+      ) => {
         debug(
           'ipc',
-          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (immediate=${thunk.immediate}, batch=${isBatched})`,
+          `[RENDERER_THUNK] [${thunk.id}] Dispatch called (bypassThunkLock=${thunk.bypassThunkLock})`,
           action,
         );
 
@@ -228,17 +181,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         if (typeof action === 'function') {
           debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunk.id}`);
           // For nested thunks, we use the current thunk ID as the parent
-          return this.executeThunk(action, dispatchOptions, thunk.id);
+          return this.executeThunk(action, options, thunk.id);
         }
 
         // Handle string actions by converting to action objects
         const actionObj = this.ensureActionId(action, payload);
 
-        // Pass through bypass flags from options or thunk
-        if (dispatchOptions?.immediate ?? thunk.immediate) {
-          actionObj.__immediate = true;
+        // Pass through bypass flags from the thunk to the action
+        if (thunk.bypassThunkLock) {
+          actionObj.__bypassThunkLock = true;
         }
-        if (dispatchOptions?.bypassAccessControl ?? thunk.bypassAccessControl) {
+        if (thunk.bypassAccessControl) {
           actionObj.__bypassAccessControl = true;
         }
 
@@ -259,7 +212,8 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         // Check queue size before adding
         this.checkQueueCapacity(this.pendingDispatches.size);
 
-        // Add to pending dispatches BEFORE creating the promise
+        // Add to pending dispatches BEFORE creating the promise to ensure
+        // getState can find it immediately
         this.pendingDispatches.add(actionId);
         debug(
           'ipc',
@@ -302,7 +256,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         if (this.actionSender) {
           try {
             debug('ipc', `[RENDERER_THUNK] Sending action ${actionId} to main process`);
-            await this.actionSender(actionObj, thunk.id, { batch: isBatched });
+            await this.actionSender(actionObj, thunk.id);
             debug('ipc', `[RENDERER_THUNK] Action ${actionId} sent to main process`);
           } catch (error: unknown) {
             // If sending fails, complete the action with error and clean up
@@ -322,34 +276,11 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         return actionPromise;
       };
 
-      // Create the ThunkDispatch with batch and flush methods
-      const dispatch = Object.assign(baseDispatch, {
-        // Batched dispatch shorthand
-        batch: async (action: Action, opts?: Omit<DispatchOptions, 'batch'>): Promise<void> => {
-          await baseDispatch(action, { ...opts, batch: true });
-        },
-
-        // Flush pending batched actions
-        flush: async (): Promise<FlushResult> => {
-          debug('ipc', `[RENDERER_THUNK] [${thunk.id}] Flushing pending batched actions`);
-          if (!this.batchFlusher) {
-            debug('ipc', '[RENDERER_THUNK] No batch flusher available');
-            return { batchId: '', actionsSent: 0, actionIds: [] };
-          }
-          return this.batchFlusher();
-        },
-      }) as ThunkDispatch<S>;
-
       // Execute the thunk with the local dispatch function and state
       debug('ipc', `[RENDERER_THUNK] Executing thunk function for ${thunk.id}`);
-      try {
-        const result = await thunkFn(getState, dispatch);
-        debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} execution completed, result:`, result);
-        return result;
-      } catch (thunkError) {
-        debug('ipc:error', `[RENDERER_THUNK] Thunk ${thunk.id} threw error:`, thunkError);
-        throw thunkError;
-      }
+      const result = await thunkFn(getState, dispatch);
+      debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} execution completed, result:`, result);
+      return result;
     } catch (error: unknown) {
       debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunk.id}:`, error);
       throw error; // Rethrow to be caught by caller

@@ -98,20 +98,14 @@ jobs:
 
           exit $exit_code
 
-      - name: Show Logs on Failure
-        if: failure()
-        shell: bash
-        run: pnpm exec tsx e2e/scripts/show-logs.ts
-
-      - name: Upload Package Test Logs
+      - name: Handle Package Test Logs
         if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/workflows/actions/handle-logs
         with:
-          name: package-test-logs-${{ inputs.os }}-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: apps/*/wdio-logs-*/**/*.log
-          retention-days: 90
-          if-no-files-found: warn
+          os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
+          app: package-test
+          mode: ${{ inputs.mode }}
+
 
       # Cleanup XVFB process
       - name: 🧹 Cleanup XVFB

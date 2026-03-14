@@ -143,9 +143,9 @@ describe('ThunkRegistrationQueue', () => {
       expect(mainCallback).toHaveBeenCalled();
     });
 
-    it('should handle immediate dispatch', async () => {
+    it('should handle bypass thunk lock', async () => {
       const thunk = createMockThunk();
-      thunk.immediate = true;
+      thunk.bypassThunkLock = true;
 
       const mainCallback = vi.fn().mockResolvedValue('bypass-result');
 

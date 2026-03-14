@@ -56,7 +56,7 @@ async function toggleBypassAccessControl(enable: boolean): Promise<void> {
 
   // Check current state
   const isEnabled = await browser.execute(() => {
-    return window.dispatchFlags?.bypassAccessControl || false;
+    return window.bypassFlags?.bypassAccessControl || false;
   });
 
   // Toggle only if current state doesn't match desired state
@@ -67,7 +67,7 @@ async function toggleBypassAccessControl(enable: boolean): Promise<void> {
 
     // Verify the toggle worked
     const newState = await browser.execute(() => {
-      return window.dispatchFlags?.bypassAccessControl || false;
+      return window.bypassFlags?.bypassAccessControl || false;
     });
     expect(newState).toBe(enable);
   } else {

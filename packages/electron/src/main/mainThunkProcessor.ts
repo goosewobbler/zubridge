@@ -98,7 +98,7 @@ export class MainThunkProcessor extends BaseThunkProcessor {
       source: 'main',
       parentId,
       keys: options?.keys,
-      immediate: options?.immediate,
+      bypassThunkLock: options?.bypassThunkLock,
       bypassAccessControl: options?.bypassAccessControl,
     });
 
@@ -249,7 +249,7 @@ export class MainThunkProcessor extends BaseThunkProcessor {
 
     // Attach keys/force to the action for downstream processing
     if (options?.keys) actionObj.__keys = options.keys;
-    if (options?.immediate) actionObj.__immediate = options.immediate;
+    if (options?.bypassThunkLock) actionObj.__bypassThunkLock = options.bypassThunkLock;
 
     // Process the action
     debug('core', `[MAIN_THUNK] Processing standalone action: ${actionObj.type}`);
@@ -300,7 +300,7 @@ export class MainThunkProcessor extends BaseThunkProcessor {
           sourceWindowId: 0,
           source: 'main',
           keys: options?.keys,
-          immediate: options?.immediate,
+          bypassThunkLock: options?.bypassThunkLock,
           bypassAccessControl: options?.bypassAccessControl,
         });
         await this.mainThunkRegistrationQueue.registerThunk(thunkObj);
@@ -309,7 +309,7 @@ export class MainThunkProcessor extends BaseThunkProcessor {
 
     // Attach keys/force to the action for downstream processing
     if (options?.keys) actionObj.__keys = options.keys;
-    if (options?.immediate) actionObj.__immediate = options.immediate;
+    if (options?.bypassThunkLock) actionObj.__bypassThunkLock = options.bypassThunkLock;
     if (options?.bypassAccessControl) actionObj.__bypassAccessControl = options.bypassAccessControl;
 
     // Mark as from main process (use a special source window ID for main process)

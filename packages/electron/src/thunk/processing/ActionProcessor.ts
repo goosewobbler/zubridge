@@ -1,6 +1,6 @@
-import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { EventEmitter } from 'node:events';
 import type { ThunkScheduler } from '../scheduling/ThunkScheduler.js';
 import { type Thunk, ThunkState } from '../Thunk.js';
 
@@ -150,7 +150,7 @@ export class ActionProcessor extends EventEmitter {
    * Check if an action requires queue or can run immediately
    */
   requiresQueue(action: Action): boolean {
-    return !action.__immediate;
+    return !action.__bypassThunkLock;
   }
 
   /**

@@ -27,23 +27,9 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
    */
   private isProcessing = false;
 
-  /**
-   * Callback to notify when a thunk action task completes
-   * Used to trigger ActionScheduler.processQueue() after each thunk action
-   */
-  private onTaskCompletedCallback?: () => void;
-
   constructor() {
     super();
     debug('scheduler', 'ThunkScheduler initialized');
-  }
-
-  /**
-   * Set a callback to be called when a task completes
-   * This allows ActionScheduler to re-process its queue after each thunk action
-   */
-  setOnTaskCompletedCallback(callback: () => void): void {
-    this.onTaskCompletedCallback = callback;
   }
 
   /**
@@ -266,12 +252,6 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
         // Process queue again in case any waiting tasks can now be executed
         this.processQueue();
 
-        // Notify ActionScheduler to re-process its queue after each thunk action completes
-        // This allows queued actions (like INCREMENT) to be re-evaluated
-        if (this.onTaskCompletedCallback) {
-          this.onTaskCompletedCallback();
-        }
-
         debug(
           'scheduler-debug',
           `Queue state after task ${task.id} completed: ${JSON.stringify(this.getQueueStatus())}`,
@@ -288,11 +268,6 @@ export class ThunkScheduler extends EventEmitter implements IThunkScheduler {
 
         // Process queue again in case any waiting tasks can now be executed
         this.processQueue();
-
-        // Notify ActionScheduler to re-process its queue even on task failure
-        if (this.onTaskCompletedCallback) {
-          this.onTaskCompletedCallback();
-        }
 
         debug(
           'scheduler-debug',

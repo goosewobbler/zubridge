@@ -387,7 +387,6 @@ app.on('quit', unsubscribe);
 
 Now that you've got the basics set up, you might want to explore:
 
-- [Validation](./validation.md) - Action validation, security, and troubleshooting
 - [How It Works](./how-it-works.md) - Detailed explanation of how Zubridge manages state synchronization
 - [Main Process](./main-process.md) - Detailed guide for using Zubridge in the main process
 - [Renderer Process](./renderer-process.md) - Detailed guide for using Zubridge in the renderer process

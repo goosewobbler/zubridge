@@ -11,11 +11,6 @@ export interface MiddlewareCallbacks {
   trackActionReceived?: (action: Action) => Promise<void>;
   trackStateUpdate?: (action: Action, state: string) => Promise<void>;
   trackActionAcknowledged?: (actionId: string) => Promise<void>;
-  trackBatchReceived?: (
-    batchId: string,
-    actionCount: number,
-    sourceWindowId: number,
-  ) => Promise<void>;
 }
 
 /**

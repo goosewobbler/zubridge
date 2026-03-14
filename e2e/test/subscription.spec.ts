@@ -24,9 +24,6 @@ import {
 const CORE_WINDOW_NAMES = ['Main', 'DirectWebContents'];
 const CORE_WINDOW_COUNT = CORE_WINDOW_NAMES.length;
 
-// Skipped: requires E2E app with subscription UI controls (subscribe/unsubscribe buttons,
-// key input field). These are behavioural tests, not performance tests — they verify that
-// unsubscribed windows don't receive updates. Unskip when the E2E app supports these controls.
 describe.skip('Selective Subscription Behaviour', () => {
   before(async () => {
     await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);

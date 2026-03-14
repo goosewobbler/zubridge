@@ -32,14 +32,6 @@ vi.mock('../src/utils/preloadOptions.js', () => ({
   getPreloadOptions: vi.fn(() => ({
     actionCompletionTimeoutMs: 30000,
     maxQueueSize: 100,
-    enableBatching: true,
-    batching: {},
-  })),
-  getBatchingConfig: vi.fn(() => ({
-    windowMs: 16,
-    maxBatchSize: 50,
-    priorityFlushThreshold: 80,
-    ackTimeoutMs: 30000,
   })),
 }));
 
@@ -71,52 +63,9 @@ describe('Preload Bridge', () => {
 
     expect(result).toHaveProperty('handlers');
     expect(result).toHaveProperty('initialized');
-    expect(result).toHaveProperty('getBatchStats');
     expect(result.handlers).toHaveProperty('subscribe');
     expect(result.handlers).toHaveProperty('getState');
     expect(result.handlers).toHaveProperty('dispatch');
-  });
-
-  describe('getBatchStats', () => {
-    beforeEach(() => {
-      (global as typeof globalThis).window = {
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      } as unknown as Window & typeof globalThis;
-      (global as typeof globalThis).document = {
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      } as unknown as Document;
-      (global as typeof globalThis).process = { platform: 'darwin' } as NodeJS.Process;
-    });
-
-    it('should return batch stats when batching is enabled', async () => {
-      const { preloadBridge } = await import('../src/preload.js');
-      const result = preloadBridge({ enableBatching: true });
-
-      const stats = result.getBatchStats();
-      expect(stats).not.toBeNull();
-      expect(stats).toHaveProperty('totalBatches', 0);
-      expect(stats).toHaveProperty('totalActions', 0);
-      expect(stats).toHaveProperty('averageBatchSize', 0);
-      expect(stats).toHaveProperty('currentQueueSize', 0);
-      expect(stats).toHaveProperty('isFlushing', false);
-    });
-
-    it('should return null when batching is disabled', async () => {
-      const { getPreloadOptions } = await import('../src/utils/preloadOptions.js');
-      vi.mocked(getPreloadOptions).mockReturnValueOnce({
-        actionCompletionTimeoutMs: 30000,
-        maxQueueSize: 100,
-        enableBatching: false,
-        batching: {},
-      });
-
-      const { preloadBridge } = await import('../src/preload.js');
-      const result = preloadBridge({ enableBatching: false });
-
-      expect(result.getBatchStats()).toBeNull();
-    });
   });
 
   it('should export legacy preloadZustandBridge alias', async () => {
