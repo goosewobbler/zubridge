@@ -261,7 +261,11 @@ export class SubscriptionHandler<State extends AnyState> {
   private stateToDeltaKeys(partialState: Partial<State>, keys?: string[]): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
-    if (!keys || keys.length === 0 || keys.includes('*')) {
+    if (!keys || keys.length === 0) {
+      return {};
+    }
+
+    if (keys.includes('*')) {
       const stateObj = partialState as Record<string, unknown>;
       const allKeys = new Set(Object.keys(stateObj));
       for (const key of allKeys) {
