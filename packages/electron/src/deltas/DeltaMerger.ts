@@ -102,10 +102,10 @@ export class DeltaMerger<S> {
     if (Array.isArray(value)) {
       return value.map((item) => this.cloneValue(item));
     }
-    if (typeof value === 'object') {
-      return { ...(value as Record<string, unknown>) };
+    if (typeof value === 'object' && typeof structuredClone === 'function') {
+      return structuredClone(value);
     }
-    return value;
+    return JSON.parse(JSON.stringify(value));
   }
 
   private deleteDeep(
