@@ -14,6 +14,7 @@ import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
 import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types.js';
 import { validateActionInRenderer } from './bridge/ipc/validation.js';
 import { IpcChannel } from './constants.js';
+import { createIPCManager } from './renderer/preloadListeners.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
@@ -155,74 +156,14 @@ export const preloadBridge = <S extends AnyState>(
     });
   }
 
+  // Create IPC manager for listener registration and cleanup
+  const { ipcListeners, cleanupRegistry, registerIpcListener } = createIPCManager({ ipcRenderer });
+
   // Map to track pending thunk registration promises
   const pendingThunkRegistrations = new Map<
     string,
     { resolve: () => void; reject: (err: unknown) => void }
   >();
-
-  // Cleanup registry for different types of resources
-  class CleanupRegistry {
-    private cleanups: Array<() => void | Promise<void>> = [];
-
-    add(cleanup: () => void | Promise<void>): void {
-      this.cleanups.push(cleanup);
-    }
-
-    async cleanupAll(): Promise<void> {
-      const results = await Promise.allSettled(this.cleanups.map((cleanup) => cleanup()));
-
-      // Log any failures but don't throw
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          debug('cleanup:error', `Cleanup ${index} failed:`, result.reason);
-        }
-      });
-
-      this.cleanups.length = 0; // Clear array
-    }
-  }
-
-  const cleanupRegistry = {
-    ipc: new CleanupRegistry(),
-    dom: new CleanupRegistry(),
-    thunks: new CleanupRegistry(),
-
-    async cleanupAll() {
-      await Promise.all([this.ipc.cleanupAll(), this.dom.cleanupAll(), this.thunks.cleanupAll()]);
-    },
-  };
-
-  const ipcListeners = new Map<
-    string,
-    (event: Electron.IpcRendererEvent, ...args: unknown[]) => void
-  >();
-
-  // Helper function to register IPC listeners with cleanup tracking
-  const registerIpcListener = (
-    channel: string,
-    listener: (event: Electron.IpcRendererEvent, ...args: unknown[]) => void,
-  ) => {
-    try {
-      // Remove any existing listener for this channel
-      const existingListener = ipcListeners.get(channel);
-      if (existingListener) {
-        ipcRenderer.removeListener(channel, existingListener);
-      }
-
-      // Register new listener
-      ipcRenderer.on(channel, listener);
-      ipcListeners.set(channel, listener);
-
-      // Add IPC cleanup to registry
-      cleanupRegistry.ipc.add(() => {
-        ipcRenderer.removeListener(channel, listener);
-        ipcListeners.delete(channel);
-      });
-    } catch (error) {
-      debug('ipc:error', `Failed to register IPC listener for channel ${channel}:`, error);
-    }
-  };
 
   // Helper function to track action dispatch
   const trackActionDispatch = (action: Action) => {
