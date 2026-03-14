@@ -74,14 +74,29 @@ export class ActionBatcher {
 
     if (this.shouldFlushNow(priority)) {
       debug('batching', `Immediate flush triggered for high-priority action ${action.type}`);
-      this.queue.push({
-        action,
-        resolve,
-        reject,
-        priority,
-        id,
-        parentId,
-      });
+      // Only adjust insertion position when queue is at capacity
+      // This ensures high-priority action is included in the immediate flush
+      if (this.queue.length >= this.config.maxBatchSize) {
+        // Insert within the last maxBatchSize items to ensure inclusion
+        const insertIndex = this.queue.length - this.config.maxBatchSize + 1;
+        this.queue.splice(insertIndex, 0, {
+          action,
+          resolve,
+          reject,
+          priority,
+          id,
+          parentId,
+        });
+      } else {
+        this.queue.push({
+          action,
+          resolve,
+          reject,
+          priority,
+          id,
+          parentId,
+        });
+      }
       if (this.isFlushing) {
         this.pendingForceFlush = true;
       } else {
