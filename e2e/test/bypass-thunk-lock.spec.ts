@@ -20,35 +20,35 @@ import {
 const CORE_WINDOW_COUNT = 2;
 
 /**
- * Helper to toggle the immediate flag using the UI
+ * Helper to toggle the bypassThunkLock flag using the UI
  */
-async function toggleImmediateDispatch(enable: boolean): Promise<void> {
-  // Find the Immediate Dispatch button
-  const immediateButton = await getButtonInCurrentWindow('immediate-dispatch-btn');
-  expect(immediateButton).toBeExisting();
+async function toggleBypassThunkLock(enable: boolean): Promise<void> {
+  // Find the Bypass Thunk Lock button
+  const bypassThunkLockButton = await getButtonInCurrentWindow('bypass-thunk-lock-btn');
+  expect(bypassThunkLockButton).toBeExisting();
 
   // Check current state
   const isEnabled = await browser.execute(() => {
-    return window.dispatchFlags?.immediate || false;
+    return window.bypassFlags?.bypassThunkLock || false;
   });
 
   // Toggle only if current state doesn't match desired state
   if (isEnabled !== enable) {
-    console.log(`${enable ? 'Enabling' : 'Disabling'} immediate dispatch flag`);
-    await immediateButton.click();
+    console.log(`${enable ? 'Enabling' : 'Disabling'} bypass thunk lock flag`);
+    await bypassThunkLockButton.click();
     await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
     // Verify the toggle worked
     const newState = await browser.execute(() => {
-      return window.dispatchFlags?.immediate || false;
+      return window.bypassFlags?.bypassThunkLock || false;
     });
     expect(newState).toBe(enable);
   } else {
-    console.log(`Immediate dispatch flag already ${enable ? 'enabled' : 'disabled'}`);
+    console.log(`Bypass thunk lock flag already ${enable ? 'enabled' : 'disabled'}`);
   }
 }
 
-describe('Immediate Dispatch Flag Functionality', () => {
+describe('BypassThunkLock Flag Functionality', () => {
   before(async () => {
     await waitUntilWindowsAvailable(CORE_WINDOW_COUNT);
   });
@@ -74,22 +74,22 @@ describe('Immediate Dispatch Flag Functionality', () => {
       console.log('Counter incremented to 2');
 
       // Make sure bypass flag is disabled by default
-      await toggleImmediateDispatch(false);
+      await toggleBypassThunkLock(false);
     } catch (error) {
       console.error('Error during beforeEach setup:', error);
       throw new Error(`Test setup failed: ${error}`);
     }
   });
 
-  describe('actions with immediate flag', () => {
-    it('should process an action immediately during thunk execution when immediate is enabled', async () => {
+  describe('actions with bypassThunkLock flag', () => {
+    it('should process an action immediately during thunk execution when bypassThunkLock is enabled', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
 
-      // Enable immediate flag
-      await toggleImmediateDispatch(true);
-      console.log(`[${new Date().toISOString()}] immediate flag enabled`);
+      // Enable bypassThunkLock flag
+      await toggleBypassThunkLock(true);
+      console.log(`[${new Date().toISOString()}] bypassThunkLock flag enabled`);
 
       // Start a slow thunk that will take several seconds
       console.log('Starting slow thunk in main window');
@@ -100,8 +100,8 @@ describe('Immediate Dispatch Flag Functionality', () => {
       // Wait for thunk to reach its first intermediate value (4)
       await waitForSpecificValue(4);
       console.log(`[${new Date().toISOString()}] First intermediate value (4) reached`);
-      // Dispatch an increment action (which should now have immediate flag)
-      console.log('Dispatching increment action with immediate flag');
+      // Dispatch an increment action (which should now have bypassThunkLock flag)
+      console.log('Dispatching increment action with bypassThunkLock flag');
       const incrementButton = await getButtonInCurrentWindow('increment');
 
       // Record the time before sending our bypassing action
@@ -147,7 +147,7 @@ describe('Immediate Dispatch Flag Functionality', () => {
       expect(finalValue).toBe(5);
     });
 
-    it('should process an action immediately during thunk execution from different window with immediate enabled', async () => {
+    it('should process an action immediately during thunk execution from different window with bypassThunkLock enabled', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -161,8 +161,8 @@ describe('Immediate Dispatch Flag Functionality', () => {
       // Switch to second window
       await switchToWindow(2);
 
-      // Enable immediate flag in second window
-      await toggleImmediateDispatch(true);
+      // Enable bypassThunkLock flag in second window
+      await toggleBypassThunkLock(true);
 
       // Get the increment button in the second window
       const incrementButton = await getButtonInCurrentWindow('increment');
@@ -181,7 +181,7 @@ describe('Immediate Dispatch Flag Functionality', () => {
       await waitForSpecificValue(4);
 
       // Dispatch an increment action from second window
-      console.log('Dispatching increment action with immediate flag from second window');
+      console.log('Dispatching increment action with bypassThunkLock flag from second window');
       await incrementButton.click();
 
       // Switch back to first window to check counter
@@ -200,15 +200,15 @@ describe('Immediate Dispatch Flag Functionality', () => {
     });
   });
 
-  describe('thunks with immediate flag', () => {
-    it('should process a thunk immediately during another thunk execution with immediate enabled', async () => {
+  describe('thunks with bypassThunkLock flag', () => {
+    it('should process a thunk immediately during another thunk execution with bypassThunkLock enabled', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
 
-      // Enable immediate dispatch
-      console.log('Enabling immediate dispatch');
-      await toggleImmediateDispatch(true);
+      // Enable bypass thunk lock
+      console.log('Enabling bypass thunk lock');
+      await toggleBypassThunkLock(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // Start a slow thunk - this performs double → double → halve (2 → 4 → 8 → 4)
@@ -267,7 +267,7 @@ describe('Immediate Dispatch Flag Functionality', () => {
       expect(finalValue).toBe(13);
     });
 
-    it('should process a thunk immediately during another thunk execution from different window with immediate enabled', async () => {
+    it('should process a thunk immediately during another thunk execution from different window with bypassThunkLock enabled', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -294,10 +294,10 @@ describe('Immediate Dispatch Flag Functionality', () => {
       await waitForSpecificValue(4, TIMING.THUNK_WAIT_TIME);
       console.log('First stage of slow thunk completed, counter = 4');
 
-      // Switch to the second window and enable immediate dispatch
-      console.log('Switching to second window to enable immediate dispatch');
+      // Switch to the second window and enable bypass thunk lock
+      console.log('Switching to second window to enable bypass thunk lock');
       await switchToWindow(1); // Second window is at index 1
-      await toggleImmediateDispatch(true);
+      await toggleBypassThunkLock(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // Now dispatch a distinctive pattern thunk from the second window while the slow thunk is still running
@@ -356,9 +356,9 @@ describe('Immediate Dispatch Flag Functionality', () => {
         'This test explicitly documents the state synchronization issue with concurrent thunks',
       );
 
-      // Enable immediate dispatch
-      console.log('Enabling immediate dispatch');
-      await toggleImmediateDispatch(true);
+      // Enable bypass thunk lock
+      console.log('Enabling bypass thunk lock');
+      await toggleBypassThunkLock(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // Start a slow thunk
@@ -432,8 +432,8 @@ describe('Immediate Dispatch Flag Functionality', () => {
     });
   });
 
-  describe('comparing with and without immediate', () => {
-    it('should show measurable performance difference between operations with and without immediate', async () => {
+  describe('comparing with and without bypassThunkLock', () => {
+    it('should show measurable performance difference between operations with and without bypassThunkLock', async () => {
       // Verify counter is at 2
       const initialValue = await getCounterValue();
       expect(initialValue).toBe(2);
@@ -462,9 +462,6 @@ describe('Immediate Dispatch Flag Functionality', () => {
       await waitForSpecificValue(4, TIMING.THUNK_WAIT_TIME);
       console.log('First stage of slow thunk completed, counter = 4');
 
-      // Wait for state to sync before performing the next action
-      await browser.pause(TIMING.STATE_SYNC_PAUSE);
-
       // Switch to second window and perform a simple increment action WITHOUT bypass flag
       console.log('Switching to second window to perform increment WITHOUT bypass flag');
       await switchToWindow(1); // Second window is at index 1
@@ -477,14 +474,8 @@ describe('Immediate Dispatch Flag Functionality', () => {
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // This should be delayed until the slow thunk completes (waiting for value 5)
-      // On Linux, the slow thunk may continue and the counter could go 4→8→4 before the increment executes
-      // So we need to wait for the full thunk completion sequence
-      console.log('Waiting for increment to take effect (counter = 5) or thunk completion');
-      const timeout =
-        process.platform === 'linux'
-          ? TIMING.LONG_THUNK_WAIT_TIME * 2
-          : TIMING.LONG_THUNK_WAIT_TIME;
-      await waitForSpecificValue(5, timeout);
+      console.log('Waiting for increment to take effect (counter = 5)');
+      await waitForSpecificValue(5, TIMING.LONG_THUNK_WAIT_TIME);
       const timeWithoutBypass = Date.now() - startTimeWithoutBypass;
       console.log(`Increment completed in ${timeWithoutBypass}ms WITHOUT bypass flag`);
 
@@ -510,15 +501,12 @@ describe('Immediate Dispatch Flag Functionality', () => {
       await waitForSpecificValue(4, TIMING.THUNK_WAIT_TIME);
       console.log('First stage of slow thunk completed, counter = 4');
 
-      // Wait for state to sync before performing the next action
-      await browser.pause(TIMING.STATE_SYNC_PAUSE);
-
       // Switch to second window, enable bypass, and perform a simple increment WITH bypass flag
       console.log(
         'Switching to second window to enable bypass and perform increment WITH bypass flag',
       );
       await switchToWindow(1); // Second window is at index 1
-      await toggleImmediateDispatch(true);
+      await toggleBypassThunkLock(true);
       await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
 
       // Measure how long it takes for the increment to take effect

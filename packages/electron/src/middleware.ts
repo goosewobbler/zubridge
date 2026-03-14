@@ -32,11 +32,6 @@ export interface ZubridgeMiddleware {
   trackActionReceived?: (action: TypesAction) => Promise<void>;
   trackStateUpdate?: (action: TypesAction, state: string) => Promise<void>;
   trackActionAcknowledged?: (actionId: string) => Promise<void>;
-  trackBatchReceived?: (
-    batchId: string,
-    actionCount: number,
-    sourceWindowId: number,
-  ) => Promise<void>;
 }
 
 /**

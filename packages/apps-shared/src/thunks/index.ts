@@ -94,7 +94,7 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
         `${logPrefix} [DEBUG] [${thunkType}] [${now}] Counter value in state: ${state.counter}`,
       );
 
-      if (state.counter === undefined || state.counter === null) {
+      if (state.counter === undefined) {
         throw new Error('Counter is undefined');
       }
 

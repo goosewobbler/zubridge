@@ -136,7 +136,7 @@ describe('Dispatch', () => {
     it('should pass options to thunk execution', async () => {
       const dispatch = createDispatch(mockStateManager);
       const mockThunk: Thunk<AnyState> = vi.fn();
-      const options: DispatchOptions = { immediate: true };
+      const options: DispatchOptions = { bypassThunkLock: true };
 
       await dispatch(mockThunk, options);
 
@@ -470,7 +470,7 @@ describe('Dispatch', () => {
       const dispatch = createDispatch(mockStateManager);
       const thunkFn: Thunk<AnyState> = vi.fn();
       const options: DispatchOptions = {
-        immediate: true,
+        bypassThunkLock: true,
         bypassAccessControl: true,
         keys: ['admin'],
       };
@@ -483,7 +483,7 @@ describe('Dispatch', () => {
     it('should pass dispatch options to action processing', async () => {
       const dispatch = createDispatch(mockStateManager);
       const options: DispatchOptions = {
-        immediate: true,
+        bypassThunkLock: true,
         keys: ['user'],
       };
 

@@ -12,7 +12,7 @@ export type Thunk<S> = (getState: ThunkGetState<S>, dispatch: Dispatch<Partial<S
 
 export interface InternalThunk<S> extends Thunk<S> {
   __bypassAccessControl?: boolean;
-  __immediate?: boolean;
+  __bypassThunkLock?: boolean;
 }
 
 export type Action<T extends string = string> = {
@@ -20,7 +20,7 @@ export type Action<T extends string = string> = {
   payload?: unknown;
   __id?: string; // Unique identifier for tracking action acknowledgements
   __bypassAccessControl?: boolean; // Flag to bypass subscription validation
-  __immediate?: boolean; // Flag to execute immediately, bypassing all queues
+  __bypassThunkLock?: boolean; // Flag to bypass thunk lock
   __thunkParentId?: string; // Parent thunk ID if action is part of a thunk
   __sourceWindowId?: number; // Source window ID where the action originated
   __keys?: string[];
@@ -108,22 +108,8 @@ export type MainZustandBridge = <S extends AnyState, Store extends StoreApi<S>>(
 export type DispatchOptions = {
   keys?: string[];
   bypassAccessControl?: boolean;
-  immediate?: boolean;
-  /** Enable batching for this thunk action. Default: false (direct dispatch) */
-  batch?: boolean;
+  bypassThunkLock?: boolean;
 };
-
-/**
- * Result of flushing pending batched actions
- */
-export interface FlushResult {
-  /** Unique identifier for the batch that was sent */
-  batchId: string;
-  /** Number of actions that were sent in the batch */
-  actionsSent: number;
-  /** IDs of the actions that were sent */
-  actionIds: string[];
-}
 
 export type Dispatch<S> = {
   // String action with optional payload and options
@@ -133,20 +119,6 @@ export type Dispatch<S> = {
   // Thunk with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 };
-
-/**
- * Dispatch function available inside thunks with batch support.
- * Provides dispatch.batch() for opt-in batching and dispatch.flush() for manual flush.
- */
-export interface ThunkDispatch<S = AnyState> extends Dispatch<S> {
-  // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
-  batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
-
-  // Flush pending batched actions immediately
-  // - await dispatch.flush() waits for all actions to complete
-  // - void dispatch.flush() waits for ACK only
-  flush(): Promise<FlushResult>;
-}
 
 interface BaseHandler<S> {
   dispatch: Dispatch<S>;
@@ -219,7 +191,6 @@ export interface BackendBridge extends BaseBridge {
   ) => {
     unsubscribe: () => void;
   };
-  getWindowSubscriptions: (windowId: number) => string[];
   destroy: () => void;
 }
 

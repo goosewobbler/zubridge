@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
-import { PRIORITY_LEVELS } from '../batching/types.js';
 import { ResourceManagementError } from '../errors/index.js';
 import type { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';
 import type { ThunkManager } from '../thunk/ThunkManager.js';
@@ -64,14 +63,6 @@ export class ActionScheduler extends EventEmitter {
   private processing = false;
 
   /**
-   * Flag to indicate queue needs sorting before processing
-   * This deferred sorting approach avoids O(n log n) sort on every enqueue,
-   * instead sorting only once when processing the queue.
-   * Performance improvement: O(n log n) per process vs O(n² log n) for n enqueues
-   */
-  private needsSort = false;
-
-  /**
    * ThunkManager reference for concurrency decisions
    */
   private thunkManager: ThunkManager;
@@ -90,9 +81,7 @@ export class ActionScheduler extends EventEmitter {
     debug('scheduler', 'ActionScheduler initialized');
 
     // Listen for thunk completion events to process queued actions
-    // Use ROOT_THUNK_COMPLETED to ensure queue is processed when the blocking thunk finishes
-    this.thunkManager.on('thunk:root:completed', () => {
-      debug('scheduler', 'Root thunk completed, processing queue');
+    this.thunkManager.on('thunk:completed', () => {
       this.processQueue();
     });
   }
@@ -166,9 +155,8 @@ export class ActionScheduler extends EventEmitter {
       onComplete,
     });
 
-    // Mark queue as needing sort (deferred sorting for performance)
-    // Sort will happen once when processQueue() is called
-    this.needsSort = true;
+    // Sort queue by priority (highest first) and then by received time (earliest first)
+    this.sortQueue();
 
     // Emit event
     this.emit(ActionSchedulerEvents.ACTION_ENQUEUED, action);
@@ -188,14 +176,14 @@ export class ActionScheduler extends EventEmitter {
     );
     debug(
       'scheduler-debug',
-      `[DECISION] Action details: parentThunkId=${action.__thunkParentId}, immediate=${action.__immediate}`,
+      `[DECISION] Action details: parentThunkId=${action.__thunkParentId}, bypassThunkLock=${action.__bypassThunkLock}`,
     );
 
-    // Actions with immediate can always execute immediately
-    if (action.__immediate) {
+    // Actions with bypassThunkLock can always execute immediately
+    if (action.__bypassThunkLock) {
       debug(
         'scheduler',
-        `Action ${action.type} (${action.__id}) has immediate, can execute immediately`,
+        `Action ${action.type} (${action.__id}) has bypassThunkLock, can execute immediately`,
       );
       return true;
     }
@@ -230,17 +218,6 @@ export class ActionScheduler extends EventEmitter {
         );
         return false;
       }
-    }
-
-    // If there's no active thunk, the action can execute immediately
-    // This is important because ThunkScheduler.runningTasks might still have stale entries
-    // that haven't been cleaned up yet when a thunk just completed
-    if (!hasActiveThunk) {
-      debug(
-        'scheduler',
-        `No active thunk, action ${action.type} (${action.__id}) can execute immediately`,
-      );
-      return true;
     }
 
     // Get running tasks from scheduler
@@ -315,13 +292,6 @@ export class ActionScheduler extends EventEmitter {
 
     try {
       debug('scheduler', `Processing queue with ${this.queue.length} actions`);
-
-      // Sort queue if needed (deferred sorting for performance)
-      // This ensures we only sort once per process cycle, not on every enqueue
-      if (this.needsSort) {
-        this.sortQueue();
-        this.needsSort = false;
-      }
 
       // Find all actions that can be executed now
       const executableActions: QueuedAction[] = [];
@@ -470,37 +440,38 @@ export class ActionScheduler extends EventEmitter {
   /**
    * Get the priority for an action
    * Higher priority actions are executed first
-   *
-   * This method uses PRIORITY_LEVELS constants for consistency with ActionBatcher.
-   * However, ActionScheduler has additional context-aware logic:
-   * - It can determine if a thunk action belongs to the active root thunk
-   * - It distinguishes between thunk actions with and without bypass flags
-   *
-   * Priority assignment:
-   * - IMMEDIATE (100): Actions with __immediate flag
-   * - ROOT_THUNK_ACTION (70): Actions belonging to the active root thunk
-   * - NORMAL_THUNK_ACTION (50): Other thunk-dispatched actions
-   * - NORMAL_ACTION (0): Regular actions
    */
   private getPriorityForAction(action: Action): number {
-    // Immediate actions get highest priority
-    if (action.__immediate) {
-      return PRIORITY_LEVELS.IMMEDIATE;
+    // Priority levels (higher is more important):
+    // 100: System actions (bypass thunk lock)
+    // 80: Root thunk actions
+    // 60: Child thunk actions that can run concurrently
+    // 50: Child thunk actions (normal)
+    // 30: Regular actions with bypassThunkLock
+    // 0: Regular actions
+
+    // Bypass thunk lock actions get highest priority
+    if (action.__bypassThunkLock) {
+      // Extra priority for thunk actions with bypass
+      if (action.__thunkParentId) {
+        return 100; // System-level thunk action with bypass
+      }
+      return 80; // Regular action with bypass
     }
 
     // Actions belonging to the active root thunk get high priority
     const rootThunkId = this.thunkManager.getRootThunkId();
     if (rootThunkId && action.__thunkParentId === rootThunkId) {
-      return PRIORITY_LEVELS.ROOT_THUNK_ACTION;
+      return 70; // Actions in active root thunk
     }
 
     // Actions with thunk parents get medium priority
     if (action.__thunkParentId) {
-      return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
+      return 50; // Regular thunk actions
     }
 
     // Default priority for regular actions
-    return PRIORITY_LEVELS.NORMAL_ACTION;
+    return 0;
   }
 
   /**
@@ -516,14 +487,14 @@ export class ActionScheduler extends EventEmitter {
     // Determine priority of new action
     const newPriority = this.getPriorityForAction(newAction);
 
-    // Find low-priority actions that can be dropped (priority < NORMAL_THUNK_ACTION)
+    // Find low-priority actions that can be dropped (priority < 50)
     const droppableActions = this.queue
-      .filter((queuedAction) => queuedAction.priority < PRIORITY_LEVELS.NORMAL_THUNK_ACTION)
+      .filter((queuedAction) => queuedAction.priority < 50)
       .sort((a, b) => a.priority - b.priority || a.receivedTime - b.receivedTime); // Lowest priority and oldest first
 
     if (droppableActions.length === 0) {
       // No low-priority actions to drop
-      if (newPriority < PRIORITY_LEVELS.NORMAL_THUNK_ACTION) {
+      if (newPriority < 50) {
         // New action is also low priority, reject it
         debug(
           'scheduler:overflow',
@@ -595,12 +566,7 @@ export class ActionScheduler extends EventEmitter {
 
     for (const queuedAction of this.queue) {
       const priority = queuedAction.priority;
-      const priorityName =
-        priority >= PRIORITY_LEVELS.ROOT_THUNK_ACTION
-          ? 'High'
-          : priority >= PRIORITY_LEVELS.NORMAL_THUNK_ACTION
-            ? 'Normal'
-            : 'Low';
+      const priorityName = priority >= 80 ? 'High' : priority >= 50 ? 'Normal' : 'Low';
       priorityDistribution[priorityName] = (priorityDistribution[priorityName] || 0) + 1;
     }
 

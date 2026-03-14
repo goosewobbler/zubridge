@@ -139,24 +139,15 @@ jobs:
         run: pnpm run test:e2e:${{ inputs.app }}-${{ inputs.mode }} --concurrency=1
         shell: bash
 
-      - name: Show Logs on Failure
-        if: failure()
-        shell: bash
-        run: pnpm exec tsx e2e/scripts/show-logs.ts
-
-      - name: Upload E2E Test Logs
+      - name: Handle E2E Test Logs
         if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/workflows/actions/handle-logs
         with:
-          name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            e2e/wdio-logs-${{ inputs.app }}/**/*.log
-            apps/*/wdio-logs-*/**/*.log
-          retention-days: 90
-          if-no-files-found: warn
+          os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
+          app: ${{ inputs.app }}
+          mode: ${{ inputs.mode }}
 
-      - name: Debug Build
+      - name: 🐛 Debug Build
         uses: goosewobbler/vscode-server-action@v1.3.0
         if: failure()
         with:

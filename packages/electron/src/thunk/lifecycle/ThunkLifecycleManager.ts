@@ -1,6 +1,6 @@
-import { EventEmitter } from 'node:events';
 import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { EventEmitter } from 'node:events';
 import { ThunkPriority } from '../../constants.js';
 import type { ThunkAction, ThunkTask } from '../../types/thunk.js';
 import type { ActionProcessor } from '../processing/ActionProcessor.js';
@@ -77,18 +77,10 @@ export class ThunkLifecycleManager extends EventEmitter {
     super();
 
     // Listen to action completion events
-    // Only auto-complete MAIN process thunks - renderer thunks explicitly call completeThunk()
     this.actionProcessor.on('actionComplete', (actionId: string) => {
       const completedThunkIds = this.actionProcessor.handleActionComplete(actionId, this.thunks);
       for (const thunkId of completedThunkIds) {
-        const thunk = this.thunks.get(thunkId);
-        // Only auto-complete main process thunks
-        // Renderer thunks dispatch actions one-at-a-time with delays between them,
-        // so pending actions will be 0 between dispatches. They should only complete
-        // when the renderer explicitly calls completeThunk()
-        if (thunk && thunk.source === 'main') {
-          this.completeThunk(thunkId);
-        }
+        this.completeThunk(thunkId);
       }
     });
   }
@@ -204,8 +196,8 @@ export class ThunkLifecycleManager extends EventEmitter {
     // Check if this was the root thunk
     if (this.rootThunkId === thunkId) {
       debug('thunk', `Root thunk ${thunkId} completed`);
-      this.rootThunkId = undefined;
       this.emit(ThunkManagerEvent.ROOT_THUNK_COMPLETED, thunk);
+      this.rootThunkId = undefined;
       this.emit(ThunkManagerEvent.ROOT_THUNK_CHANGED, undefined);
     }
 
@@ -299,7 +291,7 @@ export class ThunkLifecycleManager extends EventEmitter {
    * Check if we can process an action immediately or need to queue it
    */
   canProcessActionImmediately(action: Action): boolean {
-    if (action.__immediate) {
+    if (action.__bypassThunkLock) {
       return true;
     }
 

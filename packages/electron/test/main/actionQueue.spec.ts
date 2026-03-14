@@ -167,7 +167,7 @@ describe('ActionQueueManager', () => {
         type: 'BYPASS_ACTION',
         __id: 'test-id',
         __thunkParentId: 'thunk-123',
-        __immediate: true,
+        __bypassThunkLock: true,
       };
 
       mockActionExecutor.executeAction.mockResolvedValue('bypass-result');

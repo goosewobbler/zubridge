@@ -1,4 +1,3 @@
-import type { BatchingConfig } from '../batching/types.js';
 import type { ThunkProcessorOptions } from './thunkProcessor.js';
 
 /**
@@ -16,7 +15,4 @@ import type { ThunkProcessorOptions } from './thunkProcessor.js';
  * const bridge = preloadBridge<MyState>(options);
  * ```
  */
-export interface PreloadOptions extends ThunkProcessorOptions {
-  enableBatching?: boolean;
-  batching?: Partial<BatchingConfig>;
-}
+export type PreloadOptions = ThunkProcessorOptions;

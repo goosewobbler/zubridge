@@ -97,17 +97,15 @@ describe('RendererThunkProcessor', () => {
     mockThunkCompleter.mockResolvedValue(undefined);
 
     // Mock actionSender to simulate completing the action
-    mockActionSender.mockImplementation(
-      async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-        // Simulate a slight delay
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        // Complete the action
-        if (action.__id) {
-          processor.completeAction(action.__id, { result: 'action-completed' });
-        }
-        return undefined;
-      },
-    );
+    mockActionSender.mockImplementation(async (action: Action, _parentId?: string) => {
+      // Simulate a slight delay
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Complete the action
+      if (action.__id) {
+        processor.completeAction(action.__id, { result: 'action-completed' });
+      }
+      return undefined;
+    });
 
     const result = await processor.executeThunk(thunk);
 
@@ -115,7 +113,6 @@ describe('RendererThunkProcessor', () => {
     expect(mockActionSender).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'INCREMENT' }),
       expect.any(String), // parentId is the thunk ID
-      { batch: false }, // default is not batched
     );
     expect(result).toBe('done');
   });
@@ -129,17 +126,15 @@ describe('RendererThunkProcessor', () => {
     mockThunkCompleter.mockResolvedValue(undefined);
 
     // Mock actionSender to simulate completing the action
-    mockActionSender.mockImplementation(
-      async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-        // Simulate a slight delay
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        // Complete the action with the nested thunk result
-        if (action.__id) {
-          processor.completeAction(action.__id, { result: 99 });
-        }
-        return undefined;
-      },
-    );
+    mockActionSender.mockImplementation(async (action: Action, _parentId?: string) => {
+      // Simulate a slight delay
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Complete the action with the nested thunk result
+      if (action.__id) {
+        processor.completeAction(action.__id, { result: 99 });
+      }
+      return undefined;
+    });
 
     const result = await processor.executeThunk(parentThunk);
     expect(nestedThunk).toHaveBeenCalled();
@@ -402,7 +397,7 @@ describe('RendererThunkProcessor', () => {
 
       // Execute with bypass flags
       const result = await processor.executeThunk(simpleThunk, {
-        immediate: true,
+        bypassThunkLock: true,
         bypassAccessControl: true,
       });
 
@@ -410,7 +405,7 @@ describe('RendererThunkProcessor', () => {
       expect(mockThunkRegistrar).toHaveBeenCalledWith(
         expect.any(String),
         undefined,
-        true, // immediate
+        true, // bypassThunkLock
         true, // bypassAccessControl
       );
     });
@@ -882,7 +877,7 @@ describe('RendererThunkProcessor', () => {
       global.window = originalWindow;
     });
 
-    it('should handle thunk with immediate and bypassAccessControl options', async () => {
+    it('should handle thunk with bypassThunkLock and bypassAccessControl options', async () => {
       const bypassProcessor = new RendererThunkProcessor({
         ...defaultPreloadOptions,
       });
@@ -896,7 +891,7 @@ describe('RendererThunkProcessor', () => {
       const bypassThunk = vi.fn(async () => 'bypass-result');
 
       const result = await bypassProcessor.executeThunk(bypassThunk, {
-        immediate: true,
+        bypassThunkLock: true,
         bypassAccessControl: true,
       });
 
@@ -904,7 +899,7 @@ describe('RendererThunkProcessor', () => {
       expect(mockThunkRegistrar).toHaveBeenCalledWith(
         expect.any(String),
         undefined, // parentId
-        true, // immediate
+        true, // bypassThunkLock
         true, // bypassAccessControl
       );
     });
@@ -963,232 +958,6 @@ describe('RendererThunkProcessor', () => {
 
       expect(result).toEqual({ restricted: true });
       expect(accessControlProvider).toHaveBeenCalledWith({ bypassAccessControl: true });
-    });
-  });
-
-  describe('dispatch.batch and dispatch.flush', () => {
-    it('should provide dispatch.batch method for batched dispatch', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-
-      const batchThunk = vi.fn(async (_getState, dispatch) => {
-        // dispatch.batch should be available
-        expect(typeof dispatch.batch).toBe('function');
-        return 'batch-method-exists';
-      });
-
-      const result = await processor.executeThunk(batchThunk);
-
-      expect(result).toBe('batch-method-exists');
-    });
-
-    it('should provide dispatch.flush method for manual flush', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-
-      const flushThunk = vi.fn(async (_getState, dispatch) => {
-        // dispatch.flush should be available
-        expect(typeof dispatch.flush).toBe('function');
-        return 'flush-method-exists';
-      });
-
-      const result = await processor.executeThunk(flushThunk);
-
-      expect(result).toBe('flush-method-exists');
-    });
-
-    it('should call actionSender with batch:true when using dispatch.batch', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-      mockActionSender.mockClear();
-      mockActionSender.mockImplementation(
-        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-          setTimeout(() => {
-            if (action.__id) {
-              processor.completeAction(action.__id, { result: 'completed' });
-            }
-          }, 5);
-          return undefined;
-        },
-      );
-
-      const batchThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch.batch({ type: 'BATCHED_ACTION' });
-        return 'batched';
-      });
-
-      await processor.executeThunk(batchThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'BATCHED_ACTION' }),
-        expect.any(String),
-        { batch: true },
-      );
-    });
-
-    it('should call actionSender without batch option for normal dispatch', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-      mockActionSender.mockClear();
-      mockActionSender.mockImplementation(
-        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-          setTimeout(() => {
-            if (action.__id) {
-              processor.completeAction(action.__id, { result: 'completed' });
-            }
-          }, 5);
-          return undefined;
-        },
-      );
-
-      const normalThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'NORMAL_ACTION' });
-        return 'normal';
-      });
-
-      await processor.executeThunk(normalThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'NORMAL_ACTION' }),
-        expect.any(String),
-        { batch: false },
-      );
-    });
-
-    it('should call batchFlusher when dispatch.flush is called', async () => {
-      const mockBatchFlusher = vi.fn().mockResolvedValue({
-        batchId: 'test-batch-id',
-        actionsSent: 3,
-        actionIds: ['id1', 'id2', 'id3'],
-      });
-
-      const flushProcessor = new RendererThunkProcessor(defaultPreloadOptions);
-      flushProcessor.initialize({
-        windowId: 1,
-        actionSender: mockActionSender,
-        batchFlusher: mockBatchFlusher,
-        thunkRegistrar: mockThunkRegistrar,
-        thunkCompleter: mockThunkCompleter,
-      });
-
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-
-      const flushThunk = vi.fn(async (_getState, dispatch) => {
-        const result = await dispatch.flush();
-        expect(result.batchId).toBe('test-batch-id');
-        expect(result.actionsSent).toBe(3);
-        return 'flushed';
-      });
-
-      const result = await flushProcessor.executeThunk(flushThunk);
-
-      expect(result).toBe('flushed');
-      expect(mockBatchFlusher).toHaveBeenCalled();
-    });
-
-    it('should return empty result when no batchFlusher configured', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-
-      const flushThunk = vi.fn(async (_getState, dispatch) => {
-        const result = await dispatch.flush();
-        expect(result.batchId).toBe('');
-        expect(result.actionsSent).toBe(0);
-        expect(result.actionIds).toHaveLength(0);
-        return 'no-flusher';
-      });
-
-      const result = await processor.executeThunk(flushThunk);
-
-      expect(result).toBe('no-flusher');
-    });
-
-    it('should support dispatch with batch option', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-      mockActionSender.mockClear();
-      mockActionSender.mockImplementation(
-        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-          setTimeout(() => {
-            if (action.__id) {
-              processor.completeAction(action.__id, { result: 'completed' });
-            }
-          }, 5);
-          return undefined;
-        },
-      );
-
-      const optionsThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BATCHED_VIA_OPTIONS' }, { batch: true });
-        return 'batched-via-options';
-      });
-
-      await processor.executeThunk(optionsThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'BATCHED_VIA_OPTIONS' }),
-        expect.any(String),
-        { batch: true },
-      );
-    });
-
-    it('should support dispatch with immediate option', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-      mockActionSender.mockClear();
-      mockActionSender.mockImplementation(
-        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-          setTimeout(() => {
-            if (action.__id) {
-              processor.completeAction(action.__id, { result: 'completed' });
-            }
-          }, 5);
-          return undefined;
-        },
-      );
-
-      const bypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BYPASS_ACTION' }, { immediate: true });
-        return 'bypassed';
-      });
-
-      await processor.executeThunk(bypassThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'BYPASS_ACTION', __immediate: true }),
-        expect.any(String),
-        { batch: false },
-      );
-    });
-
-    it('should support dispatch.batch with immediate option', async () => {
-      mockThunkRegistrar.mockResolvedValue(undefined);
-      mockThunkCompleter.mockResolvedValue(undefined);
-      mockActionSender.mockClear();
-      mockActionSender.mockImplementation(
-        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
-          setTimeout(() => {
-            if (action.__id) {
-              processor.completeAction(action.__id, { result: 'completed' });
-            }
-          }, 5);
-          return undefined;
-        },
-      );
-
-      const batchBypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch.batch({ type: 'BATCHED_BYPASS' }, { immediate: true });
-        return 'batched-bypass';
-      });
-
-      await processor.executeThunk(batchBypassThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'BATCHED_BYPASS', __immediate: true }),
-        expect.any(String),
-        { batch: true },
-      );
     });
   });
 });

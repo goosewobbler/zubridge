@@ -44,17 +44,8 @@ async function build() {
       console.error('Build failed:', error);
       process.exit(1);
     }
-  } else if (process.platform === 'linux') {
-    // On Linux, use unrun config loader to avoid issues with .ts config imports
-    try {
-      await runTsdown(['--config-loader', 'unrun']);
-      process.exit(0);
-    } catch (error) {
-      console.error('Build failed:', error);
-      process.exit(1);
-    }
   } else {
-    // On macOS and other Unix systems, use default config with parallel builds
+    // On Unix systems, use the default config with parallel builds
     try {
       await runTsdown();
       process.exit(0);

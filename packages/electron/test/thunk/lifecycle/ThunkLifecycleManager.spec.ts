@@ -1,15 +1,15 @@
-import type { Action } from '@zubridge/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Action } from '@zubridge/types';
 import { ThunkPriority } from '../../../src/constants.js';
 import {
   ThunkLifecycleManager,
   ThunkManagerEvent,
 } from '../../../src/thunk/lifecycle/ThunkLifecycleManager.js';
-import type { ActionProcessor } from '../../../src/thunk/processing/ActionProcessor.js';
-import type { ThunkScheduler } from '../../../src/thunk/scheduling/ThunkScheduler.js';
 import { Thunk, ThunkState } from '../../../src/thunk/Thunk.js';
-import type { StateUpdateTracker } from '../../../src/thunk/tracking/StateUpdateTracker.js';
 import type { ThunkAction, ThunkTask } from '../../../src/types/thunk.js';
+import type { ThunkScheduler } from '../../../src/thunk/scheduling/ThunkScheduler.js';
+import type { ActionProcessor } from '../../../src/thunk/processing/ActionProcessor.js';
+import type { StateUpdateTracker } from '../../../src/thunk/tracking/StateUpdateTracker.js';
 
 // Mock dependencies
 const createMockScheduler = () => ({
@@ -354,7 +354,7 @@ describe('ThunkLifecycleManager', () => {
     it('should return true for actions with bypass flag', () => {
       const action: Action = {
         type: 'TEST_ACTION',
-        __immediate: true,
+        __bypassThunkLock: true,
       };
 
       expect(lifecycleManager.canProcessActionImmediately(action)).toBe(true);
