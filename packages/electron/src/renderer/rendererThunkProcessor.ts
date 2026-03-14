@@ -186,34 +186,59 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       };
 
       // Create a dispatch function for this thunk that tracks each action
+      // Uses positional arguments: (action, payload, options) to avoid duck-typing issues
+      // where user payloads containing 'batch', 'immediate', 'keys', etc. would be misrouted
       const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
-        payloadOrOptions?: unknown | DispatchOptions,
-        maybeOptions?: DispatchOptions,
+        payloadOrOptions?: unknown,
+        dispatchOptionsOrPayload?: DispatchOptions | unknown,
+        isThirdArgOptions?: boolean,
       ): Promise<unknown> => {
-        // Determine if second arg is payload or options
+        // Determine if args are (action, payload, options) or legacy (action, options)
+        // Use isThirdArgOptions flag to disambiguate - when true, third arg is options
+        // This avoids the heuristic that could misroute user payloads with reserved keys
         let payload: unknown;
         let dispatchOptions: DispatchOptions | undefined;
 
-        if (payloadOrOptions !== undefined) {
-          // Check if it looks like DispatchOptions
+        if (isThirdArgOptions === true) {
+          // New API: (action, payload, options)
+          payload = payloadOrOptions;
+          dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
+        } else if (dispatchOptionsOrPayload !== undefined) {
+          // Legacy API: check if second arg looks like options (for backward compat)
+          const secondArg = payloadOrOptions;
           if (
-            payloadOrOptions &&
-            typeof payloadOrOptions === 'object' &&
-            !Array.isArray(payloadOrOptions) &&
-            ('batch' in payloadOrOptions ||
-              'bypassAccessControl' in payloadOrOptions ||
-              'immediate' in payloadOrOptions ||
-              'keys' in payloadOrOptions)
+            secondArg &&
+            typeof secondArg === 'object' &&
+            !Array.isArray(secondArg) &&
+            ('batch' in secondArg ||
+              'bypassAccessControl' in secondArg ||
+              'immediate' in secondArg ||
+              'keys' in secondArg)
           ) {
-            dispatchOptions = payloadOrOptions as DispatchOptions;
+            // Second arg is options (legacy behavior)
+            dispatchOptions = secondArg as DispatchOptions;
+            payload = undefined;
           } else {
-            // It's payload
-            payload = payloadOrOptions;
-            dispatchOptions = maybeOptions;
+            // Second arg is payload
+            payload = secondArg;
+            dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
           }
+        } else if (
+          payloadOrOptions &&
+          typeof payloadOrOptions === 'object' &&
+          !Array.isArray(payloadOrOptions) &&
+          ('batch' in payloadOrOptions ||
+            'bypassAccessControl' in payloadOrOptions ||
+            'immediate' in payloadOrOptions ||
+            'keys' in payloadOrOptions)
+        ) {
+          // Legacy: only one arg and it looks like options
+          dispatchOptions = payloadOrOptions as DispatchOptions;
+          payload = undefined;
         } else {
-          dispatchOptions = maybeOptions;
+          // Only payload provided
+          payload = payloadOrOptions;
         }
 
         const isBatched = dispatchOptions?.batch === true;
