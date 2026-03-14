@@ -201,8 +201,8 @@ export class SubscriptionHandler<State extends AnyState> {
       });
 
       // Seed per-subscription prevState so the first change can be sent as a delta
-      // Use sanitized currentState (not raw fullState) to match what gets sent to renderer
-      subscriptionPrevState = currentState as State;
+      // Seed with raw full state so the first delta is raw-vs-raw
+      subscriptionPrevState = fullState as State;
     }
 
     return {
