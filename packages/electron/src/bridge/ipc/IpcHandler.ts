@@ -2,6 +2,7 @@ import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
+import type { BatchAckPayload, BatchPayload } from '../../batching/types.js';
 import { IpcChannel } from '../../constants.js';
 import { IpcCommunicationError } from '../../errors/index.js';
 import { actionQueue } from '../../main/actionQueue.js';
@@ -13,6 +14,7 @@ import { logZubridgeError, serializeError } from '../../utils/errorHandling.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import { isDestroyed, safelySendToWindow } from '../../utils/windows.js';
 import type { ResourceManager } from '../resources/ResourceManager.js';
+import { validateBatchDispatch, validateSingleDispatch } from './validation.js';
 
 export class IpcHandler<State extends AnyState> {
   private thunkRegistrationQueue: ThunkRegistrationQueue;
@@ -56,23 +58,176 @@ export class IpcHandler<State extends AnyState> {
 
     // Handle requests for current global thunk state
     ipcMain.handle(IpcChannel.GET_THUNK_STATE, this.handleGetThunkState.bind(this));
+
+    // Handle batch dispatch from renderers
+    ipcMain.on(IpcChannel.BATCH_DISPATCH, this.handleBatchDispatch.bind(this));
+  }
+
+  /**
+   * Validate batch payload structure and contents to prevent injection attacks
+   * @returns true if valid, false otherwise
+   */
+  public async handleBatchDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
+    try {
+      // Validate batch payload using Zod schema
+      const validationResult = validateBatchDispatch(data);
+
+      if (!validationResult.success) {
+        debug('ipc:error', `Invalid batch dispatch payload: ${validationResult.error}`);
+
+        // Send error response if possible
+        if (data && typeof data === 'object' && 'batchId' in data && !isDestroyed(event.sender)) {
+          safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
+            batchId: (data as { batchId?: string }).batchId || 'unknown',
+            results: [],
+            error: `Validation failed: ${validationResult.error}`,
+          } as BatchAckPayload);
+        }
+        return;
+      }
+
+      // Now data is type-safe
+      const { batchId, actions } = validationResult.data;
+
+      debug(
+        'batching',
+        `Received batch ${batchId} with ${actions.length} actions from renderer ${event.sender.id}`,
+      );
+
+      // Track batch receipt for telemetry — enables E2E measurement of IPC reduction.
+      // Uses a dedicated callback instead of a synthetic action to avoid polluting
+      // action logs and replay systems with internal telemetry events.
+      const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
+      if (middlewareCallbacks.trackBatchReceived) {
+        void middlewareCallbacks.trackBatchReceived(batchId, actions.length, event.sender.id);
+      }
+
+      const results: BatchAckPayload['results'] = [];
+      const processAction = async (
+        actionItem: (typeof actions)[number],
+      ): Promise<{ actionId: string; success: boolean; error?: string }> => {
+        const { action, id, parentId } = actionItem;
+
+        // Note: Action validation is already done by Zod schema in validateBatchDispatch
+        // No need for redundant inline validation
+
+        return new Promise((resolve) => {
+          const actionWithSource: Action = {
+            ...action,
+            __sourceWindowId: event.sender.id,
+          };
+
+          if (parentId && !thunkManager.hasThunk(parentId)) {
+            // Best-effort fallback: the thunk should already be registered via REGISTER_THUNK
+            // before its actions arrive. This handles race conditions where actions arrive first.
+            // Failure here is non-fatal — the action is still enqueued and the thunk manager
+            // will handle the missing parent gracefully.
+            const thunkObj = new ThunkClass({
+              id: parentId,
+              sourceWindowId: event.sender.id,
+              source: 'renderer',
+            });
+            this.thunkRegistrationQueue.registerThunk(thunkObj).catch((err) => {
+              debug('ipc:error', `Failed to register thunk ${parentId}:`, err);
+            });
+          }
+
+          actionQueue.enqueueAction(actionWithSource, event.sender.id, parentId, (error) => {
+            if (error) {
+              resolve({
+                actionId: id,
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            } else {
+              // Track action acknowledged with middleware
+              const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
+              if (middlewareCallbacks.trackActionAcknowledged && action.__id) {
+                void middlewareCallbacks.trackActionAcknowledged(action.__id as string);
+              }
+
+              resolve({
+                actionId: id,
+                success: true,
+              });
+            }
+          });
+        });
+      };
+
+      // Actions are enqueued to actionQueue in iteration order. Promise.allSettled runs
+      // them concurrently, but actionQueue.enqueueAction preserves insertion order for
+      // sequential processing, so action ordering within a batch is maintained.
+      const settledResults = await Promise.allSettled(actions.map(processAction));
+
+      for (const result of settledResults) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          results.push({
+            actionId: 'unknown',
+            success: false,
+            error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+          });
+        }
+      }
+
+      debug(
+        'batching',
+        `Batch ${batchId} processed with ${results.filter((r) => r.success).length}/${results.length} successful`,
+      );
+
+      if (!isDestroyed(event.sender)) {
+        safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
+          batchId,
+          results,
+        } satisfies BatchAckPayload);
+      }
+    } catch (error) {
+      const ipcError = new IpcCommunicationError('Error handling batch dispatch', {
+        channel: IpcChannel.BATCH_DISPATCH,
+        windowId: event.sender.id,
+        originalError: error,
+      });
+      logZubridgeError(ipcError);
+
+      const batchPayload = data as BatchPayload;
+      if (batchPayload?.batchId && !isDestroyed(event.sender)) {
+        safelySendToWindow(event.sender, IpcChannel.BATCH_ACK, {
+          batchId: batchPayload.batchId,
+          results: [],
+          error: serializeError(ipcError),
+        });
+      }
+    }
   }
 
   public async handleDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
     try {
       debug('ipc', `Received action data from renderer ${event.sender.id}:`, data);
 
-      // Extract the action from the wrapper object
-      const actionData = data as { action?: unknown; parentId?: string };
-      const { action, parentId } = actionData || {};
+      // Validate payload using Zod schema
+      const validationResult = validateSingleDispatch(data);
 
-      if (!action || typeof action !== 'object') {
-        debug('ipc', '[BRIDGE DEBUG] Invalid action received:', data);
+      if (!validationResult.success) {
+        debug('ipc:error', `Invalid action dispatch payload: ${validationResult.error}`);
+
+        // Try to extract action ID for acknowledgment even on validation failure
+        const actionData = data as { action?: { __id?: string } };
+        const actionId = actionData?.action?.__id;
+
+        if (actionId && !isDestroyed(event.sender)) {
+          safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
+            actionId,
+            thunkState: { version: 0, thunks: [] },
+            error: `Validation failed: ${validationResult.error}`,
+          });
+        }
         return;
       }
 
-      // Cast action to Action type after validation
-      const actionObj = action as Action;
+      // Now data is type-safe
+      const { action: actionObj, parentId } = validationResult.data;
 
       debug('ipc', `[BRIDGE DEBUG] Received action from renderer ${event.sender.id}:`, {
         type: actionObj.type,
@@ -80,11 +235,6 @@ export class IpcHandler<State extends AnyState> {
         payload: actionObj.payload,
         parentId: parentId,
       });
-
-      if (!actionObj.type) {
-        debug('ipc', '[BRIDGE DEBUG] Action missing type:', data);
-        return;
-      }
 
       // Add the source window ID to the action for acknowledgment purposes
       const actionWithSource: Action = {
@@ -338,10 +488,10 @@ export class IpcHandler<State extends AnyState> {
       const thunkData = data as {
         thunkId?: string;
         parentId?: string;
-        bypassThunkLock?: boolean;
+        immediate?: boolean;
         bypassAccessControl?: boolean;
       };
-      const { thunkId, parentId, bypassThunkLock, bypassAccessControl } = thunkData;
+      const { thunkId, parentId, immediate, bypassAccessControl } = thunkData;
       const sourceWindowId = event.sender.id;
 
       debug(
@@ -357,7 +507,7 @@ export class IpcHandler<State extends AnyState> {
         sourceWindowId: sourceWindowId,
         source: 'renderer',
         parentId: parentId,
-        bypassThunkLock,
+        immediate,
         bypassAccessControl,
       });
       await this.thunkRegistrationQueue.registerThunk(thunkObj);
@@ -497,5 +647,6 @@ export class IpcHandler<State extends AnyState> {
     ipcMain.removeAllListeners(IpcChannel.TRACK_ACTION_DISPATCH);
     ipcMain.removeAllListeners(IpcChannel.REGISTER_THUNK);
     ipcMain.removeAllListeners(IpcChannel.COMPLETE_THUNK);
+    ipcMain.removeAllListeners(IpcChannel.BATCH_DISPATCH);
   }
 }

@@ -47,7 +47,7 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
 
     // Determine if this is a thunk-related action
     const isThunkAction = action.__thunkParentId;
-    const hasBypassFlag = !!action.__bypassThunkLock;
+    const hasBypassFlag = !!action.__immediate;
 
     // Create a task for ThunkScheduler with proper concurrency settings if needed
     if (isThunkAction && !hasBypassFlag) {
@@ -85,7 +85,7 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
       thunkId: thunkId,
       createdAt: Date.now(),
       priority: 0, // Default priority
-      canRunConcurrently: !!action.__bypassThunkLock, // Map bypass flag to canRunConcurrently
+      canRunConcurrently: !!action.__immediate, // Map bypass flag to canRunConcurrently
       handler: async (): Promise<void> => {
         // Execute the action directly through the executor
         // This avoids recursion since we're not going through processAction again

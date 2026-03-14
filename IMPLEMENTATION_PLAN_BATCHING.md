@@ -61,7 +61,7 @@ IPC: zubridge:batch-ack (3-4x/second)
 5. **Configurable Parameters**: Window size, max batch size, priority threshold
 
 ### Integration Requirements
-1. **Respect Priority System**: Use existing `__bypassThunkLock` flag
+1. **Respect Priority System**: Use existing `__immediate` flag
 2. **Maintain Thunk Semantics**: No changes to thunk execution or lifecycle
 3. **Preserve Action Order**: Actions executed in order received
 4. **Backward Compatible**: Fallback to direct dispatch if batching disabled
@@ -154,7 +154,7 @@ actionSender: async (action, parentId) => {
 
 // Priority calculation
 function calculatePriority(action): number {
-  if (action.__bypassThunkLock) return 100;
+  if (action.__immediate) return 100;
   if (action.__thunkParentId) return 70;
   return 50;
 }
@@ -214,7 +214,7 @@ handleBatchDispatch(event, batch) {
 **integration.spec.ts**:
 - [ ] Test thunk actions batch correctly
 - [ ] Test mixed priority actions
-- [ ] Test bypassThunkLock immediate flush
+- [ ] Test immediate flush
 - [ ] Test batch acknowledgment handling
 - [ ] Test error propagation in batches
 - [ ] Test batching disable fallback

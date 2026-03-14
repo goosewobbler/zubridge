@@ -85,7 +85,7 @@ describe('ActionScheduler', () => {
 
   describe('constructor', () => {
     it('should initialize with thunk manager', () => {
-      expect(thunkManager.on).toHaveBeenCalledWith('thunk:completed', expect.any(Function));
+      expect(thunkManager.on).toHaveBeenCalledWith('thunk:root:completed', expect.any(Function));
     });
   });
 
@@ -202,11 +202,11 @@ describe('ActionScheduler', () => {
       thunkManager.getScheduler.mockReset();
     });
 
-    it('should return true for actions with bypassThunkLock', () => {
+    it('should return true for actions with immediate', () => {
       const action: Action = {
         type: 'TEST_ACTION',
         __id: 'test-id',
-        __bypassThunkLock: true,
+        __immediate: true,
       };
 
       const result = scheduler.canExecuteImmediately(action);
@@ -273,12 +273,17 @@ describe('ActionScheduler', () => {
     });
 
     it('should return false when blocking tasks are running', () => {
-      thunkManager.getRootThunkId.mockReturnValue(null);
+      thunkManager.getRootThunkId.mockReturnValue('active-thunk');
+      thunkManager.isThunkActive.mockReturnValue(true);
       thunkManager.getScheduler.mockReturnValue({
         getRunningTasks: vi.fn(() => [{ canRunConcurrently: false }]),
       });
 
-      const action: Action = { type: 'TEST_ACTION', __id: 'test-id' };
+      const action: Action = {
+        type: 'TEST_ACTION',
+        __id: 'test-id',
+        __thunkParentId: 'active-thunk',
+      };
 
       const result = scheduler.canExecuteImmediately(action);
 
@@ -286,12 +291,17 @@ describe('ActionScheduler', () => {
     });
 
     it('should return true when only concurrent tasks are running', () => {
-      thunkManager.getRootThunkId.mockReturnValue(null);
+      thunkManager.getRootThunkId.mockReturnValue('active-thunk');
+      thunkManager.isThunkActive.mockReturnValue(true);
       thunkManager.getScheduler.mockReturnValue({
         getRunningTasks: vi.fn(() => [{ canRunConcurrently: true }, { canRunConcurrently: true }]),
       });
 
-      const action: Action = { type: 'TEST_ACTION', __id: 'test-id' };
+      const action: Action = {
+        type: 'TEST_ACTION',
+        __id: 'test-id',
+        __thunkParentId: 'active-thunk',
+      };
 
       const result = scheduler.canExecuteImmediately(action);
 
@@ -343,7 +353,7 @@ describe('ActionScheduler', () => {
       const getPrioritySpy = vi.spyOn(scheduler, 'getPriorityForAction');
 
       // Test different action types
-      const bypassThunkAction: Action = { type: 'BYPASS', __bypassThunkLock: true };
+      const bypassThunkAction: Action = { type: 'BYPASS', __immediate: true };
       const rootThunkAction: Action = { type: 'ROOT_THUNK', __thunkParentId: 'root' };
       const regularAction: Action = { type: 'REGULAR' };
 
@@ -368,10 +378,17 @@ describe('ActionScheduler', () => {
       // Add actions in reverse priority order
       scheduler.enqueueAction({ type: 'LOW', __id: 'low' }, { sourceWindowId: 1 });
       scheduler.enqueueAction(
-        { type: 'HIGH', __id: 'high', __bypassThunkLock: true },
+        { type: 'HIGH', __id: 'high', __immediate: true },
         { sourceWindowId: 1 },
       );
 
+      // With deferred sorting, sortQueue is only called when processQueue is called
+      expect(sortSpy).not.toHaveBeenCalled(); // Not called yet
+
+      // Trigger processing
+      scheduler.processQueue();
+
+      // Now sorting should have happened
       expect(sortSpy).toHaveBeenCalled();
     });
   });
@@ -472,7 +489,7 @@ describe('ActionScheduler', () => {
       // Add some actions
       scheduler.enqueueAction({ type: 'ACTION_1', __id: 'id-1' }, { sourceWindowId: 1 });
       scheduler.enqueueAction(
-        { type: 'ACTION_2', __id: 'id-2', __bypassThunkLock: true },
+        { type: 'ACTION_2', __id: 'id-2', __immediate: true },
         { sourceWindowId: 1 },
       );
 
@@ -514,7 +531,7 @@ describe('ActionScheduler', () => {
 
       // Simulate thunk completion event
       const eventHandler = thunkManager.on.mock.calls.find(
-        ([event]) => event === 'thunk:completed',
+        ([event]) => event === 'thunk:root:completed',
       )[1];
       eventHandler();
 

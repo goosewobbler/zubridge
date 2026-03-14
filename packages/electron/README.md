@@ -69,6 +69,7 @@ Or use your dependency manager of choice, e.g. `pnpm`, `yarn`.
 - [Backend Contract](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/backend-contract.md) - Understanding the IPC contract between processes
 - [Debugging](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/debugging.md) - Using the debug utilities to troubleshoot and monitor Zubridge
 - [API Reference](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/api-reference.md) - Complete API documentation
+- [Performance](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/performance.md) - Benchmark results for batching and selective subscriptions
 
 ## Example Applications
 
@@ -148,6 +149,12 @@ localStorage.debug = ''; // Disable debugging
 ```
 
 For more detailed information, see the [Debugging documentation](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/debugging.md).
+
+## Action Batching
+
+Zubridge includes built-in action batching that groups renderer actions within a configurable time window into single IPC calls, reducing cross-process overhead for high-frequency updates. Batching is enabled by default and requires no configuration.
+
+For configuration options, priority-based flushing, and performance details, see [Action Batching](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md#action-batching) in the Advanced Usage guide.
 
 ## Development
 

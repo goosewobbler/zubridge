@@ -1,3 +1,4 @@
+name: 'Build and Verify'
 description: 'Build and verify packages'
 outputs:
   package_version:

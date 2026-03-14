@@ -140,7 +140,7 @@ Here are some examples of enabling debugging for specific Zubridge features:
 ### Action Sequencing Debug
 
 ```bash
-# Debug action deferral and thunk locking
+# Debug action deferral and concurrency control
 DEBUG=zubridge:core,zubridge:ipc electron .
 ```
 
@@ -161,14 +161,19 @@ Monitor:
 - Error propagation from main to renderer
 - Timeout handling
 
-### Bypass Flags Debug
+### Dispatch Flags Debug
 
 ```bash
-# Debug bypass flag usage
+# Debug dispatch flag usage
 DEBUG=zubridge:core electron .
 ```
 
 Watch for:
-- Actions bypassing thunk locks
+- Immediate dispatch actions (bypassing queues)
 - Access control overrides
 - Security-related warnings
+
+## Related Documentation
+
+- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
+- [Validation](./validation.md) - Action validation rules, error messages, and troubleshooting

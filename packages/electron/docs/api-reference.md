@@ -272,13 +272,25 @@ There's also an internal overload that accepts a state manager directly, but thi
 
 ### Preload Script APIs
 
-#### `preloadBridge()`
+#### `preloadBridge(options?)`
 
 Creates handlers for the renderer process to interact with the main process through the backend contract.
 
+##### Parameters:
+
+- `options?`: Optional `PreloadOptions` configuration object
+  - `enableBatching?: boolean` — Enable action batching (default: `true`)
+  - `batching?: Partial<BatchingConfig>` — Batching configuration (see [BatchingConfig](#batchingconfig))
+  - `maxQueueSize?: number` — Maximum pending actions in the queue (default: `100`)
+  - `actionCompletionTimeoutMs?: number` — Timeout for action completion in ms (default: `30000`, Linux: `60000`)
+
 ##### Returns:
 
-An object with a `handlers` property that should be exposed to the renderer process.
+A `PreloadZustandBridgeReturn` object with:
+
+- `handlers`: The `Handlers<State>` object to expose to the renderer process
+- `initialized`: Whether the bridge initialized successfully
+- `getBatchStats()`: Returns current [BatchStats](#batchstats), or `null` if batching is disabled
 
 ##### Example:
 
@@ -287,7 +299,13 @@ An object with a `handlers` property that should be exposed to the renderer proc
 import { contextBridge } from 'electron';
 import { preloadBridge } from '@zubridge/electron/preload';
 
-const { handlers } = preloadBridge();
+const { handlers, getBatchStats } = preloadBridge({
+  enableBatching: true,
+  batching: {
+    windowMs: 16,
+    maxBatchSize: 50,
+  },
+});
 
 // Expose the handlers to the renderer process
 contextBridge.exposeInMainWorld('zubridge', handlers);
@@ -384,9 +402,9 @@ function Counter() {
     dispatch('SET_COUNTER', data.value);
   });
 
-  // Dispatch with options to bypass thunk locking
+  // Dispatch with immediate execution, bypassing all queues
   const handleUrgentAction = () => dispatch('URGENT_ACTION', null, {
-    bypassThunkLock: true
+    immediate: true
   });
 
   // Dispatch with selective subscription keys
@@ -497,7 +515,8 @@ Options that can be passed to dispatch functions to control execution behavior.
 type DispatchOptions = {
   keys?: string[];                  // Selective subscription keys
   bypassAccessControl?: boolean;    // Skip access control checks
-  bypassThunkLock?: boolean;        // Skip thunk locking mechanism
+  immediate?: boolean;              // Execute immediately, bypassing all queues
+  batch?: boolean;                  // Enable batching for thunk actions
 };
 ```
 
@@ -505,7 +524,105 @@ These options allow for advanced control over action dispatch:
 
 - `keys`: When provided, only subscribers with matching keys will receive state updates
 - `bypassAccessControl`: Allows actions to bypass normal access control restrictions
-- `bypassThunkLock`: Allows actions to execute even when thunks are currently running, bypassing the normal action sequencing
+- `immediate`: Allows actions to execute immediately, bypassing the batch window, action queue, and concurrency controls
+- `batch`: When `true`, enables batching for thunk actions. By default, thunk actions use direct dispatch to avoid deadlocks. Set this to `true` to opt into batching for reduced IPC overhead.
+
+### `ThunkDispatch`
+
+Extended dispatch function available inside thunks, with batch support.
+
+```ts
+interface ThunkDispatch<S = AnyState> {
+  // Standard dispatch
+  (action: Action): Promise<void>;
+  (action: Action, options: DispatchOptions): Promise<void>;
+  
+  // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
+  batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
+  
+  // Flush pending batched actions immediately
+  flush(): Promise<FlushResult>;
+}
+```
+
+**Usage inside thunks:**
+
+```ts
+const myThunk = async (getState, dispatch) => {
+  // Direct dispatch (default)
+  await dispatch({ type: 'A' });
+  
+  // Batched dispatch
+  void dispatch.batch({ type: 'B' });
+  
+  // Flush and wait for completion
+  const result = await dispatch.flush();
+};
+```
+
+### `FlushResult`
+
+Result returned by `dispatch.flush()` when flushing pending batched actions.
+
+```ts
+interface FlushResult {
+  /** Unique identifier for the batch that was sent */
+  batchId: string;
+  /** Number of actions that were sent in the batch */
+  actionsSent: number;
+  /** IDs of the actions that were sent */
+  actionIds: string[];
+}
+```
+
+**Example:**
+
+```ts
+const result = await dispatch.flush();
+console.log(`Batch ${result.batchId} sent ${result.actionsSent} actions`);
+```
+
+### `BatchingConfig`
+
+Configuration for the action batcher, passed via `preloadBridge({ batching: { ... } })`.
+
+```ts
+interface BatchingConfig {
+  /** Batch window in milliseconds. Actions within this window are grouped. Default: 16 */
+  windowMs: number;
+  /** Maximum actions per batch before forcing a flush. Default: 50 */
+  maxBatchSize: number;
+  /** Priority at or above which an action triggers an immediate flush. Default: 80 */
+  priorityFlushThreshold: number;
+  /** Timeout (ms) for batch/dispatch acknowledgments from the main process. Default: 30000 (Linux: 60000) */
+  ackTimeoutMs: number;
+}
+```
+
+All fields are optional when passed to `preloadBridge` — unset fields use the defaults shown above.
+
+### `BatchStats`
+
+Snapshot of the batcher's current state, returned by `getBatchStats()`.
+
+```ts
+interface BatchStats {
+  /** Total batches sent since initialization */
+  totalBatches: number;
+  /** Total actions sent across all batches */
+  totalActions: number;
+  /** Average actions per batch (0 if no batches sent) */
+  averageBatchSize: number;
+  /** Number of actions currently queued awaiting flush */
+  currentQueueSize: number;
+  /** Whether a flush is currently in progress */
+  isFlushing: boolean;
+  /** Number of actions rejected (e.g., queue overflow, post-destroy enqueue) */
+  rejectedActions: number;
+  /** Hard queue limit (actions beyond this are rejected) */
+  queueLimit: number;
+}
+```
 
 ### `CoreBridgeOptions`
 
@@ -616,3 +733,10 @@ interface Handlers<State extends AnyState> extends BaseHandler<State> {
   subscribe(callback: (newState: State) => void): () => void;
 }
 ```
+
+## Related Documentation
+
+- [Advanced Usage](./advanced-usage.md) - Multi-window, selective subscriptions, and dispatch options
+- [Validation](./validation.md) - Action validation rules, limits, and security
+- [Performance](./performance.md) - Action batching and priority system
+- [Thunks](./thunks.md) - Async action handling and thunk lifecycle
