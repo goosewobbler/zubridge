@@ -24,6 +24,7 @@ export class ActionBatcher {
   private queue: QueuedAction[] = [];
   private flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
+  private flushingPromise: Promise<void> | null = null;
   private isDestroyed = false;
   private pendingForceFlush = false;
   private lastFlushResult: FlushResult | null = null;
@@ -161,73 +162,80 @@ export class ActionBatcher {
 
     this.isFlushing = true;
 
-    const batch = this.prepareBatch();
-    const batchId = uuidv4();
-    const actionIds = batch.map((item) => item.id);
+    const doFlush = async () => {
+      const batch = this.prepareBatch();
+      const batchId = uuidv4();
+      const actionIds = batch.map((item) => item.id);
 
-    debug('batching', `Flushing batch ${batchId} with ${batch.length} actions`);
+      debug('batching', `Flushing batch ${batchId} with ${batch.length} actions`);
 
-    try {
-      const payload: BatchPayload = {
-        batchId,
-        actions: batch.map((item) => ({
-          action: item.action,
-          id: item.id,
-          parentId: item.parentId,
-        })),
-      };
+      try {
+        const payload: BatchPayload = {
+          batchId,
+          actions: batch.map((item) => ({
+            action: item.action,
+            id: item.id,
+            parentId: item.parentId,
+          })),
+        };
 
-      this.stats.totalBatches++;
-      this.stats.totalActions += batch.length;
+        this.stats.totalBatches++;
+        this.stats.totalActions += batch.length;
 
-      const ackPayload = await this.sendBatch(payload);
+        const ackPayload = await this.sendBatch(payload);
 
-      // If destroyed mid-flush, skip result processing — destroy() already rejected all queued items
-      if (!this.isDestroyed) {
-        const resultMap = new Map<string, { success: boolean; error?: string }>();
-        if (ackPayload.results) {
-          for (const result of ackPayload.results) {
-            resultMap.set(result.actionId, result);
+        // If destroyed mid-flush, skip result processing — destroy() already rejected all queued items
+        if (!this.isDestroyed) {
+          const resultMap = new Map<string, { success: boolean; error?: string }>();
+          if (ackPayload.results) {
+            for (const result of ackPayload.results) {
+              resultMap.set(result.actionId, result);
+            }
+          }
+
+          for (const item of batch) {
+            const result = resultMap.get(item.id);
+            if (!result) {
+              item.reject(new Error(`No result received for action ${item.id}`));
+            } else if (!result.success) {
+              item.reject(new Error(result.error || `Action ${item.id} failed`));
+            } else {
+              item.resolve(item.action);
+            }
           }
         }
 
-        for (const item of batch) {
-          const result = resultMap.get(item.id);
-          if (!result) {
-            item.reject(new Error(`No result received for action ${item.id}`));
-          } else if (!result.success) {
-            item.reject(new Error(result.error || `Action ${item.id} failed`));
-          } else {
-            item.resolve(item.action);
+        // Store the result for flushWithResult to retrieve
+        this.lastFlushResult = { batchId, actionsSent: batch.length, actionIds };
+      } catch (error) {
+        debug('batching:error', `Batch ${batchId} failed:`, error);
+        if (!this.isDestroyed) {
+          batch.forEach((item) => {
+            item.reject(error);
+          });
+        }
+        this.lastFlushResult = { batchId, actionsSent: 0, actionIds: [] };
+      } finally {
+        this.isFlushing = false;
+
+        // Skip post-flush scheduling if destroyed
+        if (!this.isDestroyed) {
+          if (this.pendingForceFlush) {
+            this.pendingForceFlush = false;
+            if (this.queue.length > 0) {
+              void this.flush(true);
+            }
+          } else if (this.queue.length > 0) {
+            this.scheduleFlush();
           }
         }
       }
+    };
 
-      // Store the result for flushWithResult to retrieve
-      this.lastFlushResult = { batchId, actionsSent: batch.length, actionIds };
-    } catch (error) {
-      debug('batching:error', `Batch ${batchId} failed:`, error);
-      if (!this.isDestroyed) {
-        batch.forEach((item) => {
-          item.reject(error);
-        });
-      }
-      this.lastFlushResult = { batchId, actionsSent: 0, actionIds: [] };
-    } finally {
-      this.isFlushing = false;
-
-      // Skip post-flush scheduling if destroyed
-      if (!this.isDestroyed) {
-        if (this.pendingForceFlush) {
-          this.pendingForceFlush = false;
-          if (this.queue.length > 0) {
-            void this.flush(true);
-          }
-        } else if (this.queue.length > 0) {
-          this.scheduleFlush();
-        }
-      }
-    }
+    // Store the promise so flushWithResult can await it
+    this.flushingPromise = doFlush();
+    await this.flushingPromise;
+    this.flushingPromise = null;
   }
 
   /**
@@ -238,6 +246,11 @@ export class ActionBatcher {
    * in long-running processes where flushWithResult is called infrequently.
    */
   async flushWithResult(force = false): Promise<FlushResult> {
+    // If a flush is already in progress, wait for it to complete first
+    if (this.flushingPromise) {
+      await this.flushingPromise;
+    }
+
     if (this.queue.length === 0 && !this.isFlushing) {
       return { batchId: '', actionsSent: 0, actionIds: [] };
     }
