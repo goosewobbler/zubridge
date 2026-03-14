@@ -93,11 +93,23 @@ describe('validation', () => {
     });
 
     it('should reject non-boolean __immediate flag', () => {
+      // __immediate is a known schema field, so invalid values (like strings) should fail validation
       const result = validateSingleDispatch({
         action: { type: 'TEST', __immediate: 'yes' },
       });
 
       expect(result.success).toBe(false);
+    });
+
+    it('should strip unknown __-prefixed fields', () => {
+      // Fields like __thunkParentId are NOT in the schema and should be stripped before validation
+      const result = validateSingleDispatch({
+        action: { type: 'TEST', __thunkParentId: 'parent-123', __unknownField: 'value' },
+      });
+
+      // Validation should pass because unknown fields are stripped
+      expect(result.success).toBe(true);
+      expect(result.data?.action.type).toBe('TEST');
     });
   });
 

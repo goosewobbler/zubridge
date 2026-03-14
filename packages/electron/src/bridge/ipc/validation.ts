@@ -56,6 +56,38 @@ export const ActionPayloadSchema = z
   .strict(); // Reject unknown properties
 
 /**
+ * Fields that are part of the ActionPayloadSchema and should be validated (not stripped).
+ * Fields starting with __ that are NOT in this list will be stripped before validation.
+ */
+const KNOWN_ACTION_FIELDS = new Set([
+  'type',
+  'payload',
+  '__id',
+  '__bypassAccessControl',
+  '__immediate',
+  '__startsThunk',
+  '__sourceWindowId',
+]);
+
+/**
+ * Strips internal __-prefixed fields from an action object before validation.
+ * Only strips fields that start with __ but are NOT in the known action fields list.
+ * Fields in the schema (like __id, __immediate) are kept for validation.
+ * @param action - The action object to sanitize
+ * @returns Action object with unknown internal fields removed
+ */
+function stripInternalFields<T extends Record<string, unknown>>(action: T): T {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(action)) {
+    // Keep if it's not __-prefixed, OR if it's a known schema field
+    if (!key.startsWith('__') || KNOWN_ACTION_FIELDS.has(key)) {
+      result[key] = value;
+    }
+  }
+  return result as T;
+}
+
+/**
  * Schema for single action dispatch payload
  * Used by handleDispatch
  */
@@ -109,6 +141,25 @@ export type ValidationResult<T> =
  * @returns Validation result with typed data or error message
  */
 export function validateSingleDispatch(data: unknown): ValidationResult<ValidatedSingleDispatch> {
+  // Strip internal __-prefixed fields from action before validation
+  if (data && typeof data === 'object' && 'action' in data) {
+    const sanitizedData = {
+      ...data,
+      action: stripInternalFields((data as { action: Record<string, unknown> }).action),
+    };
+    const result = SingleDispatchPayloadSchema.safeParse(sanitizedData);
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    return {
+      success: false,
+      error: formatZodError(result.error),
+      details: result.error,
+    };
+  }
+
   const result = SingleDispatchPayloadSchema.safeParse(data);
 
   if (result.success) {
@@ -128,6 +179,29 @@ export function validateSingleDispatch(data: unknown): ValidationResult<Validate
  * @returns Validation result with typed data or error message
  */
 export function validateBatchDispatch(data: unknown): ValidationResult<ValidatedBatchDispatch> {
+  // Strip internal __-prefixed fields from each action in the batch before validation
+  if (data && typeof data === 'object' && 'actions' in data) {
+    const actions = (data as { actions: Array<{ action: Record<string, unknown> }> }).actions;
+    const sanitizedData = {
+      ...data,
+      actions: actions.map((item) => ({
+        ...item,
+        action: stripInternalFields(item.action),
+      })),
+    };
+    const result = BatchDispatchPayloadSchema.safeParse(sanitizedData);
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    return {
+      success: false,
+      error: formatZodError(result.error),
+      details: result.error,
+    };
+  }
+
   const result = BatchDispatchPayloadSchema.safeParse(data);
 
   if (result.success) {
