@@ -8,6 +8,7 @@ import type { Delta } from '../../deltas/types.js';
 import { getDeltaConfig } from '../../deltas/types.js';
 import { getPartialState, SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import { thunkManager } from '../../thunk/init.js';
+import { deepGet } from '../../utils/deepGet.js';
 import { sanitizeState } from '../../utils/serialization.js';
 import {
   getWebContents,
@@ -184,11 +185,18 @@ export class SubscriptionHandler<State extends AnyState> {
         `Sending current state update ${updateId} to window ${webContents.id} (keys: ${keys ? keys.join(', ') : 'all'})`,
       );
 
-      // Send current state with tracking information
+      // Send initial state as a delta payload to properly handle overlapping subscriptions.
+      // Using dot-path keys ensures multiple subscriptions with shared ancestors (e.g.
+      // ['user.name'] and ['user.profile']) merge correctly instead of overwriting each other.
+      const deltaChanged = this.stateToDeltaKeys(currentState as Partial<State>, keys);
       safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
         updateId,
-        state: currentState,
-        thunkId: undefined, // Initial/current state is never from a thunk
+        delta: {
+          type: 'delta',
+          version: 1,
+          changed: deltaChanged,
+        },
+        thunkId: undefined,
         seq: this.nextSeq(webContents.id),
       });
 
@@ -249,6 +257,38 @@ export class SubscriptionHandler<State extends AnyState> {
         : undefined,
       removed: delta.removed,
     };
+  }
+
+  private stateToDeltaKeys(partialState: Partial<State>, keys?: string[]): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+
+    if (!keys || keys.length === 0 || keys.includes('*')) {
+      const stateObj = partialState as Record<string, unknown>;
+      const allKeys = new Set(Object.keys(stateObj));
+      for (const key of allKeys) {
+        result[key] = stateObj[key];
+      }
+      return result;
+    }
+
+    for (const key of keys) {
+      const normalized = key.trim();
+      if (!normalized) continue;
+
+      if (normalized.includes('.')) {
+        const value = deepGet(partialState as Record<string, unknown>, normalized);
+        if (value !== undefined) {
+          result[normalized] = value;
+        }
+      } else {
+        const value = (partialState as Record<string, unknown>)[normalized];
+        if (value !== undefined) {
+          result[normalized] = value;
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
