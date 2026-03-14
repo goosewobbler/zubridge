@@ -222,14 +222,9 @@ export const preloadBridge = <S extends AnyState>(
             );
             newState = await handlers.getState();
             cachedState = newState;
-          } else if (
-            delta &&
-            delta.type === 'delta' &&
-            (delta.changed || delta.removed) &&
-            cachedState !== null
-          ) {
-            // Delta update - merge into cached state (no IPC call)
-            newState = deltaMerger.merge(cachedState, delta) as S;
+          } else if (delta && delta.type === 'delta' && (delta.changed || delta.removed)) {
+            const base = cachedState ?? ({} as S);
+            newState = deltaMerger.merge(base, delta) as S;
             cachedState = newState;
             debug('ipc', `Merging delta for update ${updateId}`);
           } else if (
