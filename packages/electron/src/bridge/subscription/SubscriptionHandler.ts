@@ -154,7 +154,7 @@ export class SubscriptionHandler<State extends AnyState> {
 
             safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
               updateId,
-              state: sanitizedState,
+              delta: { type: 'full', fullState: sanitizedState },
               thunkId: currentThunkId,
               seq: this.nextSeq(windowId),
             });
