@@ -220,9 +220,13 @@ export class ActionBatcher {
     };
 
     // Store the promise so flushWithResult can await it
-    this.flushingPromise = doFlush();
-    await this.flushingPromise;
-    this.flushingPromise = null;
+    const currentFlushPromise = doFlush();
+    this.flushingPromise = currentFlushPromise;
+    await currentFlushPromise;
+    // Only clear if no new flush has taken over the slot
+    if (this.flushingPromise === currentFlushPromise) {
+      this.flushingPromise = null;
+    }
   }
 
   /**
