@@ -596,6 +596,31 @@ describe('ActionBatcher', () => {
       // sendBatch should only have been called once — no follow-up flush after destroy
       expect(mockSendBatch).toHaveBeenCalledTimes(1);
     });
+
+    it('should resolve flushResultWaiters on destroy', async () => {
+      vi.useRealTimers();
+      try {
+        batcher.enqueue(
+          createTestAction('ACTION_1'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // Start a flush - this registers a waiter since flush is in progress
+        const flushPromise = batcher.flushWithResult(true);
+
+        // While flush is in progress, call destroy
+        batcher.destroy();
+
+        // flushWithResult should resolve (not hang), either with result or empty due to destroy
+        const result = await flushPromise;
+        // Result should have batchId set (either from successful flush or empty from destroy)
+        expect(result.batchId).toBeDefined();
+      } finally {
+        vi.useFakeTimers();
+      }
+    });
   });
 
   describe('shouldFlushNow', () => {
