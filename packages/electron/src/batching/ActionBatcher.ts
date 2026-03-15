@@ -267,6 +267,8 @@ export class ActionBatcher {
     // Without the isFlushing guard, a caller in that window would register a waiter
     // that is never resolved.
     if (this.flushingPromise && this.isFlushing) {
+      // Note: `force` is not propagated — if items are added to the queue during
+      // the in-progress flush they will be scheduled normally, not force-flushed.
       return new Promise((resolve) => {
         this.flushResultWaiters.add(resolve);
       });
