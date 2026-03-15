@@ -189,9 +189,13 @@ export function validateBatchDispatch(data: unknown): ValidationResult<Validated
     const rawData = data as Record<string, unknown>;
     const rawActions = rawData.actions;
 
-    // Guard: actions must be an array
+    // If actions is not an array, skip sanitization and let Zod report the error
+    // uniformly via BatchDispatchPayloadSchema.safeParse below.
     if (!Array.isArray(rawActions)) {
-      return { success: false, error: 'actions must be an array' };
+      const result = BatchDispatchPayloadSchema.safeParse(rawData);
+      return result.success
+        ? { success: true, data: result.data as ValidatedBatchDispatch }
+        : { success: false, error: formatZodError(result.error) };
     }
 
     // Strip internal __-prefixed fields from each action in the batch
