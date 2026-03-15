@@ -344,6 +344,12 @@ export class ActionBatcher {
     });
     this.queue = [];
 
+    const emptyResult: FlushResult = { batchId: '', actionsSent: 0, actionIds: [] };
+    for (const resolve of this.flushResultWaiters) {
+      resolve(emptyResult);
+    }
+    this.flushResultWaiters.clear();
+
     debug('batching', 'ActionBatcher destroyed');
   }
 }
