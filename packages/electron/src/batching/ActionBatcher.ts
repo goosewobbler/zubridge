@@ -199,7 +199,7 @@ export class ActionBatcher {
         }
 
         // Notify all waiting callers with the result
-        const result: FlushResult = { batchId, actionsSent: this.activeBatch.length, actionIds };
+        const result: FlushResult = { batchId, actionsSent: actionIds.length, actionIds };
         for (const resolve of this.flushResultWaiters) {
           resolve(result);
         }
