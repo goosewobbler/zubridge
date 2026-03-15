@@ -98,6 +98,40 @@ ZUBRIDGE_RENDERER_VALIDATION=error npm test
 
 See [Validation](../validation.md) for full details on validation rules and configuration.
 
+## Removed Deprecated Aliases
+
+The following deprecated aliases have been removed in v3:
+
+| Removed Export | Replacement |
+|---|---|
+| `mainZustandBridge` (from `@zubridge/electron`) | `createZustandBridge` |
+| `preloadZustandBridge` (from `@zubridge/electron/preload`) | `preloadBridge` |
+| `PreloadZustandBridge` type (from `@zubridge/electron/preload`) | `PreloadBridge` |
+
+**Before (v2):**
+
+```typescript
+// Main process
+import { mainZustandBridge } from '@zubridge/electron';
+const bridge = mainZustandBridge(store);
+
+// Preload script
+import { preloadZustandBridge } from '@zubridge/electron/preload';
+const { handlers } = preloadZustandBridge();
+```
+
+**After (v3):**
+
+```typescript
+// Main process
+import { createZustandBridge } from '@zubridge/electron';
+const bridge = createZustandBridge(store);
+
+// Preload script
+import { preloadBridge } from '@zubridge/electron/preload';
+const { handlers } = preloadBridge();
+```
+
 ## Dispatch Signature: 3-arg String Form Removed
 
 The 3-argument string dispatch form `dispatch(string, payload, options)` has been removed. To pass `DispatchOptions`, use the action object form instead.
