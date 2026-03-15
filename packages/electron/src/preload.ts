@@ -770,26 +770,24 @@ export const preloadBridge = <S extends AnyState>(
       actionBatcher = null;
     }
 
-    // Add thunk cleanup
-    cleanupRegistry.thunks.add(async () => {
-      thunkProcessor.destroy();
-    });
+    // Clean up thunk processor
+    thunkProcessor.destroy();
 
-    // Add pending registrations cleanup
-    cleanupRegistry.thunks.add(async () => {
-      const pendingCount = pendingThunkRegistrations.size;
-      for (const [thunkId, { reject }] of pendingThunkRegistrations) {
-        try {
-          reject(new Error('Complete cleanup - thunk registration cancelled'));
-        } catch (error: unknown) {
-          debug('ipc:error', `Error rejecting pending thunk registration ${thunkId}:`, error);
-        }
+    // Clean up pending registrations
+    const pendingCount = pendingThunkRegistrations.size;
+    for (const [thunkId, { reject }] of pendingThunkRegistrations) {
+      try {
+        reject(new Error('Complete cleanup - thunk registration cancelled'));
+      } catch (error: unknown) {
+        debug('ipc:error', `Error rejecting pending thunk registration ${thunkId}:`, error);
       }
-      pendingThunkRegistrations.clear();
+    }
+    pendingThunkRegistrations.clear();
+    if (pendingCount > 0) {
       debug('ipc', `Cleaned up ${pendingCount} pending registrations`);
-    });
+    }
 
-    // Perform all cleanups
+    // Perform IPC and DOM cleanups
     await cleanupRegistry.cleanupAll();
 
     // Clear listeners set
