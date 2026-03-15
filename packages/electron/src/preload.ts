@@ -334,7 +334,7 @@ export const preloadBridge = <S extends AnyState>(
         typeof action === 'string'
           ? {
               type: action,
-              payload: payload,
+              payload,
               __id: uuidv4(),
             }
           : {
