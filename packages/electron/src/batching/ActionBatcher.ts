@@ -219,6 +219,7 @@ export class ActionBatcher {
       } finally {
         this.activeBatch = [];
         this.isFlushing = false;
+        this.flushingPromise = null;
 
         // Skip post-flush scheduling if destroyed
         if (!this.isDestroyed) {
@@ -234,14 +235,8 @@ export class ActionBatcher {
       }
     };
 
-    // Store the promise so flushWithResult can await it
-    const currentFlushPromise = doFlush();
-    this.flushingPromise = currentFlushPromise;
-    await currentFlushPromise;
-    // Only clear if no new flush has taken over the slot
-    if (this.flushingPromise === currentFlushPromise) {
-      this.flushingPromise = null;
-    }
+    this.flushingPromise = doFlush();
+    await this.flushingPromise;
   }
 
   /**
@@ -261,12 +256,9 @@ export class ActionBatcher {
     }
 
     // If a flush is actively in progress, register to receive the result when it completes.
-    // We check isFlushing (not just flushingPromise) to avoid a dead-waiter race:
-    // after doFlush completes, isFlushing is false and flushResultWaiters is cleared,
-    // but flushingPromise may not yet be nulled (awaiting microtask continuation in flush()).
-    // Without the isFlushing guard, a caller in that window would register a waiter
-    // that is never resolved.
-    if (this.flushingPromise && this.isFlushing) {
+    // isFlushing and flushingPromise are always cleared together in doFlush's finally block,
+    // so checking isFlushing alone is sufficient.
+    if (this.isFlushing) {
       // Note: `force` is not propagated — if items are added to the queue during
       // the in-progress flush they will be scheduled normally, not force-flushed.
       return new Promise((resolve) => {
