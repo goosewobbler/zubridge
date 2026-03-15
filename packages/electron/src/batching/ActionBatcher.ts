@@ -180,7 +180,7 @@ export class ActionBatcher {
         // If destroyed mid-flush, skip result processing — destroy() already rejected in-flight items
         if (!this.isDestroyed) {
           const resultMap = new Map<string, { success: boolean; error?: string }>();
-          if (ackPayload.results) {
+          if (ackPayload?.results) {
             for (const result of ackPayload.results) {
               resultMap.set(result.actionId, result);
             }
@@ -220,6 +220,17 @@ export class ActionBatcher {
         this.activeBatch = [];
         this.isFlushing = false;
         this.flushingPromise = null;
+
+        // Safety net: if waiters were not drained by try/catch (e.g. a reject
+        // callback threw inside catch), resolve them with an empty result to
+        // prevent permanently-pending promises.
+        if (this.flushResultWaiters.size > 0) {
+          const fallback: FlushResult = { batchId: '', actionsSent: 0, actionIds: [] };
+          for (const resolve of this.flushResultWaiters) {
+            resolve(fallback);
+          }
+          this.flushResultWaiters.clear();
+        }
 
         // Skip post-flush scheduling if destroyed
         if (!this.isDestroyed) {
