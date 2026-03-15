@@ -251,6 +251,9 @@ export const preloadBridge = <S extends AnyState>(
       // Not part of the public API — only used to detect legacy 3-arg calls from JS
       _deprecated?: unknown,
     ): Promise<Action> {
+      // Overload detection: string actions get payload, object/thunk/function actions get options
+      let payload: unknown;
+      let dispatchOptions: DispatchOptions | undefined;
       if (typeof action === 'string') {
         if (_deprecated !== undefined) {
           console.warn(
@@ -259,11 +262,6 @@ export const preloadBridge = <S extends AnyState>(
               'Use dispatch({ type, payload }, options) instead.',
           );
         }
-      }
-      // Overload detection: string actions get payload, object/thunk/function actions get options
-      let payload: unknown;
-      let dispatchOptions: DispatchOptions | undefined;
-      if (typeof action === 'string') {
         payload = payloadOrOptions;
       } else {
         dispatchOptions = payloadOrOptions as DispatchOptions | undefined;

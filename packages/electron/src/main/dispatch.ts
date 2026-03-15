@@ -136,15 +136,6 @@ export function createDispatch<S extends AnyState>(
     // Not part of the public API — only used to detect legacy 3-arg calls from JS
     _deprecated?: unknown,
   ): Promise<unknown> => {
-    if (typeof actionOrThunk === 'string') {
-      if (_deprecated !== undefined) {
-        console.warn(
-          'Warning: dispatch(string, payload, options) is no longer supported. ' +
-            'The third argument (options) is being silently ignored. ' +
-            'Use dispatch({ type, payload }, options) instead.',
-        );
-      }
-    }
     if (typeof actionOrThunk === 'function') {
       // Thunk overload: (thunk: Thunk<S>, options?: DispatchOptions)
       const thunkOptions = payloadOrOptions as DispatchOptions | undefined;
@@ -157,6 +148,13 @@ export function createDispatch<S extends AnyState>(
     }
 
     // String action overload: (action: string, payload?: unknown)
+    if (_deprecated !== undefined) {
+      console.warn(
+        'Warning: dispatch(string, payload, options) is no longer supported. ' +
+          'The third argument (options) is being silently ignored. ' +
+          'Use dispatch({ type, payload }, options) instead.',
+      );
+    }
     return internalDispatch(actionOrThunk, payloadOrOptions, undefined, undefined);
   }) as Dispatch<S>;
 

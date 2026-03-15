@@ -28,7 +28,6 @@ export class ActionBatcher {
   private flushResultWaiters: Set<(result: FlushResult) => void> = new Set();
   private isDestroyed = false;
   private pendingForceFlush = false;
-  private lastFlushResult: FlushResult | null = null;
   private stats = {
     totalBatches: 0,
     totalActions: 0,
@@ -198,11 +197,8 @@ export class ActionBatcher {
           }
         }
 
-        // Store the result for flushWithResult to retrieve
-        this.lastFlushResult = { batchId, actionsSent: batch.length, actionIds };
-
         // Notify all waiting callers with the result
-        const result = this.lastFlushResult;
+        const result: FlushResult = { batchId, actionsSent: batch.length, actionIds };
         for (const resolve of this.flushResultWaiters) {
           resolve(result);
         }
@@ -214,9 +210,7 @@ export class ActionBatcher {
             item.reject(error);
           });
         }
-        const errorResult = { batchId, actionsSent: 0, actionIds: [] };
-        this.lastFlushResult = errorResult;
-
+        const errorResult: FlushResult = { batchId, actionsSent: 0, actionIds: [] };
         for (const resolve of this.flushResultWaiters) {
           resolve(errorResult);
         }
@@ -252,13 +246,16 @@ export class ActionBatcher {
    * Flush pending actions and return result with batch stats.
    * This is used for manual flush from thunks.
    *
-   * Note: The lastFlushResult is cleared after retrieval to prevent memory accumulation
-   * in long-running processes where flushWithResult is called infrequently.
+   * Results are delivered exclusively via flushResultWaiters — doFlush resolves
+   * all registered waiters, so there is no stale result window between
+   * scheduled flushes.
    */
   async flushWithResult(force = false): Promise<FlushResult> {
+    const emptyResult: FlushResult = { batchId: '', actionsSent: 0, actionIds: [] };
+
     // Fast exit if batcher is destroyed
     if (this.isDestroyed) {
-      return { batchId: '', actionsSent: 0, actionIds: [] };
+      return emptyResult;
     }
 
     // If a flush is actively in progress, register to receive the result when it completes.
@@ -273,22 +270,19 @@ export class ActionBatcher {
       });
     }
 
-    if (this.queue.length === 0 && !this.isFlushing) {
-      return { batchId: '', actionsSent: 0, actionIds: [] };
+    if (this.queue.length === 0) {
+      return emptyResult;
     }
+
+    // Register a waiter before flushing so doFlush delivers the result to us
+    const resultPromise = new Promise<FlushResult>((resolve) => {
+      this.flushResultWaiters.add(resolve);
+    });
 
     // Perform the flush
     await this.flush(force);
 
-    // If flush() returned early (e.g. queue drained between our check and the await),
-    // lastFlushResult was not updated by this invocation — return empty result.
-    if (!this.lastFlushResult) {
-      return { batchId: '', actionsSent: 0, actionIds: [] };
-    }
-
-    const result = this.lastFlushResult;
-    this.lastFlushResult = null;
-    return result;
+    return resultPromise;
   }
 
   // No priority sorting needed: high-priority actions (>= priorityFlushThreshold) trigger
