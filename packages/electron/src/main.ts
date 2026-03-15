@@ -123,10 +123,3 @@ export function createReduxBridge<S extends AnyState>(
     dispatch: dispatchFn,
   };
 }
-
-/**
- * Legacy bridge alias for backward compatibility
- * @deprecated This is now an alias for createZustandBridge and uses the new IPC channels.
- * Please update your code to use createZustandBridge directly in the future.
- */
-export const mainZustandBridge = createZustandBridge;

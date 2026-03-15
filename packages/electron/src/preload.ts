@@ -789,12 +789,4 @@ export const preloadBridge = <S extends AnyState>(
   };
 };
 
-/**
- * Legacy preload bridge for backward compatibility
- * @deprecated This is now an alias for preloadBridge and uses the new IPC channels.
- * Please update your code to use preloadBridge directly in the future.
- */
-export const preloadZustandBridge = preloadBridge;
-
-export type PreloadZustandBridge = typeof preloadZustandBridge;
 export type PreloadBridge = typeof preloadBridge;
