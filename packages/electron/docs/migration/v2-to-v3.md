@@ -174,7 +174,7 @@ dispatch('INCREMENT');
 dispatch('SET_VALUE', 42);
 ```
 
-**Important: 2-arg `dispatch(string, options)` callers.** If you were passing `DispatchOptions` as the second argument to a string dispatch (without a payload), those options are now treated as payload. TypeScript callers will get a compile error when adding the third argument. JavaScript callers will not — search your codebase for string dispatch calls where the second argument contains `immediate`, `batch`, `keys`, or `bypassAccessControl` to find calls that need updating.
+**Important: 2-arg `dispatch(string, options)` callers.** If you were passing `DispatchOptions` as the second argument to a string dispatch (without a payload), those options are now silently treated as payload. Because `payload` is typed `unknown`, TypeScript will **not** catch this — the call compiles without error but the options are ignored at runtime. Search your codebase for string dispatch calls where the second argument contains `immediate`, `batch`, `keys`, or `bypassAccessControl` to find calls that need updating.
 
 ## Strict Action Schema
 
