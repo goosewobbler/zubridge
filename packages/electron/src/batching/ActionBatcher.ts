@@ -25,6 +25,7 @@ export class ActionBatcher {
   private flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
   private flushingPromise: Promise<void> | null = null;
+  private flushResultWaiters: Set<(result: FlushResult) => void> = new Set();
   private isDestroyed = false;
   private pendingForceFlush = false;
   private lastFlushResult: FlushResult | null = null;
@@ -199,6 +200,13 @@ export class ActionBatcher {
 
         // Store the result for flushWithResult to retrieve
         this.lastFlushResult = { batchId, actionsSent: batch.length, actionIds };
+
+        // Notify all waiting callers with the result
+        const result = this.lastFlushResult;
+        for (const resolve of this.flushResultWaiters) {
+          resolve(result);
+        }
+        this.flushResultWaiters.clear();
       } catch (error) {
         debug('batching:error', `Batch ${batchId} failed:`, error);
         if (!this.isDestroyed) {
@@ -242,13 +250,11 @@ export class ActionBatcher {
    * in long-running processes where flushWithResult is called infrequently.
    */
   async flushWithResult(force = false): Promise<FlushResult> {
-    // If a flush is already in progress, wait for it to complete first
+    // If a flush is already in progress, register to receive the result when it completes
     if (this.flushingPromise) {
-      await this.flushingPromise;
-      // The in-progress flush has now completed - return its result directly
-      const result = this.lastFlushResult || { batchId: '', actionsSent: 0, actionIds: [] };
-      this.lastFlushResult = null;
-      return result;
+      return new Promise((resolve) => {
+        this.flushResultWaiters.add(resolve);
+      });
     }
 
     if (this.queue.length === 0 && !this.isFlushing) {
