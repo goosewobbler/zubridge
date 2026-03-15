@@ -77,6 +77,11 @@ export class ActionBatcher {
       debug('batching', `Immediate flush triggered for high-priority action ${action.type}`);
       // Always insert at front to guarantee inclusion in the immediate flush
       // regardless of queue depth (queue can grow up to HARD_QUEUE_LIMIT = 4 × maxBatchSize)
+      //
+      // Note: Using unshift means multiple concurrent high-priority actions will be
+      // processed in reverse arrival order (last-arriving action processed first).
+      // This is acceptable since strict FIFO ordering among simultaneous high-priority
+      // actions is not required.
       this.queue.unshift({
         action,
         resolve,
