@@ -129,12 +129,11 @@ export function createDispatch<S extends AnyState>(
     }
   };
 
-  // Create the public dispatch function with the standard 2-arg interface
+  // Create the public dispatch function
   const dispatch: Dispatch<S> = ((
     actionOrThunk: Thunk<S> | Action | string,
     payloadOrOptions?: unknown,
-    // Not part of the public API — only used to detect legacy 3-arg calls from JS
-    _deprecated?: unknown,
+    optionsIfString?: DispatchOptions,
   ): Promise<unknown> => {
     if (typeof actionOrThunk === 'function') {
       // Thunk overload: (thunk: Thunk<S>, options?: DispatchOptions)
@@ -147,15 +146,8 @@ export function createDispatch<S extends AnyState>(
       return internalDispatch(actionOrThunk, undefined, undefined, actionOptions);
     }
 
-    // String action overload: (action: string, payload?: unknown)
-    if (_deprecated !== undefined) {
-      console.warn(
-        'Warning: dispatch(string, payload, options) is no longer supported. ' +
-          'The third argument (options) is being silently ignored. ' +
-          'Use dispatch({ type, payload }, options) instead.',
-      );
-    }
-    return internalDispatch(actionOrThunk, payloadOrOptions, undefined, undefined);
+    // String action overload: (action: string, payload?, options?)
+    return internalDispatch(actionOrThunk, payloadOrOptions, undefined, optionsIfString);
   }) as Dispatch<S>;
 
   return dispatch;
