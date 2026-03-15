@@ -356,6 +356,8 @@ export const preloadBridge = <S extends AnyState>(
       // trigger an immediate flush via the batcher's priority system, so all actions benefit
       const batcher = actionBatcher;
       if (batcher) {
+        // Validate action before enqueueing
+        validateActionInRenderer(actionObj);
         return new Promise<Action>((resolve, reject) => {
           batcher.enqueue(
             actionObj,
@@ -719,10 +721,9 @@ export const preloadBridge = <S extends AnyState>(
   const performPartialCleanup = async (): Promise<void> => {
     debug('ipc', 'Performing partial cleanup of expired resources');
 
-    // Clean up expired thunk processor actions
-    cleanupRegistry.thunks.add(async () => {
-      thunkProcessor.forceCleanupExpiredActions();
-    });
+    // Directly call forceCleanupExpiredActions instead of routing through registry
+    // to avoid accumulating callbacks if this is called multiple times rapidly
+    thunkProcessor.forceCleanupExpiredActions();
 
     await cleanupRegistry.thunks.cleanupAll();
 
