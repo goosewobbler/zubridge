@@ -201,25 +201,9 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         let dispatchOptions: DispatchOptions | undefined;
 
         if (dispatchOptionsOrPayload !== undefined) {
-          // Check if second arg looks like options (legacy behavior)
-          const secondArg = payloadOrOptions;
-          if (
-            secondArg &&
-            typeof secondArg === 'object' &&
-            !Array.isArray(secondArg) &&
-            ('batch' in secondArg ||
-              'bypassAccessControl' in secondArg ||
-              'immediate' in secondArg ||
-              'keys' in secondArg)
-          ) {
-            // Second arg is options
-            dispatchOptions = secondArg as DispatchOptions;
-            payload = undefined;
-          } else {
-            // Second arg is payload
-            payload = secondArg;
-            dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
-          }
+          // Three-argument form (action, payload, options) is always unambiguous
+          payload = payloadOrOptions;
+          dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
         } else if (
           payloadOrOptions &&
           typeof payloadOrOptions === 'object' &&

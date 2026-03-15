@@ -1191,4 +1191,154 @@ describe('RendererThunkProcessor', () => {
       );
     });
   });
+
+  describe('dispatch three-argument form', () => {
+    beforeEach(() => {
+      mockThunkRegistrar.mockResolvedValue(undefined);
+      mockThunkCompleter.mockResolvedValue(undefined);
+      mockActionSender.mockClear();
+      mockActionSender.mockImplementation(
+        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
+          setTimeout(() => {
+            if (action.__id) {
+              processor.completeAction(action.__id, { result: 'completed' });
+            }
+          }, 5);
+          return undefined;
+        },
+      );
+    });
+
+    it('should handle three-arg form with payload containing option-like keys', async () => {
+      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('MY_ACTION', { batch: true }, { immediate: true });
+        return 'three-arg';
+      });
+
+      await processor.executeThunk(threeArgThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'MY_ACTION',
+          payload: { batch: true },
+          __immediate: true,
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should handle three-arg form with payload containing immediate key', async () => {
+      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('IMMEDIATE_ACTION', { immediate: false }, { immediate: true });
+        return 'immediate-payload';
+      });
+
+      await processor.executeThunk(threeArgThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'IMMEDIATE_ACTION',
+          payload: { immediate: false },
+          __immediate: true,
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should handle three-arg form with payload containing bypassAccessControl key', async () => {
+      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch(
+          'BYPASS_ACTION',
+          { bypassAccessControl: false },
+          { bypassAccessControl: true },
+        );
+        return 'bypass-payload';
+      });
+
+      await processor.executeThunk(threeArgThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'BYPASS_ACTION',
+          payload: { bypassAccessControl: false },
+          __bypassAccessControl: true,
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should handle three-arg form with payload containing keys', async () => {
+      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('KEYS_ACTION', { keys: ['a', 'b'] }, { immediate: true });
+        return 'keys-payload';
+      });
+
+      await processor.executeThunk(threeArgThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'KEYS_ACTION',
+          payload: { keys: ['a', 'b'] },
+          __immediate: true,
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should still work with two-arg legacy form', async () => {
+      const legacyThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('LEGACY_ACTION', { batch: true });
+        return 'legacy';
+      });
+
+      await processor.executeThunk(legacyThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'LEGACY_ACTION',
+        }),
+        expect.any(String),
+        { batch: true },
+      );
+    });
+
+    it('should still work with two-arg legacy form when second arg does not look like options', async () => {
+      const legacyThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('NORMAL_ACTION', { data: 'test' });
+        return 'normal';
+      });
+
+      await processor.executeThunk(legacyThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'NORMAL_ACTION',
+          payload: { data: 'test' },
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should still work with one-arg form', async () => {
+      const oneArgThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('ONE_ARG_ACTION');
+        return 'one-arg';
+      });
+
+      await processor.executeThunk(oneArgThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'ONE_ARG_ACTION',
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+  });
 });
