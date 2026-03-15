@@ -87,7 +87,7 @@ function useDispatch<
   // Create a dispatch function that delegates directly to handlers.dispatch
   const dispatch: DispatchFunc<S, TActions> = (
     action: string | Action | Thunk<S>,
-    payloadOrOptions?: unknown | DispatchOptions,
+    payloadOrOptions?: unknown,
   ): Promise<unknown> => {
     // Narrow the type so TypeScript can resolve the correct overload
     if (typeof action === 'string') {

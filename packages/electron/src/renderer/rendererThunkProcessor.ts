@@ -188,7 +188,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       // Create a dispatch function for this thunk that tracks each action
       const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
-        payloadOrOptions?: unknown | DispatchOptions,
+        payloadOrOptions?: unknown,
       ): Promise<unknown> => {
         // Overload detection: string actions get payload, object/thunk actions get options
         let payload: unknown;
