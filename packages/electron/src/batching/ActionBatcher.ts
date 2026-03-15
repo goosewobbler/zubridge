@@ -256,6 +256,11 @@ export class ActionBatcher {
    * in long-running processes where flushWithResult is called infrequently.
    */
   async flushWithResult(force = false): Promise<FlushResult> {
+    // Fast exit if batcher is destroyed
+    if (this.isDestroyed) {
+      return { batchId: '', actionsSent: 0, actionIds: [] };
+    }
+
     // If a flush is already in progress, register to receive the result when it completes
     if (this.flushingPromise) {
       return new Promise((resolve) => {
