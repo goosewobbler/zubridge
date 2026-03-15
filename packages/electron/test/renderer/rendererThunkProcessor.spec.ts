@@ -1026,6 +1026,35 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
+    it('should call actionSender with batch:true when using dispatch.batch with a string action', async () => {
+      mockThunkRegistrar.mockResolvedValue(undefined);
+      mockThunkCompleter.mockResolvedValue(undefined);
+      mockActionSender.mockClear();
+      mockActionSender.mockImplementation(
+        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
+          setTimeout(() => {
+            if (action.__id) {
+              processor.completeAction(action.__id, { result: 'completed' });
+            }
+          }, 5);
+          return undefined;
+        },
+      );
+
+      const batchThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch.batch('BATCHED_STRING_ACTION', 42);
+        return 'batched-string';
+      });
+
+      await processor.executeThunk(batchThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'BATCHED_STRING_ACTION', payload: 42 }),
+        expect.any(String),
+        { batch: true },
+      );
+    });
+
     it('should call actionSender without batch option for normal dispatch', async () => {
       mockThunkRegistrar.mockResolvedValue(undefined);
       mockThunkCompleter.mockResolvedValue(undefined);
