@@ -88,10 +88,11 @@ function useDispatch<
   const dispatch: DispatchFunc<S, TActions> = (
     action: string | Action | Thunk<S>,
     payloadOrOptions?: unknown,
+    optionsIfString?: DispatchOptions,
   ): Promise<unknown> => {
     // Narrow the type so TypeScript can resolve the correct overload
     if (typeof action === 'string') {
-      return handlers.dispatch(action, payloadOrOptions);
+      return handlers.dispatch(action, payloadOrOptions, optionsIfString as DispatchOptions);
     }
     if (typeof action === 'function') {
       return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
