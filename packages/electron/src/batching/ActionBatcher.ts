@@ -155,13 +155,14 @@ export class ActionBatcher {
     this.isFlushing = true;
 
     const doFlush = async () => {
-      const batch = this.prepareBatch();
-      const batchId = uuidv4();
-      const actionIds = batch.map((item) => item.id);
-
-      debug('batching', `Flushing batch ${batchId} with ${batch.length} actions`);
-
+      let batch: QueuedAction[] = [];
+      let batchId = '';
       try {
+        batch = this.prepareBatch();
+        batchId = uuidv4();
+        const actionIds = batch.map((item) => item.id);
+
+        debug('batching', `Flushing batch ${batchId} with ${batch.length} actions`);
         const payload: BatchPayload = {
           batchId,
           actions: batch.map((item) => ({
@@ -204,7 +205,7 @@ export class ActionBatcher {
         }
         this.flushResultWaiters.clear();
       } catch (error) {
-        debug('batching:error', `Batch ${batchId} failed:`, error);
+        debug('batching:error', `Batch ${batchId || '<unknown>'} failed:`, error);
         if (!this.isDestroyed) {
           batch.forEach((item) => {
             item.reject(error);
