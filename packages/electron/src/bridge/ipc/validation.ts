@@ -76,10 +76,10 @@ const KNOWN_ACTION_FIELDS = new Set([
  * @param action - The action object to sanitize (must be a plain object)
  * @returns Action object with unknown internal fields removed, or original if not an object
  */
-function stripInternalFields(action: unknown): Record<string, unknown> {
+function stripInternalFields(action: unknown): unknown {
   // Guard: only process plain objects
   if (!action || typeof action !== 'object' || Array.isArray(action)) {
-    return action as Record<string, unknown>;
+    return action;
   }
 
   const result: Record<string, unknown> = {};
