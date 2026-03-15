@@ -280,11 +280,13 @@ export class ActionBatcher {
     // Perform the flush
     await this.flush(force);
 
-    // NOTE: lastFlushResult is only read here (by the primary caller who triggered
-    // this flush). All concurrent secondary callers are routed via flushResultWaiters
-    // (see above) and receive the result directly — they never access lastFlushResult.
-    // This single-slot pattern is safe because of this routing invariant.
-    const result = this.lastFlushResult || { batchId: '', actionsSent: 0, actionIds: [] };
+    // If flush() returned early (e.g. queue drained between our check and the await),
+    // lastFlushResult was not updated by this invocation — return empty result.
+    if (!this.lastFlushResult) {
+      return { batchId: '', actionsSent: 0, actionIds: [] };
+    }
+
+    const result = this.lastFlushResult;
     this.lastFlushResult = null;
     return result;
   }
