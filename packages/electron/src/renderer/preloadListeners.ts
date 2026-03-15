@@ -102,7 +102,16 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
   return {
     ipcListeners: {
       get: (channel: string) => ipcListeners.get(channel),
-      delete: (channel: string) => ipcListeners.delete(channel),
+      delete: (channel: string) => {
+        // Evict the cleanup function so cleanupAll() doesn't attempt
+        // to remove a listener that has already been removed.
+        const cleanup = ipcCleanupFunctions.get(channel);
+        if (cleanup) {
+          cleanupRegistry.ipc.remove(cleanup);
+          ipcCleanupFunctions.delete(channel);
+        }
+        ipcListeners.delete(channel);
+      },
     },
     cleanupRegistry,
     registerIpcListener,
