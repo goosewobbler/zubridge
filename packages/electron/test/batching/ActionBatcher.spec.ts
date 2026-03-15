@@ -724,6 +724,36 @@ describe('ActionBatcher', () => {
       expect(result.actionsSent).toBe(0);
       expect(result.actionIds).toHaveLength(0);
     });
+
+    it('should return result to all concurrent callers', async () => {
+      vi.useRealTimers();
+      try {
+        batcher.enqueue(
+          createTestAction('ACTION_1'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // Start multiple flushWithResult calls concurrently
+        const [result1, result2, result3] = await Promise.all([
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+        ]);
+
+        // All concurrent callers should get the actual result, not empty fallback
+        expect(result1.actionsSent).toBe(1);
+        expect(result2.actionsSent).toBe(1);
+        expect(result3.actionsSent).toBe(1);
+        expect(result1.batchId).toBeDefined();
+        // All should get the same batchId
+        expect(result2.batchId).toBe(result1.batchId);
+        expect(result3.batchId).toBe(result1.batchId);
+      } finally {
+        vi.useFakeTimers();
+      }
+    });
   });
 
   describe('hard queue limit', () => {
