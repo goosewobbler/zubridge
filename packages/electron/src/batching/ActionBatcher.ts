@@ -268,9 +268,6 @@ export class ActionBatcher {
     // Without the isFlushing guard, a caller in that window would register a waiter
     // that is never resolved.
     if (this.flushingPromise && this.isFlushing) {
-      if (this.isDestroyed) {
-        return { batchId: '', actionsSent: 0, actionIds: [] };
-      }
       return new Promise((resolve) => {
         this.flushResultWaiters.add(resolve);
       });
