@@ -111,6 +111,15 @@ describe('validation', () => {
       expect(result.success).toBe(true);
       expect(result.data?.action.type).toBe('TEST');
     });
+
+    it('should handle non-object action gracefully', () => {
+      // Should not throw, should return validation error
+      const result = validateSingleDispatch({
+        action: null,
+      });
+
+      expect(result.success).toBe(false);
+    });
   });
 
   describe('validateBatchDispatch', () => {
@@ -144,6 +153,28 @@ describe('validation', () => {
       const result = validateBatchDispatch({
         batchId: 'batch-123',
         actions,
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle non-array actions gracefully', () => {
+      // Should not throw, should return validation error
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: null,
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle malformed action items gracefully', () => {
+      // Should not throw, should return validation error
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: [
+          { action: null, id: 'id-1' }, // invalid action
+        ],
       });
 
       expect(result.success).toBe(false);
