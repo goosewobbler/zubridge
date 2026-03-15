@@ -750,6 +750,8 @@ export const preloadBridge = <S extends AnyState>(
 
     // Add batcher cleanup
     if (actionBatcher) {
+      // Remove BATCH_ACK listener explicitly since it's not tracked by cleanup registry
+      ipcRenderer.removeAllListeners(IpcChannel.BATCH_ACK);
       actionBatcher.destroy();
       actionBatcher = null;
     }
