@@ -247,32 +247,17 @@ export const preloadBridge = <S extends AnyState>(
     // Dispatch actions to main process
     async dispatch(
       action: string | Action | Thunk<S>,
-      payloadOrOptions?: unknown | DispatchOptions,
-      options?: DispatchOptions,
+      payload?: unknown,
+      dispatchOptions?: DispatchOptions,
     ): Promise<Action> {
-      debug('ipc', 'Dispatch called with:', { action, payloadOrOptions, options });
+      debug('ipc', 'Dispatch called with:', { action, payload, dispatchOptions });
 
-      // Extract options or default to empty object
-      let dispatchOptions: DispatchOptions;
-      // Check if payloadOrOptions has DispatchOptions properties
-      const isOptions =
-        payloadOrOptions &&
-        typeof payloadOrOptions === 'object' &&
-        !Array.isArray(payloadOrOptions) &&
-        ('bypassAccessControl' in payloadOrOptions ||
-          'immediate' in payloadOrOptions ||
-          'keys' in payloadOrOptions ||
-          'batch' in payloadOrOptions);
-
-      if (isOptions) {
-        dispatchOptions = payloadOrOptions as DispatchOptions;
-      } else {
-        dispatchOptions = options || {};
-      }
+      // Use provided options or default to empty object
+      const opts = dispatchOptions || {};
 
       // Extract bypass flags
-      const bypassAccessControl = dispatchOptions.bypassAccessControl;
-      const immediate = dispatchOptions.immediate;
+      const bypassAccessControl = opts.bypassAccessControl;
+      const immediate = opts.immediate;
 
       debug(
         'ipc',
@@ -332,7 +317,7 @@ export const preloadBridge = <S extends AnyState>(
         typeof action === 'string'
           ? {
               type: action,
-              payload: !isOptions ? payloadOrOptions : undefined,
+              payload: payload,
               __id: uuidv4(),
             }
           : {

@@ -195,31 +195,8 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         payloadOrOptions?: unknown,
         dispatchOptionsOrPayload?: DispatchOptions | unknown,
       ): Promise<unknown> => {
-        // Determine if args are (action, payload, options) or legacy (action, options)
-        // Uses heuristic to detect if second arg is options (for backward compat)
-        let payload: unknown;
-        let dispatchOptions: DispatchOptions | undefined;
-
-        if (dispatchOptionsOrPayload !== undefined) {
-          // Three-argument form (action, payload, options) is always unambiguous
-          payload = payloadOrOptions;
-          dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
-        } else if (
-          payloadOrOptions &&
-          typeof payloadOrOptions === 'object' &&
-          !Array.isArray(payloadOrOptions) &&
-          ('batch' in payloadOrOptions ||
-            'bypassAccessControl' in payloadOrOptions ||
-            'immediate' in payloadOrOptions ||
-            'keys' in payloadOrOptions)
-        ) {
-          // Only one arg and it looks like options
-          dispatchOptions = payloadOrOptions as DispatchOptions;
-          payload = undefined;
-        } else {
-          // Only payload provided
-          payload = payloadOrOptions;
-        }
+        const payload = payloadOrOptions;
+        const dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
 
         const isBatched = dispatchOptions?.batch === true;
 
@@ -330,8 +307,12 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       // Create the ThunkDispatch with batch and flush methods
       const dispatch = Object.assign(baseDispatch, {
         // Batched dispatch shorthand
-        batch: async (action: Action, opts?: Omit<DispatchOptions, 'batch'>): Promise<void> => {
-          await baseDispatch(action, { ...opts, batch: true });
+        batch: async (
+          action: Action,
+          payload?: unknown,
+          opts?: Omit<DispatchOptions, 'batch'>,
+        ): Promise<void> => {
+          await baseDispatch(action, payload, { ...opts, batch: true });
         },
 
         // Flush pending batched actions
