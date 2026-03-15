@@ -200,7 +200,7 @@ describe('validation', () => {
         });
 
         expect(result.success).toBe(false);
-        expect(result.error).toContain('expected object');
+        expect(result.error?.toLowerCase()).toContain('expected object');
       }
     });
 
@@ -211,7 +211,7 @@ describe('validation', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('expected object');
+      expect(result.error?.toLowerCase()).toContain('expected object');
     });
   });
 
