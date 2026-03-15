@@ -230,11 +230,11 @@ Creates a dispatch function that can be used in the main process to dispatch act
 
 ##### Returns:
 
-A function that can dispatch actions to the store. This dispatch function supports:
+A `Dispatch<S>` function that can dispatch actions to the store. This dispatch function supports:
 
-- String action types with optional payload
-- Action objects with type and payload
-- Thunk functions for complex logic
+- String action types with optional payload: `dispatch('ACTION', payload?)`
+- Action objects with optional options: `dispatch({ type, payload }, options?)`
+- Thunk functions with optional options: `dispatch(thunkFn, options?)`
 
 ##### Example:
 
@@ -505,6 +505,36 @@ Represents a thunk function for handling asynchronous logic.
 
 ```ts
 type Thunk<State> = (getState: StoreApi<State>['getState'], dispatch: Dispatch<State>) => void;
+```
+
+### `Dispatch<S>`
+
+The dispatch function type. Uses overloads to provide a clean 2-argument interface for all dispatch patterns:
+
+```ts
+type Dispatch<S> = {
+  // Action object with optional options
+  (action: Action, options?: DispatchOptions): Promise<unknown>;
+  // String action with optional payload (use action object form for options)
+  (action: string, payload?: unknown): Promise<unknown>;
+  // Thunk with optional options
+  (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
+};
+```
+
+To pass `DispatchOptions` with an action, use the action object form:
+
+```ts
+// String dispatch — payload only, no options
+dispatch('INCREMENT');
+dispatch('SET_VALUE', 42);
+
+// Action object dispatch — supports options
+dispatch({ type: 'URGENT_ACTION', payload: 42 }, { immediate: true });
+dispatch({ type: 'ADMIN_UPDATE' }, { keys: ['admin'] });
+
+// Thunk dispatch — supports options
+dispatch(myThunk, { immediate: true });
 ```
 
 ### `DispatchOptions`
