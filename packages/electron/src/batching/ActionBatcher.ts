@@ -337,8 +337,10 @@ export class ActionBatcher {
  * - All other actions get NORMAL_THUNK_ACTION priority (50)
  *
  * Note: This function is used in the renderer process (ActionBatcher).
- * The main process (ActionScheduler) has a more complex priority calculation
- * that also considers the active root thunk context.
+ * The renderer does not have access to the active root thunk context,
+ * so all thunk actions are treated at the same priority level (70).
+ * The main process (ActionScheduler) distinguishes between root and
+ * nested thunks, assigning NORMAL_THUNK_ACTION (50) to non-root thunks.
  */
 export function calculatePriority(action: Action): number {
   if (action.__immediate) return PRIORITY_LEVELS.IMMEDIATE;
