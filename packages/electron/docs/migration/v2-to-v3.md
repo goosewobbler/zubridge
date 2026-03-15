@@ -132,24 +132,38 @@ import { preloadBridge } from '@zubridge/electron/preload';
 const { handlers } = preloadBridge();
 ```
 
-## Dispatch Signature: 3-arg String Form Removed
+## Dispatch Signature: String Form Clarified
 
-The 3-argument string dispatch form `dispatch(string, payload, options)` has been removed. To pass `DispatchOptions`, use the action object form instead.
+In v2, the second argument to `dispatch(string, ...)` was duck-typed — it could be either payload or `DispatchOptions` depending on its shape. In v3, the convention is unambiguous:
 
-**Before (v2):**
+- **arg2** is always **payload**
+- **arg3** (optional) is always **options**
 
 ```typescript
-dispatch('URGENT_ACTION', payload, { immediate: true });
-dispatch('ADMIN_UPDATE', data, { keys: ['admin'] });
-dispatch('ACTION', undefined, { batch: true });
+// String dispatch signatures in v3:
+dispatch(action: string, payload?: unknown): Promise<unknown>;
+dispatch(action: string, payload: unknown, options: DispatchOptions): Promise<unknown>;
 ```
 
-**After (v3):**
+**Before (v2) — options as second arg (duck-typed):**
 
 ```typescript
-dispatch({ type: 'URGENT_ACTION', payload }, { immediate: true });
+dispatch('URGENT_ACTION', { immediate: true });           // options duck-typed from payload
+dispatch('ADMIN_UPDATE', data, { keys: ['admin'] });      // 3-arg also worked
+```
+
+**After (v3) — explicit positional args:**
+
+```typescript
+dispatch('URGENT_ACTION', undefined, { immediate: true }); // payload=undefined, options
+dispatch('ADMIN_UPDATE', data, { keys: ['admin'] });       // payload=data, options — unchanged
+```
+
+You can also use the action object form:
+
+```typescript
+dispatch({ type: 'URGENT_ACTION' }, { immediate: true });
 dispatch({ type: 'ADMIN_UPDATE', payload: data }, { keys: ['admin'] });
-dispatch({ type: 'ACTION' }, { batch: true });
 ```
 
 String dispatch without options is unchanged:
@@ -160,9 +174,7 @@ dispatch('INCREMENT');
 dispatch('SET_VALUE', 42);
 ```
 
-**Why:** The 3-arg form created ambiguity where the second argument could be either payload or options depending on the first argument's type. The 2-arg convention eliminates this: string actions always get payload, object/thunk actions always get options.
-
-**JavaScript callers:** A runtime warning is logged if a third argument is detected with a string action, since JavaScript won't produce a compile error.
+**Important: 2-arg `dispatch(string, options)` callers.** If you were passing `DispatchOptions` as the second argument to a string dispatch (without a payload), those options are now treated as payload. TypeScript callers will get a compile error when adding the third argument. JavaScript callers will not — search your codebase for string dispatch calls where the second argument contains `immediate`, `batch`, `keys`, or `bypassAccessControl` to find calls that need updating.
 
 ## Strict Action Schema
 
