@@ -809,6 +809,32 @@ describe('ActionBatcher', () => {
         vi.useFakeTimers();
       }
     });
+
+    it('should not hang when flushWithResult is called after flush completes but before flushingPromise is nulled', async () => {
+      vi.useRealTimers();
+      try {
+        batcher.enqueue(
+          createTestAction('A'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // First caller triggers the flush
+        const p1 = batcher.flushWithResult(true);
+
+        // Simulate a waiter that attaches just as the flush finishes
+        // by chaining directly off the resolved promise
+        const p2 = p1.then(() => batcher.flushWithResult(false));
+
+        const [r1, r2] = await Promise.all([p1, p2]);
+        expect(r1.actionsSent).toBe(1);
+        // r2 should resolve (not hang); queue is empty so empty result is acceptable
+        expect(r2).toBeDefined();
+      } finally {
+        vi.useFakeTimers();
+      }
+    });
   });
 
   describe('hard queue limit', () => {
