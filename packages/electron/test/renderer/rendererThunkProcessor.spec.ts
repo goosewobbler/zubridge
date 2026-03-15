@@ -1120,7 +1120,7 @@ describe('RendererThunkProcessor', () => {
       );
 
       const optionsThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BATCHED_VIA_OPTIONS' }, { batch: true });
+        await dispatch({ type: 'BATCHED_VIA_OPTIONS' }, undefined, { batch: true });
         return 'batched-via-options';
       });
 
@@ -1149,7 +1149,7 @@ describe('RendererThunkProcessor', () => {
       );
 
       const bypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BYPASS_ACTION' }, { immediate: true });
+        await dispatch({ type: 'BYPASS_ACTION' }, undefined, { immediate: true });
         return 'bypassed';
       });
 
@@ -1178,7 +1178,7 @@ describe('RendererThunkProcessor', () => {
       );
 
       const batchBypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch.batch({ type: 'BATCHED_BYPASS' }, { immediate: true });
+        await dispatch.batch({ type: 'BATCHED_BYPASS' }, undefined, { immediate: true });
         return 'batched-bypass';
       });
 
@@ -1192,7 +1192,7 @@ describe('RendererThunkProcessor', () => {
     });
   });
 
-  describe('dispatch three-argument form', () => {
+  describe('dispatch with options', () => {
     beforeEach(() => {
       mockThunkRegistrar.mockResolvedValue(undefined);
       mockThunkCompleter.mockResolvedValue(undefined);
@@ -1289,17 +1289,17 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
-    it('should still work with two-arg legacy form', async () => {
-      const legacyThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch('LEGACY_ACTION', { batch: true });
-        return 'legacy';
+    it('should require explicit 3-arg form for options', async () => {
+      const optionsThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('ACTION_WITH_OPTIONS', undefined, { batch: true });
+        return 'options';
       });
 
-      await processor.executeThunk(legacyThunk);
+      await processor.executeThunk(optionsThunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'LEGACY_ACTION',
+          type: 'ACTION_WITH_OPTIONS',
         }),
         expect.any(String),
         { batch: true },
