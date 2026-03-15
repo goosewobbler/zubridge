@@ -186,8 +186,10 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       };
 
       // Create a dispatch function for this thunk that tracks each action
-      // Uses positional arguments: (action, payload, options) to avoid duck-typing issues
-      // where user payloads containing 'batch', 'immediate', 'keys', etc. would be misrouted
+      // Three-argument form (action, payload, options) is always unambiguous.
+      // Two-argument form (action, payloadOrOptions) still uses a heuristic: if the
+      // second arg is a plain object containing 'batch'|'immediate'|'bypassAccessControl'|'keys'
+      // it is treated as DispatchOptions. Payloads with those keys must use the 3-arg form.
       const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
         payloadOrOptions?: unknown,
