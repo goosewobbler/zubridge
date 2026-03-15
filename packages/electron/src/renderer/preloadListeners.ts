@@ -42,7 +42,6 @@ export interface IPCManager {
   cleanupRegistry: {
     ipc: CleanupRegistry;
     dom: CleanupRegistry;
-    thunks: CleanupRegistry;
     cleanupAll: () => Promise<void>;
   };
   registerIpcListener: (
@@ -61,10 +60,9 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
   const cleanupRegistry = {
     ipc: new CleanupRegistry(),
     dom: new CleanupRegistry(),
-    thunks: new CleanupRegistry(),
 
     async cleanupAll() {
-      await Promise.all([this.ipc.cleanupAll(), this.dom.cleanupAll(), this.thunks.cleanupAll()]);
+      await Promise.all([this.ipc.cleanupAll(), this.dom.cleanupAll()]);
     },
   };
 
