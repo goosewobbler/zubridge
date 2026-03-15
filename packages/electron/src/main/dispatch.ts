@@ -133,7 +133,16 @@ export function createDispatch<S extends AnyState>(
   const dispatch: Dispatch<S> = ((
     actionOrThunk: Thunk<S> | Action | string,
     payloadOrOptions?: unknown,
+    // Not part of the public API — only used to detect legacy 3-arg calls from JS
+    _deprecated?: unknown,
   ): Promise<unknown> => {
+    if (typeof actionOrThunk === 'string' && _deprecated !== undefined) {
+      debug(
+        'core',
+        'Warning: dispatch(string, payload, options) is no longer supported. ' +
+          'Use dispatch({ type, payload }, options) instead.',
+      );
+    }
     if (typeof actionOrThunk === 'function') {
       // Thunk overload: (thunk: Thunk<S>, options?: DispatchOptions)
       const thunkOptions = payloadOrOptions as DispatchOptions | undefined;

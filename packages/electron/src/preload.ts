@@ -248,7 +248,16 @@ export const preloadBridge = <S extends AnyState>(
     async dispatch(
       action: string | Action | Thunk<S>,
       payloadOrOptions?: unknown,
+      // Not part of the public API — only used to detect legacy 3-arg calls from JS
+      _deprecated?: unknown,
     ): Promise<Action> {
+      if (typeof action === 'string' && _deprecated !== undefined) {
+        debug(
+          'ipc',
+          'Warning: dispatch(string, payload, options) is no longer supported. ' +
+            'Use dispatch({ type, payload }, options) instead.',
+        );
+      }
       // Overload detection: string actions get payload, object/thunk/function actions get options
       let payload: unknown;
       let dispatchOptions: DispatchOptions | undefined;
