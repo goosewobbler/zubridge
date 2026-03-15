@@ -58,4 +58,23 @@ describe('createIPCManager', () => {
     expect(ipc.removeListener).toHaveBeenCalledWith('ch', listener1);
     expect(manager.ipcListeners.get('ch')).toBe(listener2);
   });
+
+  it('should only remove the new listener during cleanupAll after re-registration', async () => {
+    const ipc = createMockIpcRenderer();
+    const manager = createIPCManager({ ipcRenderer: ipc });
+
+    const listener1 = vi.fn();
+    const listener2 = vi.fn();
+    manager.registerIpcListener('ch', listener1);
+    manager.registerIpcListener('ch', listener2);
+
+    ipc.removeListener.mockClear();
+
+    await manager.cleanupRegistry.cleanupAll();
+
+    // Only listener2's cleanup should fire
+    expect(ipc.removeListener).toHaveBeenCalledTimes(1);
+    expect(ipc.removeListener).toHaveBeenCalledWith('ch', listener2);
+    expect(ipc.removeListener).not.toHaveBeenCalledWith('ch', listener1);
+  });
 });
