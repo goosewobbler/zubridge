@@ -143,6 +143,8 @@ export type Dispatch<S> = {
 export interface ThunkDispatch<S = AnyState> extends Dispatch<S> {
   // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
   batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
+  // String action with payload, batched
+  batch(action: string, payload?: unknown, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
 
   // Flush pending batched actions immediately
   // - await dispatch.flush() waits for all actions to complete
