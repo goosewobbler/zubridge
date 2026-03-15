@@ -192,20 +192,14 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         action: string | Action | InternalThunk<S>,
         payloadOrOptions?: unknown,
         dispatchOptionsOrPayload?: DispatchOptions | unknown,
-        isThirdArgOptions?: boolean,
       ): Promise<unknown> => {
         // Determine if args are (action, payload, options) or legacy (action, options)
-        // Use isThirdArgOptions flag to disambiguate - when true, third arg is options
-        // This avoids the heuristic that could misroute user payloads with reserved keys
+        // Uses heuristic to detect if second arg is options (for backward compat)
         let payload: unknown;
         let dispatchOptions: DispatchOptions | undefined;
 
-        if (isThirdArgOptions === true) {
-          // New API: (action, payload, options)
-          payload = payloadOrOptions;
-          dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
-        } else if (dispatchOptionsOrPayload !== undefined) {
-          // Legacy API: check if second arg looks like options (for backward compat)
+        if (dispatchOptionsOrPayload !== undefined) {
+          // Check if second arg looks like options (legacy behavior)
           const secondArg = payloadOrOptions;
           if (
             secondArg &&
@@ -216,7 +210,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
               'immediate' in secondArg ||
               'keys' in secondArg)
           ) {
-            // Second arg is options (legacy behavior)
+            // Second arg is options
             dispatchOptions = secondArg as DispatchOptions;
             payload = undefined;
           } else {
@@ -233,7 +227,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
             'immediate' in payloadOrOptions ||
             'keys' in payloadOrOptions)
         ) {
-          // Legacy: only one arg and it looks like options
+          // Only one arg and it looks like options
           dispatchOptions = payloadOrOptions as DispatchOptions;
           payload = undefined;
         } else {
