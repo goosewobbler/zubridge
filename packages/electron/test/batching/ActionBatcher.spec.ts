@@ -754,6 +754,36 @@ describe('ActionBatcher', () => {
         vi.useFakeTimers();
       }
     });
+
+    it('should resolve all concurrent callers when sendBatch throws', async () => {
+      vi.useRealTimers();
+      try {
+        mockSendBatch.mockRejectedValue(new Error('Batch failed'));
+
+        batcher.enqueue(
+          createTestAction('ACTION_1'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // Start multiple flushWithResult calls concurrently - they should all resolve, not hang
+        const results = await Promise.all([
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+        ]);
+
+        // All concurrent callers should get the error result with zero actions
+        for (const result of results) {
+          expect(result.actionsSent).toBe(0);
+          expect(result.actionIds).toHaveLength(0);
+          expect(result.batchId).toBeDefined();
+        }
+      } finally {
+        vi.useFakeTimers();
+      }
+    });
   });
 
   describe('hard queue limit', () => {

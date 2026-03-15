@@ -214,7 +214,13 @@ export class ActionBatcher {
             item.reject(error);
           });
         }
-        this.lastFlushResult = { batchId, actionsSent: 0, actionIds: [] };
+        const errorResult = { batchId, actionsSent: 0, actionIds: [] };
+        this.lastFlushResult = errorResult;
+
+        for (const resolve of this.flushResultWaiters) {
+          resolve(errorResult);
+        }
+        this.flushResultWaiters.clear();
       } finally {
         this.isFlushing = false;
 
