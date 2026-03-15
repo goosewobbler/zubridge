@@ -193,8 +193,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         _deprecated?: unknown,
       ): Promise<unknown> => {
         if (typeof action === 'string' && _deprecated !== undefined) {
-          debug(
-            'ipc',
+          console.warn(
             'Warning: dispatch(string, payload, options) is no longer supported. ' +
               'Use dispatch({ type, payload }, options) instead.',
           );

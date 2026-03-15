@@ -137,8 +137,7 @@ export function createDispatch<S extends AnyState>(
     _deprecated?: unknown,
   ): Promise<unknown> => {
     if (typeof actionOrThunk === 'string' && _deprecated !== undefined) {
-      debug(
-        'core',
+      console.warn(
         'Warning: dispatch(string, payload, options) is no longer supported. ' +
           'Use dispatch({ type, payload }, options) instead.',
       );
