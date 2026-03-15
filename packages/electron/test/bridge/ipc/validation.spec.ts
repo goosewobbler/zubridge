@@ -200,10 +200,18 @@ describe('validation', () => {
         });
 
         expect(result.success).toBe(false);
-        // Zod should report a type error (e.g. "Expected object, received number")
-        // rather than a misleading "id: Required" from wrapping in { action: item }
-        expect(result.error).not.toContain('Required');
+        expect(result.error).toContain('expected object');
       }
+    });
+
+    it('should reject array-typed batch items', () => {
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: [['not', 'an', 'action']],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('expected object');
     });
   });
 
