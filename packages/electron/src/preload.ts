@@ -27,16 +27,6 @@ const uuidv4 = (): string => {
   return self.crypto.randomUUID();
 };
 
-// Detect when a string dispatch's second arg looks like DispatchOptions rather than payload
-function looksLikeDispatchOptions(value: unknown): boolean {
-  return (
-    !!value &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    ('immediate' in value || 'batch' in value || 'bypassAccessControl' in value || 'keys' in value)
-  );
-}
-
 // Sandbox-safe platform detection
 function detectPlatform(): 'linux' | 'darwin' | 'win32' | 'unknown' {
   // In sandbox mode, PLATFORM is not available
@@ -265,13 +255,8 @@ export const preloadBridge = <S extends AnyState>(
         if (_deprecated !== undefined) {
           console.warn(
             'Warning: dispatch(string, payload, options) is no longer supported. ' +
+              'The third argument (options) is being silently ignored. ' +
               'Use dispatch({ type, payload }, options) instead.',
-          );
-        } else if (looksLikeDispatchOptions(payloadOrOptions)) {
-          console.warn(
-            'Warning: dispatch(string, options) is no longer supported. ' +
-              'The second argument is now treated as payload, not options. ' +
-              'Use dispatch({ type }, options) instead.',
           );
         }
       }

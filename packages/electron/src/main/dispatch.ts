@@ -18,16 +18,6 @@ import { getMainThunkProcessor } from './mainThunkProcessor.js';
 // Get the main process thunk processor
 const mainThunkProcessor = getMainThunkProcessor();
 
-// Detect when a string dispatch's second arg looks like DispatchOptions rather than payload
-function looksLikeDispatchOptions(value: unknown): boolean {
-  return (
-    !!value &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    ('immediate' in value || 'batch' in value || 'bypassAccessControl' in value || 'keys' in value)
-  );
-}
-
 /**
  * Creates a dispatch function for the given store
  * This automatically gets or creates an appropriate state manager based on the store type
@@ -150,13 +140,8 @@ export function createDispatch<S extends AnyState>(
       if (_deprecated !== undefined) {
         console.warn(
           'Warning: dispatch(string, payload, options) is no longer supported. ' +
+            'The third argument (options) is being silently ignored. ' +
             'Use dispatch({ type, payload }, options) instead.',
-        );
-      } else if (looksLikeDispatchOptions(payloadOrOptions)) {
-        console.warn(
-          'Warning: dispatch(string, options) is no longer supported. ' +
-            'The second argument is now treated as payload, not options. ' +
-            'Use dispatch({ type }, options) instead.',
         );
       }
     }
