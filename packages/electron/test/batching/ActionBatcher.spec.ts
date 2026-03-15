@@ -512,13 +512,17 @@ describe('ActionBatcher', () => {
       // Destroy while sendBatch is in-flight
       batcher.destroy();
 
-      // sendBatch resolves after destroy — should NOT call resolve/reject on batch items
+      // destroy() rejects in-flight items exactly once
+      expect(rejectCalls).toHaveLength(1);
+      expect(rejectCalls[0]).toContain('ActionBatcher destroyed');
+
+      // sendBatch resolves after destroy — should NOT double-resolve/reject batch items
       resolveSendBatch?.();
       await vi.runAllTimersAsync();
 
-      // flush's result processing is skipped because isDestroyed is true
+      // flush's result processing is skipped because isDestroyed is true — still only 1 rejection
       expect(resolveCalls).toHaveLength(0);
-      expect(rejectCalls).toHaveLength(0);
+      expect(rejectCalls).toHaveLength(1);
     });
 
     it('should not double-reject in-flight batch items when sendBatch rejects after destroy', async () => {
@@ -546,11 +550,16 @@ describe('ActionBatcher', () => {
 
       batcher.destroy();
 
-      // sendBatch rejects after destroy — should not call reject on batch items
+      // destroy() rejects in-flight items exactly once
+      expect(rejectCalls).toHaveLength(1);
+      expect(rejectCalls[0]).toContain('ActionBatcher destroyed');
+
+      // sendBatch rejects after destroy — should not double-reject batch items
       rejectSendBatch?.();
       await vi.runAllTimersAsync();
 
-      expect(rejectCalls).toHaveLength(0);
+      // flush's error handler is skipped because isDestroyed is true — still only 1 rejection
+      expect(rejectCalls).toHaveLength(1);
     });
 
     it('should not schedule new flushes after destroy', async () => {
@@ -613,10 +622,14 @@ describe('ActionBatcher', () => {
         // While flush is in progress, call destroy
         batcher.destroy();
 
-        // flushWithResult should resolve (not hang), either with result or empty due to destroy
+        // flushWithResult should resolve (not hang) — the promise must not be permanently pending
         const result = await flushPromise;
-        // Result should have batchId set (either from successful flush or empty from destroy)
-        expect(result.batchId).toBeDefined();
+        expect(result).toEqual(
+          expect.objectContaining({
+            actionsSent: expect.any(Number),
+            actionIds: expect.any(Array),
+          }),
+        );
       } finally {
         vi.useFakeTimers();
       }

@@ -22,6 +22,7 @@ export class ActionBatcher {
   private readonly HARD_QUEUE_LIMIT: number;
 
   private queue: QueuedAction[] = [];
+  private activeBatch: QueuedAction[] = [];
   private flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
   private flushingPromise: Promise<void> | null = null;
@@ -155,17 +156,16 @@ export class ActionBatcher {
     this.isFlushing = true;
 
     const doFlush = async () => {
-      let batch: QueuedAction[] = [];
       let batchId = '';
       try {
-        batch = this.prepareBatch();
+        this.activeBatch = this.prepareBatch();
         batchId = uuidv4();
-        const actionIds = batch.map((item) => item.id);
+        const actionIds = this.activeBatch.map((item) => item.id);
 
-        debug('batching', `Flushing batch ${batchId} with ${batch.length} actions`);
+        debug('batching', `Flushing batch ${batchId} with ${this.activeBatch.length} actions`);
         const payload: BatchPayload = {
           batchId,
-          actions: batch.map((item) => ({
+          actions: this.activeBatch.map((item) => ({
             action: item.action,
             id: item.id,
             parentId: item.parentId,
@@ -173,11 +173,11 @@ export class ActionBatcher {
         };
 
         this.stats.totalBatches++;
-        this.stats.totalActions += batch.length;
+        this.stats.totalActions += this.activeBatch.length;
 
         const ackPayload = await this.sendBatch(payload);
 
-        // If destroyed mid-flush, skip result processing — destroy() already rejected all queued items
+        // If destroyed mid-flush, skip result processing — destroy() already rejected in-flight items
         if (!this.isDestroyed) {
           const resultMap = new Map<string, { success: boolean; error?: string }>();
           if (ackPayload.results) {
@@ -186,7 +186,7 @@ export class ActionBatcher {
             }
           }
 
-          for (const item of batch) {
+          for (const item of this.activeBatch) {
             const result = resultMap.get(item.id);
             if (!result) {
               item.reject(new Error(`No result received for action ${item.id}`));
@@ -199,7 +199,7 @@ export class ActionBatcher {
         }
 
         // Notify all waiting callers with the result
-        const result: FlushResult = { batchId, actionsSent: batch.length, actionIds };
+        const result: FlushResult = { batchId, actionsSent: this.activeBatch.length, actionIds };
         for (const resolve of this.flushResultWaiters) {
           resolve(result);
         }
@@ -207,7 +207,7 @@ export class ActionBatcher {
       } catch (error) {
         debug('batching:error', `Batch ${batchId || '<unknown>'} failed:`, error);
         if (!this.isDestroyed) {
-          batch.forEach((item) => {
+          this.activeBatch.forEach((item) => {
             item.reject(error);
           });
         }
@@ -217,6 +217,7 @@ export class ActionBatcher {
         }
         this.flushResultWaiters.clear();
       } finally {
+        this.activeBatch = [];
         this.isFlushing = false;
 
         // Skip post-flush scheduling if destroyed
@@ -349,10 +350,18 @@ export class ActionBatcher {
 
     this.pendingForceFlush = false;
 
+    // Reject queued items not yet flushed
     this.queue.forEach((item) => {
       item.reject(new Error('ActionBatcher destroyed'));
     });
     this.queue = [];
+
+    // Reject in-flight items that were removed from the queue by prepareBatch()
+    // but are still awaiting sendBatch completion
+    this.activeBatch.forEach((item) => {
+      item.reject(new Error('ActionBatcher destroyed'));
+    });
+    this.activeBatch = [];
 
     const emptyResult: FlushResult = { batchId: '', actionsSent: 0, actionIds: [] };
     for (const resolve of this.flushResultWaiters) {
