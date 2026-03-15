@@ -195,7 +195,7 @@ export function validateBatchDispatch(data: unknown): ValidationResult<Validated
       const result = BatchDispatchPayloadSchema.safeParse(rawData);
       return result.success
         ? { success: true, data: result.data as ValidatedBatchDispatch }
-        : { success: false, error: formatZodError(result.error) };
+        : { success: false, error: formatZodError(result.error), details: result.error };
     }
 
     // Strip internal __-prefixed fields from each action in the batch
