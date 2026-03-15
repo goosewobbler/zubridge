@@ -259,8 +259,11 @@ export class ActionBatcher {
     // isFlushing and flushingPromise are always cleared together in doFlush's finally block,
     // so checking isFlushing alone is sufficient.
     if (this.isFlushing) {
-      // Note: `force` is not propagated — if items are added to the queue during
-      // the in-progress flush they will be scheduled normally, not force-flushed.
+      // Note: `force` is not propagated — if this flushWithResult call races an
+      // in-progress flush, any items already in the queue will be scheduled via a
+      // normal timed window (not force-flushed) after the current flush completes.
+      // Callers that need guaranteed force semantics should retry after the
+      // returned promise resolves.
       return new Promise((resolve) => {
         this.flushResultWaiters.add(resolve);
       });
