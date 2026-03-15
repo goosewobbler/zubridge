@@ -30,7 +30,6 @@ export class CleanupRegistry {
 
 export interface IPCListeners {
   get: (channel: string) => ((event: IpcRendererEvent, ...args: unknown[]) => void) | undefined;
-  set: (channel: string, listener: (event: IpcRendererEvent, ...args: unknown[]) => void) => void;
   delete: (channel: string) => void;
 }
 
@@ -103,12 +102,6 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
   return {
     ipcListeners: {
       get: (channel: string) => ipcListeners.get(channel),
-      /**
-       * WARNING: Do NOT use this to register new listeners — use registerIpcListener() instead.
-       * This only updates the tracking map and does NOT register a cleanup function.
-       * Provided for internal bookkeeping only.
-       */
-      set: (channel: string, listener) => ipcListeners.set(channel, listener),
       delete: (channel: string) => ipcListeners.delete(channel),
     },
     cleanupRegistry,
