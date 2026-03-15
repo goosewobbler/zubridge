@@ -261,8 +261,16 @@ export class ActionBatcher {
       return { batchId: '', actionsSent: 0, actionIds: [] };
     }
 
-    // If a flush is already in progress, register to receive the result when it completes
-    if (this.flushingPromise) {
+    // If a flush is actively in progress, register to receive the result when it completes.
+    // We check isFlushing (not just flushingPromise) to avoid a dead-waiter race:
+    // after doFlush completes, isFlushing is false and flushResultWaiters is cleared,
+    // but flushingPromise may not yet be nulled (awaiting microtask continuation in flush()).
+    // Without the isFlushing guard, a caller in that window would register a waiter
+    // that is never resolved.
+    if (this.flushingPromise && this.isFlushing) {
+      if (this.isDestroyed) {
+        return { batchId: '', actionsSent: 0, actionIds: [] };
+      }
       return new Promise((resolve) => {
         this.flushResultWaiters.add(resolve);
       });
