@@ -186,18 +186,11 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       };
 
       // Create a dispatch function for this thunk that tracks each action
-      // Three-argument form (action, payload, options) is always unambiguous.
-      // Two-argument form (action, payloadOrOptions) still uses a heuristic: if the
-      // second arg is a plain object containing 'batch'|'immediate'|'bypassAccessControl'|'keys'
-      // it is treated as DispatchOptions. Payloads with those keys must use the 3-arg form.
       const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
-        payloadOrOptions?: unknown,
-        dispatchOptionsOrPayload?: DispatchOptions | unknown,
+        payload?: unknown,
+        dispatchOptions?: DispatchOptions,
       ): Promise<unknown> => {
-        const payload = payloadOrOptions;
-        const dispatchOptions = dispatchOptionsOrPayload as DispatchOptions | undefined;
-
         const isBatched = dispatchOptions?.batch === true;
 
         debug(
