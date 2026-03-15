@@ -275,7 +275,7 @@ Use the `immediate` flag to override the default queueing behavior:
 ```typescript
 // Immediate dispatch - allows actions to skip the queue
 // and be processed immediately, even during thunk execution
-bridge.dispatch('URGENT_ACTION', payload, {
+bridge.dispatch({ type: 'URGENT_ACTION', payload }, {
   immediate: true
 });
 

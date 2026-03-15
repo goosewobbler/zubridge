@@ -403,12 +403,12 @@ function Counter() {
   });
 
   // Dispatch with immediate execution, bypassing all queues
-  const handleUrgentAction = () => dispatch('URGENT_ACTION', null, {
+  const handleUrgentAction = () => dispatch({ type: 'URGENT_ACTION' }, {
     immediate: true
   });
 
   // Dispatch with selective subscription keys
-  const handlePrivateAction = () => dispatch('PRIVATE_UPDATE', { data: 'secret' }, {
+  const handlePrivateAction = () => dispatch({ type: 'PRIVATE_UPDATE', payload: { data: 'secret' } }, {
     keys: ['admin', 'private']
   });
 

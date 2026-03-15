@@ -35,7 +35,7 @@ The schema uses `.strict()` — unknown properties are rejected.
 dispatch({ type: 'INCREMENT' });
 dispatch({ type: 'UPDATE_USER', payload: { id: 123, name: 'Alice' } });
 dispatch({ type: 'FETCH_DATA', __id: 'fetch-123' });
-dispatch('URGENT_ACTION', payload, { immediate: true });
+dispatch({ type: 'URGENT_ACTION', payload }, { immediate: true });
 
 // Invalid — will be rejected
 dispatch({ type: 'x'.repeat(300) });          // type too long
