@@ -174,14 +174,14 @@ export function App(): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {performanceMetrics.map((metric, index) => {
+                  {performanceMetrics.map((metric) => {
                     const actionType = metric.action?.action_type || 'Unknown';
                     const totalTime = metric.processing_metrics?.total_ms || 0;
                     const processingTime = metric.processing_metrics?.action_processing_ms || 0;
                     const ipcTime = totalTime - processingTime || 0;
 
                     return (
-                      <tr key={`${actionType}-${index}-${totalTime}`}>
+                      <tr key={`${actionType}-${totalTime}-${processingTime}`}>
                         <td>{actionType}</td>
                         <td>{totalTime.toFixed(2)} ms</td>
                         <td>{processingTime.toFixed(2)} ms</td>
