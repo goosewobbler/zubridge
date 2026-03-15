@@ -54,9 +54,10 @@ async function build() {
       process.exit(1);
     }
   } else {
-    // On macOS and other Unix systems, use default config with parallel builds
+    // On macOS and other Unix systems (including Node 24+), use unrun config loader
+    // to handle .ts config file imports properly
     try {
-      await runTsdown();
+      await runTsdown(['--config-loader', 'unrun']);
       process.exit(0);
     } catch (error) {
       console.error('Build failed:', error);
