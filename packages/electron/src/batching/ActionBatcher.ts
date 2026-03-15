@@ -236,6 +236,10 @@ export class ActionBatcher {
     // If a flush is already in progress, wait for it to complete first
     if (this.flushingPromise) {
       await this.flushingPromise;
+      // The in-progress flush has now completed - return its result directly
+      const result = this.lastFlushResult || { batchId: '', actionsSent: 0, actionIds: [] };
+      this.lastFlushResult = null;
+      return result;
     }
 
     if (this.queue.length === 0 && !this.isFlushing) {
