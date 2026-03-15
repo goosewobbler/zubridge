@@ -379,8 +379,9 @@ export class ActionBatcher {
  * - All other actions get NORMAL_THUNK_ACTION priority (50)
  *
  * Note: This function is used in the renderer process (ActionBatcher).
- * The renderer does not have access to the active root thunk context,
- * so all thunk actions are treated at the same priority level (70).
+ * The renderer does not have access to the active root thunk context;
+ * without __thunkParentId on the action, all renderer thunk actions
+ * default to NORMAL_THUNK_ACTION priority (50).
  * The main process (ActionScheduler) distinguishes between root and
  * nested thunks, assigning NORMAL_THUNK_ACTION (50) to non-root thunks.
  */
