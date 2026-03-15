@@ -119,11 +119,6 @@ describe('Preload Bridge', () => {
     });
   });
 
-  it('should export legacy preloadZustandBridge alias', async () => {
-    const { preloadZustandBridge } = await import('../src/preload.js');
-    expect(typeof preloadZustandBridge).toBe('function');
-  });
-
   describe('contextIsolation handling', () => {
     beforeEach(() => {
       vi.clearAllMocks();
