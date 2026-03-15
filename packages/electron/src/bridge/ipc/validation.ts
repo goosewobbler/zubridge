@@ -203,7 +203,10 @@ export function validateBatchDispatch(data: unknown): ValidationResult<Validated
           action: stripInternalFields(rawItem.action),
         };
       }
-      return { action: item };
+      // Pass through as-is so Zod reports a clear type error
+      // (e.g. "Expected object, received number") rather than a
+      // misleading "id: Required" from wrapping in { action: item }.
+      return item;
     });
 
     const sanitizedData = {
