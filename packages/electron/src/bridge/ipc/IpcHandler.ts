@@ -647,6 +647,7 @@ export class IpcHandler<State extends AnyState> {
     ipcMain.removeAllListeners(IpcChannel.TRACK_ACTION_DISPATCH);
     ipcMain.removeAllListeners(IpcChannel.REGISTER_THUNK);
     ipcMain.removeAllListeners(IpcChannel.COMPLETE_THUNK);
+    ipcMain.removeAllListeners(IpcChannel.STATE_UPDATE_ACK);
     ipcMain.removeAllListeners(IpcChannel.BATCH_DISPATCH);
   }
 }
