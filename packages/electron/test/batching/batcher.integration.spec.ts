@@ -448,7 +448,8 @@ describe('Batching Integration', () => {
 
       batcher.destroy();
 
-      expect(errors).toHaveLength(2);
+      // All 3 actions rejected: 1 in-flight (from activeBatch) + 2 queued
+      expect(errors).toHaveLength(3);
       errors.forEach((msg) => {
         expect(msg).toContain('destroyed');
       });
