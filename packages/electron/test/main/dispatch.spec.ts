@@ -204,19 +204,18 @@ describe('Dispatch', () => {
       );
     });
 
-    it('should pass options to processAction for string actions', async () => {
+    it('should pass options to processAction for action objects', async () => {
       const dispatch = createDispatch(mockStateManager);
       const options: DispatchOptions = { keys: ['admin'] };
 
-      await dispatch('ADMIN_ACTION', { data: 'test' }, options);
+      await dispatch({ type: 'ADMIN_ACTION', payload: { data: 'test' } }, options);
 
       expect(mockMainThunkProcessor.processAction).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           type: 'ADMIN_ACTION',
           payload: { data: 'test' },
-          __id: expect.any(String),
           __isFromMainProcess: true,
-        },
+        }),
         options,
       );
 
@@ -487,10 +486,10 @@ describe('Dispatch', () => {
         keys: ['user'],
       };
 
-      await dispatch('TEST_ACTION', { data: 'test' }, options);
+      await dispatch({ type: 'TEST_ACTION', payload: { data: 'test' } }, options);
 
       expect(mockMainThunkProcessor.processAction).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'TEST_ACTION' }),
+        expect.objectContaining({ type: 'TEST_ACTION', payload: { data: 'test' } }),
         options,
       );
     });

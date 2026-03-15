@@ -129,11 +129,10 @@ export function createDispatch<S extends AnyState>(
     }
   };
 
-  // Create the public dispatch function with the standard interface
+  // Create the public dispatch function with the standard 2-arg interface
   const dispatch: Dispatch<S> = ((
     actionOrThunk: Thunk<S> | Action | string,
     payloadOrOptions?: unknown | DispatchOptions,
-    options?: DispatchOptions,
   ): Promise<unknown> => {
     if (typeof actionOrThunk === 'function') {
       // Thunk overload: (thunk: Thunk<S>, options?: DispatchOptions)
@@ -146,8 +145,8 @@ export function createDispatch<S extends AnyState>(
       return internalDispatch(actionOrThunk, undefined, undefined, actionOptions);
     }
 
-    // String action overload: (action: string, payload?: unknown, options?: DispatchOptions)
-    return internalDispatch(actionOrThunk, payloadOrOptions, undefined, options);
+    // String action overload: (action: string, payload?: unknown)
+    return internalDispatch(actionOrThunk, payloadOrOptions, undefined, undefined);
   }) as Dispatch<S>;
 
   return dispatch;

@@ -126,10 +126,10 @@ export interface FlushResult {
 }
 
 export type Dispatch<S> = {
-  // String action with optional payload and options
-  (action: string, payload?: unknown, options?: DispatchOptions): Promise<unknown>;
   // Action object with options
   (action: Action, options?: DispatchOptions): Promise<unknown>;
+  // String action with optional payload (use action object form for options)
+  (action: string, payload?: unknown): Promise<unknown>;
   // Thunk with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 };
@@ -175,8 +175,8 @@ export type DispatchFunc<S, TActions extends Record<string, unknown> = Record<st
   // Handle thunks with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 
-  // Handle string action types with optional payload and options
-  (action: string, payload?: unknown, options?: DispatchOptions): Promise<unknown>;
+  // Handle string action types with optional payload (use action object form for options)
+  (action: string, payload?: unknown): Promise<unknown>;
 
   // Handle strongly typed action objects with options
   <TType extends keyof TActions>(

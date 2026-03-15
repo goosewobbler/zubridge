@@ -188,9 +188,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       // Create a dispatch function for this thunk that tracks each action
       const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
-        payload?: unknown,
-        dispatchOptions?: DispatchOptions,
+        payloadOrOptions?: unknown | DispatchOptions,
       ): Promise<unknown> => {
+        // Overload detection: string actions get payload, object/thunk actions get options
+        let payload: unknown;
+        let dispatchOptions: DispatchOptions | undefined;
+        if (typeof action === 'string') {
+          payload = payloadOrOptions;
+        } else {
+          dispatchOptions = payloadOrOptions as DispatchOptions | undefined;
+        }
+
         const isBatched = dispatchOptions?.batch === true;
 
         debug(
@@ -300,12 +308,8 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       // Create the ThunkDispatch with batch and flush methods
       const dispatch = Object.assign(baseDispatch, {
         // Batched dispatch shorthand
-        batch: async (
-          action: Action,
-          payload?: unknown,
-          opts?: Omit<DispatchOptions, 'batch'>,
-        ): Promise<void> => {
-          await baseDispatch(action, payload, { ...opts, batch: true });
+        batch: async (action: Action, opts?: Omit<DispatchOptions, 'batch'>): Promise<void> => {
+          await baseDispatch(action, { ...opts, batch: true });
         },
 
         // Flush pending batched actions

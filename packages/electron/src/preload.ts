@@ -247,9 +247,17 @@ export const preloadBridge = <S extends AnyState>(
     // Dispatch actions to main process
     async dispatch(
       action: string | Action | Thunk<S>,
-      payload?: unknown,
-      dispatchOptions?: DispatchOptions,
+      payloadOrOptions?: unknown | DispatchOptions,
     ): Promise<Action> {
+      // Overload detection: string actions get payload, object/thunk/function actions get options
+      let payload: unknown;
+      let dispatchOptions: DispatchOptions | undefined;
+      if (typeof action === 'string') {
+        payload = payloadOrOptions;
+      } else {
+        dispatchOptions = payloadOrOptions as DispatchOptions | undefined;
+      }
+
       debug('ipc', 'Dispatch called with:', { action, payload, dispatchOptions });
 
       // Use provided options or default to empty object
