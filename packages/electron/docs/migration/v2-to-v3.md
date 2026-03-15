@@ -98,6 +98,38 @@ ZUBRIDGE_RENDERER_VALIDATION=error npm test
 
 See [Validation](../validation.md) for full details on validation rules and configuration.
 
+## Dispatch Signature: 3-arg String Form Removed
+
+The 3-argument string dispatch form `dispatch(string, payload, options)` has been removed. To pass `DispatchOptions`, use the action object form instead.
+
+**Before (v2):**
+
+```typescript
+dispatch('URGENT_ACTION', payload, { immediate: true });
+dispatch('ADMIN_UPDATE', data, { keys: ['admin'] });
+dispatch('ACTION', undefined, { batch: true });
+```
+
+**After (v3):**
+
+```typescript
+dispatch({ type: 'URGENT_ACTION', payload }, { immediate: true });
+dispatch({ type: 'ADMIN_UPDATE', payload: data }, { keys: ['admin'] });
+dispatch({ type: 'ACTION' }, { batch: true });
+```
+
+String dispatch without options is unchanged:
+
+```typescript
+// These still work
+dispatch('INCREMENT');
+dispatch('SET_VALUE', 42);
+```
+
+**Why:** The 3-arg form created ambiguity where the second argument could be either payload or options depending on the first argument's type. The 2-arg convention eliminates this: string actions always get payload, object/thunk actions always get options.
+
+**JavaScript callers:** A runtime warning is logged if a third argument is detected with a string action, since JavaScript won't produce a compile error.
+
 ## Strict Action Schema
 
 Actions are now validated against a strict Zod schema that rejects unknown properties. If you were passing extra fields on actions, they will be rejected:
