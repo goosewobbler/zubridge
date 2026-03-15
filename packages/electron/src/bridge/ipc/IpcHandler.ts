@@ -64,8 +64,7 @@ export class IpcHandler<State extends AnyState> {
   }
 
   /**
-   * Validate batch payload structure and contents to prevent injection attacks
-   * @returns true if valid, false otherwise
+   * Handle batch dispatch from renderers
    */
   public async handleBatchDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
     try {
