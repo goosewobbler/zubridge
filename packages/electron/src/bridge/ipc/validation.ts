@@ -56,8 +56,8 @@ export const ActionPayloadSchema = z
   .strict(); // Reject unknown properties
 
 /**
- * Fields that are part of the ActionPayloadSchema and should be validated (not stripped).
- * Fields starting with __ that are NOT in this list will be stripped before validation.
+ * Known fields in ActionPayloadSchema - these are kept for validation.
+ * Fields starting with __ that are NOT in this list will be stripped.
  */
 const KNOWN_ACTION_FIELDS = new Set([
   'type',
@@ -73,10 +73,15 @@ const KNOWN_ACTION_FIELDS = new Set([
  * Strips internal __-prefixed fields from an action object before validation.
  * Only strips fields that start with __ but are NOT in the known action fields list.
  * Fields in the schema (like __id, __immediate) are kept for validation.
- * @param action - The action object to sanitize
- * @returns Action object with unknown internal fields removed
+ * @param action - The action object to sanitize (must be a plain object)
+ * @returns Action object with unknown internal fields removed, or original if not an object
  */
-function stripInternalFields<T extends Record<string, unknown>>(action: T): T {
+function stripInternalFields(action: unknown): Record<string, unknown> {
+  // Guard: only process plain objects
+  if (!action || typeof action !== 'object' || Array.isArray(action)) {
+    return action as Record<string, unknown>;
+  }
+
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(action)) {
     // Keep if it's not __-prefixed, OR if it's a known schema field
@@ -84,7 +89,7 @@ function stripInternalFields<T extends Record<string, unknown>>(action: T): T {
       result[key] = value;
     }
   }
-  return result as T;
+  return result;
 }
 
 /**
@@ -179,15 +184,31 @@ export function validateSingleDispatch(data: unknown): ValidationResult<Validate
  * @returns Validation result with typed data or error message
  */
 export function validateBatchDispatch(data: unknown): ValidationResult<ValidatedBatchDispatch> {
-  // Strip internal __-prefixed fields from each action in the batch before validation
+  // Guard: validate data structure before processing
   if (data && typeof data === 'object' && 'actions' in data) {
-    const actions = (data as { actions: Array<{ action: Record<string, unknown> }> }).actions;
+    const rawData = data as Record<string, unknown>;
+    const rawActions = rawData.actions;
+
+    // Guard: actions must be an array
+    if (!Array.isArray(rawActions)) {
+      return { success: false, error: 'actions must be an array' };
+    }
+
+    // Strip internal __-prefixed fields from each action in the batch
+    const sanitizedActions = rawActions.map((item) => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        const rawItem = item as Record<string, unknown>;
+        return {
+          ...rawItem,
+          action: stripInternalFields(rawItem.action),
+        };
+      }
+      return { action: rawItem };
+    });
+
     const sanitizedData = {
-      ...data,
-      actions: actions.map((item) => ({
-        ...item,
-        action: stripInternalFields(item.action),
-      })),
+      ...rawData,
+      actions: sanitizedActions,
     };
     const result = BatchDispatchPayloadSchema.safeParse(sanitizedData);
 
