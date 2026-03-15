@@ -203,7 +203,7 @@ export function validateBatchDispatch(data: unknown): ValidationResult<Validated
           action: stripInternalFields(rawItem.action),
         };
       }
-      return { action: rawItem };
+      return { action: item };
     });
 
     const sanitizedData = {
