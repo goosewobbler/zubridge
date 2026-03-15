@@ -544,7 +544,21 @@ export const preloadBridge = <S extends AnyState>(
           ) => {
             debug('ipc', `[PRELOAD] Registering thunk: thunkId=${thunkId}, immediate=${immediate}`);
             return new Promise<void>((resolve, reject) => {
-              pendingThunkRegistrations.set(thunkId, { resolve, reject });
+              const timeoutId = setTimeout(() => {
+                pendingThunkRegistrations.delete(thunkId);
+                reject(new Error(`Timeout waiting for REGISTER_THUNK_ACK for thunk ${thunkId}`));
+              }, batchingConfig.ackTimeoutMs);
+
+              pendingThunkRegistrations.set(thunkId, {
+                resolve: () => {
+                  clearTimeout(timeoutId);
+                  resolve();
+                },
+                reject: (err) => {
+                  clearTimeout(timeoutId);
+                  reject(err);
+                },
+              });
               ipcRenderer.send(IpcChannel.REGISTER_THUNK, {
                 thunkId,
                 parentId,
