@@ -179,6 +179,16 @@ describe('validation', () => {
 
       expect(result.success).toBe(false);
     });
+
+    it('should handle non-object batch item gracefully', () => {
+      // Items that are null/primitive/array hit the else-branch in sanitization
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: [null], // item itself is null, not just action: null
+      });
+
+      expect(result.success).toBe(false);
+    });
   });
 
   describe('getRendererValidationLevel', () => {
