@@ -259,7 +259,10 @@ export const preloadBridge = <S extends AnyState>(
         payloadOrOptions &&
         typeof payloadOrOptions === 'object' &&
         !Array.isArray(payloadOrOptions) &&
-        ('bypassAccessControl' in payloadOrOptions || 'immediate' in payloadOrOptions);
+        ('bypassAccessControl' in payloadOrOptions ||
+          'immediate' in payloadOrOptions ||
+          'keys' in payloadOrOptions ||
+          'batch' in payloadOrOptions);
 
       if (isOptions) {
         dispatchOptions = payloadOrOptions as DispatchOptions;
