@@ -27,6 +27,16 @@ const uuidv4 = (): string => {
   return self.crypto.randomUUID();
 };
 
+// Detect when a string dispatch's second arg looks like DispatchOptions rather than payload
+function looksLikeDispatchOptions(value: unknown): boolean {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    ('immediate' in value || 'batch' in value || 'bypassAccessControl' in value || 'keys' in value)
+  );
+}
+
 // Sandbox-safe platform detection
 function detectPlatform(): 'linux' | 'darwin' | 'win32' | 'unknown' {
   // In sandbox mode, PLATFORM is not available
@@ -89,6 +99,9 @@ export const preloadBridge = <S extends AnyState>(
   // Get a properly configured thunk processor
   const thunkProcessor = getThunkProcessorWithConfig();
 
+  // Create IPC manager for listener registration and cleanup
+  const { ipcListeners, cleanupRegistry, registerIpcListener } = createIPCManager({ ipcRenderer });
+
   // Initialize action batcher if enabled
   let actionBatcher: ActionBatcher | null = null;
   const enableBatching = resolvedOptions.enableBatching !== false;
@@ -108,7 +121,7 @@ export const preloadBridge = <S extends AnyState>(
       }
     >();
 
-    ipcRenderer.on(IpcChannel.BATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
+    registerIpcListener(IpcChannel.BATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
       const ackPayload = payload as BatchAckPayload;
       if (!ackPayload?.batchId) return;
 
@@ -155,9 +168,6 @@ export const preloadBridge = <S extends AnyState>(
       });
     });
   }
-
-  // Create IPC manager for listener registration and cleanup
-  const { ipcListeners, cleanupRegistry, registerIpcListener } = createIPCManager({ ipcRenderer });
 
   // Map to track pending thunk registration promises
   const pendingThunkRegistrations = new Map<
@@ -251,12 +261,19 @@ export const preloadBridge = <S extends AnyState>(
       // Not part of the public API — only used to detect legacy 3-arg calls from JS
       _deprecated?: unknown,
     ): Promise<Action> {
-      if (typeof action === 'string' && _deprecated !== undefined) {
-        debug(
-          'ipc',
-          'Warning: dispatch(string, payload, options) is no longer supported. ' +
-            'Use dispatch({ type, payload }, options) instead.',
-        );
+      if (typeof action === 'string') {
+        if (_deprecated !== undefined) {
+          console.warn(
+            'Warning: dispatch(string, payload, options) is no longer supported. ' +
+              'Use dispatch({ type, payload }, options) instead.',
+          );
+        } else if (looksLikeDispatchOptions(payloadOrOptions)) {
+          console.warn(
+            'Warning: dispatch(string, options) is no longer supported. ' +
+              'The second argument is now treated as payload, not options. ' +
+              'Use dispatch({ type }, options) instead.',
+          );
+        }
       }
       // Overload detection: string actions get payload, object/thunk/function actions get options
       let payload: unknown;
@@ -768,8 +785,6 @@ export const preloadBridge = <S extends AnyState>(
 
     // Add batcher cleanup
     if (actionBatcher) {
-      // Remove BATCH_ACK listener explicitly since it's not tracked by cleanup registry
-      ipcRenderer.removeAllListeners(IpcChannel.BATCH_ACK);
       actionBatcher.destroy();
       actionBatcher = null;
     }
