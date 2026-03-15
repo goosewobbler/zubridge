@@ -1120,7 +1120,7 @@ describe('RendererThunkProcessor', () => {
       );
 
       const optionsThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BATCHED_VIA_OPTIONS' }, undefined, { batch: true });
+        await dispatch({ type: 'BATCHED_VIA_OPTIONS' }, { batch: true });
         return 'batched-via-options';
       });
 
@@ -1149,7 +1149,7 @@ describe('RendererThunkProcessor', () => {
       );
 
       const bypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch({ type: 'BYPASS_ACTION' }, undefined, { immediate: true });
+        await dispatch({ type: 'BYPASS_ACTION' }, { immediate: true });
         return 'bypassed';
       });
 
@@ -1178,7 +1178,7 @@ describe('RendererThunkProcessor', () => {
       );
 
       const batchBypassThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch.batch({ type: 'BATCHED_BYPASS' }, undefined, { immediate: true });
+        await dispatch.batch({ type: 'BATCHED_BYPASS' }, { immediate: true });
         return 'batched-bypass';
       });
 
@@ -1192,7 +1192,7 @@ describe('RendererThunkProcessor', () => {
     });
   });
 
-  describe('dispatch with options', () => {
+  describe('dispatch with options (2-arg form)', () => {
     beforeEach(() => {
       mockThunkRegistrar.mockResolvedValue(undefined);
       mockThunkCompleter.mockResolvedValue(undefined);
@@ -1209,13 +1209,13 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
-    it('should handle three-arg form with payload containing option-like keys', async () => {
-      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch('MY_ACTION', { batch: true }, { immediate: true });
-        return 'three-arg';
+    it('should pass options via action object form with immediate', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch({ type: 'MY_ACTION', payload: { batch: true } }, { immediate: true });
+        return 'done';
       });
 
-      await processor.executeThunk(threeArgThunk);
+      await processor.executeThunk(thunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1228,36 +1228,16 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
-    it('should handle three-arg form with payload containing immediate key', async () => {
-      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch('IMMEDIATE_ACTION', { immediate: false }, { immediate: true });
-        return 'immediate-payload';
-      });
-
-      await processor.executeThunk(threeArgThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'IMMEDIATE_ACTION',
-          payload: { immediate: false },
-          __immediate: true,
-        }),
-        expect.any(String),
-        { batch: false },
-      );
-    });
-
-    it('should handle three-arg form with payload containing bypassAccessControl key', async () => {
-      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
+    it('should pass options via action object form with bypassAccessControl', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
         await dispatch(
-          'BYPASS_ACTION',
-          { bypassAccessControl: false },
+          { type: 'BYPASS_ACTION', payload: { bypassAccessControl: false } },
           { bypassAccessControl: true },
         );
         return 'bypass-payload';
       });
 
-      await processor.executeThunk(threeArgThunk);
+      await processor.executeThunk(thunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1270,49 +1250,30 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
-    it('should handle three-arg form with payload containing keys', async () => {
-      const threeArgThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch('KEYS_ACTION', { keys: ['a', 'b'] }, { immediate: true });
-        return 'keys-payload';
-      });
-
-      await processor.executeThunk(threeArgThunk);
-
-      expect(mockActionSender).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'KEYS_ACTION',
-          payload: { keys: ['a', 'b'] },
-          __immediate: true,
-        }),
-        expect.any(String),
-        { batch: false },
-      );
-    });
-
-    it('should require explicit 3-arg form for options', async () => {
-      const optionsThunk = vi.fn(async (_getState, dispatch) => {
-        await dispatch('ACTION_WITH_OPTIONS', undefined, { batch: true });
+    it('should pass options via action object form with batch', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch({ type: 'ACTION_WITH_BATCH' }, { batch: true });
         return 'options';
       });
 
-      await processor.executeThunk(optionsThunk);
+      await processor.executeThunk(thunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'ACTION_WITH_OPTIONS',
+          type: 'ACTION_WITH_BATCH',
         }),
         expect.any(String),
         { batch: true },
       );
     });
 
-    it('should still work with two-arg legacy form when second arg does not look like options', async () => {
-      const legacyThunk = vi.fn(async (_getState, dispatch) => {
+    it('should handle string dispatch with payload (no options)', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
         await dispatch('NORMAL_ACTION', { data: 'test' });
         return 'normal';
       });
 
-      await processor.executeThunk(legacyThunk);
+      await processor.executeThunk(thunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1324,13 +1285,13 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
-    it('should still work with one-arg form', async () => {
-      const oneArgThunk = vi.fn(async (_getState, dispatch) => {
+    it('should handle string dispatch with no args', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
         await dispatch('ONE_ARG_ACTION');
         return 'one-arg';
       });
 
-      await processor.executeThunk(oneArgThunk);
+      await processor.executeThunk(thunk);
 
       expect(mockActionSender).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -88,11 +88,10 @@ function useDispatch<
   const dispatch: DispatchFunc<S, TActions> = (
     action: string | Action | Thunk<S>,
     payloadOrOptions?: unknown | DispatchOptions,
-    maybeOptions?: DispatchOptions,
   ): Promise<unknown> => {
-    // Delegate based on the action type
+    // Narrow the type so TypeScript can resolve the correct overload
     if (typeof action === 'string') {
-      return handlers.dispatch(action, payloadOrOptions, maybeOptions);
+      return handlers.dispatch(action, payloadOrOptions);
     }
     if (typeof action === 'function') {
       return handlers.dispatch(action, payloadOrOptions as DispatchOptions);
@@ -103,8 +102,6 @@ function useDispatch<
   return dispatch;
 }
 
-export { useDispatch };
-
 // Export action validation utilities
 export {
   canDispatchAction,
@@ -113,7 +110,6 @@ export {
   registerActionMappings,
   validateActionDispatch,
 } from './renderer/actionValidator.js';
-
 // Export the validation utilities to be used by applications
 export {
   getWindowSubscriptions,
@@ -125,6 +121,6 @@ export {
 // Export preload configuration types and options
 export { QueueOverflowError } from './types/errors.js';
 export type { PreloadOptions } from './types/preload.js';
-
 // Export environment utilities
 export * from './utils/environment.js';
+export { useDispatch };
