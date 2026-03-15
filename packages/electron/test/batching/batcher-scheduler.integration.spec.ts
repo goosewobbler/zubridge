@@ -4,6 +4,7 @@ import { ActionScheduler } from '../../src/action/ActionScheduler.js';
 import { ActionBatcher, calculatePriority } from '../../src/batching/ActionBatcher.js';
 import type { BatchAckPayload, BatchPayload } from '../../src/batching/types.js';
 import { BATCHING_DEFAULTS, PRIORITY_LEVELS } from '../../src/batching/types.js';
+import { ThunkScheduler } from '../../src/thunk/scheduling/ThunkScheduler.js';
 import { ThunkManager } from '../../src/thunk/ThunkManager.js';
 
 vi.mock('@zubridge/core', () => ({
@@ -42,13 +43,9 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       } as BatchAckPayload;
     });
 
-    // Create ThunkManager for ActionScheduler
-    const mockStore = {
-      getState: () => ({}),
-      setState: vi.fn(),
-      subscribe: vi.fn(),
-    };
-    thunkManager = new ThunkManager(mockStore as any);
+    // Create ThunkScheduler for ThunkManager
+    const mockScheduler: ThunkScheduler = new ThunkScheduler();
+    thunkManager = new ThunkManager(mockScheduler);
 
     // Create ActionScheduler
     scheduler = new ActionScheduler(thunkManager);
