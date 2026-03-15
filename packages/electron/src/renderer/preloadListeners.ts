@@ -72,9 +72,6 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
   ) => {
     try {
       const existingListener = ipcListeners.get(channel);
-      if (existingListener) {
-        ipcRenderer.removeListener(channel, existingListener);
-      }
 
       // Remove previous cleanup function if exists to prevent accumulation
       const existingCleanup = ipcCleanupFunctions.get(channel);
@@ -83,12 +80,18 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
         ipcCleanupFunctions.delete(channel);
       }
 
+      // Register new listener before removing old one so the channel is
+      // never left without a listener if removeListener were to fail
       ipcRenderer.on(channel, listener);
+      if (existingListener) {
+        ipcRenderer.removeListener(channel, existingListener);
+      }
       ipcListeners.set(channel, listener);
 
       const cleanupFn = () => {
         ipcRenderer.removeListener(channel, listener);
         ipcListeners.delete(channel);
+        ipcCleanupFunctions.delete(channel);
       };
       ipcCleanupFunctions.set(channel, cleanupFn);
       cleanupRegistry.ipc.add(cleanupFn);
