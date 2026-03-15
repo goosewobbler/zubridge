@@ -8,6 +8,13 @@ export class CleanupRegistry {
     this.cleanups.push(cleanup);
   }
 
+  remove(cleanup: () => void | Promise<void>): void {
+    const index = this.cleanups.indexOf(cleanup);
+    if (index !== -1) {
+      this.cleanups.splice(index, 1);
+    }
+  }
+
   async cleanupAll(): Promise<void> {
     const results = await Promise.allSettled(this.cleanups.map((cleanup) => cleanup()));
 
@@ -49,6 +56,9 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
   const ipcListeners: Map<string, (event: IpcRendererEvent, ...args: unknown[]) => void> =
     new Map();
 
+  // Track cleanup functions per channel to prevent accumulation on re-registration
+  const ipcCleanupFunctions: Map<string, () => void> = new Map();
+
   const cleanupRegistry = {
     ipc: new CleanupRegistry(),
     dom: new CleanupRegistry(),
@@ -69,13 +79,22 @@ export function createIPCManager({ ipcRenderer }: IPCManagerConfig): IPCManager 
         ipcRenderer.removeListener(channel, existingListener);
       }
 
+      // Remove previous cleanup function if exists to prevent accumulation
+      const existingCleanup = ipcCleanupFunctions.get(channel);
+      if (existingCleanup) {
+        cleanupRegistry.ipc.remove(existingCleanup);
+        ipcCleanupFunctions.delete(channel);
+      }
+
       ipcRenderer.on(channel, listener);
       ipcListeners.set(channel, listener);
 
-      cleanupRegistry.ipc.add(() => {
+      const cleanupFn = () => {
         ipcRenderer.removeListener(channel, listener);
         ipcListeners.delete(channel);
-      });
+      };
+      ipcCleanupFunctions.set(channel, cleanupFn);
+      cleanupRegistry.ipc.add(cleanupFn);
     } catch (error) {
       debug('ipc:error', `Failed to register IPC listener for channel ${channel}:`, error);
     }
