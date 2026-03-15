@@ -734,8 +734,6 @@ export const preloadBridge = <S extends AnyState>(
     // to avoid accumulating callbacks if this is called multiple times rapidly
     thunkProcessor.forceCleanupExpiredActions();
 
-    await cleanupRegistry.thunks.cleanupAll();
-
     if (pendingThunkRegistrations.size > 0) {
       debug(
         'ipc',
