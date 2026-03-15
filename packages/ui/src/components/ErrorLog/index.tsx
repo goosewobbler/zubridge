@@ -29,9 +29,9 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
         {errors.length === 0 ? (
           <div className="text-sm italic text-gray-500">No errors</div>
         ) : (
-          errors.map((error) => (
+          errors.map((error, index) => (
             <div
-              key={error.timestamp}
+              key={`${error.timestamp}-${index}`}
               className="mb-2 error-log-entry last:mb-0"
               data-testid="error-entry"
             >
