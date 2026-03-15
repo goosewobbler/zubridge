@@ -189,6 +189,22 @@ describe('validation', () => {
 
       expect(result.success).toBe(false);
     });
+
+    it('should produce clear Zod errors for primitive batch items', () => {
+      const primitives = [42, 'ACTION_TYPE', true];
+
+      for (const primitive of primitives) {
+        const result = validateBatchDispatch({
+          batchId: 'batch-123',
+          actions: [primitive],
+        });
+
+        expect(result.success).toBe(false);
+        // Zod should report a type error (e.g. "Expected object, received number")
+        // rather than a misleading "id: Required" from wrapping in { action: item }
+        expect(result.error).not.toContain('Required');
+      }
+    });
   });
 
   describe('getRendererValidationLevel', () => {
