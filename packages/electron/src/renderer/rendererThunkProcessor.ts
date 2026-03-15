@@ -310,9 +310,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
 
       // Create the ThunkDispatch with batch and flush methods
       const dispatch = Object.assign(baseDispatch, {
-        // Batched dispatch shorthand
-        batch: async (action: Action, opts?: Omit<DispatchOptions, 'batch'>): Promise<void> => {
-          await baseDispatch(action, { ...opts, batch: true });
+        // Batched dispatch shorthand — supports both action objects and string actions
+        batch: async (
+          action: Action | string,
+          payloadOrOpts?: unknown,
+          optsIfString?: Omit<DispatchOptions, 'batch'>,
+        ): Promise<void> => {
+          if (typeof action === 'string') {
+            await baseDispatch(action, payloadOrOpts, { ...optsIfString, batch: true });
+          } else {
+            await baseDispatch(action, { ...(payloadOrOpts as DispatchOptions), batch: true });
+          }
         },
 
         // Flush pending batched actions
