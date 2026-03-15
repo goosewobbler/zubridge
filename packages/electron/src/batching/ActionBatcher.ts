@@ -252,7 +252,8 @@ export class ActionBatcher {
   }
 
   // No priority sorting needed: high-priority actions (>= priorityFlushThreshold) trigger
-  // an immediate flush in enqueue(), so they're always at the tail of a fresh batch.
+  // an immediate flush in enqueue() and are inserted at the head of the queue with unshift,
+  // so they're always at the head of a fresh batch.
   // Normal actions are processed in FIFO order within each batch window.
   private prepareBatch(): QueuedAction[] {
     const batch = this.queue.splice(0, this.config.maxBatchSize);
