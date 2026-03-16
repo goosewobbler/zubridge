@@ -210,7 +210,6 @@ export const preloadBridge = <S extends AnyState>(
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
           let newState: S;
-          const hadNoCachedState = cachedState === null;
 
           // Detect sequence gaps — if we missed updates, the cached state is stale
           // and deltas cannot be safely applied
@@ -278,21 +277,11 @@ export const preloadBridge = <S extends AnyState>(
             expectedSeq = seq;
           }
 
-          // Only suppress notification if the message itself was a no-op initial send
-          // (empty changed, no removed) — not for genuinely empty stores, which should
-          // still notify subscribers so they can prime their state correctly
-          const isNoOpInitialSend =
-            hadNoCachedState &&
-            delta?.type === 'delta' &&
-            (!delta.changed || Object.keys(delta.changed).length === 0) &&
-            (!delta.removed || delta.removed.length === 0);
-
-          // Notify all subscribers of the state change
-          if (!isNoOpInitialSend) {
-            listeners.forEach((fn) => {
-              fn(newState);
-            });
-          }
+          // Notify all subscribers of the state change — always notify, even for
+          // empty initial state, so hooks can initialize with the correct value
+          listeners.forEach((fn) => {
+            fn(newState);
+          });
 
           // Send acknowledgment back to main process
           debug('ipc', `Sending acknowledgment for state update ${updateId}`);
