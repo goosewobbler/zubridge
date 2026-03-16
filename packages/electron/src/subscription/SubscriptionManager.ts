@@ -168,12 +168,14 @@ export class SubscriptionManager<S> {
     const subId = this.generateSubId(windowId);
     debug('subscription', `[subscribe] Using subscription id: ${subId}`);
 
-    // If normalized is '*', remove all existing subscriptions for this window
-    // and replace with a single '*' subscription
+    // If normalized is '*', remove existing specific-key subscriptions for this window
+    // and add the new '*' subscription. Existing '*' entries are kept so that each
+    // caller gets an independently removable unsubscribe handle (important for
+    // React Strict Mode mount/unmount/remount cycles).
     if (normalized === '*') {
       debug('subscription', `[subscribe] Setting full '*' subscription for window ${windowId}`);
       for (const [id, sub] of this.subscriptions) {
-        if (sub.windowId === windowId) {
+        if (sub.windowId === windowId && sub.keys !== undefined) {
           this.subscriptions.delete(id);
         }
       }
