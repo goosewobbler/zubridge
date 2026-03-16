@@ -99,7 +99,8 @@ describe('SubscriptionManager', () => {
       // First subscribe to all state
       subscriptionManager.subscribe(undefined, callback1, windowId);
       // Second subscribe to all state — replaces the first entry
-      const unsub2 = subscriptionManager.subscribe(undefined, callback2, windowId);
+      const result2 = subscriptionManager.subscribe(undefined, callback2, windowId);
+      expect(result2.status).toBe('registered');
 
       // Window should still be subscribed to '*'
       expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
@@ -113,15 +114,15 @@ describe('SubscriptionManager', () => {
       expect(callback2).toHaveBeenCalled();
 
       // unsub2 cleans up the only remaining entry
-      unsub2?.();
+      if (result2.status === 'registered') result2.unsubscribe();
       expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual([]);
     });
 
-    it('should return null when specific-key subscription is superseded by existing "*"', () => {
+    it('should return superseded when specific-key subscription is covered by existing "*"', () => {
       subscriptionManager.subscribe(undefined, mockCallback, windowId);
 
       const result = subscriptionManager.subscribe(['counter'], vi.fn(), windowId);
-      expect(result).toBeNull();
+      expect(result.status).toBe('superseded');
 
       // '*' subscription should still be intact
       expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
