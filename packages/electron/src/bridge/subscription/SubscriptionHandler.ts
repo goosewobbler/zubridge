@@ -245,6 +245,9 @@ export class SubscriptionHandler<State extends AnyState> {
         },
         windowId,
       );
+      // null means the subscription was not registered (e.g. '*' already covers
+      // this window) — skip the initial-state send and don't track the unsubscribe.
+      if (!unsubscribe) continue;
       unsubs.push(unsubscribe);
 
       const fullState = this.stateManager.getState();
@@ -356,9 +359,10 @@ export class SubscriptionHandler<State extends AnyState> {
       ? Object.fromEntries(
           Object.entries(delta.changed)
             .map(([k, v]) => {
-              // Functions are not structured-clone serializable and would cause
-              // DataCloneError over IPC — strip them the same way sanitizeState does
-              if (typeof v === 'function') return [k, undefined];
+              // Functions, Symbols, and BigInts are not structured-clone serializable
+              // and would cause DataCloneError over IPC — strip them.
+              if (typeof v === 'function' || typeof v === 'symbol' || typeof v === 'bigint')
+                return [k, undefined];
               // sanitizeState's internal serialize() handles both plain objects and
               // arrays (recursively stripping functions, Dates, etc.), so this works
               // for array-valued keys despite the State cast.
