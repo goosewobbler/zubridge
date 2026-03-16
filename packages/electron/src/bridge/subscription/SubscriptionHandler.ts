@@ -227,7 +227,8 @@ export class SubscriptionHandler<State extends AnyState> {
       // nothing to send, and an empty delta would cause the renderer to fall through
       // to getState() which would leak the full store.
       if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
-        subscriptionPrevState = sanitizeState(fullState, serializationOptions) as State;
+        // calculate(prev, next, []) always returns null — seed cheaply
+        subscriptionPrevState = {} as State;
         continue;
       }
 
@@ -353,6 +354,8 @@ export class SubscriptionHandler<State extends AnyState> {
     };
   }
 
+  /** Extracts dot-path key→value pairs from partialState.
+   *  All callers pass already-normalised keys (trimmed, deduped by DeltaCalculator). */
   private stateToDeltaKeys(partialState: Partial<State>, keys?: string[]): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
