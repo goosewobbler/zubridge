@@ -343,4 +343,30 @@ describe('DeltaCalculator', () => {
       });
     });
   });
+
+  describe('getPartialState (via calculate with prev=undefined)', () => {
+    it('should not mutate source state when parent and child paths overlap', () => {
+      const state: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      // Freeze the user object to detect any mutation attempts
+      const originalUser = state.user;
+      const originalProfile = state.user.profile;
+
+      // calculate with prev=undefined triggers getPartialState internally
+      // Using both 'user' (parent) and 'user.name' (child) would previously
+      // mutate state.user via a live reference stored by setDeep
+      const normalizedKeys = calculator.normalizeKeys(['user', 'user.name']);
+      calculator.calculate(undefined, state, normalizedKeys as string[]);
+
+      // Source state must not be mutated
+      expect(state.user).toBe(originalUser);
+      expect(state.user.profile).toBe(originalProfile);
+      expect(state.user.name).toBe('Alice');
+      expect(state.user.profile.theme).toBe('dark');
+    });
+  });
 });
