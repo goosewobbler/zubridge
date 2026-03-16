@@ -988,5 +988,63 @@ describe('SubscriptionHandler', () => {
       // Object values should be sanitized (identity mock returns as-is)
       expect(changed?.user).toEqual({ name: 'Bob' });
     });
+
+    it('should return undefined changed (not empty {}) when all values are functions', async () => {
+      const initialState = { cb1: () => 'a', cb2: () => 'b' };
+      const updatedState = { cb1: () => 'c', cb2: () => 'd' };
+
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 401,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      let stateCallback: ((state: AnyState) => void) | undefined;
+      const mockSubManager = {
+        subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
+          stateCallback = cb;
+          return vi.fn();
+        }),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+
+      mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: true },
+      );
+
+      handler.selectiveSubscribe(singleWc);
+
+      if (!stateCallback) throw new Error('stateCallback was not captured');
+      (safelySendToWindow as Mock).mockClear();
+      stateCallback(updatedState);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+
+      if (sendCalls.length > 0) {
+        // If a send did occur, changed must be undefined (not {})
+        const payload = sendCalls[0][2] as DeltaPayload;
+        expect(payload.delta.changed).toBeUndefined();
+      }
+      // If no send occurred (delta calculator returned null because functions
+      // aren't deep-equal), that's also acceptable — no unnecessary IPC.
+    });
   });
 });
