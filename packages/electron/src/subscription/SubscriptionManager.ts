@@ -150,8 +150,13 @@ export class SubscriptionManager<S> {
       existingKeys,
     );
 
-    // If already subscribed to '*', only update if explicitly subscribing to '*'
-    if (existingKeys.includes('*') && (!keys || !keys.includes('*'))) {
+    const normalized = normalizeKeys(keys);
+    debug('subscription', '[subscribe] Normalized keys:', normalized);
+
+    // If already subscribed to '*' and the new subscription is for specific keys,
+    // skip creating the entry — the existing '*' subscription already covers them.
+    // But always allow a new '*' subscription so every caller gets a working unsubscribe.
+    if (existingKeys.includes('*') && normalized !== '*') {
       debug(
         'subscription',
         `[subscribe] Window ${windowId} already has '*' subscription, keeping it`,
@@ -159,9 +164,6 @@ export class SubscriptionManager<S> {
       // Return a no-op — we didn't create an entry, so there's nothing to remove
       return () => {};
     }
-
-    const normalized = normalizeKeys(keys);
-    debug('subscription', '[subscribe] Normalized keys:', normalized);
 
     const subId = this.generateSubId(windowId);
     debug('subscription', `[subscribe] Using subscription id: ${subId}`);
