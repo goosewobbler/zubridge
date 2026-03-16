@@ -512,13 +512,17 @@ describe('ActionBatcher', () => {
       // Destroy while sendBatch is in-flight
       batcher.destroy();
 
-      // sendBatch resolves after destroy — should NOT call resolve/reject on batch items
+      // destroy() rejects in-flight items exactly once
+      expect(rejectCalls).toHaveLength(1);
+      expect(rejectCalls[0]).toContain('ActionBatcher destroyed');
+
+      // sendBatch resolves after destroy — should NOT double-resolve/reject batch items
       resolveSendBatch?.();
       await vi.runAllTimersAsync();
 
-      // flush's result processing is skipped because isDestroyed is true
+      // flush's result processing is skipped because isDestroyed is true — still only 1 rejection
       expect(resolveCalls).toHaveLength(0);
-      expect(rejectCalls).toHaveLength(0);
+      expect(rejectCalls).toHaveLength(1);
     });
 
     it('should not double-reject in-flight batch items when sendBatch rejects after destroy', async () => {
@@ -546,11 +550,16 @@ describe('ActionBatcher', () => {
 
       batcher.destroy();
 
-      // sendBatch rejects after destroy — should not call reject on batch items
+      // destroy() rejects in-flight items exactly once
+      expect(rejectCalls).toHaveLength(1);
+      expect(rejectCalls[0]).toContain('ActionBatcher destroyed');
+
+      // sendBatch rejects after destroy — should not double-reject batch items
       rejectSendBatch?.();
       await vi.runAllTimersAsync();
 
-      expect(rejectCalls).toHaveLength(0);
+      // flush's error handler is skipped because isDestroyed is true — still only 1 rejection
+      expect(rejectCalls).toHaveLength(1);
     });
 
     it('should not schedule new flushes after destroy', async () => {
@@ -595,6 +604,35 @@ describe('ActionBatcher', () => {
 
       // sendBatch should only have been called once — no follow-up flush after destroy
       expect(mockSendBatch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should resolve flushResultWaiters on destroy', async () => {
+      vi.useRealTimers();
+      try {
+        batcher.enqueue(
+          createTestAction('ACTION_1'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // Start a flush - this registers a waiter since flush is in progress
+        const flushPromise = batcher.flushWithResult(true);
+
+        // While flush is in progress, call destroy
+        batcher.destroy();
+
+        // flushWithResult should resolve (not hang) — the promise must not be permanently pending
+        const result = await flushPromise;
+        expect(result).toEqual(
+          expect.objectContaining({
+            actionsSent: expect.any(Number),
+            actionIds: expect.any(Array),
+          }),
+        );
+      } finally {
+        vi.useFakeTimers();
+      }
     });
   });
 
@@ -723,6 +761,92 @@ describe('ActionBatcher', () => {
 
       expect(result.actionsSent).toBe(0);
       expect(result.actionIds).toHaveLength(0);
+    });
+
+    it('should return result to all concurrent callers', async () => {
+      vi.useRealTimers();
+      try {
+        batcher.enqueue(
+          createTestAction('ACTION_1'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // Start multiple flushWithResult calls concurrently
+        const [result1, result2, result3] = await Promise.all([
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+        ]);
+
+        // All concurrent callers should get the actual result, not empty fallback
+        expect(result1.actionsSent).toBe(1);
+        expect(result2.actionsSent).toBe(1);
+        expect(result3.actionsSent).toBe(1);
+        expect(result1.batchId).toBeDefined();
+        // All should get the same batchId
+        expect(result2.batchId).toBe(result1.batchId);
+        expect(result3.batchId).toBe(result1.batchId);
+      } finally {
+        vi.useFakeTimers();
+      }
+    });
+
+    it('should resolve all concurrent callers when sendBatch throws', async () => {
+      vi.useRealTimers();
+      try {
+        mockSendBatch.mockRejectedValue(new Error('Batch failed'));
+
+        batcher.enqueue(
+          createTestAction('ACTION_1'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // Start multiple flushWithResult calls concurrently - they should all resolve, not hang
+        const results = await Promise.all([
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+          batcher.flushWithResult(true),
+        ]);
+
+        // All concurrent callers should get the error result with zero actions
+        for (const result of results) {
+          expect(result.actionsSent).toBe(0);
+          expect(result.actionIds).toHaveLength(0);
+          expect(result.batchId).toBeDefined();
+        }
+      } finally {
+        vi.useFakeTimers();
+      }
+    });
+
+    it('should not hang when flushWithResult is called after flush completes but before flushingPromise is nulled', async () => {
+      vi.useRealTimers();
+      try {
+        batcher.enqueue(
+          createTestAction('A'),
+          () => {},
+          () => {},
+          50,
+        );
+
+        // First caller triggers the flush
+        const p1 = batcher.flushWithResult(true);
+
+        // Simulate a waiter that attaches just as the flush finishes
+        // by chaining directly off the resolved promise
+        const p2 = p1.then(() => batcher.flushWithResult(false));
+
+        const [r1, r2] = await Promise.all([p1, p2]);
+        expect(r1.actionsSent).toBe(1);
+        // r2 should resolve (not hang); queue is empty so empty result is acceptable
+        expect(r2).toBeDefined();
+      } finally {
+        vi.useFakeTimers();
+      }
     });
   });
 

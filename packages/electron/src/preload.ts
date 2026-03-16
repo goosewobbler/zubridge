@@ -15,6 +15,7 @@ import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types
 import { validateActionInRenderer } from './bridge/ipc/validation.js';
 import { IpcChannel } from './constants.js';
 import { DeltaMerger } from './deltas/DeltaMerger.js';
+import { createIPCManager } from './renderer/preloadListeners.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
 import { setupRendererErrorHandlers } from './utils/globalErrorHandlers.js';
@@ -92,6 +93,9 @@ export const preloadBridge = <S extends AnyState>(
   // Get a properly configured thunk processor
   const thunkProcessor = getThunkProcessorWithConfig();
 
+  // Create IPC manager for listener registration and cleanup
+  const { ipcListeners, cleanupRegistry, registerIpcListener } = createIPCManager({ ipcRenderer });
+
   // Initialize action batcher if enabled
   let actionBatcher: ActionBatcher | null = null;
   const enableBatching = resolvedOptions.enableBatching !== false;
@@ -111,7 +115,7 @@ export const preloadBridge = <S extends AnyState>(
       }
     >();
 
-    ipcRenderer.on(IpcChannel.BATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
+    registerIpcListener(IpcChannel.BATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
       const ackPayload = payload as BatchAckPayload;
       if (!ackPayload?.batchId) return;
 
@@ -164,69 +168,6 @@ export const preloadBridge = <S extends AnyState>(
     string,
     { resolve: () => void; reject: (err: unknown) => void }
   >();
-
-  // Cleanup registry for different types of resources
-  class CleanupRegistry {
-    private cleanups: Array<() => void | Promise<void>> = [];
-
-    add(cleanup: () => void | Promise<void>): void {
-      this.cleanups.push(cleanup);
-    }
-
-    async cleanupAll(): Promise<void> {
-      const results = await Promise.allSettled(this.cleanups.map((cleanup) => cleanup()));
-
-      // Log any failures but don't throw
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          debug('cleanup:error', `Cleanup ${index} failed:`, result.reason);
-        }
-      });
-
-      this.cleanups.length = 0; // Clear array
-    }
-  }
-
-  const cleanupRegistry = {
-    ipc: new CleanupRegistry(),
-    dom: new CleanupRegistry(),
-    thunks: new CleanupRegistry(),
-
-    async cleanupAll() {
-      await Promise.all([this.ipc.cleanupAll(), this.dom.cleanupAll(), this.thunks.cleanupAll()]);
-    },
-  };
-
-  const ipcListeners = new Map<
-    string,
-    (event: Electron.IpcRendererEvent, ...args: unknown[]) => void
-  >();
-
-  // Helper function to register IPC listeners with cleanup tracking
-  const registerIpcListener = (
-    channel: string,
-    listener: (event: Electron.IpcRendererEvent, ...args: unknown[]) => void,
-  ) => {
-    try {
-      // Remove any existing listener for this channel
-      const existingListener = ipcListeners.get(channel);
-      if (existingListener) {
-        ipcRenderer.removeListener(channel, existingListener);
-      }
-
-      // Register new listener
-      ipcRenderer.on(channel, listener);
-      ipcListeners.set(channel, listener);
-
-      // Add IPC cleanup to registry
-      cleanupRegistry.ipc.add(() => {
-        ipcRenderer.removeListener(channel, listener);
-        ipcListeners.delete(channel);
-      });
-    } catch (error) {
-      debug('ipc:error', `Failed to register IPC listener for channel ${channel}:`, error);
-    }
-  };
 
   // Helper function to track action dispatch
   const trackActionDispatch = (action: Action) => {
@@ -375,29 +316,28 @@ export const preloadBridge = <S extends AnyState>(
     // Dispatch actions to main process
     async dispatch(
       action: string | Action | Thunk<S>,
-      payloadOrOptions?: unknown | DispatchOptions,
-      options?: DispatchOptions,
+      payloadOrOptions?: unknown,
+      optionsIfString?: DispatchOptions,
     ): Promise<Action> {
-      debug('ipc', 'Dispatch called with:', { action, payloadOrOptions, options });
-
-      // Extract options or default to empty object
-      let dispatchOptions: DispatchOptions;
-      // Check if payloadOrOptions has DispatchOptions properties
-      const isOptions =
-        payloadOrOptions &&
-        typeof payloadOrOptions === 'object' &&
-        !Array.isArray(payloadOrOptions) &&
-        ('bypassAccessControl' in payloadOrOptions || 'immediate' in payloadOrOptions);
-
-      if (isOptions) {
-        dispatchOptions = payloadOrOptions as DispatchOptions;
+      // Overload detection: string actions get payload (+optional options),
+      // object/thunk/function actions get options as second arg
+      let payload: unknown;
+      let dispatchOptions: DispatchOptions | undefined;
+      if (typeof action === 'string') {
+        payload = payloadOrOptions;
+        dispatchOptions = optionsIfString;
       } else {
-        dispatchOptions = options || {};
+        dispatchOptions = payloadOrOptions as DispatchOptions | undefined;
       }
 
+      debug('ipc', 'Dispatch called with:', { action, payload, dispatchOptions });
+
+      // Use provided options or default to empty object
+      const opts = dispatchOptions || {};
+
       // Extract bypass flags
-      const bypassAccessControl = dispatchOptions.bypassAccessControl;
-      const immediate = dispatchOptions.immediate;
+      const bypassAccessControl = opts.bypassAccessControl;
+      const immediate = opts.immediate;
 
       debug(
         'ipc',
@@ -457,7 +397,7 @@ export const preloadBridge = <S extends AnyState>(
         typeof action === 'string'
           ? {
               type: action,
-              payload: !isOptions ? payloadOrOptions : undefined,
+              payload,
               __id: uuidv4(),
             }
           : {
@@ -488,6 +428,8 @@ export const preloadBridge = <S extends AnyState>(
       // trigger an immediate flush via the batcher's priority system, so all actions benefit
       const batcher = actionBatcher;
       if (batcher) {
+        // Validate action before enqueueing
+        validateActionInRenderer(actionObj);
         return new Promise<Action>((resolve, reject) => {
           batcher.enqueue(
             actionObj,
@@ -499,6 +441,10 @@ export const preloadBridge = <S extends AnyState>(
       }
 
       // Individual DISPATCH + DISPATCH_ACK flow (when batching disabled)
+      // Validate action BEFORE creating promise and registering listeners
+      // to prevent dangling listeners if validation throws
+      validateActionInRenderer(actionObj);
+
       return new Promise<Action>((resolve, reject) => {
         const actionId = actionObj.__id as string;
 
@@ -545,9 +491,6 @@ export const preloadBridge = <S extends AnyState>(
 
         // Register the acknowledgment listener
         ipcRenderer.on(IpcChannel.DISPATCH_ACK, ackListener);
-
-        // Validate action in renderer (development only)
-        validateActionInRenderer(actionObj);
 
         // Send the action to the main process
         debug('ipc', `Sending action ${actionId} to main process`);
@@ -670,7 +613,21 @@ export const preloadBridge = <S extends AnyState>(
           ) => {
             debug('ipc', `[PRELOAD] Registering thunk: thunkId=${thunkId}, immediate=${immediate}`);
             return new Promise<void>((resolve, reject) => {
-              pendingThunkRegistrations.set(thunkId, { resolve, reject });
+              const timeoutId = setTimeout(() => {
+                pendingThunkRegistrations.delete(thunkId);
+                reject(new Error(`Timeout waiting for REGISTER_THUNK_ACK for thunk ${thunkId}`));
+              }, batchingConfig.ackTimeoutMs);
+
+              pendingThunkRegistrations.set(thunkId, {
+                resolve: () => {
+                  clearTimeout(timeoutId);
+                  resolve();
+                },
+                reject: (err) => {
+                  clearTimeout(timeoutId);
+                  reject(err);
+                },
+              });
               ipcRenderer.send(IpcChannel.REGISTER_THUNK, {
                 thunkId,
                 parentId,
@@ -850,12 +807,9 @@ export const preloadBridge = <S extends AnyState>(
   const performPartialCleanup = async (): Promise<void> => {
     debug('ipc', 'Performing partial cleanup of expired resources');
 
-    // Clean up expired thunk processor actions
-    cleanupRegistry.thunks.add(async () => {
-      thunkProcessor.forceCleanupExpiredActions();
-    });
-
-    await cleanupRegistry.thunks.cleanupAll();
+    // Directly call forceCleanupExpiredActions instead of routing through registry
+    // to avoid accumulating callbacks if this is called multiple times rapidly
+    thunkProcessor.forceCleanupExpiredActions();
 
     if (pendingThunkRegistrations.size > 0) {
       debug(
@@ -895,26 +849,24 @@ export const preloadBridge = <S extends AnyState>(
       actionBatcher = null;
     }
 
-    // Add thunk cleanup
-    cleanupRegistry.thunks.add(async () => {
-      thunkProcessor.destroy();
-    });
+    // Clean up thunk processor
+    thunkProcessor.destroy();
 
-    // Add pending registrations cleanup
-    cleanupRegistry.thunks.add(async () => {
-      const pendingCount = pendingThunkRegistrations.size;
-      for (const [thunkId, { reject }] of pendingThunkRegistrations) {
-        try {
-          reject(new Error('Complete cleanup - thunk registration cancelled'));
-        } catch (error: unknown) {
-          debug('ipc:error', `Error rejecting pending thunk registration ${thunkId}:`, error);
-        }
+    // Clean up pending registrations
+    const pendingCount = pendingThunkRegistrations.size;
+    for (const [thunkId, { reject }] of pendingThunkRegistrations) {
+      try {
+        reject(new Error('Complete cleanup - thunk registration cancelled'));
+      } catch (error: unknown) {
+        debug('ipc:error', `Error rejecting pending thunk registration ${thunkId}:`, error);
       }
-      pendingThunkRegistrations.clear();
+    }
+    pendingThunkRegistrations.clear();
+    if (pendingCount > 0) {
       debug('ipc', `Cleaned up ${pendingCount} pending registrations`);
-    });
+    }
 
-    // Perform all cleanups
+    // Perform IPC and DOM cleanups
     await cleanupRegistry.cleanupAll();
 
     // Clear listeners set
@@ -930,12 +882,4 @@ export const preloadBridge = <S extends AnyState>(
   };
 };
 
-/**
- * Legacy preload bridge for backward compatibility
- * @deprecated This is now an alias for preloadBridge and uses the new IPC channels.
- * Please update your code to use preloadBridge directly in the future.
- */
-export const preloadZustandBridge = preloadBridge;
-
-export type PreloadZustandBridge = typeof preloadZustandBridge;
 export type PreloadBridge = typeof preloadBridge;

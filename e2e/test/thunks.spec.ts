@@ -701,7 +701,7 @@ describe('Thunk Execution and Behavior', () => {
         });
         console.log('[LINUX DEBUG] Available zubridge methods:', JSON.stringify(thunkState));
 
-        if (thunkState.success && thunkState.result && thunkState.result.availableMethods) {
+        if (thunkState.success && thunkState.result?.availableMethods) {
           console.log(
             '[LINUX DEBUG] Zubridge methods:',
             thunkState.result.availableMethods.join(', '),

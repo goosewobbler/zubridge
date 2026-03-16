@@ -154,11 +154,11 @@ export function ZubridgeApp({
 
   // Action handlers with logging
   const handleIncrement = useCallback(async () => {
-    await dispatch('COUNTER:INCREMENT', window.dispatchFlags);
+    await dispatch({ type: 'COUNTER:INCREMENT' }, window.dispatchFlags);
   }, [dispatch]);
 
   const handleDecrement = useCallback(async () => {
-    await dispatch('COUNTER:DECREMENT', window.dispatchFlags);
+    await dispatch({ type: 'COUNTER:DECREMENT' }, window.dispatchFlags);
   }, [dispatch]);
 
   const handleResetState = useCallback(async () => {

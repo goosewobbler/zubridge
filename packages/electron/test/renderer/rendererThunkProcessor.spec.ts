@@ -1026,6 +1026,35 @@ describe('RendererThunkProcessor', () => {
       );
     });
 
+    it('should call actionSender with batch:true when using dispatch.batch with a string action', async () => {
+      mockThunkRegistrar.mockResolvedValue(undefined);
+      mockThunkCompleter.mockResolvedValue(undefined);
+      mockActionSender.mockClear();
+      mockActionSender.mockImplementation(
+        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
+          setTimeout(() => {
+            if (action.__id) {
+              processor.completeAction(action.__id, { result: 'completed' });
+            }
+          }, 5);
+          return undefined;
+        },
+      );
+
+      const batchThunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch.batch('BATCHED_STRING_ACTION', 42);
+        return 'batched-string';
+      });
+
+      await processor.executeThunk(batchThunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'BATCHED_STRING_ACTION', payload: 42 }),
+        expect.any(String),
+        { batch: true },
+      );
+    });
+
     it('should call actionSender without batch option for normal dispatch', async () => {
       mockThunkRegistrar.mockResolvedValue(undefined);
       mockThunkCompleter.mockResolvedValue(undefined);
@@ -1188,6 +1217,117 @@ describe('RendererThunkProcessor', () => {
         expect.objectContaining({ type: 'BATCHED_BYPASS', __immediate: true }),
         expect.any(String),
         { batch: true },
+      );
+    });
+  });
+
+  describe('dispatch with options (2-arg form)', () => {
+    beforeEach(() => {
+      mockThunkRegistrar.mockResolvedValue(undefined);
+      mockThunkCompleter.mockResolvedValue(undefined);
+      mockActionSender.mockClear();
+      mockActionSender.mockImplementation(
+        async (action: Action, _parentId?: string, _options?: { batch?: boolean }) => {
+          setTimeout(() => {
+            if (action.__id) {
+              processor.completeAction(action.__id, { result: 'completed' });
+            }
+          }, 5);
+          return undefined;
+        },
+      );
+    });
+
+    it('should pass options via action object form with immediate', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch({ type: 'MY_ACTION', payload: { batch: true } }, { immediate: true });
+        return 'done';
+      });
+
+      await processor.executeThunk(thunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'MY_ACTION',
+          payload: { batch: true },
+          __immediate: true,
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should pass options via action object form with bypassAccessControl', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch(
+          { type: 'BYPASS_ACTION', payload: { bypassAccessControl: false } },
+          { bypassAccessControl: true },
+        );
+        return 'bypass-payload';
+      });
+
+      await processor.executeThunk(thunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'BYPASS_ACTION',
+          payload: { bypassAccessControl: false },
+          __bypassAccessControl: true,
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should pass options via action object form with batch', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch({ type: 'ACTION_WITH_BATCH' }, { batch: true });
+        return 'options';
+      });
+
+      await processor.executeThunk(thunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'ACTION_WITH_BATCH',
+        }),
+        expect.any(String),
+        { batch: true },
+      );
+    });
+
+    it('should handle string dispatch with payload (no options)', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('NORMAL_ACTION', { data: 'test' });
+        return 'normal';
+      });
+
+      await processor.executeThunk(thunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'NORMAL_ACTION',
+          payload: { data: 'test' },
+        }),
+        expect.any(String),
+        { batch: false },
+      );
+    });
+
+    it('should handle string dispatch with no args', async () => {
+      const thunk = vi.fn(async (_getState, dispatch) => {
+        await dispatch('ONE_ARG_ACTION');
+        return 'one-arg';
+      });
+
+      await processor.executeThunk(thunk);
+
+      expect(mockActionSender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'ONE_ARG_ACTION',
+        }),
+        expect.any(String),
+        { batch: false },
       );
     });
   });

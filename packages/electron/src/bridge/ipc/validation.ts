@@ -56,6 +56,43 @@ export const ActionPayloadSchema = z
   .strict(); // Reject unknown properties
 
 /**
+ * Known fields in ActionPayloadSchema - these are kept for validation.
+ * Fields starting with __ that are NOT in this list will be stripped.
+ */
+const KNOWN_ACTION_FIELDS = new Set([
+  'type',
+  'payload',
+  '__id',
+  '__bypassAccessControl',
+  '__immediate',
+  '__startsThunk',
+  '__sourceWindowId',
+]);
+
+/**
+ * Strips internal __-prefixed fields from an action object before validation.
+ * Only strips fields that start with __ but are NOT in the known action fields list.
+ * Fields in the schema (like __id, __immediate) are kept for validation.
+ * @param action - The action object to sanitize (must be a plain object)
+ * @returns Action object with unknown internal fields removed, or original if not an object
+ */
+function stripInternalFields(action: unknown): unknown {
+  // Guard: only process plain objects
+  if (!action || typeof action !== 'object' || Array.isArray(action)) {
+    return action;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(action)) {
+    // Keep if it's not __-prefixed, OR if it's a known schema field
+    if (!key.startsWith('__') || KNOWN_ACTION_FIELDS.has(key)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
  * Schema for single action dispatch payload
  * Used by handleDispatch
  */
@@ -109,6 +146,25 @@ export type ValidationResult<T> =
  * @returns Validation result with typed data or error message
  */
 export function validateSingleDispatch(data: unknown): ValidationResult<ValidatedSingleDispatch> {
+  // Strip internal __-prefixed fields from action before validation
+  if (data && typeof data === 'object' && 'action' in data) {
+    const sanitizedData = {
+      ...data,
+      action: stripInternalFields((data as { action: Record<string, unknown> }).action),
+    };
+    const result = SingleDispatchPayloadSchema.safeParse(sanitizedData);
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    return {
+      success: false,
+      error: formatZodError(result.error),
+      details: result.error,
+    };
+  }
+
   const result = SingleDispatchPayloadSchema.safeParse(data);
 
   if (result.success) {
@@ -128,6 +184,52 @@ export function validateSingleDispatch(data: unknown): ValidationResult<Validate
  * @returns Validation result with typed data or error message
  */
 export function validateBatchDispatch(data: unknown): ValidationResult<ValidatedBatchDispatch> {
+  // Guard: validate data structure before processing
+  if (data && typeof data === 'object' && 'actions' in data) {
+    const rawData = data as Record<string, unknown>;
+    const rawActions = rawData.actions;
+
+    // If actions is not an array, skip sanitization and let Zod report the error
+    // uniformly via BatchDispatchPayloadSchema.safeParse below.
+    if (!Array.isArray(rawActions)) {
+      const result = BatchDispatchPayloadSchema.safeParse(rawData);
+      return result.success
+        ? { success: true, data: result.data as ValidatedBatchDispatch }
+        : { success: false, error: formatZodError(result.error), details: result.error };
+    }
+
+    // Strip internal __-prefixed fields from each action in the batch
+    const sanitizedActions = rawActions.map((item) => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        const rawItem = item as Record<string, unknown>;
+        return {
+          ...rawItem,
+          action: stripInternalFields(rawItem.action),
+        };
+      }
+      // Pass through as-is so Zod reports a clear type error
+      // (e.g. "Expected object, received number") rather than a
+      // misleading "id: Required" from wrapping in { action: item }.
+      return item;
+    });
+
+    const sanitizedData = {
+      ...rawData,
+      actions: sanitizedActions,
+    };
+    const result = BatchDispatchPayloadSchema.safeParse(sanitizedData);
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    return {
+      success: false,
+      error: formatZodError(result.error),
+      details: result.error,
+    };
+  }
+
   const result = BatchDispatchPayloadSchema.safeParse(data);
 
   if (result.success) {

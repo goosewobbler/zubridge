@@ -355,7 +355,7 @@ describe('Batching Integration', () => {
   describe('Backpressure handling', () => {
     it('should queue actions during active flush', async () => {
       const { ActionBatcher } = await import('../../src/batching/ActionBatcher.js');
-      let resolveSendBatch: ((value: BatchAckPayload) => void) | undefined;
+      let resolveSendBatch: (() => void) | undefined;
       const mockSendBatch = vi.fn().mockImplementation(
         (payload: BatchPayload) =>
           new Promise<BatchAckPayload>((resolve) => {
@@ -448,7 +448,8 @@ describe('Batching Integration', () => {
 
       batcher.destroy();
 
-      expect(errors).toHaveLength(2);
+      // All 3 actions rejected: 1 in-flight (from activeBatch) + 2 queued
+      expect(errors).toHaveLength(3);
       errors.forEach((msg) => {
         expect(msg).toContain('destroyed');
       });

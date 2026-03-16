@@ -181,7 +181,7 @@ export function App(): JSX.Element {
                     const ipcTime = totalTime - processingTime || 0;
 
                     return (
-                      <tr key={`${actionType}-${index}-${totalTime}`}>
+                      <tr key={`${actionType}-${totalTime}-${index}`}>
                         <td>{actionType}</td>
                         <td>{totalTime.toFixed(2)} ms</td>
                         <td>{processingTime.toFixed(2)} ms</td>

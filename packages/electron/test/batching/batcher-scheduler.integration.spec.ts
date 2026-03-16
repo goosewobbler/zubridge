@@ -4,6 +4,7 @@ import { ActionScheduler } from '../../src/action/ActionScheduler.js';
 import { ActionBatcher, calculatePriority } from '../../src/batching/ActionBatcher.js';
 import type { BatchAckPayload, BatchPayload } from '../../src/batching/types.js';
 import { BATCHING_DEFAULTS, PRIORITY_LEVELS } from '../../src/batching/types.js';
+import { ThunkScheduler } from '../../src/thunk/scheduling/ThunkScheduler.js';
 import { ThunkManager } from '../../src/thunk/ThunkManager.js';
 
 vi.mock('@zubridge/core', () => ({
@@ -42,13 +43,9 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       } as BatchAckPayload;
     });
 
-    // Create ThunkManager for ActionScheduler
-    const mockStore = {
-      getState: () => ({}),
-      setState: vi.fn(),
-      subscribe: vi.fn(),
-    };
-    thunkManager = new ThunkManager(mockStore as any);
+    // Create ThunkScheduler for ThunkManager
+    const mockScheduler: ThunkScheduler = new ThunkScheduler();
+    thunkManager = new ThunkManager(mockScheduler);
 
     // Create ActionScheduler
     scheduler = new ActionScheduler(thunkManager);
@@ -118,9 +115,11 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       expect(processedActions).toHaveLength(3);
 
       // Verify priority values are from PRIORITY_LEVELS
-      expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION);
-      expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION);
-      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.IMMEDIATE);
+      // High-priority actions are inserted at front with unshift, so order is reversed
+      // Queue order: [bypass (100), normal (50), thunk (70)] after unshift
+      expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.IMMEDIATE);
+      expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION);
+      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION);
     });
 
     it('should immediately flush high-priority actions', async () => {
@@ -208,11 +207,12 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       await vi.runAllTimersAsync();
 
       // Verify all were processed with correct priorities
+      // High-priority actions are inserted at front with unshift, so IMMEDIATE comes first
       expect(processedActions).toHaveLength(4);
-      expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_1
-      expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION); // NORMAL
-      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_2
-      expect(processedActions[3].priority).toBe(PRIORITY_LEVELS.IMMEDIATE); // BYPASS
+      expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.IMMEDIATE); // BYPASS (inserted at front)
+      expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_1
+      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION); // NORMAL
+      expect(processedActions[3].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_2
     });
   });
 
@@ -355,10 +355,13 @@ describe('ActionBatcher + ActionScheduler Integration', () => {
       await vi.runAllTimersAsync();
 
       // Verify priorities maintained through pipeline
+      // IMMEDIATE triggers immediate flush (unshift puts it at front), others are batched
+      // Order: BYPASS_1 (immediate flush), then NORMAL_1, THUNK_1, NORMAL_2 (scheduled flush)
       expect(processedActions).toHaveLength(actions.length);
-      actions.forEach(({ expected }, index) => {
-        expect(processedActions[index].priority).toBe(expected);
-      });
+      expect(processedActions[0].priority).toBe(PRIORITY_LEVELS.IMMEDIATE); // BYPASS_1 (immediate flush)
+      expect(processedActions[1].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION); // NORMAL_1
+      expect(processedActions[2].priority).toBe(PRIORITY_LEVELS.ROOT_THUNK_ACTION); // THUNK_1
+      expect(processedActions[3].priority).toBe(PRIORITY_LEVELS.NORMAL_THUNK_ACTION); // NORMAL_2
     });
   });
 });

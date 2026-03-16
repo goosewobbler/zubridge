@@ -24,6 +24,7 @@ function runTsdown(args = []) {
 async function build() {
   if (process.platform === 'win32') {
     // On Windows, build each entry point separately to avoid heap corruption
+    // Use unrun config loader to handle .ts config file imports properly (Node 24+)
     console.log('Building on Windows - using sequential builds per entry');
     try {
       // Build renderer (browser context)
@@ -35,10 +36,10 @@ async function build() {
       await runTsdown([
         '--config',
         'tsdown.win32.node.config.ts',
-        '--config-loader',
-        'unrun',
         '--entry.main',
         'src/main.ts',
+        '--config-loader',
+        'unrun',
       ]);
 
       // Build preload (sandboxed context, needs polyfills)

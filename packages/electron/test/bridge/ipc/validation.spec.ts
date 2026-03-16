@@ -93,8 +93,29 @@ describe('validation', () => {
     });
 
     it('should reject non-boolean __immediate flag', () => {
+      // __immediate is a known schema field, so invalid values (like strings) should fail validation
       const result = validateSingleDispatch({
         action: { type: 'TEST', __immediate: 'yes' },
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should strip unknown __-prefixed fields', () => {
+      // Fields like __thunkParentId are NOT in the schema and should be stripped before validation
+      const result = validateSingleDispatch({
+        action: { type: 'TEST', __thunkParentId: 'parent-123', __unknownField: 'value' },
+      });
+
+      // Validation should pass because unknown fields are stripped
+      expect(result.success).toBe(true);
+      expect(result.data?.action.type).toBe('TEST');
+    });
+
+    it('should handle non-object action gracefully', () => {
+      // Should not throw, should return validation error
+      const result = validateSingleDispatch({
+        action: null,
       });
 
       expect(result.success).toBe(false);
@@ -135,6 +156,62 @@ describe('validation', () => {
       });
 
       expect(result.success).toBe(false);
+    });
+
+    it('should handle non-array actions gracefully', () => {
+      // Should not throw, should return validation error
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: null,
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle malformed action items gracefully', () => {
+      // Should not throw, should return validation error
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: [
+          { action: null, id: 'id-1' }, // invalid action
+        ],
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle non-object batch item gracefully', () => {
+      // Items that are null/primitive/array hit the else-branch in sanitization
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: [null], // item itself is null, not just action: null
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should produce clear Zod errors for primitive batch items', () => {
+      const primitives = [42, 'ACTION_TYPE', true];
+
+      for (const primitive of primitives) {
+        const result = validateBatchDispatch({
+          batchId: 'batch-123',
+          actions: [primitive],
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.toLowerCase()).toContain('expected object');
+      }
+    });
+
+    it('should reject array-typed batch items', () => {
+      const result = validateBatchDispatch({
+        batchId: 'batch-123',
+        actions: [['not', 'an', 'action']],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.toLowerCase()).toContain('expected object');
     });
   });
 

@@ -126,10 +126,12 @@ export interface FlushResult {
 }
 
 export type Dispatch<S> = {
-  // String action with optional payload and options
-  (action: string, payload?: unknown, options?: DispatchOptions): Promise<unknown>;
   // Action object with options
   (action: Action, options?: DispatchOptions): Promise<unknown>;
+  // String action with payload and optional options
+  (action: string, payload: unknown, options?: DispatchOptions): Promise<unknown>;
+  // String action with optional payload
+  (action: string, payload?: unknown): Promise<unknown>;
   // Thunk with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 };
@@ -141,6 +143,8 @@ export type Dispatch<S> = {
 export interface ThunkDispatch<S = AnyState> extends Dispatch<S> {
   // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
   batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
+  // String action with payload, batched
+  batch(action: string, payload?: unknown, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
 
   // Flush pending batched actions immediately
   // - await dispatch.flush() waits for all actions to complete
@@ -175,8 +179,11 @@ export type DispatchFunc<S, TActions extends Record<string, unknown> = Record<st
   // Handle thunks with options
   (action: Thunk<S>, options?: DispatchOptions): Promise<unknown>;
 
-  // Handle string action types with optional payload and options
-  (action: string, payload?: unknown, options?: DispatchOptions): Promise<unknown>;
+  // Handle string action types with payload and optional options
+  (action: string, payload: unknown, options?: DispatchOptions): Promise<unknown>;
+
+  // Handle string action types with optional payload
+  (action: string, payload?: unknown): Promise<unknown>;
 
   // Handle strongly typed action objects with options
   <TType extends keyof TActions>(

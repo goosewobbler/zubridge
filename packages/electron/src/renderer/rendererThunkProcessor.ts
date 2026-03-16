@@ -188,32 +188,18 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       // Create a dispatch function for this thunk that tracks each action
       const baseDispatch = async (
         action: string | Action | InternalThunk<S>,
-        payloadOrOptions?: unknown | DispatchOptions,
-        maybeOptions?: DispatchOptions,
+        payloadOrOptions?: unknown,
+        optionsIfString?: DispatchOptions,
       ): Promise<unknown> => {
-        // Determine if second arg is payload or options
+        // Overload detection: string actions get payload (+optional options),
+        // object/thunk actions get options as second arg
         let payload: unknown;
         let dispatchOptions: DispatchOptions | undefined;
-
-        if (payloadOrOptions !== undefined) {
-          // Check if it looks like DispatchOptions
-          if (
-            payloadOrOptions &&
-            typeof payloadOrOptions === 'object' &&
-            !Array.isArray(payloadOrOptions) &&
-            ('batch' in payloadOrOptions ||
-              'bypassAccessControl' in payloadOrOptions ||
-              'immediate' in payloadOrOptions ||
-              'keys' in payloadOrOptions)
-          ) {
-            dispatchOptions = payloadOrOptions as DispatchOptions;
-          } else {
-            // It's payload
-            payload = payloadOrOptions;
-            dispatchOptions = maybeOptions;
-          }
+        if (typeof action === 'string') {
+          payload = payloadOrOptions;
+          dispatchOptions = optionsIfString;
         } else {
-          dispatchOptions = maybeOptions;
+          dispatchOptions = payloadOrOptions as DispatchOptions | undefined;
         }
 
         const isBatched = dispatchOptions?.batch === true;
@@ -324,9 +310,18 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
 
       // Create the ThunkDispatch with batch and flush methods
       const dispatch = Object.assign(baseDispatch, {
-        // Batched dispatch shorthand
-        batch: async (action: Action, opts?: Omit<DispatchOptions, 'batch'>): Promise<void> => {
-          await baseDispatch(action, { ...opts, batch: true });
+        // Batched dispatch shorthand — supports both action objects and string actions
+        batch: async (
+          action: Action | string,
+          payloadOrOpts?: unknown,
+          optsIfString?: Omit<DispatchOptions, 'batch'>,
+        ): Promise<void> => {
+          if (typeof action === 'string') {
+            await baseDispatch(action, payloadOrOpts, { ...optsIfString, batch: true });
+          } else {
+            const opts = (payloadOrOpts as Omit<DispatchOptions, 'batch'> | undefined) ?? {};
+            await baseDispatch(action, { ...opts, batch: true });
+          }
         },
 
         // Flush pending batched actions

@@ -64,8 +64,7 @@ export class IpcHandler<State extends AnyState> {
   }
 
   /**
-   * Validate batch payload structure and contents to prevent injection attacks
-   * @returns true if valid, false otherwise
+   * Handle batch dispatch from renderers
    */
   public async handleBatchDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
     try {
@@ -160,12 +159,14 @@ export class IpcHandler<State extends AnyState> {
       // sequential processing, so action ordering within a batch is maintained.
       const settledResults = await Promise.allSettled(actions.map(processAction));
 
-      for (const result of settledResults) {
+      for (let i = 0; i < settledResults.length; i++) {
+        const result = settledResults[i];
         if (result.status === 'fulfilled') {
           results.push(result.value);
         } else {
+          // Use the known action ID instead of 'unknown' so renderer can match the response
           results.push({
-            actionId: 'unknown',
+            actionId: actions[i].id,
             success: false,
             error: result.reason instanceof Error ? result.reason.message : String(result.reason),
           });
@@ -647,6 +648,7 @@ export class IpcHandler<State extends AnyState> {
     ipcMain.removeAllListeners(IpcChannel.TRACK_ACTION_DISPATCH);
     ipcMain.removeAllListeners(IpcChannel.REGISTER_THUNK);
     ipcMain.removeAllListeners(IpcChannel.COMPLETE_THUNK);
+    ipcMain.removeAllListeners(IpcChannel.STATE_UPDATE_ACK);
     ipcMain.removeAllListeners(IpcChannel.BATCH_DISPATCH);
   }
 }

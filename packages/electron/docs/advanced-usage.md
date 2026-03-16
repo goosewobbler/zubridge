@@ -273,10 +273,10 @@ Target specific subscribers when dispatching actions:
 
 ```typescript
 // Only send to subscribers with 'admin' key
-dispatch('ADMIN_UPDATE', payload, { keys: ['admin'] });
+dispatch({ type: 'ADMIN_UPDATE', payload }, { keys: ['admin'] });
 
 // Send to multiple key groups
-dispatch('NOTIFICATION', message, { keys: ['user', 'admin'] });
+dispatch({ type: 'NOTIFICATION', payload: message }, { keys: ['user', 'admin'] });
 ```
 
 ### Performance Considerations
@@ -339,7 +339,7 @@ const bridge = preloadBridge({
 Actions with a priority at or above `priorityFlushThreshold` (default: 80) trigger an immediate flush of the current batch. This ensures time-sensitive actions with `immediate: true` (priority 100) are not delayed by the batch window:
 
 ```typescript
-dispatch('URGENT_ACTION', payload, { immediate: true });
+dispatch({ type: 'URGENT_ACTION', payload }, { immediate: true });
 ```
 
 The priority levels are:
