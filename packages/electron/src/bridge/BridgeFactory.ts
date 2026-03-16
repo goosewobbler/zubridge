@@ -146,7 +146,10 @@ export function createCoreBridge<State extends AnyState>(
           subManager.notify(sanitizedState, sanitizedState);
         }
       }
-      // Store sanitized state so we don't re-sanitize it as prevState next time
+      // Store already-sanitized state to avoid re-sanitizing on the next tick.
+      // This assumes serializationOptions (particularly maxDepth) is stable
+      // across ticks — if options could change dynamically, prev and next would
+      // be sanitized with different depths, producing spurious diff entries.
       prevState = sanitizedState;
     });
   } catch (error) {
