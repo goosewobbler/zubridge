@@ -155,14 +155,32 @@ export class SubscriptionHandler<State extends AnyState> {
               normalizedKeys === '*' ? undefined : normalizedKeys,
             );
             const sanitizedState = sanitizeState(partialState, serializationOptions);
-            debug('core', `Sending full state update to window ${windowId}`);
 
-            safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
-              updateId,
-              delta: { type: 'full', fullState: sanitizedState },
-              thunkId: currentThunkId,
-              seq: this.nextSeq(windowId),
-            });
+            if (normalizedKeys === '*') {
+              // Full subscription — safe to replace entire state
+              debug('core', `Sending full state update to window ${windowId}`);
+              safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+                updateId,
+                delta: { type: 'full', fullState: sanitizedState },
+                thunkId: currentThunkId,
+                seq: this.nextSeq(windowId),
+              });
+            } else {
+              // Selective subscription — send as delta so the renderer merges into
+              // cachedState rather than replacing it, which would drop state from
+              // other subscriptions on the same window
+              debug('core', `Sending selective state update to window ${windowId}`);
+              const deltaChanged = this.stateToDeltaKeys(
+                sanitizedState as Partial<State>,
+                normalizedKeys,
+              );
+              safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+                updateId,
+                delta: { type: 'delta', changed: deltaChanged },
+                thunkId: currentThunkId,
+                seq: this.nextSeq(windowId),
+              });
+            }
           }
 
           // Update previous state for next delta calculation
@@ -290,7 +308,7 @@ export class SubscriptionHandler<State extends AnyState> {
       return {};
     }
 
-    if (keys === undefined || keys.includes('*')) {
+    if (keys === undefined) {
       const stateObj = partialState as Record<string, unknown>;
       const allKeys = new Set(Object.keys(stateObj));
       for (const key of allKeys) {

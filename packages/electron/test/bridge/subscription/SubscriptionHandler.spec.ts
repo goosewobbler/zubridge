@@ -274,7 +274,7 @@ describe('SubscriptionHandler', () => {
   });
 
   describe('deltas-disabled key filtering', () => {
-    it('should only send filtered state for selective subscriptions when deltas are disabled', async () => {
+    it('should send selective subscriptions as delta type when deltas are disabled', async () => {
       const fullState = { counter: 42, user: { name: 'Alice' }, secret: 'hidden' };
       const stateManager: StateManager<AnyState> = {
         getState: vi.fn(() => fullState),
@@ -319,17 +319,75 @@ describe('SubscriptionHandler', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // The full state update should only contain the 'counter' key, not the entire store
+      // Selective subscriptions with deltas disabled should send as 'delta' type
+      // so the renderer merges into cachedState rather than replacing it
+      type SendPayload = {
+        delta: {
+          type: string;
+          changed?: Record<string, unknown>;
+          fullState?: Record<string, unknown>;
+        };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const deltaSend = sendCalls.find((call) => (call[2] as SendPayload).delta.type === 'delta');
+      expect(deltaSend).toBeDefined();
+      const changed = (deltaSend?.[2] as SendPayload | undefined)?.delta.changed;
+      expect(changed).toHaveProperty('counter');
+      expect(changed).not.toHaveProperty('user');
+      expect(changed).not.toHaveProperty('secret');
+    });
+
+    it('should send full subscription as full type when deltas are disabled', async () => {
+      const fullState = { counter: 42, user: { name: 'Alice' } };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 101,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      let stateCallback: ((state: AnyState) => void) | undefined;
+      const mockSubManager = {
+        subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
+          stateCallback = cb;
+          return vi.fn(); // unsubscribe function
+        }),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+
+      mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+
+      // Create handler with deltas disabled, no keys (full subscription)
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: false },
+      );
+
+      handler.selectiveSubscribe(singleWc);
+
+      if (!stateCallback) throw new Error('stateCallback was not captured');
+      (safelySendToWindow as Mock).mockClear();
+      stateCallback(fullState);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Full subscription should still send as 'full' type
       type SendPayload = { delta: { type: string; fullState?: Record<string, unknown> } };
       const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
-      const fullStateSend = sendCalls.find(
-        (call) => (call[2] as SendPayload).delta.type === 'full',
-      );
-      expect(fullStateSend).toBeDefined();
-      const sentFullState = (fullStateSend?.[2] as SendPayload | undefined)?.delta.fullState;
+      const fullSend = sendCalls.find((call) => (call[2] as SendPayload).delta.type === 'full');
+      expect(fullSend).toBeDefined();
+      const sentFullState = (fullSend?.[2] as SendPayload | undefined)?.delta.fullState;
       expect(sentFullState).toHaveProperty('counter');
-      expect(sentFullState).not.toHaveProperty('user');
-      expect(sentFullState).not.toHaveProperty('secret');
+      expect(sentFullState).toHaveProperty('user');
     });
   });
 
