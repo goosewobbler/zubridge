@@ -165,9 +165,26 @@ export class SubscriptionHandler<State extends AnyState> {
             );
             const sanitizedState = sanitizeState(partialState, serializationOptions);
 
-            // Skip send if sanitized state is empty (e.g. all values were
-            // non-serializable) — avoids tracking a thunk that never gets ACKed
-            if (sanitizedState == null || Object.keys(sanitizedState).length === 0) {
+            // Detect removed keys for selective subscriptions — keys that existed
+            // in the previous partial state but are now undefined in the new state.
+            let removedKeys: string[] | undefined;
+            if (Array.isArray(normalizedKeys) && subscriptionPrevState) {
+              const removed: string[] = [];
+              for (const key of normalizedKeys) {
+                const prevValue = deepGet(subscriptionPrevState as Record<string, unknown>, key);
+                const nextValue = deepGet(state as Record<string, unknown>, key);
+                if (prevValue !== undefined && nextValue === undefined) {
+                  removed.push(key);
+                }
+              }
+              if (removed.length > 0) removedKeys = removed;
+            }
+
+            // Skip send if sanitized state is empty AND no keys were removed
+            // (e.g. all values were non-serializable) — avoids tracking a thunk
+            // that never gets ACKed
+            const hasState = sanitizedState != null && Object.keys(sanitizedState).length > 0;
+            if (!hasState && !removedKeys) {
               subscriptionPrevState = state as State;
               return;
             }
@@ -205,7 +222,11 @@ export class SubscriptionHandler<State extends AnyState> {
               );
               safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
                 updateId,
-                delta: { type: 'delta', changed: deltaChanged },
+                delta: {
+                  type: 'delta',
+                  changed: Object.keys(deltaChanged).length > 0 ? deltaChanged : undefined,
+                  removed: removedKeys,
+                },
                 thunkId: currentThunkId,
                 seq: this.nextSeq(windowId),
               });

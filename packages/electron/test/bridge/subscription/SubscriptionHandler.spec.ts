@@ -868,6 +868,96 @@ describe('SubscriptionHandler', () => {
       expect(payload.delta.removed).toContain('optional');
     });
 
+    it('should send removed delta when all subscribed keys are deleted (deltas enabled)', () => {
+      const initialState = { session: { token: 'abc' }, counter: 1 };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 520,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      // Deltas enabled (default)
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      handler.selectiveSubscribe(wc, ['session.token']);
+      (safelySendToWindow as Mock).mockClear();
+
+      const subMgr = subManagers.get(520) as SubscriptionManager<AnyState>;
+
+      // Delete session.token — all subscribed keys removed
+      const updatedState = { session: {}, counter: 1 };
+      subMgr.notify(initialState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      expect(payload.delta.type).toBe('delta');
+      expect(payload.delta.removed).toContain('session.token');
+      // No changed keys — the only subscribed key was removed
+      expect(payload.delta.changed).toBeUndefined();
+    });
+
+    it('should send removed delta when subscribed key is deleted (deltas disabled)', () => {
+      const initialState = { session: { token: 'abc' }, counter: 1 };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 521,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      // Deltas disabled
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: false },
+      );
+
+      handler.selectiveSubscribe(wc, ['session.token']);
+      (safelySendToWindow as Mock).mockClear();
+
+      const subMgr = subManagers.get(521) as SubscriptionManager<AnyState>;
+
+      // Delete session.token
+      const updatedState = { session: {}, counter: 1 };
+      subMgr.notify(initialState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      expect(payload.delta.type).toBe('delta');
+      expect(payload.delta.removed).toContain('session.token');
+    });
+
     it('should increment sequence numbers across multiple sends to the same window', () => {
       const initialState = { counter: 0 };
       const stateManager: StateManager<AnyState> = {
