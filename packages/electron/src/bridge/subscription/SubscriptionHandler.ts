@@ -435,9 +435,12 @@ export class SubscriptionHandler<State extends AnyState> {
         if (subManager.getCurrentSubscriptionKeys(windowId).length === 0) {
           this.resourceManager.removeSubscriptionManager(windowId);
           this.windowSeqs.delete(windowId);
+          this.windowTracker.untrack(webContents);
         }
+      } else {
+        // No subscription manager means no subscriptions — safe to untrack
+        this.windowTracker.untrack(webContents);
       }
-      this.windowTracker.untrack(webContents);
     }
   }
 }
