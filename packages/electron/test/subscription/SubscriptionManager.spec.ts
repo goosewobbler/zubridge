@@ -92,6 +92,27 @@ describe('SubscriptionManager', () => {
       expect(keys).toEqual(['*']);
     });
 
+    it('should create independent entry for second all-keys subscription', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      // First subscribe to all state
+      const unsub1 = subscriptionManager.subscribe(undefined, callback1, windowId);
+      // Second subscribe to all state (e.g. React Strict Mode remount)
+      const unsub2 = subscriptionManager.subscribe(undefined, callback2, windowId);
+
+      // Both should be active — window should still be subscribed to '*'
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
+
+      // Unsubscribing the second should leave the first intact
+      unsub2();
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
+
+      // Unsubscribing the first should leave no subscriptions
+      unsub1();
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual([]);
+    });
+
     it('should replace specific keys with "*" when upgrading subscription', () => {
       // First subscribe to specific keys
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
