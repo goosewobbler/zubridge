@@ -333,7 +333,9 @@ export class SubscriptionHandler<State extends AnyState> {
       const stateObj = partialState as Record<string, unknown>;
       const allKeys = new Set(Object.keys(stateObj));
       for (const key of allKeys) {
-        result[key] = stateObj[key];
+        if (stateObj[key] !== undefined) {
+          result[key] = stateObj[key];
+        }
       }
       return result;
     }
