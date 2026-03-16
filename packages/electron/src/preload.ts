@@ -220,13 +220,6 @@ export const preloadBridge = <S extends AnyState>(
 
           if (isDuplicate) {
             debug('ipc', `Duplicate seq ${seq} detected, skipping update ${updateId}`);
-            // Still ACK so any re-sent updateId is cleared from the thunk manager
-            try {
-              const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
-              ipcRenderer.send(IpcChannel.STATE_UPDATE_ACK, { updateId, windowId, thunkId });
-            } catch {
-              /* best-effort */
-            }
             return;
           }
 
