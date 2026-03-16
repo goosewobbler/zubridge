@@ -72,6 +72,10 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
   for (let i = 0; i < keys.length - 1; i++) {
     if (curr[keys[i]] == null || typeof curr[keys[i]] !== 'object') {
       curr[keys[i]] = {};
+    } else {
+      // Shallow-clone so later iterations don't traverse into (and mutate)
+      // the source state when a parent path was stored as a live reference
+      curr[keys[i]] = { ...(curr[keys[i]] as Record<string, unknown>) };
     }
     curr = curr[keys[i]] as Record<string, unknown>;
   }

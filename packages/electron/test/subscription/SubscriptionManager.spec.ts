@@ -298,4 +298,15 @@ describe('getPartialState', () => {
     const result = getPartialState(state, ['removed']);
     expect(result).toEqual({});
   });
+
+  it('should not create live references to source state objects', () => {
+    const state = { user: { profile: { name: 'Alice' }, age: 30 } };
+    const result = getPartialState(state, ['user.profile.name', 'user.age']);
+
+    // result.user should not be the same reference as state.user
+    expect((result as typeof state).user).not.toBe(state.user);
+    // Mutating the result must not affect the source
+    ((result as typeof state).user as Record<string, unknown>).age = 99;
+    expect(state.user.age).toBe(30);
+  });
 });
