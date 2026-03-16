@@ -3,6 +3,7 @@ import type { WebContents } from 'electron';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { ResourceManager } from '../../../src/bridge/resources/ResourceManager.js';
 import { SubscriptionHandler } from '../../../src/bridge/subscription/SubscriptionHandler.js';
+import type { SubscriptionManager } from '../../../src/subscription/SubscriptionManager.js';
 import {
   getWebContents,
   safelySendToWindow,
@@ -497,6 +498,374 @@ describe('SubscriptionHandler', () => {
       const changed = (deltaSend?.[2] as DeltaPayload | undefined)?.delta.changed;
       // Should find the value using normalized key 'counter'
       expect(changed).toHaveProperty('counter', 42);
+    });
+  });
+
+  describe('integration: multi-subscription and lifecycle', () => {
+    /**
+     * Helper that wires up a real-storage ResourceManager mock so that
+     * SubscriptionManagers created by selectiveSubscribe are stored and
+     * retrievable — enabling full notify() → IPC lifecycle tests.
+     */
+    function createStoringResourceManager() {
+      const subManagers = new Map<number, unknown>();
+      const destroyListeners = new Set<number>();
+      return {
+        mock: {
+          getSubscriptionManager: vi.fn((id: number) => subManagers.get(id) ?? null),
+          addSubscriptionManager: vi.fn((id: number, mgr: unknown) => {
+            subManagers.set(id, mgr);
+          }),
+          removeSubscriptionManager: vi.fn((id: number) => {
+            subManagers.delete(id);
+          }),
+          hasDestroyListener: vi.fn((id: number) => destroyListeners.has(id)),
+          addDestroyListener: vi.fn((id: number) => {
+            destroyListeners.add(id);
+          }),
+          getMiddlewareCallbacks: vi.fn(() => ({})),
+          setMiddlewareCallbacks: vi.fn(),
+          clearAll: vi.fn(),
+        } as unknown as ResourceManager<AnyState>,
+        subManagers,
+      };
+    }
+
+    it('should handle multiple selective subscriptions on the same window without overwriting', () => {
+      const fullState = { counter: 10, user: { name: 'Alice' }, theme: 'dark' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 500,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      (safelySendToWindow as Mock).mockClear();
+
+      // First subscription: counter
+      handler.selectiveSubscribe(wc, ['counter']);
+      // Second subscription: user
+      handler.selectiveSubscribe(wc, ['user']);
+
+      // Both initial deltas should have been sent
+      type DeltaPayload = { delta: { type: string; changed?: Record<string, unknown> } };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const deltas = sendCalls
+        .filter((call) => (call[2] as DeltaPayload).delta.type === 'delta')
+        .map((call) => (call[2] as DeltaPayload).delta.changed);
+
+      // Should have initial deltas for both subscriptions
+      expect(deltas.length).toBeGreaterThanOrEqual(2);
+
+      // One delta should contain counter, another should contain user
+      const hasCounter = deltas.some((d) => d && 'counter' in d);
+      const hasUser = deltas.some((d) => d && 'user' in d);
+      expect(hasCounter).toBe(true);
+      expect(hasUser).toBe(true);
+
+      // Neither should leak the theme key (not subscribed)
+      const leaksTheme = deltas.some((d) => d && 'theme' in d);
+      expect(leaksTheme).toBe(false);
+    });
+
+    it('should send deltas with only changed subscribed keys on state update', () => {
+      const initialState = { counter: 1, user: { name: 'Alice' }, unrelated: 'foo' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 501,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      // Deltas enabled (default)
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      handler.selectiveSubscribe(wc, ['counter']);
+
+      // Clear sends from initial subscription
+      (safelySendToWindow as Mock).mockClear();
+
+      // Simulate a state change via the real SubscriptionManager's notify()
+      const subMgr = subManagers.get(501) as SubscriptionManager<AnyState>;
+
+      const updatedState = { counter: 5, user: { name: 'Alice' }, unrelated: 'bar' };
+      (subMgr as InstanceType<typeof SubscriptionManager>).notify(initialState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+        seq: number;
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      expect(payload.delta.type).toBe('delta');
+      expect(payload.delta.changed).toHaveProperty('counter', 5);
+      // Should NOT include unrelated keys even though they changed
+      expect(payload.delta.changed).not.toHaveProperty('unrelated');
+      expect(payload.delta.changed).not.toHaveProperty('user');
+    });
+
+    it('should include removed keys in delta when subscribed key is deleted', () => {
+      const initialState = { counter: 1, optional: 'exists' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 502,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      handler.selectiveSubscribe(wc, ['counter', 'optional']);
+      (safelySendToWindow as Mock).mockClear();
+
+      const subMgr = subManagers.get(502) as SubscriptionManager<AnyState>;
+
+      // State update where 'optional' is removed
+      const updatedState = { counter: 2 };
+      subMgr.notify(initialState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      expect(payload.delta.type).toBe('delta');
+      expect(payload.delta.changed).toHaveProperty('counter', 2);
+      expect(payload.delta.removed).toContain('optional');
+    });
+
+    it('should increment sequence numbers across multiple sends to the same window', () => {
+      const initialState = { counter: 0 };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 503,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      (safelySendToWindow as Mock).mockClear();
+      handler.selectiveSubscribe(wc, ['counter']);
+
+      const subMgr = subManagers.get(503) as SubscriptionManager<AnyState>;
+
+      // Send two more updates
+      subMgr.notify(initialState, { counter: 1 });
+      subMgr.notify({ counter: 1 }, { counter: 2 });
+
+      type SeqPayload = { seq: number };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+
+      // Initial send + 2 updates = 3 sends total
+      expect(sendCalls.length).toBe(3);
+
+      const seqs = sendCalls.map((call) => (call[2] as SeqPayload).seq);
+      // Sequence numbers should be strictly increasing: 1, 2, 3
+      expect(seqs).toEqual([1, 2, 3]);
+    });
+
+    it('should handle deep key path subscriptions', () => {
+      const initialState = {
+        user: { profile: { theme: 'light', name: 'Alice' }, age: 30 },
+        counter: 0,
+      };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 504,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      (safelySendToWindow as Mock).mockClear();
+      handler.selectiveSubscribe(wc, ['user.profile.theme']);
+
+      // Check the initial delta contains the deep key
+      type DeltaPayload = { delta: { type: string; changed?: Record<string, unknown> } };
+      let sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+      const initialPayload = sendCalls[0][2] as DeltaPayload;
+      expect(initialPayload.delta.changed).toHaveProperty('user.profile.theme', 'light');
+      // Should NOT leak sibling or parent keys
+      expect(initialPayload.delta.changed).not.toHaveProperty('user.profile.name');
+      expect(initialPayload.delta.changed).not.toHaveProperty('user.age');
+      expect(initialPayload.delta.changed).not.toHaveProperty('counter');
+
+      // Now simulate a state update that changes the deep key
+      (safelySendToWindow as Mock).mockClear();
+      const subMgr = subManagers.get(504) as SubscriptionManager<AnyState>;
+
+      const updatedState = {
+        user: { profile: { theme: 'dark', name: 'Alice' }, age: 30 },
+        counter: 0,
+      };
+      subMgr.notify(initialState, updatedState);
+
+      sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+      const updatePayload = sendCalls[0][2] as DeltaPayload;
+      expect(updatePayload.delta.changed).toHaveProperty('user.profile.theme', 'dark');
+      expect(updatePayload.delta.changed).not.toHaveProperty('user.profile.name');
+    });
+
+    it('should skip delta when subscribed keys have not changed', () => {
+      const initialState = { counter: 1, other: 'a' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 505,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      handler.selectiveSubscribe(wc, ['counter']);
+      (safelySendToWindow as Mock).mockClear();
+
+      const subMgr = subManagers.get(505) as SubscriptionManager<AnyState>;
+
+      // Change only 'other', which is not subscribed — SubscriptionManager will
+      // not call the callback at all since hasRelevantChange returns false for 'counter'
+      const updatedState = { counter: 1, other: 'b' };
+      subMgr.notify(initialState, updatedState);
+
+      // No IPC send should have occurred
+      expect(safelySendToWindow).not.toHaveBeenCalled();
+    });
+
+    it('should maintain independent sequence numbers per window', () => {
+      const initialState = { counter: 0 };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc1 = {
+        id: 601,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+      const wc2 = {
+        id: 602,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      (safelySendToWindow as Mock).mockClear();
+      handler.selectiveSubscribe(wc1, ['counter']);
+      handler.selectiveSubscribe(wc2, ['counter']);
+
+      // Both windows get initial state — seq 1 each
+      type SeqPayload = { seq: number };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const wc1Seqs = sendCalls
+        .filter((call) => call[0] === wc1)
+        .map((call) => (call[2] as SeqPayload).seq);
+      const wc2Seqs = sendCalls
+        .filter((call) => call[0] === wc2)
+        .map((call) => (call[2] as SeqPayload).seq);
+
+      // Both should start at seq 1
+      expect(wc1Seqs).toEqual([1]);
+      expect(wc2Seqs).toEqual([1]);
+
+      // Now send an update only to wc1's subscription manager
+      (safelySendToWindow as Mock).mockClear();
+      // Both windows share the same SubscriptionManager since they're subscribed
+      // via separate selectiveSubscribe calls, but let's notify via wc1's manager
+      const subMgr1 = subManagers.get(601) as SubscriptionManager<AnyState>;
+      subMgr1.notify(initialState, { counter: 1 });
+
+      const newCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const wc1NewSeqs = newCalls
+        .filter((call) => call[0] === wc1)
+        .map((call) => (call[2] as SeqPayload).seq);
+
+      // wc1 should be at seq 2 now
+      expect(wc1NewSeqs).toEqual([2]);
     });
   });
 
