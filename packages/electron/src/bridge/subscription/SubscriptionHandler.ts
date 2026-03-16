@@ -135,7 +135,7 @@ export class SubscriptionHandler<State extends AnyState> {
               seq: this.nextSeq(windowId),
             });
           } else {
-            // Full state for initial update or when deltas are disabled
+            // Deltas are disabled — send the full sanitised state on every update
             const updateId = randomUUID();
             const currentThunkId = thunkManager.getCurrentThunkActionId();
 

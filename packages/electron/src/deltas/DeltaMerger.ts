@@ -105,6 +105,7 @@ export class DeltaMerger<S> {
     if (typeof value === 'object' && typeof structuredClone === 'function') {
       return structuredClone(value);
     }
+    // Fallback: JSON round-trip strips undefined properties and converts NaN/Infinity to null
     return JSON.parse(JSON.stringify(value));
   }
 
