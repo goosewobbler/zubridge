@@ -222,6 +222,9 @@ export const preloadBridge = <S extends AnyState>(
             return;
           }
 
+          // Capture previous expectedSeq for debug logging before overwriting
+          const prevExpectedSeq = expectedSeq;
+
           // Update expectedSeq before any await to prevent concurrent handlers
           // from seeing stale values. After an await (getState), only apply our seq
           // if no concurrent handler has already advanced it further.
@@ -232,7 +235,7 @@ export const preloadBridge = <S extends AnyState>(
           if (hasSeqGap) {
             debug(
               'ipc',
-              `Sequence gap detected (expected ${expectedSeq + 1}, got ${seq}), resyncing via getState`,
+              `Sequence gap detected (expected ${prevExpectedSeq + 1}, got ${seq}), resyncing via getState`,
             );
             newState = await handlers.getState();
             cachedState = newState;
