@@ -222,7 +222,11 @@ export const preloadBridge = <S extends AnyState>(
             );
             newState = await handlers.getState();
             cachedState = newState;
-          } else if (delta && delta.type === 'delta' && (delta.changed || delta.removed)) {
+          } else if (
+            delta?.type === 'delta' &&
+            ((delta.changed && Object.keys(delta.changed).length > 0) ||
+              (delta.removed && delta.removed.length > 0))
+          ) {
             const base = cachedState ?? ({} as S);
             newState = deltaMerger.merge(base, delta) as S;
             cachedState = newState;
