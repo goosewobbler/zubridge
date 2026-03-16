@@ -103,12 +103,17 @@ export class SubscriptionHandler<State extends AnyState> {
             serializationOptions.maxDepth = this.serializationMaxDepth;
           }
 
-          // Calculate delta first to determine if an update should be sent
-          // subscriptionPrevState is always defined here — seeded synchronously
-          // at subscription time before any notify() can fire.
+          // Guard: if the callback fires before subscriptionPrevState is seeded
+          // (e.g. a synchronous subscribe implementation), seed it now and skip —
+          // the initial state was already sent separately below.
+          if (subscriptionPrevState === undefined) {
+            subscriptionPrevState = state as State;
+            return;
+          }
+
           if (this.deltaConfig.enabled) {
             const delta = this.deltaCalculator.calculate(
-              subscriptionPrevState ?? ({} as State),
+              subscriptionPrevState,
               state as State,
               normalizedKeys,
             );
@@ -163,6 +168,9 @@ export class SubscriptionHandler<State extends AnyState> {
               thunkId: currentThunkId,
               seq: this.nextSeq(windowId),
             });
+
+            // Deltas-enabled: store raw state — deltaCalculator compares raw-to-raw
+            subscriptionPrevState = state as State;
           } else {
             // Deltas are disabled — send the full sanitised state on every update
             // Apply key-filtering so selective subscriptions don't leak the full store
@@ -174,12 +182,15 @@ export class SubscriptionHandler<State extends AnyState> {
 
             // Detect removed keys for selective subscriptions — keys that existed
             // in the previous partial state but are now undefined in the new state.
+            // Both sides use sanitized values for parity: subscriptionPrevState is
+            // seeded from sanitizeState(), so nextValue must also come from the
+            // sanitized form to avoid false positives from non-serializable values.
             let removedKeys: string[] | undefined;
             if (Array.isArray(normalizedKeys) && subscriptionPrevState) {
               const removed: string[] = [];
               for (const key of normalizedKeys) {
                 const prevValue = deepGet(subscriptionPrevState as Record<string, unknown>, key);
-                const nextValue = deepGet(state as Record<string, unknown>, key);
+                const nextValue = deepGet(sanitizedState as Record<string, unknown>, key);
                 if (prevValue !== undefined && nextValue === undefined) {
                   removed.push(key);
                 }
@@ -192,7 +203,7 @@ export class SubscriptionHandler<State extends AnyState> {
             // that never gets ACKed
             const hasState = sanitizedState != null && Object.keys(sanitizedState).length > 0;
             if (!hasState && !removedKeys) {
-              subscriptionPrevState = state as State;
+              subscriptionPrevState = sanitizedState as State;
               return;
             }
 
@@ -238,10 +249,11 @@ export class SubscriptionHandler<State extends AnyState> {
                 seq: this.nextSeq(windowId),
               });
             }
-          }
 
-          // Update previous state for next delta calculation
-          subscriptionPrevState = state as State;
+            // Deltas-disabled: store sanitized state — removal check compares
+            // sanitized prev against sanitized next for baseline parity
+            subscriptionPrevState = sanitizedState as State;
+          }
         },
         windowId,
       );
