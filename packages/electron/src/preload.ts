@@ -271,17 +271,17 @@ export const preloadBridge = <S extends AnyState>(
             expectedSeq = seq;
           }
 
-          // Skip notifying listeners if the initial state is empty — prevents
-          // flash-of-empty-content when the first delta has no meaningful changes
-          // (e.g., empty-key subscription or all values were non-serializable)
-          const isEmptyInitialState =
+          // Only suppress notification if the message itself was a no-op initial send
+          // (empty changed, no removed) — not for genuinely empty stores, which should
+          // still notify subscribers so they can prime their state correctly
+          const isNoOpInitialSend =
             hadNoCachedState &&
-            newState &&
-            typeof newState === 'object' &&
-            Object.keys(newState as Record<string, unknown>).length === 0;
+            delta?.type === 'delta' &&
+            (!delta.changed || Object.keys(delta.changed).length === 0) &&
+            (!delta.removed || delta.removed.length === 0);
 
           // Notify all subscribers of the state change
-          if (!isEmptyInitialState) {
+          if (!isNoOpInitialSend) {
             listeners.forEach((fn) => {
               fn(newState);
             });
