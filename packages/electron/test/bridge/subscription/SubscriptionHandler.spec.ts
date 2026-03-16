@@ -1238,6 +1238,50 @@ describe('SubscriptionHandler', () => {
       expect(userUpdate).toBeDefined();
     });
 
+    it('should not register a subscription entry for empty-key subscriptions', () => {
+      const fullState = { counter: 10, user: { name: 'Alice' } };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 540,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      // First subscribe to 'counter'
+      handler.selectiveSubscribe(wc, ['counter']);
+
+      // Then subscribe with empty keys — should be a no-op, must NOT delete 'counter'
+      handler.selectiveSubscribe(wc, []);
+
+      const subMgr = subManagers.get(540) as SubscriptionManager<AnyState>;
+      const keys = subMgr.getCurrentSubscriptionKeys(540);
+      expect(keys).toContain('counter');
+
+      // The empty-key subscription should not send any IPC messages
+      (safelySendToWindow as Mock).mockClear();
+      const updatedState = { counter: 42, user: { name: 'Alice' } };
+      subMgr.notify(fullState, updatedState);
+
+      // Only the 'counter' subscription should fire
+      type DeltaPayload = { delta: { changed?: Record<string, unknown> } };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+      expect((sendCalls[0][2] as DeltaPayload).delta.changed).toHaveProperty('counter', 42);
+    });
+
     it('should send selective updates as delta type when deltas are disabled to preserve sibling state', () => {
       const initialState = { counter: 1, user: { name: 'Alice' }, theme: 'dark' };
       const stateManager: StateManager<AnyState> = {
