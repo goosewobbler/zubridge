@@ -496,5 +496,23 @@ describe('DeltaMerger', () => {
       // Unchanged siblings should be preserved
       expect(result.items).toBe(currentState.items);
     });
+
+    it('should delete through a path where an intermediate value is falsy but non-null', () => {
+      // Regression: !next would short-circuit on 0/false/"", silently aborting deletion
+      const currentState = {
+        counter: 1,
+        flags: { enabled: false, label: 'test' },
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      } as TestState;
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        removed: ['flags.label'],
+      });
+
+      expect(result.flags).not.toHaveProperty('label');
+      expect((result.flags as Record<string, unknown>).enabled).toBe(false);
+    });
   });
 });
