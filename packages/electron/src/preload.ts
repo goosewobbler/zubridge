@@ -250,9 +250,6 @@ export const preloadBridge = <S extends AnyState>(
             if (seq === undefined || seq >= expectedSeq) {
               cachedState = newState;
             }
-            if (seq !== undefined && seq > expectedSeq) {
-              expectedSeq = seq;
-            }
           } else if (
             delta?.type === 'delta' &&
             ((delta.changed && Object.keys(delta.changed).length > 0) ||
@@ -281,9 +278,6 @@ export const preloadBridge = <S extends AnyState>(
             newState = await handlers.getState();
             if (seq === undefined || seq >= expectedSeq) {
               cachedState = newState;
-            }
-            if (seq !== undefined && seq > expectedSeq) {
-              expectedSeq = seq;
             }
           }
 
