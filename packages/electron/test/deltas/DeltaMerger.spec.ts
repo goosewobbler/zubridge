@@ -285,6 +285,35 @@ describe('DeltaMerger', () => {
       expect(result.user).not.toBe(currentState.user);
     });
 
+    it('should preserve both writes when sibling dot-paths share a leaf parent in reverse order', () => {
+      const originalProfile = { theme: 'dark', fontSize: 14 };
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: originalProfile },
+        items: [],
+      };
+
+      // Keys deliberately in reverse-sorted order so the second call to
+      // setDeepWithStructuralSharing must hit the "already cloned — reuse"
+      // branch for user.profile rather than cloning a second time (which
+      // would discard the theme write).
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: { 'user.profile.theme': 'light', 'user.profile.fontSize': 18 },
+      });
+
+      // Both sibling writes must survive
+      expect(result.user.profile.theme).toBe('light');
+      expect(result.user.profile.fontSize).toBe(18);
+      // The profile clone is shared — only one clone, not two
+      expect(result.user.profile).not.toBe(originalProfile);
+      // Original must be untouched
+      expect(originalProfile.theme).toBe('dark');
+      expect(originalProfile.fontSize).toBe(14);
+      // Unrelated branches structurally shared
+      expect(result.items).toBe(currentState.items);
+    });
+
     it('should handle overlapping parent-child paths', () => {
       const currentState: TestState = {
         counter: 1,
