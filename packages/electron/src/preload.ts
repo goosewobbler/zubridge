@@ -209,6 +209,7 @@ export const preloadBridge = <S extends AnyState>(
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
           let newState: S;
+          let didUpdate = true;
 
           // Detect sequence gaps — if we missed updates, the cached state is stale
           // and deltas cannot be safely applied
@@ -249,6 +250,8 @@ export const preloadBridge = <S extends AnyState>(
             // advanced cachedState to a newer position during the await
             if (seq === undefined || seq >= expectedSeq) {
               cachedState = newState;
+            } else {
+              didUpdate = false;
             }
           } else if (
             delta?.type === 'delta' &&
@@ -278,14 +281,20 @@ export const preloadBridge = <S extends AnyState>(
             newState = await handlers.getState();
             if (seq === undefined || seq >= expectedSeq) {
               cachedState = newState;
+            } else {
+              didUpdate = false;
             }
           }
 
-          // Notify all subscribers of the state change — always notify, even for
-          // empty initial state, so hooks can initialize with the correct value
-          listeners.forEach((fn) => {
-            fn(newState);
-          });
+          // Only notify when we actually updated cachedState — if a concurrent
+          // handler advanced state during an await, it already notified listeners
+          // with the correct snapshot; re-notifying with our stale result would
+          // deliver an out-of-order state to subscribers.
+          if (didUpdate) {
+            listeners.forEach((fn) => {
+              fn(newState);
+            });
+          }
 
           // Send acknowledgment back to main process
           debug('ipc', `Sending acknowledgment for state update ${updateId}`);
