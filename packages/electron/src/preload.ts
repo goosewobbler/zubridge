@@ -222,6 +222,13 @@ export const preloadBridge = <S extends AnyState>(
             return;
           }
 
+          // Update expectedSeq before any await to prevent concurrent handlers
+          // from seeing stale values. After an await (getState), only apply our seq
+          // if no concurrent handler has already advanced it further.
+          if (seq !== undefined) {
+            expectedSeq = seq;
+          }
+
           if (hasSeqGap) {
             debug(
               'ipc',
@@ -229,6 +236,11 @@ export const preloadBridge = <S extends AnyState>(
             );
             newState = await handlers.getState();
             cachedState = newState;
+            // A concurrent handler may have advanced expectedSeq while we awaited —
+            // only apply our seq if it's still the highest seen
+            if (seq !== undefined && seq > expectedSeq) {
+              expectedSeq = seq;
+            }
           } else if (
             delta?.type === 'delta' &&
             ((delta.changed && Object.keys(delta.changed).length > 0) ||
@@ -256,11 +268,9 @@ export const preloadBridge = <S extends AnyState>(
             );
             newState = await handlers.getState();
             cachedState = newState;
-          }
-
-          // Track sequence for gap detection
-          if (seq !== undefined) {
-            expectedSeq = seq;
+            if (seq !== undefined && seq > expectedSeq) {
+              expectedSeq = seq;
+            }
           }
 
           // Notify all subscribers of the state change — always notify, even for
