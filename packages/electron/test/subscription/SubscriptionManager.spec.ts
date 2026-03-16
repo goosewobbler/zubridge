@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SubscriptionManager } from '../../src/subscription/SubscriptionManager.js';
+import {
+  getPartialState,
+  SubscriptionManager,
+} from '../../src/subscription/SubscriptionManager.js';
 
 describe('SubscriptionManager', () => {
   let subscriptionManager: SubscriptionManager<Record<string, unknown>>;
@@ -127,11 +130,26 @@ describe('SubscriptionManager', () => {
       expect(mockCallback).not.toHaveBeenCalled();
     });
 
-    it('should not notify with empty partial state', () => {
+    it('should not notify when subscribed key never existed in either state', () => {
       subscriptionManager.subscribe(['nonexistent'], mockCallback, windowId);
       subscriptionManager.notify(initialState, updatedState);
 
       expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it('should notify when subscribed key is deleted even if partial state is empty', () => {
+      const prevState = { counter: 1, session: { token: 'abc' } };
+      subscriptionManager.subscribe(['session.token'], mockCallback, windowId);
+
+      // Delete session.token — partial state will be empty but the callback
+      // must fire so that downstream delta calculators can emit `removed` entries.
+      const nextState = { counter: 1, session: {} };
+      subscriptionManager.notify(
+        prevState as Record<string, unknown>,
+        nextState as Record<string, unknown>,
+      );
+
+      expect(mockCallback).toHaveBeenCalledWith({});
     });
 
     it('should notify multiple windows independently', () => {
@@ -258,5 +276,26 @@ describe('SubscriptionManager', () => {
       expect(keys).toContain('theme');
       expect(keys.length).toBe(2);
     });
+  });
+});
+
+describe('getPartialState', () => {
+  it('should preserve falsy leaf values (0, false, empty string)', () => {
+    const state = { count: 0, active: false, label: '' };
+    const result = getPartialState(state, ['count', 'active', 'label']);
+    expect(result).toEqual({ count: 0, active: false, label: '' });
+  });
+
+  it('should preserve deeply nested falsy leaf values', () => {
+    const state = { a: { b: { enabled: false, count: 0, label: '' } } };
+    const result = getPartialState(state, ['a.b.enabled', 'a.b.count', 'a.b.label']);
+    expect(result).toEqual({ a: { b: { enabled: false, count: 0, label: '' } } });
+  });
+
+  it('should return empty object for deleted key', () => {
+    const state = { counter: 1 };
+    // 'removed' key doesn't exist in state
+    const result = getPartialState(state, ['removed']);
+    expect(result).toEqual({});
   });
 });
