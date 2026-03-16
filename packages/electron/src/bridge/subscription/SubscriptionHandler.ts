@@ -104,10 +104,10 @@ export class SubscriptionHandler<State extends AnyState> {
           }
 
           // Guard: if the callback fires before subscriptionPrevState is seeded
-          // (e.g. a synchronous subscribe implementation), seed it now and skip —
-          // the initial state was already sent separately below.
+          // (e.g. a synchronous subscribe implementation), skip — the initial
+          // state is sent separately below, and subscriptionPrevState is seeded
+          // after subManager.subscribe() returns.
           if (subscriptionPrevState === undefined) {
-            subscriptionPrevState = state as State;
             return;
           }
 

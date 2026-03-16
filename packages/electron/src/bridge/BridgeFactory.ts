@@ -128,9 +128,6 @@ export function createCoreBridge<State extends AnyState>(
         serializationOptions.maxDepth = options.serialization.maxDepth;
       }
       const sanitizedState = sanitizeState(state, serializationOptions) as State;
-      const sanitizedPrevState = prevState
-        ? (sanitizeState(prevState, serializationOptions) as State)
-        : undefined;
 
       for (const webContents of activeWebContents) {
         const windowId = webContents.id;
@@ -140,16 +137,17 @@ export function createCoreBridge<State extends AnyState>(
           continue;
         }
         // Only notify if relevant keys changed
-        if (sanitizedPrevState !== undefined) {
+        if (prevState !== undefined) {
           debug('core', `Notifying window ${windowId} of state change`);
-          subManager.notify(sanitizedPrevState, sanitizedState);
+          subManager.notify(prevState, sanitizedState);
         } else {
           // On first run, send full state to all subscribers
           debug('core', `Sending initial state to window ${windowId}`);
           subManager.notify(sanitizedState, sanitizedState);
         }
       }
-      prevState = state;
+      // Store sanitized state so we don't re-sanitize it as prevState next time
+      prevState = sanitizedState;
     });
   } catch (error) {
     debug('core', 'Error subscribing to state manager:', error);
