@@ -99,10 +99,15 @@ export class DeltaMerger<S> {
     if (value === null || value === undefined) {
       return value;
     }
+    if (typeof value !== 'object') {
+      // Primitives are immutable — no cloning needed, and JSON round-trip would
+      // corrupt NaN / Infinity to null.
+      return value;
+    }
     if (Array.isArray(value)) {
       return value.map((item) => this.cloneValue(item));
     }
-    if (typeof value === 'object' && typeof structuredClone === 'function') {
+    if (typeof structuredClone === 'function') {
       return structuredClone(value);
     }
     // Fallback: JSON round-trip strips undefined properties and converts NaN/Infinity to null
