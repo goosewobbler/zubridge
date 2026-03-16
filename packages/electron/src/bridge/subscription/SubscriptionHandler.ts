@@ -255,16 +255,18 @@ export class SubscriptionHandler<State extends AnyState> {
       // Send initial state as a delta payload to properly handle overlapping subscriptions.
       // Using dot-path keys ensures multiple subscriptions with shared ancestors (e.g.
       // ['user.name'] and ['user.profile']) merge correctly instead of overwriting each other.
-      //
-      // Note: stateToDeltaKeys operates on sanitized state, so keys whose values were
-      // non-serializable (e.g. functions) are already absent from currentState and will
-      // be silently omitted from the initial delta. This is intentional — non-serializable
-      // values cannot cross the IPC boundary. The renderer's state shape may diverge from
-      // the store for these keys, but they would be unusable on the renderer side regardless.
       const deltaChanged = this.stateToDeltaKeys(
         currentState as Partial<State>,
         normalizedKeys === '*' ? undefined : normalizedKeys,
       );
+
+      // Skip send if all values were stripped by sanitization (e.g. all non-serializable).
+      // An empty delta causes the renderer to fall back to getState(), leaking the full store.
+      if (Object.keys(deltaChanged).length === 0) {
+        subscriptionPrevState = currentState as State;
+        continue;
+      }
+
       safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
         updateId,
         delta: {
@@ -365,8 +367,7 @@ export class SubscriptionHandler<State extends AnyState> {
 
     if (keys === undefined) {
       const stateObj = partialState as Record<string, unknown>;
-      const allKeys = new Set(Object.keys(stateObj));
-      for (const key of allKeys) {
+      for (const key of Object.keys(stateObj)) {
         if (stateObj[key] !== undefined) {
           result[key] = stateObj[key];
         }
@@ -375,19 +376,9 @@ export class SubscriptionHandler<State extends AnyState> {
     }
 
     for (const key of keys) {
-      const normalized = key.trim();
-      if (!normalized) continue;
-
-      if (normalized.includes('.')) {
-        const value = deepGet(partialState as Record<string, unknown>, normalized);
-        if (value !== undefined) {
-          result[normalized] = value;
-        }
-      } else {
-        const value = (partialState as Record<string, unknown>)[normalized];
-        if (value !== undefined) {
-          result[normalized] = value;
-        }
+      const value = deepGet(partialState as Record<string, unknown>, key);
+      if (value !== undefined) {
+        result[key] = value;
       }
     }
 

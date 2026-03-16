@@ -155,6 +155,45 @@ describe('SubscriptionHandler', () => {
       expect(typeof result.unsubscribe).toBe('function');
       expect(safelySendToWindow).not.toHaveBeenCalled();
     });
+
+    it('should not send initial delta when all subscribed values are non-serializable', async () => {
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+      // Simulate sanitizeState stripping all values (e.g. all functions)
+      (sanitizeState as Mock).mockReturnValueOnce({});
+
+      const stateWithFn = { onUpdate: () => {} };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => stateWithFn),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 900,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const mockSubManager = {
+        subscribe: vi.fn(() => vi.fn()),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+      (safelySendToWindow as Mock).mockClear();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      handler.selectiveSubscribe(singleWc, ['onUpdate']);
+
+      // Empty delta must not be sent — it would cause the renderer to
+      // fall back to getState(), leaking the full store
+      expect(safelySendToWindow).not.toHaveBeenCalled();
+    });
   });
 
   describe('unsubscribe', () => {
@@ -969,6 +1008,55 @@ describe('SubscriptionHandler', () => {
 
       // wc1 should be at seq 2 now
       expect(wc1NewSeqs).toEqual([2]);
+    });
+
+    it('should send selective updates as delta type when deltas are disabled to preserve sibling state', () => {
+      const initialState = { counter: 1, user: { name: 'Alice' }, theme: 'dark' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 700,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      // Deltas disabled
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: false },
+      );
+
+      handler.selectiveSubscribe(wc, ['counter']);
+      (safelySendToWindow as Mock).mockClear();
+
+      // Trigger a state update via the real SubscriptionManager's notify()
+      const subMgr = subManagers.get(700) as SubscriptionManager<AnyState>;
+      const updatedState = { counter: 5, user: { name: 'Bob' }, theme: 'light' };
+      subMgr.notify(initialState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; fullState?: unknown };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      // Must use type: 'delta' (not 'full') so the renderer merges into
+      // cachedState instead of replacing it — preserving sibling subscriptions
+      expect(payload.delta.type).toBe('delta');
+      expect(payload.delta.changed).toHaveProperty('counter', 5);
+      // Must not leak unsubscribed keys
+      expect(payload.delta.changed).not.toHaveProperty('user');
+      expect(payload.delta.changed).not.toHaveProperty('theme');
     });
   });
 
