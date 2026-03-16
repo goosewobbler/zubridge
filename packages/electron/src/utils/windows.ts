@@ -254,18 +254,25 @@ export const createWebContentsTracker = (): WebContentsTracker => {
       }
 
       const id = webContents.id;
-      debug('windows', `track: Adding WebContents ID ${id} to tracker`);
+      const alreadyTracked = activeIds.has(id);
+      debug(
+        'windows',
+        `track: ${alreadyTracked ? 'Re-tracking' : 'Adding'} WebContents ID ${id} to tracker`,
+      );
 
       webContentsTracker.set(webContents, { id });
       activeIds.add(id);
       webContentsById.set(id, webContents);
 
-      // Set up the destroyed listener for cleanup
-      setupDestroyListener(webContents, () => {
-        debug('windows', `track: Cleanup handler for WebContents ID ${id} triggered`);
-        activeIds.delete(id);
-        webContentsById.delete(id);
-      });
+      // Only register the destroyed listener once per window to avoid
+      // accumulating duplicate handlers (MaxListenersExceededWarning)
+      if (!alreadyTracked) {
+        setupDestroyListener(webContents, () => {
+          debug('windows', `track: Cleanup handler for WebContents ID ${id} triggered`);
+          activeIds.delete(id);
+          webContentsById.delete(id);
+        });
+      }
 
       return true;
     },
