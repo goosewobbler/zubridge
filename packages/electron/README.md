@@ -44,6 +44,8 @@ Actions from renderer processes are sent through IPC to the main process, which 
 - **Works with the latest [Electron security recommendations](https://www.electronjs.org/docs/latest/tutorial/security#checklist-security-recommendations)**
 - **Full sandbox mode support** with automatic Node.js polyfills for renderer and preload processes
 - **Rich action support** including thunks, inline actions, and action objects in both processes
+- **Delta updates** — sends only changed state over IPC, reducing payload size and serialization cost
+- **Action batching** — groups renderer actions into single IPC calls, reducing cross-process overhead
 - **Automatic cleanup** for destroyed windows and error recovery
 
 ## Installation
@@ -158,31 +160,9 @@ For configuration options, priority-based flushing, and performance details, see
 
 ## Delta Updates
 
-Zubridge includes delta updates that send only changed portions of state instead of complete state values, reducing IPC payload size by 70-80% for typical updates.
+Zubridge includes delta updates that send only changed portions of state over IPC instead of the full state tree. Delta updates are enabled by default and require no configuration. The savings scale with state size — for large state trees, delta serialization can be up to 5x faster than full-state serialization.
 
-### Configuration
-
-```typescript
-const bridge = createZubridgeBridge(store, {
-  deltas: {
-    enabled: true, // Enabled by default
-  }
-});
-```
-
-### How It Works
-
-When enabled, Zubridge calculates the diff between the previous and current state, sending only the changed keys via IPC. The renderer process automatically merges these deltas into the local state.
-
-### Payload Reduction
-
-| Scenario | Full State | Delta | Reduction |
-|----------|-----------|-------|-----------|
-| Counter update | ~100 bytes | ~50 bytes | 50% |
-| Profile change (deep) | ~500 bytes | ~100 bytes | 80% |
-| Large array append (10,000 items) | ~500KB | ~200 bytes | 99.96% |
-
-For more details, see the [Performance documentation](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/performance.md).
+For configuration, how it works, and detailed benchmark results, see [Delta Updates](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md#delta-updates) in the Advanced Usage guide.
 
 ## Development
 

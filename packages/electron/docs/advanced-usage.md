@@ -178,7 +178,7 @@ import { store } from './store.js';
 
 // Initialize middleware with configuration
 const middleware = initZubridgeMiddleware({
-  logging: { 
+  logging: {
     enabled: true,
     console: true,
     pretty_print: true
@@ -191,7 +191,7 @@ const middleware = initZubridgeMiddleware({
 // Create bridge with middleware
 const bridge = createZustandBridge(store, [mainWindow], {
   middleware: middleware,
-  
+
   // Bridge lifecycle hook (currently available)
   onBridgeDestroy: () => {
     console.log('Bridge is being destroyed');
@@ -203,7 +203,7 @@ const bridge = createZustandBridge(store, [mainWindow], {
 The planned middleware will automatically handle:
 - **Action processing** - Logs actions before they're sent to the store
 - **State updates** - Tracks state changes and updates
-- **Performance monitoring** - Measures action processing times  
+- **Performance monitoring** - Measures action processing times
 - **Resource cleanup** - Automatically destroys middleware when bridge is destroyed
 
 **Currently Available**: The `onBridgeDestroy` hook is available now and can be used for custom cleanup logic when the bridge is destroyed.
@@ -288,6 +288,157 @@ For detailed benchmark results, see the [Performance](./performance.md) document
 **Recommendation**: Use selective subscriptions when you need to restrict renderer access to specific state keys (separation of concerns, security). For most applications, full state updates work equally well.
 
 
+## Delta Updates
+
+Delta updates send only the changed portions of state over IPC instead of the full state tree, reducing payload size and serialization cost.
+
+### How It Works
+
+The delta system operates as a three-stage pipeline:
+
+```
+Main Process                         IPC                    Renderer Process
+┌──────────────┐                                          ┌──────────────────┐
+│ DeltaCalc    │    delta payload    │                    │ DeltaMerger      │
+│ prev vs next ├───────────────────► │ webContents.send() ──► merge(state,   │
+│ → {changed,  │    (only diffs)     │                    │   delta)         │
+│    removed}  │                                          │ → new state      │
+└──────────────┘                                          └──────────────────┘
+```
+
+1. **DeltaCalculator** (main process) — Compares the previous state with the next state. For selective subscriptions, only the subscribed keys are compared. Produces a delta containing `changed` keys (with new values) and `removed` keys.
+
+2. **IPC transfer** — The delta payload (typically much smaller than full state) is serialized and sent via `webContents.send()`.
+
+3. **DeltaMerger** (renderer process) — Merges the delta into the current local state using structural sharing. Only the changed paths are cloned; unchanged subtrees keep their original references, preserving React memo/selector equality.
+
+### Configuration
+
+Delta updates are enabled by default. Configure via `createZustandBridge`:
+
+```typescript
+import { createZustandBridge } from '@zubridge/electron/main';
+
+const bridge = createZustandBridge(store, {
+  deltas: {
+    enabled: true, // Default: true
+  },
+});
+```
+
+### Delta Types
+
+The system produces two types of delta payloads:
+
+- **`full`** — Sent on initial subscription or when a renderer connects. Contains the complete subscribed state (or partial state for selective subscriptions).
+- **`delta`** — Sent on subsequent state changes. Contains only `changed` key-value pairs and/or `removed` key names.
+
+```typescript
+// Full state (initial)
+{ type: 'full', fullState: { counter: 42, user: { name: 'Alice' } } }
+
+// Delta (subsequent update)
+{ type: 'delta', changed: { counter: 43 } }
+
+// Delta with removals
+{ type: 'delta', changed: { counter: 43 }, removed: ['tempKey'] }
+```
+
+### Structural Sharing
+
+The `DeltaMerger` uses structural sharing when applying deltas, which means:
+
+- **Top-level**: A shallow clone of the state object is created (`{ ...state }`)
+- **Changed paths**: Only the objects along the changed path are cloned. For a change to `user.profile.theme`, only `user` and `user.profile` are cloned; all other top-level keys keep their original references.
+- **Unchanged subtrees**: References are preserved, so `prevState.items === nextState.items` for unchanged keys. This is important for React's `useMemo`, `React.memo`, and selector equality checks.
+
+### Sequence Detection
+
+Each delta update includes a sequence number. The renderer tracks the expected sequence and detects:
+
+- **Gaps** — A missed update (e.g., seq jumps from 3 to 5). The renderer requests a full state resync.
+- **Duplicates** — A repeated sequence number. The update is silently skipped.
+- **Backward resets** — A sequence number lower than expected (e.g., after main process restart). Triggers a full resync.
+
+### Interaction with Selective Subscriptions
+
+Delta updates and selective subscriptions work together:
+
+- When a window subscribes to specific keys (e.g., `['counter', 'user']`), the `DeltaCalculator` only compares those keys, skipping the rest of the state tree.
+- The initial `full` delta contains only the subscribed keys, not the entire store.
+- Subsequent `delta` payloads contain only the changed values among the subscribed keys.
+
+This combination provides both payload size reduction (deltas) and access control (selective subscriptions).
+
+### Disabling Deltas
+
+When deltas are disabled, the full subscribed state is sent on every update. Selective subscription key filtering still applies — only the subscribed keys are included in the payload.
+
+```typescript
+const bridge = createZustandBridge(store, {
+  deltas: {
+    enabled: false,
+  },
+});
+```
+
+### Fallback Behavior
+
+When the renderer detects a sequence gap (a missed or out-of-order delta), it cannot safely apply the delta because the local state may be stale. In this case:
+
+1. The renderer logs a warning (if `debug: true`) indicating the gap
+2. The stale delta is discarded
+3. The renderer immediately calls `getState()` via IPC to fetch the current full state from the main process
+
+Backward sequence resets (e.g., after a main process restart) are treated the same as gaps — the renderer discards the delta and resyncs via `getState()`.
+
+### Interaction with Batching
+
+Delta updates and action batching operate on different stages of the pipeline and are fully independent:
+
+- **Batching** affects the **dispatch path** (renderer → main): multiple actions are grouped into a single IPC call
+- **Deltas** affect the **state sync path** (main → renderer): only changed state is sent back
+
+Both can be enabled simultaneously (the default). Disabling one has no effect on the other.
+
+### Renderer-Side Usage
+
+Delta updates are transparent to renderer code. No API changes are needed — `createUseStore` and `useDispatch` work identically whether deltas are enabled or disabled. The `DeltaMerger` runs internally within the preload bridge handlers, so components receive the merged state as usual:
+
+```typescript
+// This works the same with or without deltas
+const counter = useStore((state) => state.counter);
+```
+
+Structural sharing means that unchanged state references are preserved across delta merges, so React selectors and `React.memo` continue to work correctly without extra configuration.
+
+### Debugging
+
+Enable debug logging in the preload bridge to see delta operations:
+
+```typescript
+const { handlers } = preloadBridge({ debug: true });
+```
+
+With debug enabled, the console logs:
+- Each state update received (update ID, associated thunk ID)
+- Delta merges (`Merging delta for update ...`)
+- Full state updates (`Received full state update ...`)
+- Sequence gap detection (`Sequence gap detected (expected N, got M), resyncing via getState`)
+- Duplicate sequence detection (`Duplicate seq N detected, skipping update ...`)
+- Fallback to IPC getState when no delta or full state is available
+
+### Benchmarking
+
+Run `pnpm bench` in the electron package to measure delta calculation and merge throughput:
+
+```bash
+cd packages/electron
+pnpm bench
+```
+
+The benchmarks cover `DeltaCalculator` (main process diff computation), `DeltaMerger` (renderer-side merge with structural sharing), and payload size comparisons. For detailed benchmark results, see the [Performance](./performance.md#delta-updates) documentation.
+
 ## Action Batching
 
 Zubridge includes built-in action batching that groups multiple renderer actions into single IPC calls to the main process, reducing cross-process overhead for high-frequency updates.
@@ -366,7 +517,7 @@ const bulkUpdateThunk = async (getState, dispatch) => {
   void dispatch.batch({ type: 'UPDATE', payload: { id: 1 } });
   void dispatch.batch({ type: 'UPDATE', payload: { id: 2 } });
   void dispatch.batch({ type: 'UPDATE', payload: { id: 3 } });
-  
+
   // Flush immediately or let the batch window handle it
   const result = await dispatch.flush();
   console.log(`Sent ${result.actionsSent} actions in one batch`);
