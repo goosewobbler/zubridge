@@ -723,6 +723,59 @@ describe('SubscriptionHandler', () => {
       expect(leaksTheme).toBe(false);
     });
 
+    it('should propagate state changes to both subscriptions on the same window', () => {
+      const fullState = { counter: 10, user: { name: 'Alice' }, theme: 'dark' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 510,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      // Subscribe to counter, then to user — two independent subscriptions
+      handler.selectiveSubscribe(wc, ['counter']);
+      handler.selectiveSubscribe(wc, ['user']);
+
+      (safelySendToWindow as Mock).mockClear();
+
+      // Trigger a counter-only state change (user unchanged)
+      const subMgr = subManagers.get(510) as SubscriptionManager<AnyState>;
+      const newState = { counter: 42, user: { name: 'Alice' }, theme: 'dark' };
+      subMgr.notify(fullState, newState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+
+      // The counter subscription must fire — the user subscription should not
+      const counterUpdate = sendCalls.find((call) => {
+        const d = (call[2] as DeltaPayload).delta?.changed;
+        return d && 'counter' in d;
+      });
+      expect(counterUpdate).toBeDefined();
+
+      // The user subscription should NOT fire (user didn't change)
+      const userUpdate = sendCalls.find((call) => {
+        const d = (call[2] as DeltaPayload).delta?.changed;
+        return d && 'user' in d;
+      });
+      expect(userUpdate).toBeUndefined();
+    });
+
     it('should send deltas with only changed subscribed keys on state update', () => {
       const initialState = { counter: 1, user: { name: 'Alice' }, unrelated: 'foo' };
       const stateManager: StateManager<AnyState> = {

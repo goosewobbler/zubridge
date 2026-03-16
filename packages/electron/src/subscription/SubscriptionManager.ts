@@ -46,13 +46,6 @@ function normalizeKeys(keys?: string[]): string[] | '*' {
 }
 
 /**
- * Generates a unique key for a subscription based on window ID
- */
-function getSubscriptionKey(windowId: number): string {
-  return `window-${windowId}`;
-}
-
-/**
  * Extracts a partial state object for the given keys using deepGet.
  */
 export function getPartialState<S>(state: S, keys?: string[]): Partial<S> {
@@ -120,10 +113,17 @@ function hasRelevantChange<S>(prev: S, next: S, keys?: string[]): boolean {
 
 export class SubscriptionManager<S> {
   private subscriptions: Map<string, Subscription<S>> = new Map();
+  private nextSubId = 0;
+
+  private generateSubId(windowId: number): string {
+    return `window-${windowId}-sub-${this.nextSubId++}`;
+  }
 
   /**
    * Subscribe to state changes for specific keys (deep keys supported).
-   * Returns an unsubscribe function.
+   * Each call creates an independent subscription entry so that multiple
+   * subscriptions on the same window do not overwrite each other's callbacks.
+   * Returns an unsubscribe function that removes only this subscription.
    */
   subscribe(
     keys: string[] | undefined,
@@ -150,34 +150,29 @@ export class SubscriptionManager<S> {
         'subscription',
         `[subscribe] Window ${windowId} already has '*' subscription, keeping it`,
       );
-      return () => this.unsubscribe(keys, callback, windowId);
+      // Return a no-op — we didn't create an entry, so there's nothing to remove
+      return () => {};
     }
 
     const normalized = normalizeKeys(keys);
     debug('subscription', '[subscribe] Normalized keys:', normalized);
 
-    const subscriptionKey = getSubscriptionKey(windowId);
-    debug('subscription', `[subscribe] Using subscription key: ${subscriptionKey}`);
+    const subId = this.generateSubId(windowId);
+    debug('subscription', `[subscribe] Using subscription id: ${subId}`);
 
-    // Get the existing subscription if any
-    const existingSubscription = this.subscriptions.get(subscriptionKey);
-
-    // If normalized is '*', replace the subscription
+    // If normalized is '*', remove all existing subscriptions for this window
+    // and replace with a single '*' subscription
     if (normalized === '*') {
       debug('subscription', `[subscribe] Setting full '*' subscription for window ${windowId}`);
-      this.subscriptions.set(subscriptionKey, { keys: undefined, callback, windowId });
-    }
-    // If there's an existing subscription with specific keys, merge the keys
-    else if (existingSubscription?.keys) {
-      // Combine existing keys with new keys and remove duplicates
-      const mergedKeys = [...new Set([...existingSubscription.keys, ...normalized])];
-      debug('subscription', `[subscribe] Merging keys for window ${windowId}:`, mergedKeys);
-      this.subscriptions.set(subscriptionKey, { keys: mergedKeys, callback, windowId });
-    }
-    // Otherwise create a new subscription with just the normalized keys
-    else {
-      debug('subscription', `[subscribe] Setting new subscription for window ${windowId}`);
-      this.subscriptions.set(subscriptionKey, { keys: normalized, callback, windowId });
+      for (const [id, sub] of this.subscriptions) {
+        if (sub.windowId === windowId) {
+          this.subscriptions.delete(id);
+        }
+      }
+      this.subscriptions.set(subId, { keys: undefined, callback, windowId });
+    } else {
+      debug('subscription', `[subscribe] Adding subscription for window ${windowId}:`, normalized);
+      this.subscriptions.set(subId, { keys: normalized, callback, windowId });
     }
 
     debug('subscription', `[subscribe] New subscriptions size: ${this.subscriptions.size}`);
@@ -190,7 +185,9 @@ export class SubscriptionManager<S> {
       currentSubscriptions,
     );
 
-    return () => this.unsubscribe(keys, callback, windowId);
+    return () => {
+      this.subscriptions.delete(subId);
+    };
   }
 
   /**
@@ -206,48 +203,36 @@ export class SubscriptionManager<S> {
       `[unsubscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
     );
 
-    const subscriptionKey = getSubscriptionKey(windowId);
-    const subscription = this.subscriptions.get(subscriptionKey);
-
-    if (!subscription) {
-      debug('subscription', `[unsubscribe] No subscription found for window ${windowId}`);
-      return;
-    }
-
-    debug('subscription', `[unsubscribe] Current subscription for window ${windowId}:`, {
-      keys: subscription.keys,
-      hasCallback: !!subscription.callback,
-    });
-
-    // If no keys provided or '*' is included, remove entire subscription
+    // If no keys provided or '*' is included, remove all subscriptions for this window
     if (!keys || keys.length === 0 || keys.includes('*')) {
-      debug('subscription', `[unsubscribe] Removing entire subscription for window ${windowId}`);
-      this.subscriptions.delete(subscriptionKey);
+      debug('subscription', `[unsubscribe] Removing all subscriptions for window ${windowId}`);
+      for (const [id, sub] of this.subscriptions) {
+        if (sub.windowId === windowId) {
+          this.subscriptions.delete(id);
+        }
+      }
       return;
     }
 
-    // If we have a '*' subscription, keep it
-    if (subscription.keys === undefined) {
-      debug('subscription', `[unsubscribe] Keeping '*' subscription for window ${windowId}`);
-      return;
-    }
+    // For each subscription for this window, remove matching keys
+    for (const [id, sub] of this.subscriptions) {
+      if (sub.windowId !== windowId) continue;
 
-    // Handle normal case - remove specific keys from subscription
-    const remainingKeys = subscription.keys.filter((key) => !keys.includes(key));
-    debug('subscription', `[unsubscribe] Remaining keys for window ${windowId}:`, remainingKeys);
+      // If it's a '*' subscription, keep it
+      if (sub.keys === undefined) {
+        debug('subscription', `[unsubscribe] Keeping '*' subscription for window ${windowId}`);
+        continue;
+      }
 
-    if (remainingKeys.length === 0) {
-      debug(
-        'subscription',
-        `[unsubscribe] No keys left, removing subscription for window ${windowId}`,
-      );
-      this.subscriptions.delete(subscriptionKey);
-    } else {
-      debug(
-        'subscription',
-        `[unsubscribe] Updating subscription with remaining keys for window ${windowId}`,
-      );
-      this.subscriptions.set(subscriptionKey, { ...subscription, keys: remainingKeys });
+      const remainingKeys = sub.keys.filter((key) => !keys.includes(key));
+      debug('subscription', `[unsubscribe] Remaining keys for subscription ${id}:`, remainingKeys);
+
+      if (remainingKeys.length === 0) {
+        debug('subscription', `[unsubscribe] No keys left, removing subscription ${id}`);
+        this.subscriptions.delete(id);
+      } else {
+        this.subscriptions.set(id, { ...sub, keys: remainingKeys });
+      }
     }
   }
 
@@ -290,6 +275,7 @@ export class SubscriptionManager<S> {
 
   /**
    * For debugging: get all current subscription keys for a window.
+   * Aggregates keys across all subscriptions for the given window.
    * Returns:
    * - ['*'] for full state subscription
    * - [] for no subscriptions
@@ -301,24 +287,35 @@ export class SubscriptionManager<S> {
       `[getCurrentSubscriptionKeys] Looking up subscriptions for window ${windowId}`,
     );
 
-    const subscriptionKey = getSubscriptionKey(windowId);
-    const subscription = this.subscriptions.get(subscriptionKey);
+    const allKeys: Set<string> = new Set();
 
-    if (!subscription) {
+    for (const sub of this.subscriptions.values()) {
+      if (sub.windowId !== windowId) continue;
+
+      // If any subscription is '*', the window is subscribed to everything
+      if (sub.keys === undefined) {
+        debug(
+          'subscription',
+          `[getCurrentSubscriptionKeys] Found "*" subscription, returning ["*"]`,
+        );
+        return ['*'];
+      }
+
+      for (const key of sub.keys) {
+        allKeys.add(key);
+      }
+    }
+
+    if (allKeys.size === 0) {
       debug(
         'subscription',
-        `[getCurrentSubscriptionKeys] No subscription found for window ${windowId}`,
+        `[getCurrentSubscriptionKeys] No subscriptions found for window ${windowId}`,
       );
       return [];
     }
 
-    // If keys is undefined, it means '*' subscription
-    if (!subscription.keys) {
-      debug('subscription', `[getCurrentSubscriptionKeys] Found "*" subscription, returning ["*"]`);
-      return ['*'];
-    }
-
-    debug('subscription', '[getCurrentSubscriptionKeys] Found specific keys:', subscription.keys);
-    return subscription.keys;
+    const result = [...allKeys];
+    debug('subscription', '[getCurrentSubscriptionKeys] Found specific keys:', result);
+    return result;
   }
 }
