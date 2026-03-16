@@ -319,10 +319,7 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
           if (typeof action === 'string') {
             await baseDispatch(action, payloadOrOpts, { ...optsIfString, batch: true });
           } else {
-            const opts =
-              payloadOrOpts && typeof payloadOrOpts === 'object' && !Array.isArray(payloadOrOpts)
-                ? (payloadOrOpts as DispatchOptions)
-                : {};
+            const opts = (payloadOrOpts as Omit<DispatchOptions, 'batch'> | undefined) ?? {};
             await baseDispatch(action, { ...opts, batch: true });
           }
         },
