@@ -210,10 +210,12 @@ export const preloadBridge = <S extends AnyState>(
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
           let newState: S;
+          const hadNoCachedState = cachedState === null;
 
           // Detect sequence gaps — if we missed updates, the cached state is stale
           // and deltas cannot be safely applied
-          const hasSeqGap = seq !== undefined && expectedSeq > 0 && seq > expectedSeq + 1;
+          const hasSeqGap =
+            seq !== undefined && expectedSeq > 0 && (seq > expectedSeq + 1 || seq < expectedSeq);
 
           if (hasSeqGap) {
             debug(
@@ -269,10 +271,21 @@ export const preloadBridge = <S extends AnyState>(
             expectedSeq = seq;
           }
 
+          // Skip notifying listeners if the initial state is empty — prevents
+          // flash-of-empty-content when the first delta has no meaningful changes
+          // (e.g., empty-key subscription or all values were non-serializable)
+          const isEmptyInitialState =
+            hadNoCachedState &&
+            newState &&
+            typeof newState === 'object' &&
+            Object.keys(newState as Record<string, unknown>).length === 0;
+
           // Notify all subscribers of the state change
-          listeners.forEach((fn) => {
-            fn(newState);
-          });
+          if (!isEmptyInitialState) {
+            listeners.forEach((fn) => {
+              fn(newState);
+            });
+          }
 
           // Send acknowledgment back to main process
           debug('ipc', `Sending acknowledgment for state update ${updateId}`);
