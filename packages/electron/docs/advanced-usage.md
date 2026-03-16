@@ -330,14 +330,14 @@ const bridge = createZustandBridge(store, {
 
 The system produces two types of delta payloads:
 
-- **`full`** — Sent on initial subscription or when a renderer connects. Contains the complete subscribed state (or partial state for selective subscriptions).
-- **`delta`** — Sent on subsequent state changes. Contains only `changed` key-value pairs and/or `removed` key names.
+- **`delta`** — The primary format, used for both initial subscription state and subsequent updates. Contains `changed` key-value pairs and/or `removed` key names. Initial state is sent as a delta so that overlapping selective subscriptions merge correctly instead of overwriting each other.
+- **`full`** — Used internally during gap resync (sequence number discontinuity). Contains the complete state snapshot.
 
 ```typescript
-// Full state (initial)
-{ type: 'full', fullState: { counter: 42, user: { name: 'Alice' } } }
+// Initial subscription state (sent as delta for safe merging)
+{ type: 'delta', changed: { counter: 42, user: { name: 'Alice' } } }
 
-// Delta (subsequent update)
+// Subsequent update
 { type: 'delta', changed: { counter: 43 } }
 
 // Delta with removals
