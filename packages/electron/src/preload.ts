@@ -208,7 +208,10 @@ export const preloadBridge = <S extends AnyState>(
           };
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
-          let newState: S;
+          // Initialized to cachedState as a safe default — all branches below reassign it,
+          // but this prevents "used before assignment" under strict TS control-flow analysis
+          // across await boundaries.
+          let newState: S = cachedState ?? ({} as S);
           let didUpdate = true;
 
           // Detect sequence gaps — if we missed updates, the cached state is stale
@@ -279,7 +282,9 @@ export const preloadBridge = <S extends AnyState>(
             cachedState = newState;
             debug('ipc', `Received full state update ${updateId}`);
           } else {
-            // Fallback: get state via IPC if no delta and no full state
+            // No usable delta or full state — fetch current state via IPC.
+            // This can happen if the server sends a bare updateId with no payload
+            // (e.g. after a main-process state reset without a seq gap).
             debug(
               'ipc',
               `No delta or full state, falling back to IPC getState for update ${updateId}`,
