@@ -188,6 +188,12 @@ export class SubscriptionHandler<State extends AnyState> {
       // Send initial state as a delta payload to properly handle overlapping subscriptions.
       // Using dot-path keys ensures multiple subscriptions with shared ancestors (e.g.
       // ['user.name'] and ['user.profile']) merge correctly instead of overwriting each other.
+      //
+      // Note: stateToDeltaKeys operates on sanitized state, so keys whose values were
+      // non-serializable (e.g. functions) are already absent from currentState and will
+      // be silently omitted from the initial delta. This is intentional — non-serializable
+      // values cannot cross the IPC boundary. The renderer's state shape may diverge from
+      // the store for these keys, but they would be unusable on the renderer side regardless.
       const deltaChanged = this.stateToDeltaKeys(currentState as Partial<State>, keys);
       safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
         updateId,
@@ -251,8 +257,19 @@ export class SubscriptionHandler<State extends AnyState> {
 
     return {
       type: 'delta',
+      // Sanitize each value individually rather than treating the whole changed record
+      // as a State object. delta.changed uses dot-path keys (e.g. 'user.profile.theme')
+      // which are flat top-level keys, not nested paths — passing them through sanitizeState
+      // as-is works for primitives but the cast to State silently drops type safety.
       changed: delta.changed
-        ? (sanitizeState(delta.changed as State, options) as Record<string, unknown>)
+        ? Object.fromEntries(
+            Object.entries(delta.changed)
+              .map(([k, v]) => [
+                k,
+                v !== null && typeof v === 'object' ? sanitizeState(v as State, options) : v,
+              ])
+              .filter(([, v]) => v !== undefined),
+          )
         : undefined,
       removed: delta.removed,
     };
