@@ -212,6 +212,39 @@ describe('SubscriptionHandler', () => {
         expect(mockSubManager.unsubscribe).toHaveBeenCalledWith(keys, expect.any(Function), wc.id);
       });
     });
+
+    it('should not untrack window when partial unsubscribe leaves remaining subscriptions', () => {
+      const mockSubManager = {
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => ['theme']),
+      };
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+
+      const wc = mockWebContents[0];
+      subscriptionHandler.unsubscribe(wc, ['counter']);
+
+      expect(mockSubManager.unsubscribe).toHaveBeenCalledWith(
+        ['counter'],
+        expect.any(Function),
+        wc.id,
+      );
+      // Window still has 'theme' subscription — must NOT be untracked
+      expect((mockWindowTracker as unknown as { untrack: Mock }).untrack).not.toHaveBeenCalled();
+    });
+
+    it('should untrack window when unsubscribe removes all remaining subscriptions', () => {
+      const mockSubManager = {
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
+
+      const wc = mockWebContents[0];
+      subscriptionHandler.unsubscribe(wc, ['counter']);
+
+      // No subscriptions remain — window should be untracked
+      expect((mockWindowTracker as unknown as { untrack: Mock }).untrack).toHaveBeenCalledWith(wc);
+    });
   });
 
   describe('serialization maxDepth configuration', () => {
