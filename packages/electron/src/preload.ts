@@ -245,9 +245,11 @@ export const preloadBridge = <S extends AnyState>(
               `Sequence gap detected (expected ${prevExpectedSeq + 1}, got ${seq}), resyncing via getState`,
             );
             newState = await handlers.getState();
-            cachedState = newState;
-            // A concurrent handler may have advanced expectedSeq while we awaited —
-            // only apply our seq if it's still the highest seen
+            // Only apply the resync snapshot if no concurrent handler has already
+            // advanced cachedState to a newer position during the await
+            if (seq === undefined || seq >= expectedSeq) {
+              cachedState = newState;
+            }
             if (seq !== undefined && seq > expectedSeq) {
               expectedSeq = seq;
             }
@@ -277,7 +279,9 @@ export const preloadBridge = <S extends AnyState>(
               `No delta or full state, falling back to IPC getState for update ${updateId}`,
             );
             newState = await handlers.getState();
-            cachedState = newState;
+            if (seq === undefined || seq >= expectedSeq) {
+              cachedState = newState;
+            }
             if (seq !== undefined && seq > expectedSeq) {
               expectedSeq = seq;
             }
