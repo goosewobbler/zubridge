@@ -21,6 +21,12 @@ export class DeltaCalculator<S> {
     return [...new Set(keys.map((k) => k.trim()).filter((k) => k.length > 0))].sort();
   }
 
+  /**
+   * Calculate the delta between prev and next for the given keys.
+   * When prev is undefined, returns a type:'full' delta with the partial state
+   * for the given keys. Note: SubscriptionHandler always seeds prev before the
+   * callback fires, so prev === undefined is only reachable via direct callers.
+   */
   calculate(prev: S | undefined, next: S, normalizedKeys: NormalizedKeys): Delta<S> | null {
     if (normalizedKeys === '*') {
       return this.calculateTopLevelDelta(prev, next);
