@@ -70,7 +70,9 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
   const keys = path.split('.');
   let curr = obj;
   for (let i = 0; i < keys.length - 1; i++) {
-    if (!curr[keys[i]]) curr[keys[i]] = {};
+    if (curr[keys[i]] == null || typeof curr[keys[i]] !== 'object') {
+      curr[keys[i]] = {};
+    }
     curr = curr[keys[i]] as Record<string, unknown>;
   }
   curr[keys[keys.length - 1]] = value;
@@ -254,15 +256,11 @@ export class SubscriptionManager<S> {
 
       if (hasRelevantChange(prev, next, keys)) {
         const partialState = getPartialState(next, keys);
-        if (Object.keys(partialState).length > 0) {
-          debug('subscription', `[notify] Notifying window ${windowId} with state:`, partialState);
-          callback(partialState);
-        } else {
-          debug(
-            'subscription',
-            `[notify] Empty partial state for window ${windowId} - skipping notification`,
-          );
-        }
+        debug('subscription', `[notify] Notifying window ${windowId} with state:`, partialState);
+        // Always invoke the callback when a relevant change was detected —
+        // even if partialState is empty, the SubscriptionHandler needs to
+        // run its delta calculator to emit `removed` entries for deleted keys.
+        callback(partialState);
       } else {
         debug(
           'subscription',
