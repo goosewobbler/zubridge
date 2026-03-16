@@ -307,7 +307,11 @@ export class SubscriptionHandler<State extends AnyState> {
           fn();
         });
         subscribedWebContents.forEach((webContents) => {
-          this.windowTracker.untrack(webContents);
+          // Only untrack the window if it has no remaining subscriptions.
+          const subMgr = this.resourceManager.getSubscriptionManager(webContents.id);
+          if (!subMgr || subMgr.getCurrentSubscriptionKeys(webContents.id).length === 0) {
+            this.windowTracker.untrack(webContents);
+          }
         });
       },
     };
