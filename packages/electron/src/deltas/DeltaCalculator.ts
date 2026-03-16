@@ -107,6 +107,10 @@ export class DeltaCalculator<S> {
     };
   }
 
+  /** Extracts a partial state object containing only the given keys.
+   *  Keys whose value is `undefined` are intentionally omitted — consistent
+   *  with JSON serialization semantics. Deleted keys are represented via
+   *  the `removed` array in the delta, not as undefined values here. */
   private getPartialState(state: S, normalizedKeys: NormalizedKeys): Partial<S> {
     if (normalizedKeys === '*') return { ...state };
     if (normalizedKeys.length === 0) return {};
