@@ -54,6 +54,14 @@ export class SubscriptionHandler<State extends AnyState> {
     const subscribedWebContents: WebContents[] = [];
     const normalizedKeys = this.deltaCalculator.normalizeKeys(keys);
 
+    // Empty keys array means "subscribe to nothing" — return a no-op immediately.
+    // Without this guard, an empty initial delta falls through to the renderer's
+    // getState() fallback, leaking the full store to a subscription that should
+    // receive no state.
+    if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
+      return { unsubscribe: () => {} };
+    }
+
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents || isDestroyed(webContents)) continue;
@@ -297,6 +305,9 @@ export class SubscriptionHandler<State extends AnyState> {
                 // Functions are not structured-clone serializable and would cause
                 // DataCloneError over IPC — strip them the same way sanitizeState does
                 if (typeof v === 'function') return [k, undefined];
+                // sanitizeState's internal serialize() handles both plain objects and
+                // arrays (recursively stripping functions, Dates, etc.), so this works
+                // for array-valued keys despite the State cast.
                 if (v !== null && typeof v === 'object')
                   return [k, sanitizeState(v as State, options)];
                 return [k, v];
