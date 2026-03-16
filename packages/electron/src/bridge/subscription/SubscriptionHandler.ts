@@ -210,15 +210,14 @@ export class SubscriptionHandler<State extends AnyState> {
       );
       unsubs.push(unsubscribe);
 
-      // Seed per-subscription prevState so the first change can be sent as a delta
-      // Seed with raw full state so the first delta is raw-vs-raw
       const fullState = this.stateManager.getState();
-      subscriptionPrevState = fullState as State;
 
       // Send current state when subscribing — skip for empty keys since there's
       // nothing to send, and an empty delta would cause the renderer to fall through
       // to getState() which would leak the full store.
       if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
+        // Seed prevState even for empty keys so future subscribe() merges work
+        subscriptionPrevState = fullState as State;
         continue;
       }
 
@@ -231,6 +230,12 @@ export class SubscriptionHandler<State extends AnyState> {
         normalizedKeys === '*' ? undefined : normalizedKeys,
       );
       const currentState = sanitizeState(partialState, serializationOptions);
+
+      // Seed per-subscription prevState with the sanitized partial state — the
+      // same form that notify() will deliver to the callback. Using raw full
+      // state here would cause spurious diffs for values that differ between
+      // raw and sanitized form (e.g. Dates, Buffers).
+      subscriptionPrevState = currentState as State;
 
       // Generate update ID for current state
       const updateId = randomUUID();
