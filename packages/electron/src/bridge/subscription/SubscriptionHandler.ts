@@ -289,29 +289,35 @@ export class SubscriptionHandler<State extends AnyState> {
       };
     }
 
+    // Sanitize each value individually rather than treating the whole changed record
+    // as a State object. delta.changed uses dot-path keys (e.g. 'user.profile.theme')
+    // which are flat top-level keys, not nested paths — passing them through sanitizeState
+    // as-is works for primitives but the cast to State silently drops type safety.
+    const sanitizedChanged = delta.changed
+      ? Object.fromEntries(
+          Object.entries(delta.changed)
+            .map(([k, v]) => {
+              // Functions are not structured-clone serializable and would cause
+              // DataCloneError over IPC — strip them the same way sanitizeState does
+              if (typeof v === 'function') return [k, undefined];
+              // sanitizeState's internal serialize() handles both plain objects and
+              // arrays (recursively stripping functions, Dates, etc.), so this works
+              // for array-valued keys despite the State cast.
+              if (v !== null && typeof v === 'object')
+                return [k, sanitizeState(v as State, options)];
+              return [k, v];
+            })
+            .filter(([, v]) => v !== undefined),
+        )
+      : undefined;
+
     return {
       type: 'delta',
-      // Sanitize each value individually rather than treating the whole changed record
-      // as a State object. delta.changed uses dot-path keys (e.g. 'user.profile.theme')
-      // which are flat top-level keys, not nested paths — passing them through sanitizeState
-      // as-is works for primitives but the cast to State silently drops type safety.
-      changed: delta.changed
-        ? Object.fromEntries(
-            Object.entries(delta.changed)
-              .map(([k, v]) => {
-                // Functions are not structured-clone serializable and would cause
-                // DataCloneError over IPC — strip them the same way sanitizeState does
-                if (typeof v === 'function') return [k, undefined];
-                // sanitizeState's internal serialize() handles both plain objects and
-                // arrays (recursively stripping functions, Dates, etc.), so this works
-                // for array-valued keys despite the State cast.
-                if (v !== null && typeof v === 'object')
-                  return [k, sanitizeState(v as State, options)];
-                return [k, v];
-              })
-              .filter(([, v]) => v !== undefined),
-          )
-        : undefined,
+      // If all values were stripped (e.g. all functions), return undefined rather
+      // than an empty {} — an empty changed object would cause the renderer to
+      // skip the merge branch and fall back to a full getState() round-trip.
+      changed:
+        sanitizedChanged && Object.keys(sanitizedChanged).length > 0 ? sanitizedChanged : undefined,
       removed: delta.removed,
     };
   }
