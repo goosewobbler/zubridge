@@ -315,7 +315,10 @@ export const preloadBridge = <S extends AnyState>(
         debug('ipc', 'Unsubscribing from state changes');
         listeners.delete(callback);
 
-        // If no more listeners, clean up IPC listener and cached state
+        // If no more listeners, clean up IPC listener and cached state.
+        // Clearing cachedState to null is safe: on resubscription, the delta
+        // branch uses `cachedState ?? ({} as S)` as its merge base, and any
+        // resync/fallback path fetches full state via getState().
         if (listeners.size === 0) {
           debug('ipc', 'Last subscriber removed - cleaning up IPC listeners');
           ipcListeners.delete(IpcChannel.STATE_UPDATE);
