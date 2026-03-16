@@ -355,6 +355,21 @@ describe('windows.ts', () => {
 
       expect(activeIdsDeleteSpy).toHaveBeenCalledWith(1);
     });
+
+    it('should not register duplicate destroy listeners when track() is called twice for same WebContents', () => {
+      const tracker = createWebContentsTracker();
+      const webContents = mockWebContents(1);
+
+      tracker.track(webContents);
+      tracker.track(webContents);
+
+      // setupDestroyListener is called internally via webContents.once('destroyed', ...)
+      // The second track() call should NOT register a second listener
+      const onceCalls = vi
+        .mocked(webContents.once)
+        .mock.calls.filter((call) => call[0] === 'destroyed');
+      expect(onceCalls).toHaveLength(1);
+    });
   });
 
   describe('prepareWebContents', () => {
