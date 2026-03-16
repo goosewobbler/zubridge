@@ -97,9 +97,11 @@ export class SubscriptionHandler<State extends AnyState> {
           }
 
           // Calculate delta first to determine if an update should be sent
-          if (this.deltaConfig.enabled && subscriptionPrevState !== undefined) {
+          // subscriptionPrevState is always defined here — seeded synchronously
+          // at subscription time before any notify() can fire.
+          if (this.deltaConfig.enabled) {
             const delta = this.deltaCalculator.calculate(
-              subscriptionPrevState,
+              subscriptionPrevState ?? ({} as State),
               state as State,
               normalizedKeys,
             );
