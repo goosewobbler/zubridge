@@ -1153,6 +1153,58 @@ describe('SubscriptionHandler', () => {
       expect(wc1NewSeqs).toEqual([2]);
     });
 
+    it('should not untrack window when unsubscribing one subscription while another remains', () => {
+      const fullState = { counter: 10, user: { name: 'Alice' }, theme: 'dark' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 530,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      const tracker = {
+        getActiveWebContents: vi.fn(() => []),
+        track: vi.fn(() => true),
+        untrack: vi.fn(),
+        cleanup: vi.fn(),
+      } as unknown as WebContentsTracker;
+
+      const handler = new SubscriptionHandler(stateManager, rm, tracker);
+
+      // Two independent subscriptions on the same window
+      const sub1 = handler.selectiveSubscribe(wc, ['counter']);
+      handler.selectiveSubscribe(wc, ['user']);
+
+      // Unsubscribe the first subscription
+      sub1.unsubscribe();
+
+      // The window should NOT be untracked — the 'user' subscription still exists
+      expect(tracker.untrack as Mock).not.toHaveBeenCalled();
+
+      // Verify the remaining subscription still works
+      (safelySendToWindow as Mock).mockClear();
+      const subMgr = subManagers.get(530) as SubscriptionManager<AnyState>;
+      const updatedState = { counter: 10, user: { name: 'Bob' }, theme: 'dark' };
+      subMgr.notify(fullState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown> };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const userUpdate = sendCalls.find((call) => {
+        const d = (call[2] as DeltaPayload).delta?.changed;
+        return d && 'user' in d;
+      });
+      expect(userUpdate).toBeDefined();
+    });
+
     it('should send selective updates as delta type when deltas are disabled to preserve sibling state', () => {
       const initialState = { counter: 1, user: { name: 'Alice' }, theme: 'dark' };
       const stateManager: StateManager<AnyState> = {
