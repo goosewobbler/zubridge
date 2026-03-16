@@ -146,6 +146,30 @@ describe('DeltaMerger', () => {
       expect(result).toEqual(currentState);
     });
 
+    it('should return a defensive clone of fullState, not the same reference', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+      const fullState: TestState = {
+        counter: 2,
+        user: { name: 'Bob', profile: { theme: 'light' } },
+        items: ['a'],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'full',
+        fullState,
+      });
+
+      expect(result).toEqual(fullState);
+      // Must be a different reference — mutating result must not affect fullState
+      expect(result).not.toBe(fullState);
+      (result as TestState).counter = 999;
+      expect(fullState.counter).toBe(2);
+    });
+
     it('should not wipe state when fullState is empty object', () => {
       const currentState: TestState = {
         counter: 1,
