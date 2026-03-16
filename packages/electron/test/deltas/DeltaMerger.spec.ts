@@ -66,8 +66,8 @@ describe('DeltaMerger', () => {
         changed: { 'user.profile.theme': 'light' },
       });
 
-      expect(result.user.profile.theme).toBe('light');
-      expect(result.user.name).toBe('Alice');
+      expect(result.user?.profile.theme).toBe('light');
+      expect(result.user?.name).toBe('Alice');
     });
 
     it('should handle multiple key changes', () => {
@@ -83,7 +83,7 @@ describe('DeltaMerger', () => {
       });
 
       expect(result.counter).toBe(10);
-      expect(result.user.name).toBe('Bob');
+      expect(result.user?.name).toBe('Bob');
     });
 
     it('should handle nested object replacement', () => {
@@ -219,10 +219,10 @@ describe('DeltaMerger', () => {
         changed: { 'user.profile.theme': 'light' },
       });
 
-      expect(result.user.profile.theme).toBe('light');
+      expect(result.user?.profile.theme).toBe('light');
       expect(result).not.toBe(currentState);
       expect(result.user).not.toBe(currentState.user);
-      expect(result.user.profile).not.toBe(currentState.user.profile);
+      expect(result.user?.profile).not.toBe(currentState.user.profile);
       expect(result.counter).toBe(currentState.counter);
       expect(result.items).toBe(currentState.items);
     });
@@ -239,12 +239,12 @@ describe('DeltaMerger', () => {
         changed: { 'user.profile.theme': 'light' },
       });
 
-      expect(result.user.profile.theme).toBe('light');
-      expect(result.user.profile.fontSize).toBe(14);
-      expect(result.user.name).toBe('Alice');
+      expect(result.user?.profile.theme).toBe('light');
+      expect(result.user?.profile.fontSize).toBe(14);
+      expect(result.user?.name).toBe('Alice');
       expect(result).not.toBe(currentState);
       expect(result.user).not.toBe(currentState.user);
-      expect(result.user.profile).not.toBe(currentState.user.profile);
+      expect(result.user?.profile).not.toBe(currentState.user.profile);
     });
 
     it('should preserve immutability for multiple nested changes', () => {
@@ -262,8 +262,8 @@ describe('DeltaMerger', () => {
       expect(result).not.toBe(currentState);
       expect(result.counter).toBe(2);
       expect(result.user).not.toBe(currentState.user);
-      expect(result.user.name).toBe('Bob');
-      expect(result.user.profile).toBe(currentState.user.profile);
+      expect(result.user?.name).toBe('Bob');
+      expect(result.user?.profile).toBe(currentState.user.profile);
     });
 
     it('should not corrupt state when multiple paths share a common ancestor', () => {
@@ -279,8 +279,8 @@ describe('DeltaMerger', () => {
       });
 
       // Both changes under 'user' must survive
-      expect(result.user.name).toBe('Bob');
-      expect(result.user.profile).toEqual({ theme: 'light' });
+      expect(result.user?.name).toBe('Bob');
+      expect(result.user?.profile).toEqual({ theme: 'light' });
       expect(result).not.toBe(currentState);
       expect(result.user).not.toBe(currentState.user);
     });
@@ -303,10 +303,10 @@ describe('DeltaMerger', () => {
       });
 
       // Both sibling writes must survive
-      expect(result.user.profile.theme).toBe('light');
-      expect(result.user.profile.fontSize).toBe(18);
+      expect(result.user?.profile.theme).toBe('light');
+      expect(result.user?.profile.fontSize).toBe(18);
       // The profile clone is shared — only one clone, not two
-      expect(result.user.profile).not.toBe(originalProfile);
+      expect(result.user?.profile).not.toBe(originalProfile);
       // Original must be untouched
       expect(originalProfile.theme).toBe('dark');
       expect(originalProfile.fontSize).toBe(14);
@@ -326,9 +326,9 @@ describe('DeltaMerger', () => {
         changed: { 'user.name': 'Bob', 'user.profile.theme': 'light' },
       });
 
-      expect(result.user.name).toBe('Bob');
-      expect(result.user.profile.theme).toBe('light');
-      expect(result.user.profile.fontSize).toBe(14);
+      expect(result.user?.name).toBe('Bob');
+      expect(result.user?.profile.theme).toBe('light');
+      expect(result.user?.profile.fontSize).toBe(14);
     });
 
     it('should create new reference for entire changed nested object', () => {
@@ -345,7 +345,7 @@ describe('DeltaMerger', () => {
 
       expect(result).not.toBe(currentState);
       expect(result.user).not.toBe(currentState.user);
-      expect(result.user.profile).not.toBe(currentState.user.profile);
+      expect(result.user?.profile).not.toBe(currentState.user.profile);
     });
   });
 
@@ -380,8 +380,8 @@ describe('DeltaMerger', () => {
         removed: ['user.profile.fontSize'],
       });
 
-      expect(result.user.profile).not.toHaveProperty('fontSize');
-      expect(result.user.profile.theme).toBe('dark');
+      expect(result.user?.profile).not.toHaveProperty('fontSize');
+      expect(result.user?.profile.theme).toBe('dark');
     });
 
     it('should handle both changed and removed keys', () => {
@@ -415,12 +415,12 @@ describe('DeltaMerger', () => {
         removed: ['user.profile.fontSize'],
       });
 
-      expect(result.user.name).toBe('Bob');
-      expect(result.user.profile.theme).toBe('dark');
-      expect(result.user.profile).not.toHaveProperty('fontSize');
+      expect(result.user?.name).toBe('Bob');
+      expect(result.user?.profile.theme).toBe('dark');
+      expect(result.user?.profile).not.toHaveProperty('fontSize');
       expect(result).not.toBe(currentState);
       expect(result.user).not.toBe(currentState.user);
-      expect(result.user.profile).not.toBe(currentState.user.profile);
+      expect(result.user?.profile).not.toBe(currentState.user.profile);
     });
 
     it('should preserve NaN values in delta changes', () => {
@@ -469,7 +469,7 @@ describe('DeltaMerger', () => {
         changed: { 'user.profile.fontSize': Number.NaN },
       });
 
-      expect(result.user.profile.fontSize).toBeNaN();
+      expect(result.user?.profile.fontSize).toBeNaN();
     });
 
     it('should not double-clone when deleteDeep traverses a path already cloned by setDeep', () => {
@@ -489,10 +489,10 @@ describe('DeltaMerger', () => {
       // Both changed and removed operate under user.profile.
       // deleteDeep must reuse the clone created by setDeepWithStructuralSharing,
       // not create a second one that discards the theme change.
-      expect(result.user.profile.theme).toBe('light');
-      expect(result.user.profile).not.toHaveProperty('fontSize');
+      expect(result.user?.profile.theme).toBe('light');
+      expect(result.user?.profile).not.toHaveProperty('fontSize');
       // The profile in result must be a single clone, different from original
-      expect(result.user.profile).not.toBe(originalProfile);
+      expect(result.user?.profile).not.toBe(originalProfile);
       // Unchanged siblings should be preserved
       expect(result.items).toBe(currentState.items);
     });
