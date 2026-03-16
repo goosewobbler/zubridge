@@ -92,25 +92,39 @@ describe('SubscriptionManager', () => {
       expect(keys).toEqual(['*']);
     });
 
-    it('should create independent entry for second all-keys subscription', () => {
+    it('should replace first "*" entry when second "*" subscription is created', () => {
       const callback1 = vi.fn();
       const callback2 = vi.fn();
 
       // First subscribe to all state
-      const unsub1 = subscriptionManager.subscribe(undefined, callback1, windowId);
-      // Second subscribe to all state (e.g. React Strict Mode remount)
+      subscriptionManager.subscribe(undefined, callback1, windowId);
+      // Second subscribe to all state — replaces the first entry
       const unsub2 = subscriptionManager.subscribe(undefined, callback2, windowId);
 
-      // Both should be active — window should still be subscribed to '*'
+      // Window should still be subscribed to '*'
       expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
 
-      // Unsubscribing the second should leave the first intact
-      unsub2();
-      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
+      // Only callback2 should fire (callback1's entry was replaced)
+      subscriptionManager.notify(
+        { counter: 0 } as Record<string, unknown>,
+        { counter: 1 } as Record<string, unknown>,
+      );
+      expect(callback1).not.toHaveBeenCalled();
+      expect(callback2).toHaveBeenCalled();
 
-      // Unsubscribing the first should leave no subscriptions
-      unsub1();
+      // unsub2 cleans up the only remaining entry
+      unsub2?.();
       expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual([]);
+    });
+
+    it('should return null when specific-key subscription is superseded by existing "*"', () => {
+      subscriptionManager.subscribe(undefined, mockCallback, windowId);
+
+      const result = subscriptionManager.subscribe(['counter'], vi.fn(), windowId);
+      expect(result).toBeNull();
+
+      // '*' subscription should still be intact
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
     });
 
     it('should replace specific keys with "*" when upgrading subscription', () => {
