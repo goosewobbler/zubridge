@@ -169,7 +169,7 @@ export class SubscriptionHandler<State extends AnyState> {
               seq: this.nextSeq(windowId),
             });
 
-            // Deltas-enabled: store raw state — deltaCalculator compares raw-to-raw
+            // Store state for next comparison (already sanitized by BridgeFactory)
             subscriptionPrevState = state as State;
           } else {
             // Deltas are disabled — send the full sanitised state on every update
@@ -250,8 +250,7 @@ export class SubscriptionHandler<State extends AnyState> {
               });
             }
 
-            // Deltas-disabled: store sanitized state — removal check compares
-            // sanitized prev against sanitized next for baseline parity
+            // Store sanitized state for next comparison
             subscriptionPrevState = sanitizedState as State;
           }
         },
@@ -275,12 +274,11 @@ export class SubscriptionHandler<State extends AnyState> {
       );
       const currentState = sanitizeState(partialState, serializationOptions);
 
-      // Seed per-subscription prevState to match what each path compares against:
-      // - Deltas enabled: callback compares raw-to-raw via deltaCalculator, so
-      //   seed with the raw partial state (pre-sanitization).
-      // - Deltas disabled: removal check compares sanitized-to-sanitized, so
-      //   seed with the sanitized form.
-      subscriptionPrevState = (this.deltaConfig.enabled ? partialState : currentState) as State;
+      // Seed with sanitized partial state so the first delta comparison is
+      // sanitized-vs-sanitized, matching all subsequent comparisons. The callback
+      // receives state derived from sanitizedState (via BridgeFactory.notify), so
+      // seeding with the raw form would cause a one-time raw-vs-sanitized mismatch.
+      subscriptionPrevState = currentState as State;
 
       // Generate update ID for current state
       const updateId = randomUUID();
@@ -298,21 +296,27 @@ export class SubscriptionHandler<State extends AnyState> {
         normalizedKeys === '*' ? undefined : normalizedKeys,
       );
 
-      // Skip send if all values were stripped by sanitization (e.g. all non-serializable).
-      // An empty delta causes the renderer to fall back to getState(), leaking the full store.
       if (Object.keys(deltaChanged).length === 0) {
-        continue;
+        // All values stripped by sanitization (e.g. all non-serializable).
+        // Send an empty full-state sentinel so the renderer knows the subscription
+        // is live and doesn't wait indefinitely for an initial STATE_UPDATE.
+        safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+          updateId,
+          delta: { type: 'full', fullState: {} },
+          thunkId: undefined,
+          seq: this.nextSeq(webContents.id),
+        });
+      } else {
+        safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
+          updateId,
+          delta: {
+            type: 'delta',
+            changed: deltaChanged,
+          },
+          thunkId: undefined,
+          seq: this.nextSeq(webContents.id),
+        });
       }
-
-      safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
-        updateId,
-        delta: {
-          type: 'delta',
-          changed: deltaChanged,
-        },
-        thunkId: undefined,
-        seq: this.nextSeq(webContents.id),
-      });
     }
 
     return {
