@@ -284,13 +284,13 @@ describe('SubscriptionHandler', () => {
       mockResourceManager.addSubscriptionManager.mockImplementation(() => {
         mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
       });
-      (mockWindowTracker.track as Mock).mockReturnValue(true);
+      (mockWindowTracker as unknown as { track: Mock }).track.mockReturnValue(true);
 
       // Create SubscriptionHandler with maxDepth: 3
       const handlerWithMaxDepth = new SubscriptionHandler(
         mockStateManager,
-        mockResourceManager,
-        mockWindowTracker,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
         3,
       );
 
@@ -1186,6 +1186,47 @@ describe('SubscriptionHandler', () => {
 
       // No IPC send should have occurred
       expect(safelySendToWindow).not.toHaveBeenCalled();
+    });
+
+    it('should reset sequence numbers when closure-based unsubscribe removes all subscriptions', () => {
+      const initialState = { counter: 0 };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 560,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      // Subscribe → initial delta sent with seq=1
+      const sub = handler.selectiveSubscribe(wc, ['counter']);
+
+      type SeqPayload = { seq: number };
+      let sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect((sendCalls[sendCalls.length - 1][2] as SeqPayload).seq).toBe(1);
+
+      // Unsubscribe via closure — should reset windowSeqs
+      sub.unsubscribe();
+
+      // Resubscribe — initial delta should start at seq=1 again, not seq=2
+      (safelySendToWindow as Mock).mockClear();
+      handler.selectiveSubscribe(wc, ['counter']);
+
+      sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+      expect((sendCalls[0][2] as SeqPayload).seq).toBe(1);
     });
 
     it('should maintain independent sequence numbers per window', () => {
