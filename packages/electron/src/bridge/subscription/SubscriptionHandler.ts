@@ -111,6 +111,24 @@ export class SubscriptionHandler<State extends AnyState> {
               return;
             }
 
+            const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
+
+            // If sanitization stripped all content (e.g. all values were functions),
+            // skip the send entirely. An empty delta would cause the renderer to
+            // fall through to getState(), leaking the full store for selective subs.
+            const hasContent =
+              (sanitizedDelta.changed && Object.keys(sanitizedDelta.changed).length > 0) ||
+              (sanitizedDelta.removed && sanitizedDelta.removed.length > 0);
+
+            if (!hasContent) {
+              debug(
+                'core',
+                `Delta fully stripped by sanitization for window ${windowId}, skipping send`,
+              );
+              subscriptionPrevState = state as State;
+              return;
+            }
+
             // Generate update ID and track thunk only when we will actually send
             const updateId = randomUUID();
             const currentThunkId = thunkManager.getCurrentThunkActionId();
@@ -125,7 +143,6 @@ export class SubscriptionHandler<State extends AnyState> {
               debug('core', `State update ${updateId} not tracked (not from thunk action)`);
             }
 
-            const sanitizedDelta = this.sanitizeDelta(delta, serializationOptions);
             debug('core', `Sending delta update to window ${windowId}:`, delta);
 
             safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
