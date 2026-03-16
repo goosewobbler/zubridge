@@ -265,8 +265,10 @@ export const preloadBridge = <S extends AnyState>(
             delta.fullState &&
             Object.keys(delta.fullState).length > 0
           ) {
-            // Full state from delta format (guard against empty object)
-            newState = delta.fullState as S;
+            // Route through DeltaMerger for consistency — applies the same
+            // defensive clone and empty-fullState guard as the delta path.
+            const base = cachedState ?? ({} as S);
+            newState = deltaMerger.merge(base, delta) as S;
             cachedState = newState;
             debug('ipc', `Received full state update ${updateId}`);
           } else {
