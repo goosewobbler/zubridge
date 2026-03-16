@@ -88,7 +88,7 @@ export class SubscriptionHandler<State extends AnyState> {
       // exist for the same window (each subscription tracks its own diff baseline)
       let subscriptionPrevState: State | undefined;
       const unsubscribe = subManager.subscribe(
-        keys,
+        normalizedKeys === '*' ? undefined : normalizedKeys,
         (state) => {
           debug('core', `Sending state update to window ${windowId}`);
           const serializationOptions: { maxDepth?: number } = {};
@@ -157,6 +157,19 @@ export class SubscriptionHandler<State extends AnyState> {
           } else {
             // Deltas are disabled — send the full sanitised state on every update
             // Apply key-filtering so selective subscriptions don't leak the full store
+            const partialState = getPartialState(
+              state as State,
+              normalizedKeys === '*' ? undefined : normalizedKeys,
+            );
+            const sanitizedState = sanitizeState(partialState, serializationOptions);
+
+            // Skip send if sanitized state is empty (e.g. all values were
+            // non-serializable) — avoids tracking a thunk that never gets ACKed
+            if (sanitizedState == null || Object.keys(sanitizedState).length === 0) {
+              subscriptionPrevState = state as State;
+              return;
+            }
+
             const updateId = randomUUID();
             const currentThunkId = thunkManager.getCurrentThunkActionId();
 
@@ -169,12 +182,6 @@ export class SubscriptionHandler<State extends AnyState> {
             } else {
               debug('core', `State update ${updateId} not tracked (not from thunk action)`);
             }
-
-            const partialState = getPartialState(
-              state as State,
-              normalizedKeys === '*' ? undefined : normalizedKeys,
-            );
-            const sanitizedState = sanitizeState(partialState, serializationOptions);
 
             if (normalizedKeys === '*') {
               // Full subscription — safe to replace entire state

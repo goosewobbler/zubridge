@@ -406,6 +406,61 @@ describe('SubscriptionHandler', () => {
       expect(sentFullState).toHaveProperty('counter');
       expect(sentFullState).toHaveProperty('user');
     });
+
+    it('should not send when all sanitized values are empty with deltas disabled', async () => {
+      // sanitizeState is mocked as identity, so simulate empty sanitized result
+      // by having state with only function values (which getPartialState returns,
+      // but sanitizeState would normally strip)
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+      // Make sanitizeState return empty object to simulate all values stripped
+      (sanitizeState as Mock).mockReturnValueOnce({});
+
+      const fullState = { cb: () => 'fn' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 102,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      let stateCallback: ((state: AnyState) => void) | undefined;
+      const mockSubManager = {
+        subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
+          stateCallback = cb;
+          return vi.fn();
+        }),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+
+      mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: false },
+      );
+
+      handler.selectiveSubscribe(singleWc);
+
+      if (!stateCallback) throw new Error('stateCallback was not captured');
+      (safelySendToWindow as Mock).mockClear();
+      // Make sanitizeState return empty for the update too
+      (sanitizeState as Mock).mockReturnValueOnce({});
+      stateCallback(fullState);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Should not send — prevents tracking a thunk that never gets ACKed
+      expect(safelySendToWindow).not.toHaveBeenCalled();
+    });
   });
 
   describe('normalizedKeys for initial delta', () => {
