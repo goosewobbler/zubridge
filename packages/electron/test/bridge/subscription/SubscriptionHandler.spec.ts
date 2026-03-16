@@ -1037,7 +1037,7 @@ describe('SubscriptionHandler', () => {
       expect(changed?.user).toEqual({ name: 'Bob' });
     });
 
-    it('should return undefined changed (not empty {}) when all values are functions', async () => {
+    it('should not send delta when all values are stripped by sanitization', async () => {
       const initialState = { cb1: () => 'a', cb2: () => 'b' };
       const updatedState = { cb1: () => 'c', cb2: () => 'd' };
 
@@ -1081,18 +1081,9 @@ describe('SubscriptionHandler', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      type DeltaPayload = {
-        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
-      };
-      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
-
-      if (sendCalls.length > 0) {
-        // If a send did occur, changed must be undefined (not {})
-        const payload = sendCalls[0][2] as DeltaPayload;
-        expect(payload.delta.changed).toBeUndefined();
-      }
-      // If no send occurred (delta calculator returned null because functions
-      // aren't deep-equal), that's also acceptable — no unnecessary IPC.
+      // An empty sanitized delta must not be sent — it would cause the renderer
+      // to fall through to getState(), leaking the full store for selective subs
+      expect(safelySendToWindow).not.toHaveBeenCalled();
     });
   });
 });
