@@ -991,6 +991,69 @@ describe('SubscriptionHandler', () => {
       expect(payload.delta.removed).toContain('session.token');
     });
 
+    it('should not produce spurious removed entry for non-serializable values (deltas disabled)', async () => {
+      const { sanitizeState } = await import('../../../src/utils/serialization.js');
+      // Make sanitizeState strip functions (like the real implementation)
+      (sanitizeState as Mock).mockImplementation((state: Record<string, unknown>) => {
+        const result: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(state)) {
+          if (typeof v !== 'function') result[k] = v;
+        }
+        return result;
+      });
+
+      const initialState = { counter: 1, onUpdate: () => {} };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 522,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm, subManagers } = createStoringResourceManager();
+
+      // Deltas disabled
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: false },
+      );
+
+      handler.selectiveSubscribe(wc, ['counter', 'onUpdate']);
+      (safelySendToWindow as Mock).mockClear();
+
+      const subMgr = subManagers.get(522) as SubscriptionManager<AnyState>;
+
+      // State change: counter changes, onUpdate is still a function.
+      // Without the fix, subscriptionPrevState (sanitized, no onUpdate key) vs
+      // raw state (has onUpdate as function) would mismatch — but since the
+      // removal check compares sanitized-to-sanitized, onUpdate is absent in
+      // both prev and next, so no spurious "removed" entry.
+      const updatedState = { counter: 2, onUpdate: () => {} };
+      subMgr.notify(initialState, updatedState);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown>; removed?: string[] };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      expect(payload.delta.changed).toHaveProperty('counter', 2);
+      // onUpdate should NOT appear as removed — it was never serializable
+      expect(payload.delta.removed).toBeUndefined();
+
+      // Restore identity mock
+      (sanitizeState as Mock).mockImplementation((s: unknown) => s);
+    });
+
     it('should increment sequence numbers across multiple sends to the same window', () => {
       const initialState = { counter: 0 };
       const stateManager: StateManager<AnyState> = {
