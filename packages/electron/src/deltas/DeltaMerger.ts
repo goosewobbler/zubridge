@@ -14,7 +14,11 @@ export class DeltaMerger<S> {
     if (delta.type === 'full' || (!hasChanges && !hasRemovals)) {
       // Guard against empty fullState ({}) which is truthy but should not replace current state
       if (delta.fullState && Object.keys(delta.fullState).length > 0) {
-        return delta.fullState;
+        // Return a defensive copy so callers can't mutate the IPC payload
+        // and corrupt subsequent merge bases.
+        return typeof structuredClone === 'function'
+          ? structuredClone(delta.fullState)
+          : JSON.parse(JSON.stringify(delta.fullState));
       }
       return currentState;
     }
