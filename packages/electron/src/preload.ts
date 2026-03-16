@@ -212,14 +212,27 @@ export const preloadBridge = <S extends AnyState>(
           let didUpdate = true;
 
           // Detect sequence gaps — if we missed updates, the cached state is stale
-          // and deltas cannot be safely applied
-          const hasSeqGap =
-            seq !== undefined && expectedSeq > 0 && (seq > expectedSeq + 1 || seq < expectedSeq);
+          // and deltas cannot be safely applied.
+          // No expectedSeq > 0 guard: for seq=1 arriving with expectedSeq=0,
+          // 1 > 0+1 || 1 < 0 is false (no spurious gap). But if seq=1 is dropped
+          // and seq=2 arrives first, 2 > 0+1 is true — gap correctly detected.
+          const hasSeqGap = seq !== undefined && (seq > expectedSeq + 1 || seq < expectedSeq);
           // Detect exact retransmits — skip reprocessing to avoid spurious re-renders
           const isDuplicate = seq !== undefined && expectedSeq > 0 && seq === expectedSeq;
 
           if (isDuplicate) {
-            debug('ipc', `Duplicate seq ${seq} detected, skipping update ${updateId}`);
+            debug(
+              'ipc',
+              `Duplicate seq ${seq} detected, skipping state merge for update ${updateId}`,
+            );
+            // Still send ACK so the main-process thunk system doesn't hang
+            // waiting for an acknowledgment that never arrives.
+            try {
+              const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+              ipcRenderer.send(IpcChannel.STATE_UPDATE_ACK, { updateId, windowId, thunkId });
+            } catch (error) {
+              debug('ipc:error', `Error sending ack for duplicate update: ${error}`);
+            }
             return;
           }
 
