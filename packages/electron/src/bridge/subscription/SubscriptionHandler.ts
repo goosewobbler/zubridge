@@ -275,11 +275,12 @@ export class SubscriptionHandler<State extends AnyState> {
       );
       const currentState = sanitizeState(partialState, serializationOptions);
 
-      // Seed per-subscription prevState with the sanitized partial state — the
-      // same form that notify() will deliver to the callback. Using raw full
-      // state here would cause spurious diffs for values that differ between
-      // raw and sanitized form (e.g. Dates, Buffers).
-      subscriptionPrevState = currentState as State;
+      // Seed per-subscription prevState to match what each path compares against:
+      // - Deltas enabled: callback compares raw-to-raw via deltaCalculator, so
+      //   seed with the raw partial state (pre-sanitization).
+      // - Deltas disabled: removal check compares sanitized-to-sanitized, so
+      //   seed with the sanitized form.
+      subscriptionPrevState = (this.deltaConfig.enabled ? partialState : currentState) as State;
 
       // Generate update ID for current state
       const updateId = randomUUID();
@@ -300,7 +301,6 @@ export class SubscriptionHandler<State extends AnyState> {
       // Skip send if all values were stripped by sanitization (e.g. all non-serializable).
       // An empty delta causes the renderer to fall back to getState(), leaking the full store.
       if (Object.keys(deltaChanged).length === 0) {
-        subscriptionPrevState = currentState as State;
         continue;
       }
 
@@ -324,6 +324,7 @@ export class SubscriptionHandler<State extends AnyState> {
           // Only untrack the window if it has no remaining subscriptions.
           const subMgr = this.resourceManager.getSubscriptionManager(webContents.id);
           if (!subMgr || subMgr.getCurrentSubscriptionKeys(webContents.id).length === 0) {
+            this.windowSeqs.delete(webContents.id);
             this.windowTracker.untrack(webContents);
           }
         });
