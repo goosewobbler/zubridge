@@ -314,11 +314,7 @@ export const preloadBridge = <S extends AnyState>(
         // If no more listeners, clean up IPC listener and cached state
         if (listeners.size === 0) {
           debug('ipc', 'Last subscriber removed - cleaning up IPC listeners');
-          const stateUpdateListener = ipcListeners.get(IpcChannel.STATE_UPDATE);
-          if (stateUpdateListener) {
-            ipcRenderer.removeListener(IpcChannel.STATE_UPDATE, stateUpdateListener);
-            ipcListeners.delete(IpcChannel.STATE_UPDATE);
-          }
+          ipcListeners.delete(IpcChannel.STATE_UPDATE);
           cachedState = null;
           expectedSeq = 0;
         }
