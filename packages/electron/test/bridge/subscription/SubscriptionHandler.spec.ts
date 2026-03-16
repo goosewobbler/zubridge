@@ -138,6 +138,17 @@ describe('SubscriptionHandler', () => {
 
       expect(typeof result.unsubscribe).toBe('function');
     });
+
+    it('should not subscribe or send state when keys is empty array', () => {
+      (safelySendToWindow as Mock).mockClear();
+
+      const result = subscriptionHandler.subscribe(mockWebContents, []);
+
+      // Should return a no-op unsubscribe without subscribing any windows
+      expect(typeof result.unsubscribe).toBe('function');
+      expect(mockResourceManager.getSubscriptionManager).not.toHaveBeenCalled();
+      expect(safelySendToWindow).not.toHaveBeenCalled();
+    });
   });
 
   describe('unsubscribe', () => {
