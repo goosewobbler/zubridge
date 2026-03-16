@@ -136,6 +136,7 @@ export class SubscriptionHandler<State extends AnyState> {
             });
           } else {
             // Deltas are disabled — send the full sanitised state on every update
+            // Apply key-filtering so selective subscriptions don't leak the full store
             const updateId = randomUUID();
             const currentThunkId = thunkManager.getCurrentThunkActionId();
 
@@ -149,7 +150,11 @@ export class SubscriptionHandler<State extends AnyState> {
               debug('core', `State update ${updateId} not tracked (not from thunk action)`);
             }
 
-            const sanitizedState = sanitizeState(state, serializationOptions);
+            const partialState = getPartialState(
+              state as State,
+              normalizedKeys === '*' ? undefined : normalizedKeys,
+            );
+            const sanitizedState = sanitizeState(partialState, serializationOptions);
             debug('core', `Sending full state update to window ${windowId}`);
 
             safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
@@ -194,7 +199,10 @@ export class SubscriptionHandler<State extends AnyState> {
       // be silently omitted from the initial delta. This is intentional — non-serializable
       // values cannot cross the IPC boundary. The renderer's state shape may diverge from
       // the store for these keys, but they would be unusable on the renderer side regardless.
-      const deltaChanged = this.stateToDeltaKeys(currentState as Partial<State>, keys);
+      const deltaChanged = this.stateToDeltaKeys(
+        currentState as Partial<State>,
+        normalizedKeys === '*' ? undefined : normalizedKeys,
+      );
       safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
         updateId,
         delta: {
