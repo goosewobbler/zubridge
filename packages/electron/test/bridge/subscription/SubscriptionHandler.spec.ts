@@ -499,6 +499,54 @@ describe('SubscriptionHandler', () => {
       // Should find the value using normalized key 'counter'
       expect(changed).toHaveProperty('counter', 42);
     });
+
+    it('should omit undefined-valued keys from full-subscription initial delta', () => {
+      const fullState = { counter: 42, removed: undefined, active: true };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 202,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const mockSubManager = {
+        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+
+      mockResourceManager.getSubscriptionManager.mockReturnValue(null);
+      mockResourceManager.addSubscriptionManager.mockImplementation(() => {
+        mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+      });
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      // Full subscription (no keys = all state)
+      (safelySendToWindow as Mock).mockClear();
+      handler.selectiveSubscribe(singleWc);
+
+      type DeltaPayload = { delta: { type: string; changed?: Record<string, unknown> } };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const deltaSend = sendCalls.find((call) => (call[2] as DeltaPayload).delta.type === 'delta');
+      expect(deltaSend).toBeDefined();
+      const changed = (deltaSend?.[2] as DeltaPayload | undefined)?.delta.changed;
+
+      // Should include defined values
+      expect(changed).toHaveProperty('counter', 42);
+      expect(changed).toHaveProperty('active', true);
+      // Should NOT include the undefined-valued key — matching selective subscription behaviour
+      expect(changed).not.toHaveProperty('removed');
+    });
   });
 
   describe('integration: multi-subscription and lifecycle', () => {
