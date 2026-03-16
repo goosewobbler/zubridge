@@ -218,20 +218,19 @@ export class SubscriptionHandler<State extends AnyState> {
       unsubs.push(unsubscribe);
 
       const fullState = this.stateManager.getState();
+      const serializationOptions: { maxDepth?: number } = {};
+      if (this.serializationMaxDepth !== undefined) {
+        serializationOptions.maxDepth = this.serializationMaxDepth;
+      }
 
       // Send current state when subscribing — skip for empty keys since there's
       // nothing to send, and an empty delta would cause the renderer to fall through
       // to getState() which would leak the full store.
       if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
-        // Seed prevState even for empty keys so future subscribe() merges work
-        subscriptionPrevState = fullState as State;
+        subscriptionPrevState = sanitizeState(fullState, serializationOptions) as State;
         continue;
       }
 
-      const serializationOptions: { maxDepth?: number } = {};
-      if (this.serializationMaxDepth !== undefined) {
-        serializationOptions.maxDepth = this.serializationMaxDepth;
-      }
       const partialState = getPartialState(
         fullState,
         normalizedKeys === '*' ? undefined : normalizedKeys,
