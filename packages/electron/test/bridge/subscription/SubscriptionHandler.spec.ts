@@ -156,7 +156,7 @@ describe('SubscriptionHandler', () => {
       expect(safelySendToWindow).not.toHaveBeenCalled();
     });
 
-    it('should not send initial delta when all subscribed values are non-serializable', async () => {
+    it('should send empty full-state sentinel when all subscribed values are non-serializable', async () => {
       const { sanitizeState } = await import('../../../src/utils/serialization.js');
       // Simulate sanitizeState stripping all values (e.g. all functions)
       (sanitizeState as Mock).mockReturnValueOnce({});
@@ -190,9 +190,15 @@ describe('SubscriptionHandler', () => {
 
       handler.selectiveSubscribe(singleWc, ['onUpdate']);
 
-      // Empty delta must not be sent — it would cause the renderer to
-      // fall back to getState(), leaking the full store
-      expect(safelySendToWindow).not.toHaveBeenCalled();
+      // An empty full-state sentinel is sent so the renderer knows the
+      // subscription is live and doesn't wait indefinitely for initial state
+      expect(safelySendToWindow).toHaveBeenCalledWith(
+        singleWc,
+        expect.any(String),
+        expect.objectContaining({
+          delta: { type: 'full', fullState: {} },
+        }),
+      );
     });
   });
 
