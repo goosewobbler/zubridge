@@ -82,6 +82,13 @@ export class SubscriptionHandler<State extends AnyState> {
         this.resourceManager.addDestroyListener(webContents.id);
       }
 
+      // Skip empty-key subscriptions before registering with the SubscriptionManager.
+      // An empty-key subscription would create a dead entry (delta calculator iterates
+      // zero keys, so no updates are ever sent) and waste CPU on every notify() call.
+      if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
+        continue;
+      }
+
       // Register a subscription for the keys with an actual callback that sends state updates
       const windowId = webContents.id;
       // Per-subscription previous state to avoid corruption when multiple subscriptions
@@ -244,15 +251,6 @@ export class SubscriptionHandler<State extends AnyState> {
       const serializationOptions: { maxDepth?: number } = {};
       if (this.serializationMaxDepth !== undefined) {
         serializationOptions.maxDepth = this.serializationMaxDepth;
-      }
-
-      // Send current state when subscribing — skip for empty keys since there's
-      // nothing to send, and an empty delta would cause the renderer to fall through
-      // to getState() which would leak the full store.
-      if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
-        // calculate(prev, next, []) always returns null — seed cheaply
-        subscriptionPrevState = {} as State;
-        continue;
       }
 
       const partialState = getPartialState(
