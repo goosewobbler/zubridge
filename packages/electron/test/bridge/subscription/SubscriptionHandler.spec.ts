@@ -437,6 +437,51 @@ describe('SubscriptionHandler', () => {
       // Should not have the untrimmed key
       expect(changed).not.toHaveProperty(' counter ');
     });
+
+    it('should find state values when all keys have whitespace', () => {
+      const fullState = { counter: 42, user: { name: 'Alice' } };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 201,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const mockSubManager = {
+        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+
+      mockResourceManager.getSubscriptionManager.mockReturnValue(null);
+      mockResourceManager.addSubscriptionManager.mockImplementation(() => {
+        mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+      });
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      // Subscribe with only whitespace-padded keys — before the fix,
+      // getPartialState used raw keys so ' counter ' wouldn't match 'counter'
+      (safelySendToWindow as Mock).mockClear();
+      handler.selectiveSubscribe(singleWc, [' counter ']);
+
+      type DeltaPayload = { delta: { type: string; changed?: Record<string, unknown> } };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const deltaSend = sendCalls.find((call) => (call[2] as DeltaPayload).delta.type === 'delta');
+      expect(deltaSend).toBeDefined();
+      const changed = (deltaSend?.[2] as DeltaPayload | undefined)?.delta.changed;
+      // Should find the value using normalized key 'counter'
+      expect(changed).toHaveProperty('counter', 42);
+    });
   });
 
   describe('sanitizeDelta per-value sanitization', () => {

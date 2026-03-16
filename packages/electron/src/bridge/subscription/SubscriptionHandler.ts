@@ -197,7 +197,10 @@ export class SubscriptionHandler<State extends AnyState> {
         serializationOptions.maxDepth = this.serializationMaxDepth;
       }
       const fullState = this.stateManager.getState();
-      const partialState = getPartialState(fullState, keys);
+      const partialState = getPartialState(
+        fullState,
+        normalizedKeys === '*' ? undefined : normalizedKeys,
+      );
       const currentState = sanitizeState(partialState, serializationOptions);
 
       // Generate update ID for current state
