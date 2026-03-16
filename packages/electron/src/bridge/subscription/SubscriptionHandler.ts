@@ -54,14 +54,6 @@ export class SubscriptionHandler<State extends AnyState> {
     const subscribedWebContents: WebContents[] = [];
     const normalizedKeys = this.deltaCalculator.normalizeKeys(keys);
 
-    // Empty keys array means "subscribe to nothing" — return a no-op immediately.
-    // Without this guard, an empty initial delta falls through to the renderer's
-    // getState() fallback, leaking the full store to a subscription that should
-    // receive no state.
-    if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
-      return { unsubscribe: () => {} };
-    }
-
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
       if (!webContents || isDestroyed(webContents)) continue;
@@ -198,13 +190,22 @@ export class SubscriptionHandler<State extends AnyState> {
       );
       unsubs.push(unsubscribe);
 
-      // Always send current state when subscribing (not just on first track)
-      // This ensures the renderer gets the correct filtered state when resubscribing
+      // Seed per-subscription prevState so the first change can be sent as a delta
+      // Seed with raw full state so the first delta is raw-vs-raw
+      const fullState = this.stateManager.getState();
+      subscriptionPrevState = fullState as State;
+
+      // Send current state when subscribing — skip for empty keys since there's
+      // nothing to send, and an empty delta would cause the renderer to fall through
+      // to getState() which would leak the full store.
+      if (Array.isArray(normalizedKeys) && normalizedKeys.length === 0) {
+        continue;
+      }
+
       const serializationOptions: { maxDepth?: number } = {};
       if (this.serializationMaxDepth !== undefined) {
         serializationOptions.maxDepth = this.serializationMaxDepth;
       }
-      const fullState = this.stateManager.getState();
       const partialState = getPartialState(
         fullState,
         normalizedKeys === '*' ? undefined : normalizedKeys,
@@ -241,10 +242,6 @@ export class SubscriptionHandler<State extends AnyState> {
         thunkId: undefined,
         seq: this.nextSeq(webContents.id),
       });
-
-      // Seed per-subscription prevState so the first change can be sent as a delta
-      // Seed with raw full state so the first delta is raw-vs-raw
-      subscriptionPrevState = fullState as State;
     }
 
     return {

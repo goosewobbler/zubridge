@@ -139,14 +139,19 @@ describe('SubscriptionHandler', () => {
       expect(typeof result.unsubscribe).toBe('function');
     });
 
-    it('should not subscribe or send state when keys is empty array', () => {
+    it('should not send initial state when keys is empty array', () => {
+      const mockSubManager = {
+        subscribe: vi.fn(() => vi.fn()),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+      (mockResourceManager.getSubscriptionManager as Mock).mockReturnValue(mockSubManager);
       (safelySendToWindow as Mock).mockClear();
 
       const result = subscriptionHandler.subscribe(mockWebContents, []);
 
-      // Should return a no-op unsubscribe without subscribing any windows
+      // Should set up subscription manager (for GET_STATE filtering) but not send initial state
       expect(typeof result.unsubscribe).toBe('function');
-      expect(mockResourceManager.getSubscriptionManager).not.toHaveBeenCalled();
       expect(safelySendToWindow).not.toHaveBeenCalled();
     });
   });
