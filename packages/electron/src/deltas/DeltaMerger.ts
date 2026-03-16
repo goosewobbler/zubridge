@@ -104,10 +104,9 @@ export class DeltaMerger<S> {
       // corrupt NaN / Infinity to null.
       return value;
     }
-    if (Array.isArray(value)) {
-      return value.map((item) => this.cloneValue(item));
-    }
     if (typeof structuredClone === 'function') {
+      // structuredClone handles both plain objects and arrays in a single call,
+      // avoiding per-element overhead for array values.
       return structuredClone(value);
     }
     // Fallback: JSON round-trip strips undefined properties and converts NaN/Infinity to null
