@@ -118,7 +118,10 @@ export class SubscriptionHandler<State extends AnyState> {
             // fall through to getState(), leaking the full store for selective subs.
             const hasContent =
               (sanitizedDelta.changed && Object.keys(sanitizedDelta.changed).length > 0) ||
-              (sanitizedDelta.removed && sanitizedDelta.removed.length > 0);
+              (sanitizedDelta.removed && sanitizedDelta.removed.length > 0) ||
+              (sanitizedDelta.type === 'full' &&
+                sanitizedDelta.fullState != null &&
+                Object.keys(sanitizedDelta.fullState).length > 0);
 
             if (!hasContent) {
               debug(
