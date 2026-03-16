@@ -440,6 +440,61 @@ describe('SubscriptionHandler', () => {
   });
 
   describe('sanitizeDelta per-value sanitization', () => {
+    it('should strip function values from delta changed to prevent DataCloneError', async () => {
+      const initialState = { counter: 1, callback: () => 'initial' };
+      const updatedState = { counter: 2, callback: () => 'updated' };
+
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => initialState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const singleWc = {
+        id: 400,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      let stateCallback: ((state: AnyState) => void) | undefined;
+      const mockSubManager = {
+        subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
+          stateCallback = cb;
+          return vi.fn();
+        }),
+        unsubscribe: vi.fn(),
+        getCurrentSubscriptionKeys: vi.fn(() => []),
+      };
+
+      mockResourceManager.getSubscriptionManager.mockReturnValue(mockSubManager);
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        mockResourceManager as unknown as ResourceManager<AnyState>,
+        mockWindowTracker as unknown as WebContentsTracker,
+        undefined,
+        { enabled: true },
+      );
+
+      handler.selectiveSubscribe(singleWc);
+
+      if (!stateCallback) throw new Error('stateCallback was not captured');
+      (safelySendToWindow as Mock).mockClear();
+      stateCallback(updatedState);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      type DeltaPayload = { delta: { type: string; changed?: Record<string, unknown> } };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      const deltaSend = sendCalls.find((call) => (call[2] as DeltaPayload).delta.type === 'delta');
+      expect(deltaSend).toBeDefined();
+      const changed = (deltaSend?.[2] as DeltaPayload | undefined)?.delta.changed;
+      // Primitive values should pass through
+      expect(changed?.counter).toBe(2);
+      // Function values should be stripped (not present in the delta)
+      expect(changed).not.toHaveProperty('callback');
+    });
+
     it('should sanitize object values individually in delta changed', async () => {
       const { sanitizeState } = await import('../../../src/utils/serialization.js');
 

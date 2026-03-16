@@ -290,10 +290,14 @@ export class SubscriptionHandler<State extends AnyState> {
       changed: delta.changed
         ? Object.fromEntries(
             Object.entries(delta.changed)
-              .map(([k, v]) => [
-                k,
-                v !== null && typeof v === 'object' ? sanitizeState(v as State, options) : v,
-              ])
+              .map(([k, v]) => {
+                // Functions are not structured-clone serializable and would cause
+                // DataCloneError over IPC — strip them the same way sanitizeState does
+                if (typeof v === 'function') return [k, undefined];
+                if (v !== null && typeof v === 'object')
+                  return [k, sanitizeState(v as State, options)];
+                return [k, v];
+              })
               .filter(([, v]) => v !== undefined),
           )
         : undefined,
