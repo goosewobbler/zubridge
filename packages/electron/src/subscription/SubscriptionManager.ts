@@ -135,7 +135,7 @@ export class SubscriptionManager<S> {
     keys: string[] | undefined,
     callback: SubscriptionCallback<S>,
     windowId: number,
-  ): () => void {
+  ): (() => void) | null {
     debug(
       'subscription',
       `[subscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
@@ -155,27 +155,25 @@ export class SubscriptionManager<S> {
 
     // If already subscribed to '*' and the new subscription is for specific keys,
     // skip creating the entry — the existing '*' subscription already covers them.
-    // But always allow a new '*' subscription so every caller gets a working unsubscribe.
+    // Returns null so callers know no entry was created (and can skip initial sends).
     if (existingKeys.includes('*') && normalized !== '*') {
       debug(
         'subscription',
         `[subscribe] Window ${windowId} already has '*' subscription, keeping it`,
       );
-      // Return a no-op — we didn't create an entry, so there's nothing to remove
-      return () => {};
+      return null;
     }
 
     const subId = this.generateSubId(windowId);
     debug('subscription', `[subscribe] Using subscription id: ${subId}`);
 
-    // If normalized is '*', remove existing specific-key subscriptions for this window
-    // and add the new '*' subscription. Existing '*' entries are kept so that each
-    // caller gets an independently removable unsubscribe handle (important for
-    // React Strict Mode mount/unmount/remount cycles).
+    // If normalized is '*', replace all existing subscriptions for this window
+    // (both specific-key and prior '*' entries) with a single '*' entry.
+    // Prior unsubscribe handles become no-ops — this is intentional: '*' supersedes everything.
     if (normalized === '*') {
       debug('subscription', `[subscribe] Setting full '*' subscription for window ${windowId}`);
       for (const [id, sub] of this.subscriptions) {
-        if (sub.windowId === windowId && sub.keys !== undefined) {
+        if (sub.windowId === windowId) {
           this.subscriptions.delete(id);
         }
       }
