@@ -370,6 +370,55 @@ describe('DeltaMerger', () => {
       expect(result.user.profile).not.toBe(currentState.user.profile);
     });
 
+    it('should preserve NaN values in delta changes', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: { counter: Number.NaN },
+      });
+
+      expect(result.counter).toBeNaN();
+    });
+
+    it('should preserve Infinity and -Infinity values in delta changes', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: {
+          maxValue: Number.POSITIVE_INFINITY,
+          minValue: Number.NEGATIVE_INFINITY,
+        },
+      });
+
+      expect(result.maxValue).toBe(Number.POSITIVE_INFINITY);
+      expect(result.minValue).toBe(Number.NEGATIVE_INFINITY);
+    });
+
+    it('should preserve NaN/Infinity in nested delta paths', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: { 'user.profile.fontSize': Number.NaN },
+      });
+
+      expect(result.user.profile.fontSize).toBeNaN();
+    });
+
     it('should not double-clone when deleteDeep traverses a path already cloned by setDeep', () => {
       const originalProfile = { theme: 'dark', fontSize: 14 };
       const currentState: TestState = {
