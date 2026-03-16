@@ -10,6 +10,10 @@ export type Subscription<S> = {
   windowId?: number;
 };
 
+export type SubscribeResult =
+  | { status: 'registered'; unsubscribe: () => void }
+  | { status: 'superseded' };
+
 /**
  * Normalizes keys for deduplication: sorts and joins with ',', or '*' for full-state.
  * Returns:
@@ -129,13 +133,22 @@ export class SubscriptionManager<S> {
    * Subscribe to state changes for specific keys (deep keys supported).
    * Each call creates an independent subscription entry so that multiple
    * subscriptions on the same window do not overwrite each other's callbacks.
-   * Returns an unsubscribe function that removes only this subscription.
+   *
+   * Returns `{ status: 'registered', unsubscribe }` when the callback was
+   * registered, or `{ status: 'superseded' }` when an existing '*' (all-state)
+   * subscription already covers this window and the requested keys are
+   * specific. In the superseded case, callers should still send an
+   * initial-state message so the component can initialize.
+   *
+   * A '*' subscription replaces all prior entries for the window (both
+   * specific-key and prior '*' entries). Previously returned unsubscribe
+   * handles become no-ops — this is intentional: '*' supersedes everything.
    */
   subscribe(
     keys: string[] | undefined,
     callback: SubscriptionCallback<S>,
     windowId: number,
-  ): (() => void) | null {
+  ): SubscribeResult {
     debug(
       'subscription',
       `[subscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
@@ -155,13 +168,12 @@ export class SubscriptionManager<S> {
 
     // If already subscribed to '*' and the new subscription is for specific keys,
     // skip creating the entry — the existing '*' subscription already covers them.
-    // Returns null so callers know no entry was created (and can skip initial sends).
     if (existingKeys.includes('*') && normalized !== '*') {
       debug(
         'subscription',
         `[subscribe] Window ${windowId} already has '*' subscription, keeping it`,
       );
-      return null;
+      return { status: 'superseded' };
     }
 
     const subId = this.generateSubId(windowId);
@@ -193,8 +205,11 @@ export class SubscriptionManager<S> {
       currentSubscriptions,
     );
 
-    return () => {
-      this.subscriptions.delete(subId);
+    return {
+      status: 'registered' as const,
+      unsubscribe: () => {
+        this.subscriptions.delete(subId);
+      },
     };
   }
 

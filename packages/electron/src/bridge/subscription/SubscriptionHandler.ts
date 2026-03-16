@@ -94,7 +94,7 @@ export class SubscriptionHandler<State extends AnyState> {
       // Per-subscription previous state to avoid corruption when multiple subscriptions
       // exist for the same window (each subscription tracks its own diff baseline)
       let subscriptionPrevState: State | undefined;
-      const unsubscribe = subManager.subscribe(
+      const subscribeResult = subManager.subscribe(
         normalizedKeys === '*' ? undefined : normalizedKeys,
         (state) => {
           debug('core', `Sending state update to window ${windowId}`);
@@ -245,10 +245,11 @@ export class SubscriptionHandler<State extends AnyState> {
         },
         windowId,
       );
-      // null means the subscription was not registered (e.g. '*' already covers
-      // this window) — skip the initial-state send and don't track the unsubscribe.
-      if (!unsubscribe) continue;
-      unsubs.push(unsubscribe);
+      // When superseded by an existing '*' subscription, no callback was registered.
+      // We still send the initial-state delta below so the component can initialize.
+      if (subscribeResult.status === 'registered') {
+        unsubs.push(subscribeResult.unsubscribe);
+      }
 
       const fullState = this.stateManager.getState();
       const serializationOptions: { maxDepth?: number } = {};
