@@ -111,7 +111,7 @@ describe('SubscriptionHandler', () => {
     it('should subscribe windows with specified keys', () => {
       const keys = ['counter', 'user'];
       const mockSubManager = {
-        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -129,7 +129,7 @@ describe('SubscriptionHandler', () => {
     it('should return unsubscribe function', () => {
       const keys = ['counter'];
       const mockSubManager = {
-        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -142,7 +142,7 @@ describe('SubscriptionHandler', () => {
 
     it('should not send initial state when keys is empty array', () => {
       const mockSubManager = {
-        subscribe: vi.fn(() => vi.fn()),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -175,7 +175,7 @@ describe('SubscriptionHandler', () => {
       } as unknown as WebContents;
 
       const mockSubManager = {
-        subscribe: vi.fn(() => vi.fn()),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -274,7 +274,7 @@ describe('SubscriptionHandler', () => {
         subscribe: vi.fn((_keys, callback) => {
           // Store callback to call later
           setTimeout(() => callback(deepState), 0);
-          return { unsubscribe: vi.fn() };
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
@@ -331,7 +331,7 @@ describe('SubscriptionHandler', () => {
       } as unknown as WebContents;
 
       const mockSubManager = {
-        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => ['*']),
       };
@@ -381,7 +381,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn(); // unsubscribe function
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
@@ -444,7 +444,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn(); // unsubscribe function
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
@@ -551,7 +551,7 @@ describe('SubscriptionHandler', () => {
       } as unknown as WebContents;
 
       const mockSubManager = {
-        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -597,7 +597,7 @@ describe('SubscriptionHandler', () => {
       } as unknown as WebContents;
 
       const mockSubManager = {
-        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -642,7 +642,7 @@ describe('SubscriptionHandler', () => {
       } as unknown as WebContents;
 
       const mockSubManager = {
-        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+        subscribe: vi.fn(() => ({ status: 'registered' as const, unsubscribe: vi.fn() })),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
       };
@@ -1238,6 +1238,50 @@ describe('SubscriptionHandler', () => {
       expect(userUpdate).toBeDefined();
     });
 
+    it('should still send initial state when subscription is superseded by existing "*"', () => {
+      const fullState = { counter: 10, user: { name: 'Alice' }, theme: 'dark' };
+      const stateManager: StateManager<AnyState> = {
+        getState: vi.fn(() => fullState),
+        subscribe: vi.fn(),
+        processAction: vi.fn(),
+      };
+
+      const wc = {
+        id: 550,
+        isDestroyed: vi.fn(() => false),
+        send: vi.fn(),
+      } as unknown as WebContents;
+
+      const { mock: rm } = createStoringResourceManager();
+
+      const handler = new SubscriptionHandler(
+        stateManager,
+        rm,
+        mockWindowTracker as unknown as WebContentsTracker,
+      );
+
+      // First subscribe to all state
+      handler.selectiveSubscribe(wc, undefined);
+      (safelySendToWindow as Mock).mockClear();
+
+      // Then subscribe to specific keys — superseded by '*', but should still
+      // send initial state so the component can initialize
+      handler.selectiveSubscribe(wc, ['user']);
+
+      type DeltaPayload = {
+        delta: { type: string; changed?: Record<string, unknown> };
+      };
+      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
+      expect(sendCalls.length).toBe(1);
+
+      const payload = sendCalls[0][2] as DeltaPayload;
+      expect(payload.delta.type).toBe('delta');
+      expect(payload.delta.changed).toHaveProperty('user');
+      // Should not leak keys outside the requested subscription
+      expect(payload.delta.changed).not.toHaveProperty('counter');
+      expect(payload.delta.changed).not.toHaveProperty('theme');
+    });
+
     it('should not register a subscription entry for empty-key subscriptions', () => {
       const fullState = { counter: 10, user: { name: 'Alice' } };
       const stateManager: StateManager<AnyState> = {
@@ -1467,7 +1511,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn(); // unsubscribe function
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
