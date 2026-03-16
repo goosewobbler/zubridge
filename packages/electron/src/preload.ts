@@ -216,6 +216,13 @@ export const preloadBridge = <S extends AnyState>(
           // and deltas cannot be safely applied
           const hasSeqGap =
             seq !== undefined && expectedSeq > 0 && (seq > expectedSeq + 1 || seq < expectedSeq);
+          // Detect exact retransmits — skip reprocessing to avoid spurious re-renders
+          const isDuplicate = seq !== undefined && expectedSeq > 0 && seq === expectedSeq;
+
+          if (isDuplicate) {
+            debug('ipc', `Duplicate seq ${seq} detected, skipping update ${updateId}`);
+            return;
+          }
 
           if (hasSeqGap) {
             debug(
