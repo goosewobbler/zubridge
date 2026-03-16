@@ -1,5 +1,6 @@
 import { bench, describe } from 'vitest';
 import { DeltaCalculator } from '../src/deltas/DeltaCalculator.js';
+import { DeltaMerger } from '../src/deltas/DeltaMerger.js';
 
 interface TestState {
   counter: number;
@@ -165,5 +166,131 @@ describe('Delta payload size comparison', () => {
     const next = { ...prev, counter: 43, theme: 'light' };
     const delta = calculator.calculate(prev, next, ['counter', 'theme']);
     JSON.stringify(delta);
+  });
+});
+
+// --- DeltaMerger benchmarks (renderer-side hot path) ---
+
+describe('DeltaMerger - single key change', () => {
+  const merger = new DeltaMerger<TestState>();
+
+  bench('small state', () => {
+    const state = createSmallState();
+    merger.merge(state, { type: 'delta', changed: { counter: 43 } });
+  });
+
+  bench('medium state', () => {
+    const state = createMediumState();
+    merger.merge(state, { type: 'delta', changed: { counter: 43 } });
+  });
+
+  bench('large state', () => {
+    const state = createLargeState();
+    merger.merge(state, { type: 'delta', changed: { counter: 43 } });
+  });
+});
+
+describe('DeltaMerger - deep path changes', () => {
+  const merger = new DeltaMerger<TestState>();
+
+  bench('single deep path', () => {
+    const state = createSmallState();
+    merger.merge(state, { type: 'delta', changed: { 'user.profile.theme': 'light' } });
+  });
+
+  bench('multiple deep paths', () => {
+    const state = createMediumState();
+    merger.merge(state, {
+      type: 'delta',
+      changed: {
+        'user.profile.theme': 'light',
+        'settings.display.resolution': '4k',
+        'settings.volume': 90,
+      },
+    });
+  });
+
+  bench('large state - deep collection path', () => {
+    const state = createLargeState();
+    merger.merge(state, {
+      type: 'delta',
+      changed: { 'collection0.meta.count': 51 },
+    });
+  });
+});
+
+describe('DeltaMerger - changed + removed', () => {
+  const merger = new DeltaMerger<TestState>();
+
+  bench('change one key, remove another', () => {
+    const state = createMediumState();
+    merger.merge(state, {
+      type: 'delta',
+      changed: { counter: 43 },
+      removed: ['theme'],
+    });
+  });
+
+  bench('overlapping paths: change and remove under same parent', () => {
+    const state = createMediumState();
+    merger.merge(state, {
+      type: 'delta',
+      changed: { 'settings.display.resolution': '4k' },
+      removed: ['settings.display.refresh'],
+    });
+  });
+});
+
+describe('DeltaMerger - full state replacement vs delta merge', () => {
+  const merger = new DeltaMerger<TestState>();
+
+  bench('full state replacement (large)', () => {
+    const state = createLargeState();
+    const fullState = { ...state, counter: 43 };
+    merger.merge(state, { type: 'full', fullState });
+  });
+
+  bench('delta merge - single key (large)', () => {
+    const state = createLargeState();
+    merger.merge(state, { type: 'delta', changed: { counter: 43 } });
+  });
+
+  bench('delta merge - 5 keys (large)', () => {
+    const state = createLargeState();
+    merger.merge(state, {
+      type: 'delta',
+      changed: {
+        counter: 43,
+        theme: 'light',
+        'user.name': 'Bob',
+        'user.profile.theme': 'light',
+        'collection0.meta.name': 'Updated',
+      },
+    });
+  });
+});
+
+describe('DeltaMerger - many changes (stress)', () => {
+  const merger = new DeltaMerger<TestState>();
+
+  bench('20 top-level key changes on large state', () => {
+    const state = createLargeState();
+    const changed: Record<string, unknown> = {};
+    for (let i = 0; i < 20; i++) {
+      changed[`collection${i}`] = {
+        items: [`updated-item-${i}`],
+        meta: { count: 1, name: `Updated ${i}` },
+      };
+    }
+    merger.merge(state, { type: 'delta', changed });
+  });
+
+  bench('20 deep path changes on large state', () => {
+    const state = createLargeState();
+    const changed: Record<string, unknown> = {};
+    for (let i = 0; i < 20; i++) {
+      changed[`collection${i}.meta.name`] = `Updated ${i}`;
+    }
+    merger.merge(state, { type: 'delta', changed });
   });
 });
