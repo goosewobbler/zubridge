@@ -285,9 +285,9 @@ export class ActionBatcher {
     }
 
     // Register a waiter before calling flush() so doFlush always finds it.
-    // This is safe because no await exists between the queue.length check above
-    // and flush() below, so no other code can drain the queue and cause flush()
-    // to return early (skipping doFlush and leaving the waiter unresolved).
+    // This is safe because no await exists between the queue.length check and
+    // the waiter registration below — the JS event loop cannot interleave
+    // another flush that would drain the queue before our waiter is registered.
     const resultPromise = new Promise<FlushResult>((resolve) => {
       this.flushResultWaiters.add(resolve);
     });
