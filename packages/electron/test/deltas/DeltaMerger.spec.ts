@@ -75,6 +75,23 @@ describe('DeltaMerger', () => {
       expect((result.user as TestState['user']).name).toBe('Bob');
     });
 
+    it('should apply child dot-path correctly when delta.changed has child before parent (reverse insertion order)', () => {
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      // Child key inserted before parent — sort must reorder so parent is processed first
+      const changed: Record<string, unknown> = {};
+      changed['user.name'] = 'Bob';
+      changed['user'] = { name: 'Alice', profile: { theme: 'dark' } };
+
+      const result = merger.merge(currentState, { type: 'delta', changed });
+
+      expect((result.user as TestState['user']).name).toBe('Bob');
+    });
+
     it('should merge deep key path changes', () => {
       const currentState: TestState = {
         counter: 1,
