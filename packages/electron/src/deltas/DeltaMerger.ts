@@ -80,7 +80,7 @@ export class DeltaMerger<S> {
         current = existingInResult as Record<string, unknown>;
         originalCurrent = originalValue ?? (existingInResult as Record<string, unknown>);
       } else if (originalValue !== null && typeof originalValue === 'object') {
-        const cloned = { ...originalValue };
+        const cloned = Array.isArray(originalValue) ? [...originalValue] : { ...originalValue };
         current[key] = cloned;
         current = cloned;
         originalCurrent = originalValue;
@@ -137,9 +137,11 @@ export class DeltaMerger<S> {
         current = next as Record<string, unknown>;
         originalCurrent = originalValue ?? (next as Record<string, unknown>);
       } else {
-        const cloned = { ...(next as Record<string, unknown>) };
+        const cloned = Array.isArray(next)
+          ? [...(next as unknown[])]
+          : { ...(next as Record<string, unknown>) };
         current[keys[i]] = cloned;
-        current = cloned;
+        current = cloned as Record<string, unknown>;
         originalCurrent = originalValue ?? (next as Record<string, unknown>);
       }
     }
