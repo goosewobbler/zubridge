@@ -63,7 +63,7 @@ jobs:
           exit 1
 
       - name: 👷 Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ssh-key: ${{ secrets.DEPLOY_KEY }}
           ref: main

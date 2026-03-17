@@ -88,7 +88,7 @@ jobs:
 
       # Checkout and setup
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -99,7 +99,7 @@ jobs:
 
       # Download shared packages
       - name: Download shared packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: shared-packages
           path: packages
@@ -180,7 +180,7 @@ jobs:
       # Upload artifacts
       - name: Upload Artifacts
         if: steps.build-result.outputs.success == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-linux-${{ env.BUILD_ID }}
           path: |
@@ -206,7 +206,7 @@ jobs:
     steps:
       # Checkout and setup
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -217,7 +217,7 @@ jobs:
 
       # Download shared packages
       - name: Download shared packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: shared-packages
           path: packages
@@ -298,7 +298,7 @@ jobs:
       # Upload artifacts
       - name: Upload Artifacts
         if: steps.build-result.outputs.success == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-macos-${{ env.BUILD_ID }}
           path: |
@@ -318,7 +318,7 @@ jobs:
     steps:
       # Checkout and setup
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -329,7 +329,7 @@ jobs:
 
       # Download shared packages
       - name: Download shared packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: shared-packages
           path: packages
@@ -410,7 +410,7 @@ jobs:
       # Upload artifacts
       - name: Upload Artifacts
         if: steps.build-result.outputs.success == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app }}-${{ inputs.mode }}-windows-${{ env.BUILD_ID }}
           path: |

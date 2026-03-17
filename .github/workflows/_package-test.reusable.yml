@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macos-latest' || 'windows-latest' }}
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -40,7 +40,7 @@ jobs:
         uses: ./.github/workflows/actions/setup-workspace
 
       - name: 📦 Download shared packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: shared-packages
 
@@ -106,7 +106,7 @@ jobs:
       - name: Upload Package Test Logs
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package-test-logs-${{ inputs.os }}-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: apps/*/wdio-logs-*/**/*.log

@@ -62,7 +62,7 @@ runs:
       shell: bash
 
     - name: Upload E2E Test Logs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: inputs.app == 'electron'
       continue-on-error: true
       with:
@@ -72,7 +72,7 @@ runs:
         if-no-files-found: warn
 
     - name: Upload Package Test Logs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: inputs.app == 'package-test'
       continue-on-error: true
       with:
