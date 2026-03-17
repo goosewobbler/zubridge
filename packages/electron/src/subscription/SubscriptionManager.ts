@@ -238,8 +238,15 @@ export class SubscriptionManager<S> {
       `[unsubscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
     );
 
+    // Empty array = "unsubscribe from nothing" = no-op, consistent with
+    // subscribe([], cb, windowId) being guarded as a no-op on the subscribe side.
+    if (keys && keys.length === 0) {
+      debug('subscription', `[unsubscribe] Empty keys array, no-op for window ${windowId}`);
+      return;
+    }
+
     // If no keys provided or '*' is included, remove all subscriptions for this window
-    if (!keys || keys.length === 0 || keys.includes('*')) {
+    if (!keys || keys.includes('*')) {
       debug('subscription', `[unsubscribe] Removing all subscriptions for window ${windowId}`);
       for (const [id, sub] of this.subscriptions) {
         if (sub.windowId === windowId) {
