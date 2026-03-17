@@ -24,7 +24,7 @@ export class DeltaMerger<S> {
       // ('user.name'). Structural sharing requires parents to be cloned first
       // so child writes target the already-cloned node.
       for (const [keyPath, value] of Object.entries(delta.changed).sort(([a], [b]) =>
-        a.localeCompare(b),
+        a < b ? -1 : a > b ? 1 : 0,
       )) {
         this.setDeepWithStructuralSharing(
           result,
@@ -103,7 +103,7 @@ export class DeltaMerger<S> {
       // Primitives are immutable — no cloning needed.
       return value;
     }
-    // structuredClone is available in Electron 8+
+    // structuredClone is available in Electron 17+
     return structuredClone(value);
   }
 
