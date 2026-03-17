@@ -193,7 +193,10 @@ export class SubscriptionHandler<State extends AnyState> {
               seq: this.nextSeq(windowId),
             });
 
-            // Store state for next comparison (already sanitized by BridgeFactory)
+            // Store state for next comparison. `state` is always sanitized because
+            // BridgeFactory passes sanitizedState to notify() and stores prevState
+            // as sanitizedState. If BridgeFactory is ever changed to pass raw state,
+            // this assignment must also change to maintain sanitized-vs-sanitized parity.
             subscriptionPrevState = state as State;
           } else {
             // Deltas are disabled — send the full sanitised state on every update
@@ -262,6 +265,16 @@ export class SubscriptionHandler<State extends AnyState> {
                 sanitizedState as Partial<State>,
                 normalizedKeys,
               );
+
+              // Guard: if stateToDeltaKeys returned empty and there are no removals,
+              // skip the send. An empty { type: 'delta', changed: undefined, removed: undefined }
+              // would cause the renderer to fall through to getState(), triggering a
+              // full resync round-trip.
+              if (Object.keys(deltaChanged).length === 0 && !removedKeys) {
+                subscriptionPrevState = sanitizedState as State;
+                return;
+              }
+
               safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
                 updateId,
                 delta: {
