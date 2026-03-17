@@ -132,8 +132,9 @@ describe('windows.ts', () => {
       expect(webContents.send).not.toHaveBeenCalled();
 
       // Simulate the load finishing
-      const callback = vi.mocked(webContents.once).mock.calls[0][1] as Function;
-      callback();
+      const onceCalls = vi.mocked(webContents.once).mock.calls;
+      const loadCallback = onceCalls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
+      loadCallback();
 
       expect(webContents.send).toHaveBeenCalledWith('test-channel', { data: 'test' });
     });
@@ -167,14 +168,16 @@ describe('windows.ts', () => {
 
       const result = safelySendToWindow(webContents, 'test-channel', { data: 'test' });
 
-      const callback = vi.mocked(webContents.once).mock.calls[0][1] as Function;
+      const loadCallback = vi
+        .mocked(webContents.once)
+        .mock.calls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
 
       vi.mocked(webContents.isDestroyed).mockReturnValue(false);
       vi.mocked(webContents.send).mockImplementation(() => {
         throw new Error('Send error');
       });
 
-      callback();
+      loadCallback();
 
       expect(result).toBe(true);
     });
@@ -186,14 +189,16 @@ describe('windows.ts', () => {
       // Set up the channel
       safelySendToWindow(webContents, 'test-channel', { data: 'test' });
 
-      // Get the callback
-      const callback = vi.mocked(webContents.once).mock.calls[0][1] as Function;
+      // Get the did-finish-load callback
+      const loadCallback = vi
+        .mocked(webContents.once)
+        .mock.calls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
 
       // Make isDestroyed return true during the callback to trigger the error handling
       vi.mocked(webContents.isDestroyed).mockReturnValue(true);
 
       // This should not throw
-      callback();
+      loadCallback();
 
       // The send should not be called since isDestroyed returns true
       expect(webContents.send).not.toHaveBeenCalled();
@@ -205,7 +210,9 @@ describe('windows.ts', () => {
 
       safelySendToWindow(webContents, 'test-channel', { data: 'test' });
 
-      const callback = vi.mocked(webContents.once).mock.calls[0][1] as Function;
+      const loadCallback = vi
+        .mocked(webContents.once)
+        .mock.calls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
 
       // Make isDestroyed throw an error to trigger the catch block
       vi.mocked(webContents.isDestroyed).mockImplementation(() => {
@@ -213,7 +220,7 @@ describe('windows.ts', () => {
       });
 
       // This should not throw
-      callback();
+      loadCallback();
 
       // Send shouldn't be called since an error was thrown
       expect(webContents.send).not.toHaveBeenCalled();
@@ -228,13 +235,14 @@ describe('windows.ts', () => {
       safelySendToWindow(webContents, 'ch', { seq: 2 });
       safelySendToWindow(webContents, 'ch', { seq: 3 });
 
-      // Only one did-finish-load listener should be registered
-      expect(webContents.once).toHaveBeenCalledTimes(1);
+      // One destroyed + one did-finish-load listener should be registered
+      expect(webContents.once).toHaveBeenCalledTimes(2);
       expect(webContents.send).not.toHaveBeenCalled();
 
       // Simulate load finishing
-      const callback = vi.mocked(webContents.once).mock.calls[0][1] as Function;
-      callback();
+      const onceCalls = vi.mocked(webContents.once).mock.calls;
+      const loadCallback = onceCalls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
+      loadCallback();
 
       // All three messages should be sent in order
       expect(webContents.send).toHaveBeenCalledTimes(3);
@@ -242,6 +250,29 @@ describe('windows.ts', () => {
       expect(calls[0]).toEqual(['ch', { seq: 1 }]);
       expect(calls[1]).toEqual(['ch', { seq: 2 }]);
       expect(calls[2]).toEqual(['ch', { seq: 3 }]);
+    });
+
+    it('should clean up pending messages when window is destroyed before loading finishes', () => {
+      const webContents = mockWebContents();
+      vi.mocked(webContents.isLoading).mockReturnValue(true);
+
+      // Queue a message while loading
+      safelySendToWindow(webContents, 'ch', { seq: 1 });
+
+      // Both destroyed and did-finish-load listeners should be registered
+      const onceCalls = vi.mocked(webContents.once).mock.calls;
+      expect(onceCalls.length).toBe(2);
+      const destroyedCallback = onceCalls.find((c) => c[0] === 'destroyed')?.[1] as Function;
+      const loadCallback = onceCalls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
+      expect(destroyedCallback).toBeDefined();
+      expect(loadCallback).toBeDefined();
+
+      // Simulate destruction before load finishes
+      destroyedCallback();
+
+      // did-finish-load handler should be a no-op now (queue was deleted)
+      loadCallback();
+      expect(webContents.send).not.toHaveBeenCalled();
     });
   });
 
