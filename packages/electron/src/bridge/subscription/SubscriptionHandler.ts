@@ -35,6 +35,16 @@ export class SubscriptionHandler<State extends AnyState> {
     this.deltaConfig = getDeltaConfig(deltaOptions);
   }
 
+  /**
+   * Returns the next sequence number for a window, incrementing the counter.
+   *
+   * NOTE: The seq is consumed before safelySendToWindow is called (it's
+   * evaluated as a function argument). If the send fails (e.g. window
+   * destroyed between check and send), the seq is "wasted" and the renderer
+   * will see a gap on the next successful send, triggering a getState()
+   * resync. This race is narrow — the destroy listener clears windowSeqs
+   * shortly after — and the resync is self-correcting.
+   */
   private nextSeq(windowId: number): number {
     const current = this.windowSeqs.get(windowId) ?? 0;
     const next = current + 1;
