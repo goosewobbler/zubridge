@@ -141,14 +141,12 @@ export function createCoreBridge<State extends AnyState>(
           debug('core', `Notifying window ${windowId} of state change`);
           subManager.notify(prevState, sanitizedState);
         } else {
-          // On first run, send full state to all subscribers.
-          // NOTE: The renderer may receive two initial-state payloads: one sent
-          // explicitly at selectiveSubscribe() time, and this one from the first
-          // notify(). If state changed between those two moments, both deltas are
-          // applied sequentially, which is correct but may cause a brief flash of
-          // intermediate state visible to subscribers between the two merges.
+          // First run: pass undefined as prev so hasRelevantChange returns true
+          // for all subscription types (not just '*'). This ensures specific-key
+          // subscriptions also fire if state changed between selectiveSubscribe()
+          // and this first notify.
           debug('core', `Sending initial state to window ${windowId}`);
-          subManager.notify(sanitizedState, sanitizedState);
+          subManager.notify(undefined, sanitizedState);
         }
       }
       // Store already-sanitized state to avoid re-sanitizing on the next tick.
