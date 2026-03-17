@@ -82,7 +82,7 @@ export class DeltaMerger<S> {
       } else if (originalValue !== null && typeof originalValue === 'object') {
         const cloned = Array.isArray(originalValue) ? [...originalValue] : { ...originalValue };
         current[key] = cloned;
-        current = cloned;
+        current = cloned as Record<string, unknown>;
         originalCurrent = originalValue;
       } else {
         const newObj: Record<string, unknown> = {};
