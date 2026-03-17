@@ -359,8 +359,9 @@ describe('Preload Bridge', () => {
         expect.objectContaining({ updateId: 'u-sentinel' }),
       );
 
-      // Subscriber should be notified (with empty state merged onto base)
-      expect(subscriberCallback).toHaveBeenCalled();
+      // Subscriber should NOT be notified — empty sentinel skips listener
+      // notification to avoid a flash of empty state before real data arrives
+      expect(subscriberCallback).not.toHaveBeenCalled();
     });
 
     it('should send ACK even for duplicate seq messages', async () => {
