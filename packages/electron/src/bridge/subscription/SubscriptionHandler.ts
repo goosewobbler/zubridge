@@ -262,10 +262,15 @@ export class SubscriptionHandler<State extends AnyState> {
         },
         windowId,
       );
-      // When superseded by an existing '*' subscription, no callback was registered.
-      // We still send the initial-state delta below so the component can initialize.
       if (subscribeResult.status === 'registered') {
         unsubs.push(subscribeResult.unsubscribe);
+      }
+
+      // Superseded subscriptions don't need an initial-state send — the existing
+      // '*' subscription already delivers the current state to this window.
+      // Skipping also avoids consuming a seq number on a dead path.
+      if (subscribeResult.status === 'superseded') {
+        continue;
       }
 
       const fullState = this.stateManager.getState();
