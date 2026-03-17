@@ -18,6 +18,13 @@ export class DeltaCalculator<S> {
       return '*';
     }
 
+    // NOTE: overlapping dot-path subscriptions (e.g. ['user', 'user.name']) are
+    // not collapsed — both paths survive deduplication and produce independent
+    // dequal comparisons in calculate(). DeltaMerger handles the redundancy
+    // correctly (parent key applied first due to sort order, child write is a
+    // no-op), but the IPC payload will carry both keys. This is a deliberate
+    // trade-off: collapsing paths would require prefix-tree logic and add
+    // complexity for a case that rarely occurs in practice.
     return [...new Set(keys.map((k) => k.trim()).filter((k) => k.length > 0))].sort();
   }
 
