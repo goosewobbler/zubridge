@@ -96,21 +96,12 @@ export class DeltaMerger<S> {
   }
 
   private cloneValue(value: unknown): unknown {
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || typeof value !== 'object') {
+      // Primitives are immutable — no cloning needed.
       return value;
     }
-    if (typeof value !== 'object') {
-      // Primitives are immutable — no cloning needed, and JSON round-trip would
-      // corrupt NaN / Infinity to null.
-      return value;
-    }
-    if (typeof structuredClone === 'function') {
-      // structuredClone handles both plain objects and arrays in a single call,
-      // avoiding per-element overhead for array values.
-      return structuredClone(value);
-    }
-    // Fallback: JSON round-trip strips undefined properties and converts NaN/Infinity to null
-    return JSON.parse(JSON.stringify(value));
+    // structuredClone is available in Electron 8+ (V8 structured clone for IPC).
+    return structuredClone(value);
   }
 
   private deleteDeep(
