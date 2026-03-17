@@ -153,7 +153,9 @@ export class SubscriptionHandler<State extends AnyState> {
             );
 
             if (!delta) {
-              // Nothing changed — skip sending an update entirely
+              // Nothing changed — skip sending an update entirely.
+              // subscriptionPrevState updated here so the next diff has the
+              // correct baseline even though no message was sent.
               debug('core', `No changes detected for window ${windowId}, skipping update`);
               subscriptionPrevState = state;
               return;
@@ -172,6 +174,8 @@ export class SubscriptionHandler<State extends AnyState> {
                 Object.keys(sanitizedDelta.fullState).length > 0);
 
             if (!hasContent) {
+              // Sanitization stripped all values — skip send but still advance
+              // the baseline so the next diff compares against the new state.
               debug(
                 'core',
                 `Delta fully stripped by sanitization for window ${windowId}, skipping send`,
@@ -237,10 +241,10 @@ export class SubscriptionHandler<State extends AnyState> {
 
             // Skip send if sanitized state is empty AND no keys were removed
             // (e.g. all values were non-serializable) — avoids tracking a thunk
-            // that never gets ACKed
+            // that never gets ACKed. Baseline still advanced so next diff is correct.
             const hasState = sanitizedState != null && Object.keys(sanitizedState).length > 0;
             if (!hasState && !removedKeys) {
-              subscriptionPrevState = sanitizedState as Partial<State>;
+              subscriptionPrevState = sanitizedState as Partial<State>; // intentional: advance baseline
               return;
             }
 
@@ -279,9 +283,9 @@ export class SubscriptionHandler<State extends AnyState> {
               // Guard: if stateToDeltaKeys returned empty and there are no removals,
               // skip the send. An empty { type: 'delta', changed: undefined, removed: undefined }
               // would cause the renderer to fall through to getState(), triggering a
-              // full resync round-trip.
+              // full resync round-trip. Baseline still advanced so next diff is correct.
               if (Object.keys(deltaChanged).length === 0 && !removedKeys) {
-                subscriptionPrevState = sanitizedState as Partial<State>;
+                subscriptionPrevState = sanitizedState as Partial<State>; // intentional: advance baseline
                 return;
               }
 
@@ -412,6 +416,10 @@ export class SubscriptionHandler<State extends AnyState> {
   }
 
   private sanitizeDelta(delta: Delta<State>, options: { maxDepth?: number }): Delta<State> {
+    // NOTE: type === 'full' deltas are never produced by the subscription
+    // callback path — subscriptionPrevState is always seeded before callbacks
+    // fire, so calculate() never returns type:'full' here. This branch exists
+    // only for direct / test callers that may pass a full-state delta.
     if (delta.type === 'full') {
       return {
         type: 'full',
