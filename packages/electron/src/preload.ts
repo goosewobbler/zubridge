@@ -881,7 +881,8 @@ export const preloadBridge = <S extends AnyState>(
   const performCriticalCleanup = (): void => {
     debug('ipc', 'Performing critical synchronous cleanup');
 
-    // Only essential synchronous cleanup here
+    // Only essential synchronous cleanup here — no resubscription occurs after
+    // beforeunload, so resetting cachedState to null is terminal (not a resync).
     listeners.clear();
     cachedState = null;
     expectedSeq = 0;

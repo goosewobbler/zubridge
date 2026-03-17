@@ -10,9 +10,7 @@ export class DeltaMerger<S> {
       if (delta.fullState && Object.keys(delta.fullState).length > 0) {
         // Return a defensive copy so callers can't mutate the IPC payload
         // and corrupt subsequent merge bases.
-        return typeof structuredClone === 'function'
-          ? structuredClone(delta.fullState)
-          : JSON.parse(JSON.stringify(delta.fullState));
+        return structuredClone(delta.fullState);
       }
       // Return a shallow clone for consistency — callers who assume merge()
       // always returns a fresh object should not receive the original reference.

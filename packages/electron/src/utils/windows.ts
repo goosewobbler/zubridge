@@ -106,6 +106,11 @@ export const isDestroyed = (webContents: WebContents): boolean => {
 // and flushed on did-finish-load to preserve seq ordering. Without this,
 // multiple calls during loading could each register independent once() handlers
 // that fire in unpredictable order relative to immediate sends.
+//
+// NOTE: This map is module-scoped — all bridge instances in the same process
+// share it. This is safe as long as a given WebContents is only subscribed
+// by a single bridge. If multi-bridge support is needed in the future,
+// move this map to a per-bridge closure (e.g. factory function).
 const pendingMessages = new Map<number, Array<{ channel: string; data: unknown }>>();
 
 /**

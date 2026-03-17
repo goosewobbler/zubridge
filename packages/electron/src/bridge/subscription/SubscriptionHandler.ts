@@ -81,7 +81,6 @@ export class SubscriptionHandler<State extends AnyState> {
       if (!webContents || isDestroyed(webContents)) continue;
 
       this.windowTracker.track(webContents);
-      subscribedWebContents.push(webContents);
 
       let subManager = this.resourceManager.getSubscriptionManager(webContents.id);
       if (!subManager) {
@@ -310,6 +309,7 @@ export class SubscriptionHandler<State extends AnyState> {
       );
       if (subscribeResult.status === 'registered') {
         unsubs.push(subscribeResult.unsubscribe);
+        subscribedWebContents.push(webContents);
       }
 
       // Superseded subscriptions don't need an initial-state send — the existing
