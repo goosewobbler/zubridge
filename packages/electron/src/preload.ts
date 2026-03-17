@@ -285,6 +285,11 @@ export const preloadBridge = <S extends AnyState>(
             // didUpdate/seq guard. This is safe because these branches contain
             // no `await` — the JS event loop guarantees they run atomically
             // within a single microtask and cannot interleave with other handlers.
+            // cachedState is null until the first STATE_UPDATE arrives. The
+            // initial payload always carries full current state as changed keys,
+            // so an empty base is safe. Keys whose values are `undefined` will
+            // be absent from both the delta and the resulting cachedState,
+            // consistent with JSON serialization semantics.
             const base = cachedState ?? ({} as S);
             newState = deltaMerger.merge(base, delta) as S;
             cachedState = newState;

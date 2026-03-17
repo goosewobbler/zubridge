@@ -2,7 +2,7 @@ import { debug } from '@zubridge/core';
 import { dequal } from 'dequal';
 import { deepGet } from '../utils/deepGet.js';
 
-export type SubscriptionCallback<S> = (partialState: Partial<S>) => void;
+export type SubscriptionCallback<S> = (partialState: Partial<S>, fullNext: S) => void;
 
 export type Subscription<S> = {
   keys?: string[];
@@ -300,7 +300,7 @@ export class SubscriptionManager<S> {
         // Always invoke the callback when a relevant change was detected —
         // even if partialState is empty, the SubscriptionHandler needs to
         // run its delta calculator to emit `removed` entries for deleted keys.
-        callback(partialState);
+        callback(partialState, next);
       } else {
         debug(
           'subscription',

@@ -126,7 +126,7 @@ export class SubscriptionHandler<State extends AnyState> {
       let subscriptionPrevState: Partial<State> | undefined;
       const subscribeResult = subManager.subscribe(
         normalizedKeys === '*' ? undefined : normalizedKeys,
-        (state) => {
+        (state, fullNext) => {
           debug('core', `Sending state update to window ${windowId}`);
           const serializationOptions: { maxDepth?: number } = {};
           if (this.serializationMaxDepth !== undefined) {
@@ -150,6 +150,7 @@ export class SubscriptionHandler<State extends AnyState> {
               subscriptionPrevState as State,
               state as State,
               normalizedKeys,
+              fullNext as State,
             );
 
             if (!delta) {
@@ -347,6 +348,9 @@ export class SubscriptionHandler<State extends AnyState> {
       // Send initial state as a delta payload to properly handle overlapping subscriptions.
       // Using dot-path keys ensures multiple subscriptions with shared ancestors (e.g.
       // ['user.name'] and ['user.profile']) merge correctly instead of overwriting each other.
+      // For '*' subscriptions: enumerate top-level keys only. Subsequent deltas
+      // from DeltaCalculator.calculateTopLevelDelta also operate at the top level,
+      // so the initial seed and ongoing deltas use the same granularity.
       const deltaChanged = this.stateToDeltaKeys(
         currentState as Partial<State>,
         normalizedKeys === '*' ? undefined : normalizedKeys,
