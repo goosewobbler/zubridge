@@ -102,6 +102,12 @@ export const isDestroyed = (webContents: WebContents): boolean => {
   }
 };
 
+// Per-window message queue for loading windows. Messages are queued in order
+// and flushed on did-finish-load to preserve seq ordering. Without this,
+// multiple calls during loading could each register independent once() handlers
+// that fire in unpredictable order relative to immediate sends.
+const pendingMessages = new Map<number, Array<{ channel: string; data: unknown }>>();
+
 /**
  * Safely send a message to a WebContents
  */
@@ -143,28 +149,44 @@ export const safelySendToWindow = (
         'windows',
         `safelySendToWindow: WebContents ID ${webContents.id} is loading, queueing message for later`,
       );
-      webContents.once('did-finish-load', () => {
-        try {
-          if (!webContents.isDestroyed()) {
+
+      const wcId = webContents.id;
+      let queue = pendingMessages.get(wcId);
+      if (!queue) {
+        queue = [];
+        pendingMessages.set(wcId, queue);
+
+        // Register a single flush handler per window — all queued messages
+        // are sent in order when the window finishes loading.
+        webContents.once('did-finish-load', () => {
+          const messages = pendingMessages.get(wcId);
+          pendingMessages.delete(wcId);
+          if (!messages) return;
+          try {
+            if (!webContents.isDestroyed()) {
+              debug(
+                'windows',
+                `safelySendToWindow: Flushing ${messages.length} queued message(s) to WebContents ID ${wcId}`,
+              );
+              for (const msg of messages) {
+                webContents.send(msg.channel, msg.data);
+              }
+            } else {
+              debug(
+                'windows',
+                `safelySendToWindow: WebContents ID ${wcId} was destroyed before load finished`,
+              );
+            }
+          } catch (e) {
             debug(
               'windows',
-              `safelySendToWindow: Now sending delayed message to WebContents ID ${webContents.id}`,
-            );
-            webContents.send(channel, data);
-          } else {
-            debug(
-              'windows',
-              `safelySendToWindow: WebContents ID ${webContents.id} was destroyed before load finished`,
+              `safelySendToWindow: Error sending delayed messages to WebContents ID ${wcId}`,
+              e,
             );
           }
-        } catch (e) {
-          debug(
-            'windows',
-            `safelySendToWindow: Error sending delayed message to WebContents ID ${webContents.id}`,
-            e,
-          );
-        }
-      });
+        });
+      }
+      queue.push({ channel, data });
       return true;
     }
 
