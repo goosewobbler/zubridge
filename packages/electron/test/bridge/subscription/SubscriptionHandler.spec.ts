@@ -506,7 +506,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn();
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
@@ -1559,7 +1559,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn();
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
@@ -1615,7 +1615,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn();
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
@@ -1735,7 +1735,7 @@ describe('SubscriptionHandler', () => {
       const mockSubManager = {
         subscribe: vi.fn((_keys: unknown, cb: (state: AnyState) => void) => {
           stateCallback = cb;
-          return vi.fn();
+          return { status: 'registered' as const, unsubscribe: vi.fn() };
         }),
         unsubscribe: vi.fn(),
         getCurrentSubscriptionKeys: vi.fn(() => []),
