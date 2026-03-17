@@ -215,7 +215,7 @@ describe('SubscriptionHandler', () => {
 
       expect(mockResourceManager.getSubscriptionManager).toHaveBeenCalledTimes(3);
       mockWebContents.forEach((wc) => {
-        expect(mockSubManager.unsubscribe).toHaveBeenCalledWith(keys, expect.any(Function), wc.id);
+        expect(mockSubManager.unsubscribe).toHaveBeenCalledWith(keys, wc.id);
       });
     });
 
@@ -229,11 +229,7 @@ describe('SubscriptionHandler', () => {
       const wc = mockWebContents[0];
       subscriptionHandler.unsubscribe(wc, ['counter']);
 
-      expect(mockSubManager.unsubscribe).toHaveBeenCalledWith(
-        ['counter'],
-        expect.any(Function),
-        wc.id,
-      );
+      expect(mockSubManager.unsubscribe).toHaveBeenCalledWith(['counter'], wc.id);
       // Window still has 'theme' subscription — must NOT be untracked
       expect((mockWindowTracker as unknown as { untrack: Mock }).untrack).not.toHaveBeenCalled();
     });
