@@ -22,7 +22,12 @@ export class DeltaMerger<S> {
     const result = this.cloneWithStructuralSharing(currentState as Record<string, unknown>);
 
     if (delta.changed) {
-      for (const [keyPath, value] of Object.entries(delta.changed)) {
+      // Sort entries so parent paths ('user') are processed before child paths
+      // ('user.name'). Structural sharing requires parents to be cloned first
+      // so child writes target the already-cloned node.
+      for (const [keyPath, value] of Object.entries(delta.changed).sort(([a], [b]) =>
+        a.localeCompare(b),
+      )) {
         this.setDeepWithStructuralSharing(
           result,
           currentState as Record<string, unknown>,
