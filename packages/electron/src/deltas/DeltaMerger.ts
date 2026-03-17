@@ -83,7 +83,7 @@ export class DeltaMerger<S> {
         // Already cloned by a prior call — reuse the in-progress clone
         current = existingInResult as Record<string, unknown>;
         originalCurrent = originalValue ?? (existingInResult as Record<string, unknown>);
-      } else if (originalValue && typeof originalValue === 'object') {
+      } else if (originalValue !== null && typeof originalValue === 'object') {
         const cloned = { ...originalValue };
         current[key] = cloned;
         current = cloned;
