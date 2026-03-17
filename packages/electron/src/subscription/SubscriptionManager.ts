@@ -102,7 +102,15 @@ function hasRelevantChange<S>(prev: S, next: S, keys?: string[]): boolean {
   // Even if same reference, we should check if values actually changed
   const normalized = normalizeKeys(keys);
   if (normalized === '*') {
-    debug('subscription', '[hasRelevantChange] Full state subscription - always notifying');
+    // Fast-path: same reference means nothing changed — skip the full traversal
+    if (prev === next) {
+      debug(
+        'subscription',
+        '[hasRelevantChange] Full state subscription - same reference, skipping',
+      );
+      return false;
+    }
+    debug('subscription', '[hasRelevantChange] Full state subscription - notifying');
     return true;
   }
   if (normalized.length === 0) return false;
@@ -262,7 +270,7 @@ export class SubscriptionManager<S> {
   /**
    * Notify all subscribers whose keys have changed, passing the relevant partial state.
    */
-  notify(prev: S, next: S): void {
+  notify(prev: S | undefined, next: S): void {
     debug(
       'subscription',
       `[notify] Starting notification with ${this.subscriptions.size} subscribers`,
