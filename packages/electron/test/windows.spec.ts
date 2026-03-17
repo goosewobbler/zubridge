@@ -274,6 +274,28 @@ describe('windows.ts', () => {
       loadCallback();
       expect(webContents.send).not.toHaveBeenCalled();
     });
+
+    it('should cap queued messages at 1000 and drop oldest on overflow', () => {
+      const webContents = mockWebContents();
+      vi.mocked(webContents.isLoading).mockReturnValue(true);
+
+      // Queue 1001 messages
+      for (let i = 0; i < 1001; i++) {
+        safelySendToWindow(webContents, 'ch', { seq: i });
+      }
+
+      // Simulate load finishing
+      const onceCalls = vi.mocked(webContents.once).mock.calls;
+      const loadCallback = onceCalls.find((c) => c[0] === 'did-finish-load')?.[1] as Function;
+      loadCallback();
+
+      // Should flush exactly 1000 messages (oldest dropped)
+      expect(webContents.send).toHaveBeenCalledTimes(1000);
+      // First flushed message should be seq 1 (seq 0 was dropped)
+      const calls = vi.mocked(webContents.send).mock.calls;
+      expect(calls[0]).toEqual(['ch', { seq: 1 }]);
+      expect(calls[999]).toEqual(['ch', { seq: 1000 }]);
+    });
   });
 
   describe('setupDestroyListener', () => {
