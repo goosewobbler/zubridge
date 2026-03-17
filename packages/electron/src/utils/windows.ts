@@ -151,10 +151,15 @@ export const safelySendToWindow = (
       );
 
       const wcId = webContents.id;
-      let queue = pendingMessages.get(wcId);
-      if (!queue) {
-        queue = [];
+      // Always start a fresh queue for each loading window. If a stale entry
+      // from a prior destroyed window with the same id exists, discard it.
+      const queue: Array<{ channel: string; data: unknown }> = pendingMessages.get(wcId) ?? [];
+      if (!pendingMessages.has(wcId)) {
         pendingMessages.set(wcId, queue);
+
+        // Clean up on destruction — prevents memory leaks when a window is
+        // destroyed before did-finish-load fires.
+        webContents.once('destroyed', () => pendingMessages.delete(wcId));
 
         // Register a single flush handler per window — all queued messages
         // are sent in order when the window finishes loading.
