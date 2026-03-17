@@ -1348,7 +1348,7 @@ describe('SubscriptionHandler', () => {
       expect(userUpdate).toBeDefined();
     });
 
-    it('should still send initial state when subscription is superseded by existing "*"', () => {
+    it('should skip initial-state send when subscription is superseded by existing "*"', () => {
       const fullState = { counter: 10, user: { name: 'Alice' }, theme: 'dark' };
       const stateManager: StateManager<AnyState> = {
         getState: vi.fn(() => fullState),
@@ -1374,22 +1374,12 @@ describe('SubscriptionHandler', () => {
       handler.selectiveSubscribe(wc, undefined);
       (safelySendToWindow as Mock).mockClear();
 
-      // Then subscribe to specific keys — superseded by '*', but should still
-      // send initial state so the component can initialize
+      // Then subscribe to specific keys — superseded by '*'.
+      // No initial-state send: the existing '*' subscription already delivers
+      // state, and sending would consume a seq number on a dead path.
       handler.selectiveSubscribe(wc, ['user']);
 
-      type DeltaPayload = {
-        delta: { type: string; changed?: Record<string, unknown> };
-      };
-      const sendCalls = (safelySendToWindow as Mock).mock.calls as unknown[][];
-      expect(sendCalls.length).toBe(1);
-
-      const payload = sendCalls[0][2] as DeltaPayload;
-      expect(payload.delta.type).toBe('delta');
-      expect(payload.delta.changed).toHaveProperty('user');
-      // Should not leak keys outside the requested subscription
-      expect(payload.delta.changed).not.toHaveProperty('counter');
-      expect(payload.delta.changed).not.toHaveProperty('theme');
+      expect(safelySendToWindow).not.toHaveBeenCalled();
     });
 
     it('should not register a subscription entry for empty-key subscriptions', () => {
