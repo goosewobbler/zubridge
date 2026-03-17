@@ -328,6 +328,41 @@ describe('Preload Bridge', () => {
       expect(subscriberCallback).toHaveBeenCalledWith({ counter: 42 });
     });
 
+    it('should accept empty full-state sentinel without falling back to getState', async () => {
+      const { stateUpdateHandler, subscriberCallback, mockedIpc } = await setupStateUpdateHandler();
+      expect(stateUpdateHandler).toBeDefined();
+
+      mockedIpc.invoke.mockClear();
+      mockedIpc.send.mockClear();
+      subscriberCallback.mockClear();
+
+      // Send the empty sentinel that SubscriptionHandler sends when all
+      // subscribed values are non-serializable
+      await stateUpdateHandler(
+        {},
+        {
+          updateId: 'u-sentinel',
+          delta: { type: 'full', fullState: {} },
+          seq: 1,
+        },
+      );
+
+      // Should NOT fall back to getState — the sentinel is a valid full-state update
+      const getStateCalls = mockedIpc.invoke.mock.calls.filter(
+        (call) => call[0] === 'zubridge:get-state',
+      );
+      expect(getStateCalls).toHaveLength(0);
+
+      // ACK should still be sent
+      expect(mockedIpc.send).toHaveBeenCalledWith(
+        'zubridge:state-update-ack',
+        expect.objectContaining({ updateId: 'u-sentinel' }),
+      );
+
+      // Subscriber should be notified (with empty state merged onto base)
+      expect(subscriberCallback).toHaveBeenCalled();
+    });
+
     it('should send ACK even for duplicate seq messages', async () => {
       const { stateUpdateHandler, subscriberCallback, mockedIpc } = await setupStateUpdateHandler();
       expect(stateUpdateHandler).toBeDefined();
