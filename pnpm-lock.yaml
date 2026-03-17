@@ -1132,7 +1132,7 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       electron:
-        specifier: '>=12'
+        specifier: '>=17'
         version: 38.3.0
       uuid:
         specifier: ^13.0.0
