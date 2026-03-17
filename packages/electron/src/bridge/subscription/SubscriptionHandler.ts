@@ -352,6 +352,9 @@ export class SubscriptionHandler<State extends AnyState> {
         normalizedKeys === '*' ? undefined : normalizedKeys,
       );
 
+      // One seq per initial-state send — hoisted before the branch to make the
+      // allocation explicit and guard against double-consumption if refactored.
+      const initialSeq = this.nextSeq(webContents.id);
       if (Object.keys(deltaChanged).length === 0) {
         // All values stripped by sanitization (e.g. all non-serializable).
         // Send an empty full-state sentinel so the renderer knows the subscription
@@ -360,7 +363,7 @@ export class SubscriptionHandler<State extends AnyState> {
           updateId,
           delta: { type: 'full', fullState: {} },
           thunkId: undefined,
-          seq: this.nextSeq(webContents.id),
+          seq: initialSeq,
         });
       } else {
         safelySendToWindow(webContents, IpcChannel.STATE_UPDATE, {
@@ -370,7 +373,7 @@ export class SubscriptionHandler<State extends AnyState> {
             changed: deltaChanged,
           },
           thunkId: undefined,
-          seq: this.nextSeq(webContents.id),
+          seq: initialSeq,
         });
       }
     }
