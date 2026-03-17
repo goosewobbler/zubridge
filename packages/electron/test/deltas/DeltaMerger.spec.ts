@@ -54,6 +54,27 @@ describe('DeltaMerger', () => {
       expect(result.user).toEqual(currentState.user);
     });
 
+    it('should apply child dot-path correctly when delta.changed has parent before child (insertion order)', () => {
+      // Regression: if entries are NOT sorted, child ('user.name') processed first
+      // gets overwritten by parent ('user') structuredClone, silently losing the child update.
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      // Deliberately pass parent key before child key (natural insertion order that DeltaCalculator produces)
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: {
+          user: { name: 'Alice', profile: { theme: 'dark' } } as TestState['user'],
+          'user.name': 'Bob',
+        },
+      });
+
+      expect((result.user as TestState['user']).name).toBe('Bob');
+    });
+
     it('should merge deep key path changes', () => {
       const currentState: TestState = {
         counter: 1,

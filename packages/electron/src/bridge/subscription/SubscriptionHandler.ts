@@ -448,9 +448,7 @@ export class SubscriptionHandler<State extends AnyState> {
               // and would cause DataCloneError over IPC — strip them.
               if (typeof v === 'function' || typeof v === 'symbol' || typeof v === 'bigint')
                 return [k, undefined];
-              // sanitizeState's internal serialize() handles both plain objects and
-              // arrays (recursively stripping functions, Dates, etc.), so this works
-              // for array-valued keys despite the State cast.
+              if (Array.isArray(v)) return [k, sanitizeState(v as unknown as State, options)];
               if (v !== null && typeof v === 'object')
                 return [k, sanitizeState(v as Record<string, unknown> as State, options)];
               return [k, v];

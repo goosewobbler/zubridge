@@ -15,6 +15,7 @@ import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types
 import { validateActionInRenderer } from './bridge/ipc/validation.js';
 import { IpcChannel } from './constants.js';
 import { DeltaMerger } from './deltas/DeltaMerger.js';
+import type { Delta } from './deltas/types.js';
 import { createIPCManager } from './renderer/preloadListeners.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
@@ -197,12 +198,7 @@ export const preloadBridge = <S extends AnyState>(
         registerIpcListener(IpcChannel.STATE_UPDATE, async (_event, payload) => {
           const { updateId, delta, thunkId, seq } = payload as {
             updateId: string;
-            delta?: {
-              type: 'delta' | 'full';
-              changed?: Record<string, unknown>;
-              removed?: string[];
-              fullState?: Partial<S>;
-            };
+            delta?: Delta<S>;
             thunkId?: string;
             seq?: number;
           };
