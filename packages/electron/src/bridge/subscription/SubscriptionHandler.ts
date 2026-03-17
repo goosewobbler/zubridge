@@ -448,7 +448,8 @@ export class SubscriptionHandler<State extends AnyState> {
               // and would cause DataCloneError over IPC — strip them.
               if (typeof v === 'function' || typeof v === 'symbol' || typeof v === 'bigint')
                 return [k, undefined];
-              if (Array.isArray(v)) return [k, sanitizeState(v as unknown as State, options)];
+              if (Array.isArray(v))
+                return [k, sanitizeState(v as unknown as State, options) as unknown as unknown[]];
               if (v !== null && typeof v === 'object')
                 return [k, sanitizeState(v as Record<string, unknown> as State, options)];
               return [k, v];

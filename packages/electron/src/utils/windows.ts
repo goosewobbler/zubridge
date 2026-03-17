@@ -196,6 +196,14 @@ export const safelySendToWindow = (
           }
         });
       }
+      const MAX_QUEUED_MESSAGES = 1000;
+      if (queue.length >= MAX_QUEUED_MESSAGES) {
+        queue.shift();
+        debug(
+          'windows',
+          `safelySendToWindow: queue limit reached for WebContents ID ${wcId}, dropping oldest message`,
+        );
+      }
       queue.push({ channel, data });
       return true;
     }
