@@ -240,7 +240,7 @@ export class SubscriptionHandler<State extends AnyState> {
             // that never gets ACKed
             const hasState = sanitizedState != null && Object.keys(sanitizedState).length > 0;
             if (!hasState && !removedKeys) {
-              subscriptionPrevState = sanitizedState;
+              subscriptionPrevState = sanitizedState as Partial<State>;
               return;
             }
 
@@ -281,7 +281,7 @@ export class SubscriptionHandler<State extends AnyState> {
               // would cause the renderer to fall through to getState(), triggering a
               // full resync round-trip.
               if (Object.keys(deltaChanged).length === 0 && !removedKeys) {
-                subscriptionPrevState = sanitizedState;
+                subscriptionPrevState = sanitizedState as Partial<State>;
                 return;
               }
 
@@ -298,7 +298,7 @@ export class SubscriptionHandler<State extends AnyState> {
             }
 
             // Store sanitized state for next comparison
-            subscriptionPrevState = sanitizedState;
+            subscriptionPrevState = sanitizedState as Partial<State>;
           }
         },
         windowId,
@@ -330,7 +330,7 @@ export class SubscriptionHandler<State extends AnyState> {
       // sanitized-vs-sanitized, matching all subsequent comparisons. The callback
       // receives state derived from sanitizedState (via BridgeFactory.notify), so
       // seeding with the raw form would cause a one-time raw-vs-sanitized mismatch.
-      subscriptionPrevState = currentState;
+      subscriptionPrevState = currentState as Partial<State>;
 
       // Generate update ID for current state
       const updateId = randomUUID();
