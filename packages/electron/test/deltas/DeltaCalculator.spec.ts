@@ -321,6 +321,56 @@ describe('DeltaCalculator', () => {
       });
     });
 
+    it('should promote child-path removal to root when entire parent is absent', () => {
+      // Regression: subscribing to ['user.name'] and entire 'user' key is
+      // deleted should emit removed: ['user'], not removed: ['user.name'].
+      // Without promotion, DeltaMerger would only delete the leaf and leave
+      // a stale empty-object shell: cachedState.user = {} instead of undefined.
+      const prev = {
+        counter: 1,
+        user: { name: 'Alice' },
+        items: [],
+      } as TestState;
+      const next = {
+        counter: 1,
+        items: [],
+      } as TestState;
+
+      const result = calculator.calculate(prev, next, ['user.name']);
+
+      expect(result).toEqual({
+        type: 'delta',
+        removed: ['user'],
+      });
+    });
+
+    it('should deduplicate promoted root when multiple child paths share the same absent parent', () => {
+      const prev = { counter: 1, user: { name: 'Alice', age: 30 }, items: [] } as TestState;
+      const next = { counter: 1, items: [] } as TestState;
+
+      const result = calculator.calculate(prev, next, ['user.name', 'user.age']);
+
+      expect(result?.removed).toEqual(['user']);
+    });
+
+    it('should not promote child removal when parent still exists in next', () => {
+      const prev = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      } as TestState;
+      const next = {
+        counter: 1,
+        user: { profile: { theme: 'dark' } },
+        items: [],
+      } as TestState;
+
+      const result = calculator.calculate(prev, next, ['user.name']);
+
+      // 'user' still exists in next — no promotion
+      expect(result?.removed).toEqual(['user.name']);
+    });
+
     it('should track both changed and removed keys', () => {
       const prev = {
         counter: 1,

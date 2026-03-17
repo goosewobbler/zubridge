@@ -33,8 +33,17 @@ export class DeltaCalculator<S> {
    * When prev is undefined, returns a type:'full' delta with the partial state
    * for the given keys. Note: SubscriptionHandler always seeds prev before the
    * callback fires, so prev === undefined is only reachable via direct callers.
+   *
+   * @param fullNext - The full (non-partial) next state. When provided, root-
+   * promotion checks use it to determine whether a parent key is truly absent
+   * from the store (vs. merely absent from the partial slice passed as `next`).
    */
-  calculate(prev: S | undefined, next: S, normalizedKeys: NormalizedKeys): Delta<S> | null {
+  calculate(
+    prev: S | undefined,
+    next: S,
+    normalizedKeys: NormalizedKeys,
+    fullNext?: S,
+  ): Delta<S> | null {
     if (normalizedKeys === '*') {
       return this.calculateTopLevelDelta(prev, next);
     }
@@ -62,8 +71,27 @@ export class DeltaCalculator<S> {
       }
     }
 
+    // Promote child-path removals to their root segment when the parent key is
+    // entirely absent from next — otherwise DeltaMerger.deleteDeep would only
+    // remove the leaf, leaving a stale empty-object shell in cachedState.
+    // e.g. subscription ['user.name'], next = { counter: 1 } → removed: ['user']
+    const rootsToPromote = new Set<string>();
+    const childrenToSuppress = new Set<string>();
+    for (const key of removed) {
+      if (!key.includes('.')) continue;
+      const root = key.split('.')[0];
+      if (deepGet((fullNext ?? next) as Record<string, unknown>, root) === undefined) {
+        rootsToPromote.add(root);
+        childrenToSuppress.add(key);
+      }
+    }
+    const finalRemoved = removed.filter((k) => !childrenToSuppress.has(k));
+    for (const root of rootsToPromote) {
+      if (!finalRemoved.includes(root)) finalRemoved.push(root);
+    }
+
     const hasChanges = Object.keys(changed).length > 0;
-    const hasRemovals = removed.length > 0;
+    const hasRemovals = finalRemoved.length > 0;
 
     if (!hasChanges && !hasRemovals) {
       return null;
@@ -72,7 +100,7 @@ export class DeltaCalculator<S> {
     return {
       type: 'delta',
       changed: hasChanges ? changed : undefined,
-      removed: hasRemovals ? removed : undefined,
+      removed: hasRemovals ? finalRemoved : undefined,
     };
   }
 

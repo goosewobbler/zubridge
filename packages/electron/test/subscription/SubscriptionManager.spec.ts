@@ -149,14 +149,14 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['counter'], mockCallback, windowId);
       subscriptionManager.notify(initialState, updatedState);
 
-      expect(mockCallback).toHaveBeenCalledWith({ counter: 1 });
+      expect(mockCallback).toHaveBeenCalledWith({ counter: 1 }, expect.anything());
     });
 
     it('should notify on all changes when subscribed to "*"', () => {
       subscriptionManager.subscribe(undefined, mockCallback, windowId);
       subscriptionManager.notify(initialState, updatedState);
 
-      expect(mockCallback).toHaveBeenCalledWith(updatedState);
+      expect(mockCallback).toHaveBeenCalledWith(updatedState, expect.anything());
     });
 
     it('should not notify on irrelevant key changes', () => {
@@ -185,7 +185,7 @@ describe('SubscriptionManager', () => {
         nextState as Record<string, unknown>,
       );
 
-      expect(mockCallback).toHaveBeenCalledWith({});
+      expect(mockCallback).toHaveBeenCalledWith({}, expect.anything());
     });
 
     it('should notify multiple windows independently', () => {
@@ -199,8 +199,8 @@ describe('SubscriptionManager', () => {
 
       subscriptionManager.notify(initialState, updatedState);
 
-      expect(callback1).toHaveBeenCalledWith({ counter: 1 });
-      expect(callback2).toHaveBeenCalledWith({ theme: 'dark' });
+      expect(callback1).toHaveBeenCalledWith({ counter: 1 }, expect.anything());
+      expect(callback2).toHaveBeenCalledWith({ theme: 'dark' }, expect.anything());
     });
 
     it('should notify with complete state when subscribed to "*" even for unchanged properties', () => {
@@ -209,7 +209,10 @@ describe('SubscriptionManager', () => {
 
       subscriptionManager.notify(state, { ...state, counter: 2 });
 
-      expect(mockCallback).toHaveBeenCalledWith({ counter: 2, theme: 'light', unchanged: 'value' });
+      expect(mockCallback).toHaveBeenCalledWith(
+        { counter: 2, theme: 'light', unchanged: 'value' },
+        expect.anything(),
+      );
     });
   });
 

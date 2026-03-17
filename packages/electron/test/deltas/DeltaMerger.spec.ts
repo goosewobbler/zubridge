@@ -457,6 +457,23 @@ describe('DeltaMerger', () => {
       expect(result.minValue).toBe(Number.NEGATIVE_INFINITY);
     });
 
+    it('should preserve NaN inside an object value (cloneValue path)', () => {
+      // Exercises cloneValue with an object containing NaN — the JSON fallback
+      // would corrupt this to null, but structuredClone handles it correctly.
+      const currentState: TestState = {
+        counter: 1,
+        user: { name: 'Alice', profile: { theme: 'dark' } },
+        items: [],
+      };
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: { user: { name: 'Alice', score: Number.NaN } as unknown as TestState['user'] },
+      });
+
+      expect((result.user as unknown as { score: number }).score).toBeNaN();
+    });
+
     it('should preserve NaN/Infinity in nested delta paths', () => {
       const currentState: TestState = {
         counter: 1,
