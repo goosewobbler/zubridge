@@ -497,6 +497,44 @@ describe('DeltaMerger', () => {
       expect(result.items).toBe(currentState.items);
     });
 
+    it('should preserve array type when dot-path traverses an array intermediate node (set)', () => {
+      const currentState = {
+        counter: 1,
+        items: [{ done: false }, { done: false }],
+        user: { name: 'Alice' },
+      } as unknown as TestState;
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        changed: { 'items.0.done': true },
+      });
+
+      // items must remain an Array, not a plain object
+      expect(Array.isArray((result as unknown as { items: unknown }).items)).toBe(true);
+      expect((result as unknown as { items: Array<{ done: boolean }> }).items[0].done).toBe(true);
+      expect((result as unknown as { items: Array<{ done: boolean }> }).items[1].done).toBe(false);
+    });
+
+    it('should preserve array type when dot-path traverses an array intermediate node (delete)', () => {
+      const currentState = {
+        counter: 1,
+        items: [{ done: true, label: 'first' }, { done: false }],
+        user: { name: 'Alice' },
+      } as unknown as TestState;
+
+      const result = merger.merge(currentState, {
+        type: 'delta',
+        removed: ['items.0.label'],
+      });
+
+      // items must remain an Array, not a plain object
+      expect(Array.isArray((result as unknown as { items: unknown }).items)).toBe(true);
+      const items = (result as unknown as { items: Array<{ done: boolean; label?: string }> })
+        .items;
+      expect(items[0]).not.toHaveProperty('label');
+      expect(items[0].done).toBe(true);
+    });
+
     it('should delete through a path where an intermediate value is falsy but non-null', () => {
       // Regression: !next would short-circuit on 0/false/"", silently aborting deletion
       const currentState = {
