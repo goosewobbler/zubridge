@@ -218,6 +218,31 @@ describe('windows.ts', () => {
       // Send shouldn't be called since an error was thrown
       expect(webContents.send).not.toHaveBeenCalled();
     });
+
+    it('should flush queued messages in order when loading window finishes', () => {
+      const webContents = mockWebContents();
+      vi.mocked(webContents.isLoading).mockReturnValue(true);
+
+      // Queue three messages while loading
+      safelySendToWindow(webContents, 'ch', { seq: 1 });
+      safelySendToWindow(webContents, 'ch', { seq: 2 });
+      safelySendToWindow(webContents, 'ch', { seq: 3 });
+
+      // Only one did-finish-load listener should be registered
+      expect(webContents.once).toHaveBeenCalledTimes(1);
+      expect(webContents.send).not.toHaveBeenCalled();
+
+      // Simulate load finishing
+      const callback = vi.mocked(webContents.once).mock.calls[0][1] as Function;
+      callback();
+
+      // All three messages should be sent in order
+      expect(webContents.send).toHaveBeenCalledTimes(3);
+      const calls = vi.mocked(webContents.send).mock.calls;
+      expect(calls[0]).toEqual(['ch', { seq: 1 }]);
+      expect(calls[1]).toEqual(['ch', { seq: 2 }]);
+      expect(calls[2]).toEqual(['ch', { seq: 3 }]);
+    });
   });
 
   describe('setupDestroyListener', () => {
