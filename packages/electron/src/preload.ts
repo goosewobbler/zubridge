@@ -271,13 +271,11 @@ export const preloadBridge = <S extends AnyState>(
             newState = deltaMerger.merge(base, delta) as S;
             cachedState = newState;
             debug('ipc', `Merging delta for update ${updateId}`);
-          } else if (
-            delta &&
-            delta.type === 'full' &&
-            delta.fullState &&
-            Object.keys(delta.fullState).length > 0
-          ) {
-            // Full state replacement — cloned via DeltaMerger to prevent IPC payload mutation
+          } else if (delta && delta.type === 'full' && delta.fullState != null) {
+            // Full state replacement (includes empty {} sentinels sent when all
+            // subscribed values are non-serializable — the renderer learns the
+            // subscription is live even though there's nothing to display yet).
+            // Cloned via DeltaMerger to prevent IPC payload mutation.
             newState = deltaMerger.merge(cachedState ?? ({} as S), delta) as S;
             cachedState = newState;
             debug('ipc', `Received full state update ${updateId}`);
