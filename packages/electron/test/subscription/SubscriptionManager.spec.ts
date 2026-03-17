@@ -74,7 +74,7 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
 
       // Unsubscribe from just 'theme'
-      subscriptionManager.unsubscribe(['theme'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['theme'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual(['counter']);
@@ -85,7 +85,7 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['*'], mockCallback, windowId);
 
       // Try to unsubscribe from specific keys
-      subscriptionManager.unsubscribe(['counter'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['counter'], windowId);
 
       // Should still be subscribed to '*'
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
@@ -216,7 +216,7 @@ describe('SubscriptionManager', () => {
   describe('unsubscribe behavior', () => {
     it('should unsubscribe from all state when no keys provided', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(undefined, mockCallback, windowId);
+      subscriptionManager.unsubscribe(undefined, windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual([]);
@@ -224,7 +224,7 @@ describe('SubscriptionManager', () => {
 
     it('should unsubscribe from specific key while keeping others', () => {
       subscriptionManager.subscribe(['counter', 'theme', 'other'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(['theme'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['theme'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toContain('counter');
@@ -234,7 +234,7 @@ describe('SubscriptionManager', () => {
 
     it('should handle unsubscribe from non-existent key', () => {
       subscriptionManager.subscribe(['counter'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(['nonexistent'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['nonexistent'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual(['counter']);
@@ -242,7 +242,7 @@ describe('SubscriptionManager', () => {
 
     it('should handle unsubscribe from non-existent window', () => {
       const nonExistentWindow = 999;
-      subscriptionManager.unsubscribe(['counter'], mockCallback, nonExistentWindow);
+      subscriptionManager.unsubscribe(['counter'], nonExistentWindow);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(nonExistentWindow);
       expect(keys).toEqual([]);
@@ -250,7 +250,7 @@ describe('SubscriptionManager', () => {
 
     it('should completely unsubscribe when using "*"', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(['*'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['*'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual([]);
@@ -264,7 +264,7 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
 
       // Remove counter
-      subscriptionManager.unsubscribe(['counter'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['counter'], windowId);
 
       // Should only have theme left
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);

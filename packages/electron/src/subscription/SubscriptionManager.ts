@@ -102,7 +102,9 @@ function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): bo
   // Even if same reference, we should check if values actually changed
   const normalized = normalizeKeys(keys);
   if (normalized === '*') {
-    // Fast-path: same reference means nothing changed — skip the full traversal
+    // Fast-path: same reference means nothing changed — skip the full traversal.
+    // Note: not currently exercised by BridgeFactory (sanitizeState always
+    // allocates a new object), but protects against future callers of notify().
     if (prev === next) {
       debug(
         'subscription',
@@ -145,12 +147,14 @@ export class SubscriptionManager<S> {
    * Returns `{ status: 'registered', unsubscribe }` when the callback was
    * registered, or `{ status: 'superseded' }` when an existing '*' (all-state)
    * subscription already covers this window and the requested keys are
-   * specific. In the superseded case, callers should still send an
-   * initial-state message so the component can initialize.
+   * specific. Superseded callers should skip sending an initial-state delta —
+   * the existing '*' subscription already delivers state to the window.
    *
    * A '*' subscription replaces all prior entries for the window (both
    * specific-key and prior '*' entries). Previously returned unsubscribe
    * handles become no-ops — this is intentional: '*' supersedes everything.
+   * Callers must use the '*' subscription's unsubscribe handle to fully
+   * clean up; prior handles will not remove the '*' entry.
    */
   subscribe(
     keys: string[] | undefined,
@@ -223,12 +227,12 @@ export class SubscriptionManager<S> {
 
   /**
    * Unsubscribe a window from specific keys, or all if no keys provided.
+   * This is a window-wide operation — it removes matching keys from all
+   * subscriptions for the window, regardless of which callback registered them.
+   * For per-subscription cleanup, use the `unsubscribe` handle returned by
+   * `subscribe()` instead.
    */
-  unsubscribe(
-    keys: string[] | undefined,
-    _callback: SubscriptionCallback<S>,
-    windowId: number,
-  ): void {
+  unsubscribe(keys: string[] | undefined, windowId: number): void {
     debug(
       'subscription',
       `[unsubscribe] Called with keys: ${keys ? JSON.stringify(keys) : 'undefined'} for window ${windowId}`,
