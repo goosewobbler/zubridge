@@ -89,10 +89,16 @@ export class SubscriptionHandler<State extends AnyState> {
         continue;
       }
 
-      // Register a subscription for the keys with an actual callback that sends state updates
+      // Register a subscription for the keys with an actual callback that sends state updates.
+      // NOTE: Each selectiveSubscribe call creates an independent SubscriptionManager entry.
+      // If two callers subscribe the same window to overlapping keys (e.g. two React
+      // components both subscribing to ['counter']), both callbacks fire on every notify(),
+      // producing duplicate IPC sends. The renderer handles this correctly (DeltaMerger.merge
+      // is idempotent for identical values), but it doubles bandwidth and re-renders.
+      // This is an accepted trade-off: independent entries give each subscription its own
+      // subscriptionPrevState, preventing diff-baseline corruption.
       const windowId = webContents.id;
-      // Per-subscription previous state to avoid corruption when multiple subscriptions
-      // exist for the same window (each subscription tracks its own diff baseline)
+      // Per-subscription previous state — each subscription tracks its own diff baseline
       let subscriptionPrevState: State | undefined;
       const subscribeResult = subManager.subscribe(
         normalizedKeys === '*' ? undefined : normalizedKeys,
