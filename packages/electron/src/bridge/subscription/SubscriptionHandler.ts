@@ -98,7 +98,9 @@ export class SubscriptionHandler<State extends AnyState> {
       // This is an accepted trade-off: independent entries give each subscription its own
       // subscriptionPrevState, preventing diff-baseline corruption.
       const windowId = webContents.id;
-      // Per-subscription previous state — each subscription tracks its own diff baseline
+      // Per-subscription previous *partial* state (sanitized) — each subscription
+      // tracks its own diff baseline. Despite the name, this holds the sanitized
+      // partial state for the subscribed keys, not the full store state.
       let subscriptionPrevState: State | undefined;
       const subscribeResult = subManager.subscribe(
         normalizedKeys === '*' ? undefined : normalizedKeys,
@@ -113,6 +115,10 @@ export class SubscriptionHandler<State extends AnyState> {
           // (e.g. a synchronous subscribe implementation), skip — the initial
           // state is sent separately below, and subscriptionPrevState is seeded
           // after subManager.subscribe() returns.
+          // NOTE: Any state changes arriving during this window are dropped.
+          // This is acceptable because the initial-state delta sent below will
+          // capture the latest state, and subsequent notify() calls will produce
+          // correct deltas from the seeded baseline.
           if (subscriptionPrevState === undefined) {
             return;
           }

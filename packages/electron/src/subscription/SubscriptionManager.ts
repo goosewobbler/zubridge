@@ -89,7 +89,7 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
 /**
  * Checks if any of the subscribed keys have changed between prev and next state.
  */
-function hasRelevantChange<S>(prev: S, next: S, keys?: string[]): boolean {
+function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): boolean {
   debug('subscription', '[hasRelevantChange] Comparing states:', {
     prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
     next: JSON.stringify(next),
