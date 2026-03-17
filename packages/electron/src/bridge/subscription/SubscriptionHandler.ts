@@ -44,6 +44,18 @@ export class SubscriptionHandler<State extends AnyState> {
 
   /**
    * Subscribe windows to state updates for specific keys.
+   *
+   * Returns an `{ unsubscribe }` handle for per-subscription cleanup.
+   *
+   * **Supersession**: If a `'*'` (all-keys) subscription is subsequently
+   * registered for the same window, it replaces all prior specific-key
+   * subscriptions — their returned `unsubscribe` handles become no-ops.
+   * Callers must then use the `'*'` subscription's handle to fully clean up.
+   *
+   * **`SubscriptionManager.unsubscribe`** is a window-wide bulk operation
+   * that removes matching keys from *all* subscriptions for the window,
+   * regardless of which callback registered them. For per-subscription
+   * cleanup, always prefer the returned `unsubscribe` handle.
    */
   selectiveSubscribe(
     windows: WrapperOrWebContents[] | WrapperOrWebContents,
@@ -468,7 +480,7 @@ export class SubscriptionHandler<State extends AnyState> {
       const windowId = webContents.id;
       const subManager = this.resourceManager.getSubscriptionManager(windowId);
       if (subManager) {
-        subManager.unsubscribe(keys, () => {}, windowId);
+        subManager.unsubscribe(keys, windowId);
         if (subManager.getCurrentSubscriptionKeys(windowId).length === 0) {
           this.resourceManager.removeSubscriptionManager(windowId);
           this.windowSeqs.delete(windowId);
