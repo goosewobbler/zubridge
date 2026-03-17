@@ -248,6 +248,16 @@ describe('SubscriptionManager', () => {
       expect(keys).toEqual([]);
     });
 
+    it('should treat empty array as no-op in unsubscribe', () => {
+      subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
+      subscriptionManager.unsubscribe([], windowId);
+
+      // Both subscriptions should still be intact
+      const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
+      expect(keys).toContain('counter');
+      expect(keys).toContain('theme');
+    });
+
     it('should completely unsubscribe when using "*"', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
       subscriptionManager.unsubscribe(['*'], windowId);
