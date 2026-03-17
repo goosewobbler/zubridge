@@ -14,7 +14,9 @@ export class DeltaMerger<S> {
           ? structuredClone(delta.fullState)
           : JSON.parse(JSON.stringify(delta.fullState));
       }
-      return currentState;
+      // Return a shallow clone for consistency — callers who assume merge()
+      // always returns a fresh object should not receive the original reference.
+      return { ...currentState } as Partial<S>;
     }
 
     const result = this.cloneWithStructuralSharing(currentState as Record<string, unknown>);
