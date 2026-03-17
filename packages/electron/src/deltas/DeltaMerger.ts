@@ -1,13 +1,7 @@
+import type { Delta } from './types.js';
+
 export class DeltaMerger<S> {
-  merge(
-    currentState: S,
-    delta: {
-      type: 'delta' | 'full';
-      changed?: Record<string, unknown>;
-      removed?: string[];
-      fullState?: Partial<S>;
-    },
-  ): Partial<S> {
+  merge(currentState: S, delta: Delta<S>): Partial<S> {
     const hasChanges = delta.changed && Object.keys(delta.changed).length > 0;
     const hasRemovals = delta.removed && delta.removed.length > 0;
 

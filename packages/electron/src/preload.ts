@@ -264,6 +264,16 @@ export const preloadBridge = <S extends AnyState>(
             if (seq === undefined || seq >= expectedSeq) {
               cachedState = newState;
             } else {
+              // A concurrent delta handler (seq > this handler's seq) already
+              // advanced expectedSeq and applied its delta to cachedState while
+              // we were awaiting getState(). Discard our snapshot — it is now
+              // older than what cachedState holds.
+              // NOTE: The concurrent delta used the pre-resync cachedState as its
+              // merge base (stale from before the backward-seq restart). Keys not
+              // touched by that delta may still reflect old values until the next
+              // state update overwrites them. This is a narrow race (main-process
+              // restart while renderer is live) and resolves on the next full
+              // state push or any subsequent delta that touches the stale keys.
               didUpdate = false;
             }
           } else if (

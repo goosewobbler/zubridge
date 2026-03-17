@@ -121,9 +121,9 @@ export class SubscriptionHandler<State extends AnyState> {
       // subscriptionPrevState, preventing diff-baseline corruption.
       const windowId = webContents.id;
       // Per-subscription previous *partial* state (sanitized) — each subscription
-      // tracks its own diff baseline. Despite the name, this holds the sanitized
-      // partial state for the subscribed keys, not the full store state.
-      let subscriptionPrevState: State | undefined;
+      // tracks its own diff baseline. Typed as Partial<State> because it always
+      // holds only the subscribed keys' slice, never the full store state.
+      let subscriptionPrevState: Partial<State> | undefined;
       const subscribeResult = subManager.subscribe(
         normalizedKeys === '*' ? undefined : normalizedKeys,
         (state) => {
@@ -147,7 +147,7 @@ export class SubscriptionHandler<State extends AnyState> {
 
           if (this.deltaConfig.enabled) {
             const delta = this.deltaCalculator.calculate(
-              subscriptionPrevState,
+              subscriptionPrevState as State,
               state as State,
               normalizedKeys,
             );
@@ -155,7 +155,7 @@ export class SubscriptionHandler<State extends AnyState> {
             if (!delta) {
               // Nothing changed — skip sending an update entirely
               debug('core', `No changes detected for window ${windowId}, skipping update`);
-              subscriptionPrevState = state as State;
+              subscriptionPrevState = state;
               return;
             }
 
@@ -176,7 +176,7 @@ export class SubscriptionHandler<State extends AnyState> {
                 'core',
                 `Delta fully stripped by sanitization for window ${windowId}, skipping send`,
               );
-              subscriptionPrevState = state as State;
+              subscriptionPrevState = state;
               return;
             }
 
@@ -240,7 +240,7 @@ export class SubscriptionHandler<State extends AnyState> {
             // that never gets ACKed
             const hasState = sanitizedState != null && Object.keys(sanitizedState).length > 0;
             if (!hasState && !removedKeys) {
-              subscriptionPrevState = sanitizedState as State;
+              subscriptionPrevState = sanitizedState;
               return;
             }
 
@@ -281,7 +281,7 @@ export class SubscriptionHandler<State extends AnyState> {
               // would cause the renderer to fall through to getState(), triggering a
               // full resync round-trip.
               if (Object.keys(deltaChanged).length === 0 && !removedKeys) {
-                subscriptionPrevState = sanitizedState as State;
+                subscriptionPrevState = sanitizedState;
                 return;
               }
 
@@ -298,7 +298,7 @@ export class SubscriptionHandler<State extends AnyState> {
             }
 
             // Store sanitized state for next comparison
-            subscriptionPrevState = sanitizedState as State;
+            subscriptionPrevState = sanitizedState;
           }
         },
         windowId,
@@ -330,7 +330,7 @@ export class SubscriptionHandler<State extends AnyState> {
       // sanitized-vs-sanitized, matching all subsequent comparisons. The callback
       // receives state derived from sanitizedState (via BridgeFactory.notify), so
       // seeding with the raw form would cause a one-time raw-vs-sanitized mismatch.
-      subscriptionPrevState = currentState as State;
+      subscriptionPrevState = currentState;
 
       // Generate update ID for current state
       const updateId = randomUUID();
@@ -437,7 +437,7 @@ export class SubscriptionHandler<State extends AnyState> {
               // arrays (recursively stripping functions, Dates, etc.), so this works
               // for array-valued keys despite the State cast.
               if (v !== null && typeof v === 'object')
-                return [k, sanitizeState(v as State, options)];
+                return [k, sanitizeState(v as Record<string, unknown> as State, options)];
               return [k, v];
             })
             .filter(([, v]) => v !== undefined),
