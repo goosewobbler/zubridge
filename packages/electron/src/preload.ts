@@ -219,6 +219,10 @@ export const preloadBridge = <S extends AnyState>(
           // No expectedSeq > 0 guard: for seq=1 arriving with expectedSeq=0,
           // 1 > 0+1 || 1 < 0 is false (no spurious gap). But if seq=1 is dropped
           // and seq=2 arrives first, 2 > 0+1 is true — gap correctly detected.
+          // After a full unsubscribe + resubscribe, the main process resets
+          // windowSeqs (restarts at seq=1) while the renderer may still have
+          // expectedSeq=N. The backward-jump check (seq < expectedSeq) fires
+          // correctly, triggering a getState() resync to refresh cachedState.
           const hasSeqGap = seq !== undefined && (seq > expectedSeq + 1 || seq < expectedSeq);
           // Detect exact retransmits — skip reprocessing to avoid spurious re-renders
           const isDuplicate = seq !== undefined && expectedSeq > 0 && seq === expectedSeq;
