@@ -267,17 +267,26 @@ export const preloadBridge = <S extends AnyState>(
             ((delta.changed && Object.keys(delta.changed).length > 0) ||
               (delta.removed && delta.removed.length > 0))
           ) {
+            // Delta and full-state branches assign cachedState without a
+            // didUpdate/seq guard. This is safe because these branches contain
+            // no `await` — the JS event loop guarantees they run atomically
+            // within a single microtask and cannot interleave with other handlers.
             const base = cachedState ?? ({} as S);
             newState = deltaMerger.merge(base, delta) as S;
             cachedState = newState;
             debug('ipc', `Merging delta for update ${updateId}`);
           } else if (delta && delta.type === 'full' && delta.fullState != null) {
-            // Full state replacement (includes empty {} sentinels sent when all
-            // subscribed values are non-serializable — the renderer learns the
-            // subscription is live even though there's nothing to display yet).
-            // Cloned via DeltaMerger to prevent IPC payload mutation.
+            // Full state replacement. Cloned via DeltaMerger to prevent IPC payload mutation.
+            const isEmptySentinel =
+              Object.keys(delta.fullState as Record<string, unknown>).length === 0;
             newState = deltaMerger.merge(cachedState ?? ({} as S), delta) as S;
             cachedState = newState;
+            if (isEmptySentinel) {
+              // Empty sentinel: subscription is live but all values were stripped
+              // by sanitization. Set cachedState (done above) but skip notifying
+              // listeners to avoid a flash of empty state before real data arrives.
+              didUpdate = false;
+            }
             debug('ipc', `Received full state update ${updateId}`);
           } else {
             // No usable delta or full state — fetch current state via IPC.
