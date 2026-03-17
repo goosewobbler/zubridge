@@ -100,7 +100,7 @@ export class DeltaMerger<S> {
       // Primitives are immutable — no cloning needed.
       return value;
     }
-    // structuredClone is available in Electron 8+ (V8 structured clone for IPC).
+    // structuredClone is available in Electron 8+
     return structuredClone(value);
   }
 
