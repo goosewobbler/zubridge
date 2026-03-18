@@ -66,6 +66,7 @@ export function createCoreBridge<State extends AnyState>(
     resourceManager,
     windowTracker,
     serializationMaxDepth,
+    options?.deltas,
   );
 
   // Process options with middleware if provided
@@ -127,9 +128,6 @@ export function createCoreBridge<State extends AnyState>(
         serializationOptions.maxDepth = options.serialization.maxDepth;
       }
       const sanitizedState = sanitizeState(state, serializationOptions) as State;
-      const sanitizedPrevState = prevState
-        ? (sanitizeState(prevState, serializationOptions) as State)
-        : undefined;
 
       for (const webContents of activeWebContents) {
         const windowId = webContents.id;
@@ -139,16 +137,23 @@ export function createCoreBridge<State extends AnyState>(
           continue;
         }
         // Only notify if relevant keys changed
-        if (sanitizedPrevState !== undefined) {
+        if (prevState !== undefined) {
           debug('core', `Notifying window ${windowId} of state change`);
-          subManager.notify(sanitizedPrevState, sanitizedState);
+          subManager.notify(prevState, sanitizedState);
         } else {
-          // On first run, send full state to all subscribers
+          // First run: pass undefined as prev so hasRelevantChange returns true
+          // for all subscription types (not just '*'). This ensures specific-key
+          // subscriptions also fire if state changed between selectiveSubscribe()
+          // and this first notify.
           debug('core', `Sending initial state to window ${windowId}`);
-          subManager.notify(sanitizedState, sanitizedState);
+          subManager.notify(undefined, sanitizedState);
         }
       }
-      prevState = state;
+      // Store already-sanitized state to avoid re-sanitizing on the next tick.
+      // This assumes serializationOptions (particularly maxDepth) is stable
+      // across ticks — if options could change dynamically, prev and next would
+      // be sanitized with different depths, producing spurious diff entries.
+      prevState = sanitizedState;
     });
   } catch (error) {
     debug('core', 'Error subscribing to state manager:', error);

@@ -65,7 +65,7 @@
     }
   },
   "peerDependencies": {
-    "electron": ">=12",
+    "electron": ">=17",
     "redux": ">=4.0.0",
     "zustand": ">=5.0.0"
   },

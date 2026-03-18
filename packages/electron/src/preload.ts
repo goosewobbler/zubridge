@@ -14,6 +14,8 @@ import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';
 import type { BatchAckPayload, BatchPayload, BatchStats } from './batching/types.js';
 import { validateActionInRenderer } from './bridge/ipc/validation.js';
 import { IpcChannel } from './constants.js';
+import { DeltaMerger } from './deltas/DeltaMerger.js';
+import type { Delta } from './deltas/types.js';
 import { createIPCManager } from './renderer/preloadListeners.js';
 import { RendererThunkProcessor } from './renderer/rendererThunkProcessor.js';
 import type { PreloadOptions } from './types/preload.js';
@@ -72,6 +74,9 @@ export const preloadBridge = <S extends AnyState>(
   setupRendererErrorHandlers();
 
   const listeners = new Set<(state: S) => void>();
+  const deltaMerger = new DeltaMerger<S>();
+  let cachedState: S | null = null;
+  let expectedSeq = 0;
   let initialized = false;
 
   // Resolve options once at the start
@@ -191,17 +196,138 @@ export const preloadBridge = <S extends AnyState>(
 
         // Set up state update tracking listener (now handles ALL state updates)
         registerIpcListener(IpcChannel.STATE_UPDATE, async (_event, payload) => {
-          const { updateId, state, thunkId } = payload as {
+          const { updateId, delta, thunkId, seq } = payload as {
             updateId: string;
-            state: S;
+            delta?: Delta<S>;
             thunkId?: string;
+            seq?: number;
           };
           debug('ipc', `Received state update ${updateId} for thunk ${thunkId || 'none'}`);
 
-          // Notify all subscribers of the state change
-          listeners.forEach((fn) => {
-            fn(state);
-          });
+          // Initialized to cachedState as a safe default — all branches below reassign it,
+          // but this prevents "used before assignment" under strict TS control-flow analysis
+          // across await boundaries.
+          let newState: S = cachedState ?? ({} as S);
+          let didUpdate = true;
+
+          // Detect sequence gaps — if we missed updates, the cached state is stale
+          // and deltas cannot be safely applied.
+          // No expectedSeq > 0 guard: for seq=1 arriving with expectedSeq=0,
+          // 1 > 0+1 || 1 < 0 is false (no spurious gap). But if seq=1 is dropped
+          // and seq=2 arrives first, 2 > 0+1 is true — gap correctly detected.
+          // After a full unsubscribe + resubscribe, the main process resets
+          // windowSeqs (restarts at seq=1) while the renderer may still have
+          // expectedSeq=N. The backward-jump check (seq < expectedSeq) fires
+          // correctly, triggering a getState() resync to refresh cachedState.
+          const hasSeqGap = seq !== undefined && (seq > expectedSeq + 1 || seq < expectedSeq);
+          // Detect exact retransmits — skip reprocessing to avoid spurious re-renders
+          const isDuplicate = seq !== undefined && expectedSeq > 0 && seq === expectedSeq;
+
+          if (isDuplicate) {
+            debug(
+              'ipc',
+              `Duplicate seq ${seq} detected, skipping state merge for update ${updateId}`,
+            );
+            // Still send ACK so the main-process thunk system doesn't hang
+            // waiting for an acknowledgment that never arrives.
+            try {
+              const windowId = await ipcRenderer.invoke(IpcChannel.GET_WINDOW_ID);
+              ipcRenderer.send(IpcChannel.STATE_UPDATE_ACK, { updateId, windowId, thunkId });
+            } catch (error) {
+              debug('ipc:error', `Error sending ack for duplicate update: ${error}`);
+            }
+            return;
+          }
+
+          // Capture previous expectedSeq for debug logging before overwriting
+          const prevExpectedSeq = expectedSeq;
+
+          // Update expectedSeq before any await to prevent concurrent handlers
+          // from seeing stale values. After an await (getState), only apply our seq
+          // if no concurrent handler has already advanced it further.
+          if (seq !== undefined) {
+            expectedSeq = seq;
+          }
+
+          if (hasSeqGap) {
+            debug(
+              'ipc',
+              `Sequence gap detected (expected ${prevExpectedSeq + 1}, got ${seq}), resyncing via getState`,
+            );
+            newState = await handlers.getState();
+            // Only apply the resync snapshot if no concurrent handler has already
+            // advanced cachedState to a newer position during the await
+            if (seq === undefined || seq >= expectedSeq) {
+              cachedState = newState;
+            } else {
+              // A concurrent delta handler (seq > this handler's seq) already
+              // advanced expectedSeq and applied its delta to cachedState while
+              // we were awaiting getState(). Discard our snapshot — it is now
+              // older than what cachedState holds.
+              // NOTE: The concurrent delta used the pre-resync cachedState as its
+              // merge base (stale from before the backward-seq restart). Keys not
+              // touched by that delta may still reflect old values until the next
+              // state update overwrites them. This is a narrow race (main-process
+              // restart while renderer is live) and resolves on the next full
+              // state push or any subsequent delta that touches the stale keys.
+              didUpdate = false;
+            }
+          } else if (
+            delta?.type === 'delta' &&
+            ((delta.changed && Object.keys(delta.changed).length > 0) ||
+              (delta.removed && delta.removed.length > 0))
+          ) {
+            // Delta and full-state branches assign cachedState without a
+            // didUpdate/seq guard. This is safe because these branches contain
+            // no `await` — the JS event loop guarantees they run atomically
+            // within a single microtask and cannot interleave with other handlers.
+            // cachedState is null until the first STATE_UPDATE arrives. The
+            // initial payload always carries full current state as changed keys,
+            // so an empty base is safe. Keys whose values are `undefined` will
+            // be absent from both the delta and the resulting cachedState,
+            // consistent with JSON serialization semantics.
+            const base = cachedState ?? ({} as S);
+            newState = deltaMerger.merge(base, delta) as S;
+            cachedState = newState;
+            debug('ipc', `Merging delta for update ${updateId}`);
+          } else if (delta && delta.type === 'full' && delta.fullState != null) {
+            // Full state replacement. Cloned via DeltaMerger to prevent IPC payload mutation.
+            const isEmptySentinel =
+              Object.keys(delta.fullState as Record<string, unknown>).length === 0;
+            newState = deltaMerger.merge(cachedState ?? ({} as S), delta) as S;
+            cachedState = newState;
+            if (isEmptySentinel) {
+              // Empty sentinel: subscription is live but all values were stripped
+              // by sanitization. Set cachedState (done above) but skip notifying
+              // listeners to avoid a flash of empty state before real data arrives.
+              didUpdate = false;
+            }
+            debug('ipc', `Received full state update ${updateId}`);
+          } else {
+            // No usable delta or full state — fetch current state via IPC.
+            // This can happen if the server sends a bare updateId with no payload
+            // (e.g. after a main-process state reset without a seq gap).
+            debug(
+              'ipc',
+              `No delta or full state, falling back to IPC getState for update ${updateId}`,
+            );
+            newState = await handlers.getState();
+            if (seq === undefined || seq >= expectedSeq) {
+              cachedState = newState;
+            } else {
+              didUpdate = false;
+            }
+          }
+
+          // Only notify when we actually updated cachedState — if a concurrent
+          // handler advanced state during an await, it already notified listeners
+          // with the correct snapshot; re-notifying with our stale result would
+          // deliver an out-of-order state to subscribers.
+          if (didUpdate) {
+            listeners.forEach((fn) => {
+              fn(newState);
+            });
+          }
 
           // Send acknowledgment back to main process
           debug('ipc', `Sending acknowledgment for state update ${updateId}`);
@@ -225,10 +351,15 @@ export const preloadBridge = <S extends AnyState>(
         debug('ipc', 'Unsubscribing from state changes');
         listeners.delete(callback);
 
-        // If no more listeners, clean up IPC listener
+        // If no more listeners, clean up IPC listener and cached state.
+        // Clearing cachedState to null is safe: on resubscription, the delta
+        // branch uses `cachedState ?? ({} as S)` as its merge base, and any
+        // resync/fallback path fetches full state via getState().
         if (listeners.size === 0) {
           debug('ipc', 'Last subscriber removed - cleaning up IPC listeners');
           ipcListeners.delete(IpcChannel.STATE_UPDATE);
+          cachedState = null;
+          expectedSeq = 0;
         }
       };
     },
@@ -750,8 +881,11 @@ export const preloadBridge = <S extends AnyState>(
   const performCriticalCleanup = (): void => {
     debug('ipc', 'Performing critical synchronous cleanup');
 
-    // Only essential synchronous cleanup here
+    // Only essential synchronous cleanup here — no resubscription occurs after
+    // beforeunload, so resetting cachedState to null is terminal (not a resync).
     listeners.clear();
+    cachedState = null;
+    expectedSeq = 0;
 
     // Cancel pending registrations immediately
     for (const [thunkId, { reject }] of pendingThunkRegistrations) {

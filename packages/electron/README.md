@@ -44,6 +44,8 @@ Actions from renderer processes are sent through IPC to the main process, which 
 - **Works with the latest [Electron security recommendations](https://www.electronjs.org/docs/latest/tutorial/security#checklist-security-recommendations)**
 - **Full sandbox mode support** with automatic Node.js polyfills for renderer and preload processes
 - **Rich action support** including thunks, inline actions, and action objects in both processes
+- **Delta updates** — sends only changed state over IPC, reducing payload size and serialization cost
+- **Action batching** — groups renderer actions into single IPC calls, reducing cross-process overhead
 - **Automatic cleanup** for destroyed windows and error recovery
 
 ## Installation
@@ -155,6 +157,12 @@ For more detailed information, see the [Debugging documentation](https://github.
 Zubridge includes built-in action batching that groups renderer actions within a configurable time window into single IPC calls, reducing cross-process overhead for high-frequency updates. Batching is enabled by default and requires no configuration.
 
 For configuration options, priority-based flushing, and performance details, see [Action Batching](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md#action-batching) in the Advanced Usage guide.
+
+## Delta Updates
+
+Zubridge includes delta updates that send only changed portions of state over IPC instead of the full state tree. Delta updates are enabled by default and require no configuration. The savings scale with state size — for large state trees, delta serialization can be up to 5x faster than full-state serialization.
+
+For configuration, how it works, and detailed benchmark results, see [Delta Updates](https://github.com/goosewobbler/zubridge/blob/main/packages/electron/docs/advanced-usage.md#delta-updates) in the Advanced Usage guide.
 
 ## Development
 

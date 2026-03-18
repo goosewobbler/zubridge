@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SubscriptionManager } from '../../src/subscription/SubscriptionManager.js';
+import {
+  getPartialState,
+  SubscriptionManager,
+} from '../../src/subscription/SubscriptionManager.js';
 
 describe('SubscriptionManager', () => {
   let subscriptionManager: SubscriptionManager<Record<string, unknown>>;
@@ -71,7 +74,7 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
 
       // Unsubscribe from just 'theme'
-      subscriptionManager.unsubscribe(['theme'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['theme'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual(['counter']);
@@ -82,11 +85,47 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['*'], mockCallback, windowId);
 
       // Try to unsubscribe from specific keys
-      subscriptionManager.unsubscribe(['counter'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['counter'], windowId);
 
       // Should still be subscribed to '*'
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual(['*']);
+    });
+
+    it('should replace first "*" entry when second "*" subscription is created', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      // First subscribe to all state
+      subscriptionManager.subscribe(undefined, callback1, windowId);
+      // Second subscribe to all state — replaces the first entry
+      const result2 = subscriptionManager.subscribe(undefined, callback2, windowId);
+      expect(result2.status).toBe('registered');
+
+      // Window should still be subscribed to '*'
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
+
+      // Only callback2 should fire (callback1's entry was replaced)
+      subscriptionManager.notify(
+        { counter: 0 } as Record<string, unknown>,
+        { counter: 1 } as Record<string, unknown>,
+      );
+      expect(callback1).not.toHaveBeenCalled();
+      expect(callback2).toHaveBeenCalled();
+
+      // unsub2 cleans up the only remaining entry
+      if (result2.status === 'registered') result2.unsubscribe();
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual([]);
+    });
+
+    it('should return superseded when specific-key subscription is covered by existing "*"', () => {
+      subscriptionManager.subscribe(undefined, mockCallback, windowId);
+
+      const result = subscriptionManager.subscribe(['counter'], vi.fn(), windowId);
+      expect(result.status).toBe('superseded');
+
+      // '*' subscription should still be intact
+      expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual(['*']);
     });
 
     it('should replace specific keys with "*" when upgrading subscription', () => {
@@ -110,14 +149,14 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['counter'], mockCallback, windowId);
       subscriptionManager.notify(initialState, updatedState);
 
-      expect(mockCallback).toHaveBeenCalledWith({ counter: 1 });
+      expect(mockCallback).toHaveBeenCalledWith({ counter: 1 }, expect.anything());
     });
 
     it('should notify on all changes when subscribed to "*"', () => {
       subscriptionManager.subscribe(undefined, mockCallback, windowId);
       subscriptionManager.notify(initialState, updatedState);
 
-      expect(mockCallback).toHaveBeenCalledWith(updatedState);
+      expect(mockCallback).toHaveBeenCalledWith(updatedState, expect.anything());
     });
 
     it('should not notify on irrelevant key changes', () => {
@@ -127,11 +166,26 @@ describe('SubscriptionManager', () => {
       expect(mockCallback).not.toHaveBeenCalled();
     });
 
-    it('should not notify with empty partial state', () => {
+    it('should not notify when subscribed key never existed in either state', () => {
       subscriptionManager.subscribe(['nonexistent'], mockCallback, windowId);
       subscriptionManager.notify(initialState, updatedState);
 
       expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it('should notify when subscribed key is deleted even if partial state is empty', () => {
+      const prevState = { counter: 1, session: { token: 'abc' } };
+      subscriptionManager.subscribe(['session.token'], mockCallback, windowId);
+
+      // Delete session.token — partial state will be empty but the callback
+      // must fire so that downstream delta calculators can emit `removed` entries.
+      const nextState = { counter: 1, session: {} };
+      subscriptionManager.notify(
+        prevState as Record<string, unknown>,
+        nextState as Record<string, unknown>,
+      );
+
+      expect(mockCallback).toHaveBeenCalledWith({}, expect.anything());
     });
 
     it('should notify multiple windows independently', () => {
@@ -145,8 +199,8 @@ describe('SubscriptionManager', () => {
 
       subscriptionManager.notify(initialState, updatedState);
 
-      expect(callback1).toHaveBeenCalledWith({ counter: 1 });
-      expect(callback2).toHaveBeenCalledWith({ theme: 'dark' });
+      expect(callback1).toHaveBeenCalledWith({ counter: 1 }, expect.anything());
+      expect(callback2).toHaveBeenCalledWith({ theme: 'dark' }, expect.anything());
     });
 
     it('should notify with complete state when subscribed to "*" even for unchanged properties', () => {
@@ -155,14 +209,17 @@ describe('SubscriptionManager', () => {
 
       subscriptionManager.notify(state, { ...state, counter: 2 });
 
-      expect(mockCallback).toHaveBeenCalledWith({ counter: 2, theme: 'light', unchanged: 'value' });
+      expect(mockCallback).toHaveBeenCalledWith(
+        { counter: 2, theme: 'light', unchanged: 'value' },
+        expect.anything(),
+      );
     });
   });
 
   describe('unsubscribe behavior', () => {
     it('should unsubscribe from all state when no keys provided', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(undefined, mockCallback, windowId);
+      subscriptionManager.unsubscribe(undefined, windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual([]);
@@ -170,7 +227,7 @@ describe('SubscriptionManager', () => {
 
     it('should unsubscribe from specific key while keeping others', () => {
       subscriptionManager.subscribe(['counter', 'theme', 'other'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(['theme'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['theme'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toContain('counter');
@@ -180,7 +237,7 @@ describe('SubscriptionManager', () => {
 
     it('should handle unsubscribe from non-existent key', () => {
       subscriptionManager.subscribe(['counter'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(['nonexistent'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['nonexistent'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual(['counter']);
@@ -188,15 +245,25 @@ describe('SubscriptionManager', () => {
 
     it('should handle unsubscribe from non-existent window', () => {
       const nonExistentWindow = 999;
-      subscriptionManager.unsubscribe(['counter'], mockCallback, nonExistentWindow);
+      subscriptionManager.unsubscribe(['counter'], nonExistentWindow);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(nonExistentWindow);
       expect(keys).toEqual([]);
     });
 
+    it('should treat empty array as no-op in unsubscribe', () => {
+      subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
+      subscriptionManager.unsubscribe([], windowId);
+
+      // Both subscriptions should still be intact
+      const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
+      expect(keys).toContain('counter');
+      expect(keys).toContain('theme');
+    });
+
     it('should completely unsubscribe when using "*"', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
-      subscriptionManager.unsubscribe(['*'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['*'], windowId);
 
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
       expect(keys).toEqual([]);
@@ -210,7 +277,7 @@ describe('SubscriptionManager', () => {
       subscriptionManager.subscribe(['counter', 'theme'], mockCallback, windowId);
 
       // Remove counter
-      subscriptionManager.unsubscribe(['counter'], mockCallback, windowId);
+      subscriptionManager.unsubscribe(['counter'], windowId);
 
       // Should only have theme left
       const keys = subscriptionManager.getCurrentSubscriptionKeys(windowId);
@@ -258,5 +325,37 @@ describe('SubscriptionManager', () => {
       expect(keys).toContain('theme');
       expect(keys.length).toBe(2);
     });
+  });
+});
+
+describe('getPartialState', () => {
+  it('should preserve falsy leaf values (0, false, empty string)', () => {
+    const state = { count: 0, active: false, label: '' };
+    const result = getPartialState(state, ['count', 'active', 'label']);
+    expect(result).toEqual({ count: 0, active: false, label: '' });
+  });
+
+  it('should preserve deeply nested falsy leaf values', () => {
+    const state = { a: { b: { enabled: false, count: 0, label: '' } } };
+    const result = getPartialState(state, ['a.b.enabled', 'a.b.count', 'a.b.label']);
+    expect(result).toEqual({ a: { b: { enabled: false, count: 0, label: '' } } });
+  });
+
+  it('should return empty object for deleted key', () => {
+    const state = { counter: 1 };
+    // 'removed' key doesn't exist in state
+    const result = getPartialState(state, ['removed']);
+    expect(result).toEqual({});
+  });
+
+  it('should not create live references to source state objects', () => {
+    const state = { user: { profile: { name: 'Alice' }, age: 30 } };
+    const result = getPartialState(state, ['user.profile.name', 'user.age']);
+
+    // result.user should not be the same reference as state.user
+    expect((result as typeof state).user).not.toBe(state.user);
+    // Mutating the result must not affect the source
+    ((result as typeof state).user as Record<string, unknown>).age = 99;
+    expect(state.user.age).toBe(30);
   });
 });

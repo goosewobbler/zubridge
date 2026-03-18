@@ -102,6 +102,17 @@ export const isDestroyed = (webContents: WebContents): boolean => {
   }
 };
 
+// Per-window message queue for loading windows. Messages are queued in order
+// and flushed on did-finish-load to preserve seq ordering. Without this,
+// multiple calls during loading could each register independent once() handlers
+// that fire in unpredictable order relative to immediate sends.
+//
+// NOTE: This map is module-scoped — all bridge instances in the same process
+// share it. This is safe as long as a given WebContents is only subscribed
+// by a single bridge. If multi-bridge support is needed in the future,
+// move this map to a per-bridge closure (e.g. factory function).
+const pendingMessages = new Map<number, Array<{ channel: string; data: unknown }>>();
+
 /**
  * Safely send a message to a WebContents
  */
@@ -143,28 +154,57 @@ export const safelySendToWindow = (
         'windows',
         `safelySendToWindow: WebContents ID ${webContents.id} is loading, queueing message for later`,
       );
-      webContents.once('did-finish-load', () => {
-        try {
-          if (!webContents.isDestroyed()) {
+
+      const wcId = webContents.id;
+      // Always start a fresh queue for each loading window. If a stale entry
+      // from a prior destroyed window with the same id exists, discard it.
+      const queue: Array<{ channel: string; data: unknown }> = pendingMessages.get(wcId) ?? [];
+      if (!pendingMessages.has(wcId)) {
+        pendingMessages.set(wcId, queue);
+
+        // Clean up on destruction — prevents memory leaks when a window is
+        // destroyed before did-finish-load fires.
+        webContents.once('destroyed', () => pendingMessages.delete(wcId));
+
+        // Register a single flush handler per window — all queued messages
+        // are sent in order when the window finishes loading.
+        webContents.once('did-finish-load', () => {
+          const messages = pendingMessages.get(wcId);
+          pendingMessages.delete(wcId);
+          if (!messages) return;
+          try {
+            if (!webContents.isDestroyed()) {
+              debug(
+                'windows',
+                `safelySendToWindow: Flushing ${messages.length} queued message(s) to WebContents ID ${wcId}`,
+              );
+              for (const msg of messages) {
+                webContents.send(msg.channel, msg.data);
+              }
+            } else {
+              debug(
+                'windows',
+                `safelySendToWindow: WebContents ID ${wcId} was destroyed before load finished`,
+              );
+            }
+          } catch (e) {
             debug(
               'windows',
-              `safelySendToWindow: Now sending delayed message to WebContents ID ${webContents.id}`,
-            );
-            webContents.send(channel, data);
-          } else {
-            debug(
-              'windows',
-              `safelySendToWindow: WebContents ID ${webContents.id} was destroyed before load finished`,
+              `safelySendToWindow: Error sending delayed messages to WebContents ID ${wcId}`,
+              e,
             );
           }
-        } catch (e) {
-          debug(
-            'windows',
-            `safelySendToWindow: Error sending delayed message to WebContents ID ${webContents.id}`,
-            e,
-          );
-        }
-      });
+        });
+      }
+      const MAX_QUEUED_MESSAGES = 1000;
+      if (queue.length >= MAX_QUEUED_MESSAGES) {
+        queue.shift();
+        debug(
+          'windows',
+          `safelySendToWindow: queue limit reached for WebContents ID ${wcId}, dropping oldest message`,
+        );
+      }
+      queue.push({ channel, data });
       return true;
     }
 
@@ -254,18 +294,25 @@ export const createWebContentsTracker = (): WebContentsTracker => {
       }
 
       const id = webContents.id;
-      debug('windows', `track: Adding WebContents ID ${id} to tracker`);
+      const alreadyTracked = activeIds.has(id);
+      debug(
+        'windows',
+        `track: ${alreadyTracked ? 'Re-tracking' : 'Adding'} WebContents ID ${id} to tracker`,
+      );
 
       webContentsTracker.set(webContents, { id });
       activeIds.add(id);
       webContentsById.set(id, webContents);
 
-      // Set up the destroyed listener for cleanup
-      setupDestroyListener(webContents, () => {
-        debug('windows', `track: Cleanup handler for WebContents ID ${id} triggered`);
-        activeIds.delete(id);
-        webContentsById.delete(id);
-      });
+      // Only register the destroyed listener once per window to avoid
+      // accumulating duplicate handlers (MaxListenersExceededWarning)
+      if (!alreadyTracked) {
+        setupDestroyListener(webContents, () => {
+          debug('windows', `track: Cleanup handler for WebContents ID ${id} triggered`);
+          activeIds.delete(id);
+          webContentsById.delete(id);
+        });
+      }
 
       return true;
     },

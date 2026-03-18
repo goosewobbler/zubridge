@@ -253,4 +253,152 @@ describe('Preload Bridge', () => {
       }
     });
   });
+
+  describe('STATE_UPDATE sequence handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      (global as typeof globalThis).window = {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      } as unknown as Window & typeof globalThis;
+      (global as typeof globalThis).document = {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      } as unknown as Document;
+    });
+
+    /**
+     * Helper to set up preloadBridge and extract the STATE_UPDATE handler.
+     * Subscribes a listener so the handler is registered, then returns
+     * the handler and utilities.
+     */
+    async function setupStateUpdateHandler() {
+      const { ipcRenderer } = await import('electron');
+      const mockedIpc = vi.mocked(ipcRenderer);
+
+      mockedIpc.invoke.mockImplementation(async (channel: string) => {
+        if (channel === 'zubridge:get-window-id') return 1;
+        if (channel === 'zubridge:get-state') return { counter: 42 };
+        return undefined;
+      });
+
+      const { preloadBridge } = await import('../src/preload.js');
+      const result = preloadBridge();
+
+      const subscriberCallback = vi.fn();
+      result.handlers.subscribe(subscriberCallback);
+
+      // Find the STATE_UPDATE listener registered via ipcRenderer.on
+      const onCalls = mockedIpc.on.mock.calls;
+      const stateUpdateCall = onCalls.find((call) => call[0] === 'zubridge:state-update');
+      const stateUpdateHandler = stateUpdateCall?.[1] as (
+        event: unknown,
+        payload: unknown,
+      ) => Promise<void>;
+
+      return { stateUpdateHandler, subscriberCallback, mockedIpc };
+    }
+
+    it('should detect gap when first message (seq=1) is dropped', async () => {
+      const { stateUpdateHandler, subscriberCallback, mockedIpc } = await setupStateUpdateHandler();
+      expect(stateUpdateHandler).toBeDefined();
+
+      // Clear mocks from initialization so we only see calls from our handler
+      mockedIpc.invoke.mockClear();
+      mockedIpc.send.mockClear();
+      subscriberCallback.mockClear();
+
+      // Simulate seq=2 arriving first (seq=1 was dropped).
+      // Without the fix, expectedSeq > 0 would prevent gap detection.
+      await stateUpdateHandler(
+        {},
+        {
+          updateId: 'u-2',
+          delta: { type: 'delta', changed: { counter: 2 } },
+          seq: 2,
+        },
+      );
+
+      // Gap recovery should have called getState (with options=undefined)
+      const getStateCalls = mockedIpc.invoke.mock.calls.filter(
+        (call) => call[0] === 'zubridge:get-state',
+      );
+      expect(getStateCalls.length).toBeGreaterThanOrEqual(1);
+      // Subscriber should be notified with the resynced state
+      expect(subscriberCallback).toHaveBeenCalledWith({ counter: 42 });
+    });
+
+    it('should accept empty full-state sentinel without falling back to getState', async () => {
+      const { stateUpdateHandler, subscriberCallback, mockedIpc } = await setupStateUpdateHandler();
+      expect(stateUpdateHandler).toBeDefined();
+
+      mockedIpc.invoke.mockClear();
+      mockedIpc.send.mockClear();
+      subscriberCallback.mockClear();
+
+      // Send the empty sentinel that SubscriptionHandler sends when all
+      // subscribed values are non-serializable
+      await stateUpdateHandler(
+        {},
+        {
+          updateId: 'u-sentinel',
+          delta: { type: 'full', fullState: {} },
+          seq: 1,
+        },
+      );
+
+      // Should NOT fall back to getState — the sentinel is a valid full-state update
+      const getStateCalls = mockedIpc.invoke.mock.calls.filter(
+        (call) => call[0] === 'zubridge:get-state',
+      );
+      expect(getStateCalls).toHaveLength(0);
+
+      // ACK should still be sent
+      expect(mockedIpc.send).toHaveBeenCalledWith(
+        'zubridge:state-update-ack',
+        expect.objectContaining({ updateId: 'u-sentinel' }),
+      );
+
+      // Subscriber should NOT be notified — empty sentinel skips listener
+      // notification to avoid a flash of empty state before real data arrives
+      expect(subscriberCallback).not.toHaveBeenCalled();
+    });
+
+    it('should send ACK even for duplicate seq messages', async () => {
+      const { stateUpdateHandler, subscriberCallback, mockedIpc } = await setupStateUpdateHandler();
+      expect(stateUpdateHandler).toBeDefined();
+
+      // First, send seq=1 normally
+      await stateUpdateHandler(
+        {},
+        {
+          updateId: 'u-1',
+          delta: { type: 'delta', changed: { counter: 1 } },
+          seq: 1,
+        },
+      );
+      expect(subscriberCallback).toHaveBeenCalledTimes(1);
+
+      mockedIpc.send.mockClear();
+      subscriberCallback.mockClear();
+
+      // Send seq=1 again (duplicate)
+      await stateUpdateHandler(
+        {},
+        {
+          updateId: 'u-1-dup',
+          delta: { type: 'delta', changed: { counter: 1 } },
+          seq: 1,
+        },
+      );
+
+      // Subscriber should NOT be called again (state merge skipped)
+      expect(subscriberCallback).not.toHaveBeenCalled();
+      // But ACK should still be sent so thunks don't hang
+      expect(mockedIpc.send).toHaveBeenCalledWith(
+        'zubridge:state-update-ack',
+        expect.objectContaining({ updateId: 'u-1-dup' }),
+      );
+    });
+  });
 });
