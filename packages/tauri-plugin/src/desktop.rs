@@ -340,13 +340,32 @@ impl<R: Runtime> Zubridge<R> {
     pub fn complete_thunk(
         &self,
         thunk_id: &str,
-        _source_label: &str,
+        source_label: &str,
         error: Option<String>,
     ) -> crate::Result<()> {
         let mut registry = self.thunks.write().map_err(|e| crate::Error::ThunkRegistration {
             thunk_id: thunk_id.to_string(),
             message: e.to_string(),
         })?;
+
+        // Verify the caller owns this thunk. Without this, any webview could
+        // complete another window's in-flight thunk by id.
+        let owner_label = registry
+            .get(thunk_id)
+            .ok_or_else(|| crate::Error::ThunkNotFound {
+                thunk_id: thunk_id.to_string(),
+            })?
+            .source_label
+            .clone();
+        if owner_label != source_label {
+            return Err(crate::Error::ThunkRegistration {
+                thunk_id: thunk_id.to_string(),
+                message: format!(
+                    "thunk {thunk_id} is owned by {owner_label}, not {source_label}"
+                ),
+            });
+        }
+
         registry
             .complete(thunk_id, error)
             .map_err(|_| crate::Error::ThunkNotFound {
@@ -368,6 +387,8 @@ impl<R: Runtime> Zubridge<R> {
 
     /// Drop all per-label state for a webview that's been closed. Currently not
     /// wired to a Tauri lifecycle event but exposed for hosts to call.
+    /// Pending or executing thunks owned by the webview are also discarded so
+    /// their entries don't leak in the registry.
     pub fn forget_label(&self, label: &str) {
         if let Ok(mut subs) = self.subscriptions.write() {
             subs.drop_label(label);
@@ -380,6 +401,9 @@ impl<R: Runtime> Zubridge<R> {
         }
         if let Ok(mut sequences) = self.sequences.write() {
             sequences.forget(label);
+        }
+        if let Ok(mut thunks) = self.thunks.write() {
+            thunks.drop_label(label);
         }
     }
 

@@ -1,6 +1,6 @@
 import { debug } from '@zubridge/core';
 import type { Action, AnyState, BridgeState, DispatchFunc, Thunk } from '@zubridge/types';
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { createStore } from 'zustand/vanilla';
 
 import { BridgeClient } from './renderer/bridgeClient.js';
@@ -102,19 +102,29 @@ export async function cleanupZubridge(): Promise<void> {
 }
 
 // React hook to access state slices of the local replica.
+//
+// `equalityFn`, when supplied, is honoured by memoising the snapshot: if the
+// freshly-selected slice compares equal to the previous one, the hook returns
+// the previous reference so React skips the re-render. Without it, the hook
+// falls back to reference equality, which is what `useSyncExternalStore`
+// natively does.
 export function useZubridgeStore<StateSlice>(
   selector: (state: BridgeState) => StateSlice,
   equalityFn?: (a: StateSlice, b: StateSlice) => boolean,
 ): StateSlice {
-  const slice = useSyncExternalStore(
-    internalStore.subscribe,
-    () => selector(internalStore.getState()),
-    () => selector(internalStore.getState()),
-  );
-  if (equalityFn) {
-    // Compatibility: useSyncExternalStore handles equality natively via the snapshot identity.
-  }
-  return slice;
+  const lastSliceRef = useRef<{ value: StateSlice } | null>(null);
+
+  const getSnapshot = (): StateSlice => {
+    const next = selector(internalStore.getState());
+    const prev = lastSliceRef.current;
+    if (prev && equalityFn && equalityFn(prev.value, next)) {
+      return prev.value;
+    }
+    lastSliceRef.current = { value: next };
+    return next;
+  };
+
+  return useSyncExternalStore(internalStore.subscribe, getSnapshot, getSnapshot);
 }
 
 /**

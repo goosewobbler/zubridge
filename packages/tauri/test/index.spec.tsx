@@ -368,6 +368,31 @@ describe('@zubridge/tauri', () => {
       emitStateUpdate({ seq: 1, update_id: 'u1', full_state: { counter: 99 } });
       await waitFor(() => expect(result.current).toBe(99));
     });
+
+    it('honours equalityFn by reusing the previous slice reference when equal', async () => {
+      await act(async () => {
+        await initializeBridge(baseOptions);
+      });
+      type Pair = { a: number; b: number };
+      const equalityFn = (x: Pair, y: Pair) => x.a === y.a && x.b === y.b;
+      const { result } = renderHook(() =>
+        useZubridgeStore(
+          (s) => ({ a: (s as { counter?: number }).counter ?? 0, b: 1 }) as Pair,
+          equalityFn,
+        ),
+      );
+      const first = result.current;
+      // Emit an update that doesn't change the selected slice's logical value;
+      // equalityFn should return true and the hook should keep the same ref.
+      emitStateUpdate({ seq: 1, update_id: 'u1', full_state: { counter: 10, other: 'changed' } });
+      await waitFor(() => expect(result.current.a).toBe(10));
+      expect(result.current).toBe(first);
+
+      // A real change must produce a new reference.
+      emitStateUpdate({ seq: 2, update_id: 'u2', full_state: { counter: 11 } });
+      await waitFor(() => expect(result.current.a).toBe(11));
+      expect(result.current).not.toBe(first);
+    });
   });
 
   describe('cleanupZubridge', () => {

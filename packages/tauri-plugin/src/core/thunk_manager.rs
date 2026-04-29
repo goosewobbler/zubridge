@@ -94,6 +94,13 @@ impl ThunkRegistry {
         self.by_id
             .retain(|_, r| !matches!(r.state, ThunkState::Completed | ThunkState::Failed));
     }
+
+    /// Remove every thunk registered against `source_label`, regardless of
+    /// state. Used when a webview is forgotten so pending / executing thunks
+    /// owned by that webview don't leak.
+    pub fn drop_label(&mut self, source_label: &str) {
+        self.by_id.retain(|_, r| r.source_label != source_label);
+    }
 }
 
 /// Tracks which state-update events each webview has acknowledged.
@@ -167,6 +174,18 @@ mod tests {
         assert!(reg
             .register("t1".into(), None, "main".into(), None, false, false)
             .is_err());
+    }
+
+    #[test]
+    fn drop_label_removes_thunks_for_label() {
+        let mut reg = ThunkRegistry::new();
+        reg.register("t1".into(), None, "main".into(), None, false, false)
+            .unwrap();
+        reg.register("t2".into(), None, "popup".into(), None, false, false)
+            .unwrap();
+        reg.drop_label("main");
+        assert!(reg.get("t1").is_none());
+        assert!(reg.get("t2").is_some());
     }
 
     #[test]
