@@ -1,5 +1,5 @@
 import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { type BridgeStateStore, useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { ActionHandlers, WindowInfo } from '../WindowInfo';
 import { ZubridgeApp } from '../ZubridgeApp';
@@ -29,6 +29,35 @@ export interface TauriAppProps extends PropsWithChildren {
    * Additional CSS classes to apply to the component
    */
   className?: string;
+
+  /**
+   * Child elements to render
+   */
+  children?: ReactNode;
+
+  /**
+   * Custom action handlers - thunk/window operations supplied by the app.
+   * The default close-window handler is wired to Tauri's `WebviewWindow`
+   * API; consumers can override here when they need to invoke a backend
+   * command first (e.g. graceful shutdown).
+   */
+  actionHandlers?: ActionHandlers;
+
+  /**
+   * Current subscriptions for this window
+   * @default '*'
+   */
+  currentSubscriptions?: string[] | '*';
+
+  /**
+   * Handler for subscribing to specific state keys
+   */
+  onSubscribe?: (keys: string[]) => void;
+
+  /**
+   * Handler for unsubscribing from specific state keys
+   */
+  onUnsubscribe?: (keys: string[]) => void;
 }
 
 /**
@@ -41,6 +70,10 @@ export function withTauri() {
     windowTitle = 'Tauri App',
     appName = 'Tauri App',
     className = '',
+    actionHandlers,
+    currentSubscriptions = '*',
+    onSubscribe,
+    onUnsubscribe,
   }: TauriAppProps) {
     // Get store and dispatch from Tauri hooks
     // Need to provide a selector function, even if it's identity
@@ -49,16 +82,15 @@ export function withTauri() {
     // Cast store to any to avoid type error in useBridgeStatus
     const bridgeStatus = useBridgeStatus(store as BridgeStateStore);
 
-    // Platform handlers for Tauri
-    const actionHandlers: ActionHandlers = {
+    // Default platform handlers for Tauri - used when consumers don't supply
+    // overrides. These mirror the previous behaviour of this HOC.
+    const defaultActionHandlers: ActionHandlers = {
       createWindow: async () => {
         try {
-          // Import dynamically to avoid issues with SSR
           const module = await import('@tauri-apps/api/webviewWindow');
           const WebviewWindow = module.WebviewWindow;
           const uniqueLabel = `window-${Date.now()}`;
 
-          // Create a new window with the proper options
           await new WebviewWindow(uniqueLabel, {
             url: window.location.pathname,
             title: `Window (${uniqueLabel})`,
@@ -75,7 +107,6 @@ export function withTauri() {
 
       closeWindow: async () => {
         try {
-          // Import dynamically to avoid issues with SSR
           const module = await import('@tauri-apps/api/webviewWindow');
           const WebviewWindow = module.WebviewWindow;
           const currentWindow = await WebviewWindow.getByLabel(windowInfo.id.toString());
@@ -98,10 +129,13 @@ export function withTauri() {
         dispatch={dispatch}
         bridgeStatus={bridgeStatus}
         windowInfo={windowInfo}
-        actionHandlers={actionHandlers as ActionHandlers}
+        actionHandlers={(actionHandlers ?? defaultActionHandlers) as ActionHandlers}
         windowTitle={windowTitle}
         appName={appName}
         className={className}
+        onSubscribe={onSubscribe}
+        onUnsubscribe={onUnsubscribe}
+        currentSubscriptions={currentSubscriptions}
       >
         {children}
       </ZubridgeApp>
