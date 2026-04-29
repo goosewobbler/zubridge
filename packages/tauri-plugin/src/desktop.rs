@@ -1,5 +1,5 @@
 use serde::de::DeserializeOwned;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use serde_json::json;
 use tauri::{plugin::PluginApi, AppHandle, Emitter, Manager, Runtime};
@@ -42,6 +42,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
         thunks: Arc::new(RwLock::new(ThunkRegistry::new())),
         update_tracker: Arc::new(RwLock::new(StateUpdateTracker::new())),
         sequences: Arc::new(RwLock::new(SequenceTracker::default())),
+        broadcast_lock: Arc::new(Mutex::new(())),
     })
 }
 
@@ -54,6 +55,10 @@ pub struct Zubridge<R: Runtime> {
     thunks: Arc<RwLock<ThunkRegistry>>,
     update_tracker: Arc<RwLock<StateUpdateTracker>>,
     sequences: Arc<RwLock<SequenceTracker>>,
+    /// Serialises broadcast_state calls so concurrent dispatches can't interleave
+    /// the (read prev → compute delta → emit → record new prev) sequence and
+    /// produce stale deltas computed against an outdated baseline.
+    broadcast_lock: Arc<Mutex<()>>,
 }
 
 impl<R: Runtime> Zubridge<R> {
@@ -184,6 +189,15 @@ impl<R: Runtime> Zubridge<R> {
         new_state: JsonValue,
         source: Option<UpdateSource>,
     ) -> crate::Result<()> {
+        // Serialise the entire compute → emit → record sequence so two concurrent
+        // dispatches can't both compute deltas against the same prev baseline,
+        // emit them with adjacent sequence numbers, and leave the renderer with
+        // a state that's been merged from two parallel diff bases.
+        let _broadcast_guard = self
+            .broadcast_lock
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
+
         let event_name = self.options.event_name.clone();
 
         let webviews = self.app.webview_windows();
@@ -196,15 +210,20 @@ impl<R: Runtime> Zubridge<R> {
                 subs.filter_for(label, &new_state)
             };
 
+            // Compute delta and record the new baseline atomically under the
+            // deltas write lock. Holding this across emit_to is safe because
+            // emit_to does not touch the deltas store.
             let (delta, full_state) = {
-                let calc = self
+                let mut calc = self
                     .deltas
-                    .read()
+                    .write()
                     .map_err(|e| crate::Error::StateError(e.to_string()))?;
-                match calc.compute(label, &scoped) {
+                let result = match calc.compute(label, &scoped) {
                     Some(delta) => (Some(delta), None),
                     None => (None, Some(scoped.clone())),
-                }
+                };
+                calc.record(label, scoped);
+                result
             };
 
             let seq = {
@@ -228,13 +247,6 @@ impl<R: Runtime> Zubridge<R> {
                 .emit_to(label.clone(), &event_name, payload)
                 .map_err(|e| crate::Error::EmitError(e.to_string()))?;
 
-            {
-                let mut calc = self
-                    .deltas
-                    .write()
-                    .map_err(|e| crate::Error::StateError(e.to_string()))?;
-                calc.record(label, scoped);
-            }
             {
                 let mut tracker = self
                     .update_tracker
