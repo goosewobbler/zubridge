@@ -20,5 +20,11 @@
     "baseUrl": ".",
     "types": ["vite/client"]
   },
-  "include": ["src/features/**/*", "src/renderer/**/*", "src/preload/*", "src/types/**/*"]
+  "include": [
+    "src/features/**/*",
+    "src/renderer/**/*",
+    "src/preload/*",
+    "src/types/**/*",
+    "src/utils/**/*"
+  ]
 }
