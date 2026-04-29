@@ -102,6 +102,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-zubridge",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -3512,7 +3513,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-zubridge"
-version = "0.1.0"
+version = "0.2.0-next.1"
 dependencies = [
  "log",
  "serde",
@@ -3520,6 +3521,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]
@@ -3746,7 +3748,19 @@ dependencies = [
  "mio",
  "pin-project-lite",
  "socket2",
+ "tokio-macros",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e06d43f1345a3bcd39f6a56dbb7dcab2ba47e68e8ac134855e7e2bdbaf8cab8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
