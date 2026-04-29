@@ -17,7 +17,6 @@ export const internalStore = createStore<BridgeState>(() => ({
 
 let bridgeClient: BridgeClient | null = null;
 let initializePromise: Promise<void> | null = null;
-let isInitializing = false;
 
 /**
  * Initialise the Tauri bridge. Idempotent — repeat calls share the in-flight
@@ -25,47 +24,55 @@ let isInitializing = false;
  */
 export async function initializeBridge(options?: BackendOptions): Promise<void> {
   if (!options?.invoke || !options?.listen) {
-    initializePromise = null;
-    isInitializing = false;
     throw new Error("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
   }
 
   if (initializePromise) return initializePromise;
-  if (isInitializing) return initializePromise ?? Promise.resolve();
-  isInitializing = true;
 
-  internalStore.setState((s: BridgeState) => ({
-    ...s,
-    __bridge_status: 'initializing' as const,
-  }));
-
-  bridgeClient = new BridgeClient(options, {
-    onState: (next) => {
-      internalStore.setState(
-        (prev: BridgeState) => ({
-          ...next,
-          __bridge_status: prev.__bridge_status,
-        }),
-        true,
-      );
-    },
-    onStatusChange: (status, error) => {
-      internalStore.setState((s: BridgeState) => ({
-        ...s,
-        __bridge_status: status,
-        __bridge_error: error,
-      }));
-    },
-  });
-
-  const client = bridgeClient;
+  // Assign initializePromise FIRST so a concurrent caller in the same tick
+  // hits the guard above and shares this promise. Everything else — store
+  // status update, BridgeClient construction, listener subscription — runs
+  // inside the IIFE.
   initializePromise = (async () => {
+    internalStore.setState((s: BridgeState) => ({
+      ...s,
+      __bridge_status: 'initializing' as const,
+    }));
+
+    const client = new BridgeClient(options, {
+      onState: (next) => {
+        internalStore.setState(
+          (prev: BridgeState) => ({
+            ...next,
+            __bridge_status: prev.__bridge_status,
+          }),
+          true,
+        );
+      },
+      onStatusChange: (status, error) => {
+        internalStore.setState((s: BridgeState) => ({
+          ...s,
+          __bridge_status: status,
+          __bridge_error: error,
+        }));
+      },
+    });
+    bridgeClient = client;
+
     try {
       await client.initialize(options);
       internalStore.setState((s: BridgeState) => ({ ...s, __bridge_status: 'ready' as const }));
       debug('tauri', 'Initialization successful');
     } catch (error) {
       debug('tauri:error', 'Initialization failed:', error);
+      // On failure clear the global state so a subsequent initializeBridge
+      // call starts fresh.
+      try {
+        await client.destroy();
+      } catch {
+        /* swallow */
+      }
+      bridgeClient = null;
       initializePromise = null;
       internalStore.setState(
         (s: BridgeState) => ({
@@ -76,8 +83,6 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
         true,
       );
       throw error;
-    } finally {
-      isInitializing = false;
     }
   })();
 
@@ -93,7 +98,6 @@ export async function cleanupZubridge(): Promise<void> {
     bridgeClient = null;
   }
   initializePromise = null;
-  isInitializing = false;
   internalStore.setState({ __bridge_status: 'uninitialized' } as BridgeState, true);
 }
 
@@ -138,12 +142,8 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
     let status = internalStore.getState().__bridge_status;
     if (status !== 'ready') {
       if (initializePromise) {
-        try {
-          await initializePromise;
-          status = internalStore.getState().__bridge_status;
-        } catch (initError) {
-          throw initError;
-        }
+        await initializePromise;
+        status = internalStore.getState().__bridge_status;
       }
       if (status !== 'ready') {
         throw new Error(`Zubridge initialization failed with status: ${status}`);

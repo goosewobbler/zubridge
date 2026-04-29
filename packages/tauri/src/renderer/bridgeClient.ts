@@ -122,6 +122,7 @@ export class BridgeClient {
   private thunkProcessor: RendererThunkProcessor | null = null;
   private currentState: AnyState = {};
   private destroyed = false;
+  private resyncInFlight: Promise<void> | null = null;
 
   constructor(options: BackendOptions, callbacks: BridgeClientCallbacks) {
     this.invoke = options.invoke;
@@ -193,7 +194,11 @@ export class BridgeClient {
     }
   }
 
-  /** Used by the renderer thunk processor to register a thunk before it runs. */
+  /**
+   * Used by the renderer thunk processor to register a thunk before it runs.
+   * The webview label is derived authoritatively on the Rust side from the
+   * Tauri runtime; the renderer must not pass it.
+   */
   async registerThunk(
     thunkId: string,
     parentId?: string,
@@ -206,7 +211,6 @@ export class BridgeClient {
         args: {
           thunk_id: thunkId,
           parent_id: parentId,
-          source_label: this.windowLabel,
           immediate,
           bypass_access_control: bypassAccessControl,
         },
@@ -227,7 +231,6 @@ export class BridgeClient {
       await this.invoke(cmds.completeThunk, {
         args: {
           thunk_id: thunkId,
-          source_label: this.windowLabel,
           error,
         },
       });
@@ -240,7 +243,7 @@ export class BridgeClient {
     const cmds = this.requireCommands();
     try {
       const result = await this.invoke<{ keys: string[] }>(cmds.subscribe, {
-        args: { keys, source_label: this.windowLabel },
+        args: { keys },
       });
       return result.keys;
     } catch (error) {
@@ -256,7 +259,7 @@ export class BridgeClient {
     const cmds = this.requireCommands();
     try {
       const result = await this.invoke<{ keys: string[] }>(cmds.unsubscribe, {
-        args: { keys, source_label: this.windowLabel },
+        args: { keys },
       });
       return result.keys;
     } catch (error) {
@@ -271,9 +274,7 @@ export class BridgeClient {
   async getWindowSubscriptions(): Promise<string[]> {
     const cmds = this.requireCommands();
     try {
-      const result = await this.invoke<{ keys: string[] }>(cmds.getWindowSubscriptions, {
-        args: { source_label: this.windowLabel },
-      });
+      const result = await this.invoke<{ keys: string[] }>(cmds.getWindowSubscriptions);
       return result.keys;
     } catch (error) {
       debug('tauri:error', 'get_window_subscriptions failed:', error);
@@ -356,11 +357,12 @@ export class BridgeClient {
   }
 
   private toWireAction(action: Action, parentId?: string) {
+    // source_label is set authoritatively on the Rust side from the runtime;
+    // the renderer must not pass it (would be ignored anyway).
     return {
       id: action.__id,
       action_type: action.type,
       payload: action.payload,
-      source_label: this.windowLabel,
       thunk_parent_id: parentId ?? action.__thunkParentId,
       immediate: action.__immediate,
       keys: action.__keys,
@@ -378,6 +380,14 @@ export class BridgeClient {
         ? (raw as { payload: StateUpdatePayload }).payload
         : (raw as StateUpdatePayload);
     if (!payload || typeof payload !== 'object') return;
+
+    // Drop in-flight events while a resync is pending. Applying them on top of
+    // a state that's about to be replaced wholesale risks transient inconsistent
+    // snapshots leaking to consumers.
+    if (this.resyncInFlight) {
+      debug('tauri', 'Dropping state update while resync is in flight', payload);
+      return;
+    }
 
     if (typeof payload.seq === 'number') {
       // Detect sequence gaps and trigger resync. Allow seq to start at 1 for
@@ -419,10 +429,7 @@ export class BridgeClient {
     if (!this.commands) return;
     try {
       await this.invoke(this.commands.stateUpdateAck, {
-        args: {
-          update_id: updateId,
-          source_label: this.windowLabel,
-        },
+        args: { update_id: updateId },
       });
     } catch (err) {
       debug('tauri:error', `state_update_ack failed for ${updateId}:`, err);
@@ -430,15 +437,23 @@ export class BridgeClient {
   }
 
   private async resync(): Promise<void> {
+    // De-dupe concurrent resyncs (multiple gaps can fire before the first
+    // get_initial_state resolves).
+    if (this.resyncInFlight) return this.resyncInFlight;
     const cmds = this.requireCommands();
-    try {
-      const fresh = await this.invoke<AnyState>(cmds.getInitialState);
-      this.currentState = fresh;
-      this.lastSeq = 0;
-      this.callbacks.onState(fresh);
-    } catch (err) {
-      debug('tauri:error', 'Resync failed:', err);
-    }
+    this.resyncInFlight = (async () => {
+      try {
+        const fresh = await this.invoke<AnyState>(cmds.getInitialState);
+        this.currentState = fresh;
+        this.lastSeq = 0;
+        this.callbacks.onState(fresh);
+      } catch (err) {
+        debug('tauri:error', 'Resync failed:', err);
+      } finally {
+        this.resyncInFlight = null;
+      }
+    })();
+    return this.resyncInFlight;
   }
 
   // ---- Lifecycle ----

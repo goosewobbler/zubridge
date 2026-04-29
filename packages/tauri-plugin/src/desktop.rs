@@ -127,17 +127,51 @@ impl<R: Runtime> Zubridge<R> {
         Ok(action_id)
     }
 
-    /// Sequentially dispatch a batch of actions.
+    /// Sequentially apply a batch of actions and emit a single coalesced
+    /// state-update event after the last action has been processed. Per-action
+    /// broadcasts are skipped — emitting N events for N actions defeats the
+    /// purpose of batching.
     pub fn batch_dispatch(
         &self,
         batch_id: String,
         actions: Vec<ZubridgeAction>,
     ) -> crate::Result<BatchDispatchResult> {
-        let mut acked = Vec::with_capacity(actions.len());
-        for action in actions {
-            let id = self.dispatch_action(action)?;
-            acked.push(id);
+        if actions.is_empty() {
+            return Ok(BatchDispatchResult {
+                batch_id,
+                acked_action_ids: Vec::new(),
+            });
         }
+
+        let mut acked = Vec::with_capacity(actions.len());
+        let handle = self.state_handle()?;
+        // Apply each action against the state manager; do NOT broadcast per action.
+        let mut last_action_id: Option<String> = None;
+        let mut last_thunk_id: Option<String> = None;
+        for action in actions {
+            let action_id = action
+                .id
+                .clone()
+                .unwrap_or_else(|| Uuid::new_v4().to_string());
+            state_manager::dispatch(&handle, action.to_legacy_json()).map_err(|e| {
+                crate::Error::ActionProcessing {
+                    action_id: Some(action_id.clone()),
+                    message: e.to_string(),
+                }
+            })?;
+            last_action_id = Some(action_id.clone());
+            last_thunk_id = action.thunk_parent_id.clone();
+            acked.push(action_id);
+        }
+
+        // Single coalesced broadcast attributed to the last action in the batch.
+        let new_state = state_manager::read_state(&handle)?;
+        let source = UpdateSource {
+            action_id: last_action_id,
+            thunk_id: last_thunk_id,
+        };
+        self.broadcast_state(new_state, Some(source))?;
+
         Ok(BatchDispatchResult {
             batch_id,
             acked_action_ids: acked,

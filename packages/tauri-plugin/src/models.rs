@@ -160,7 +160,6 @@ pub struct RegisterThunkArgs {
     pub thunk_id: String,
     #[serde(default)]
     pub parent_id: Option<String>,
-    pub source_label: String,
     #[serde(default)]
     pub keys: Option<Vec<String>>,
     #[serde(default)]
@@ -177,7 +176,6 @@ pub struct RegisterThunkResult {
 #[derive(Deserialize, Debug)]
 pub struct CompleteThunkArgs {
     pub thunk_id: String,
-    pub source_label: String,
     #[serde(default)]
     pub error: Option<String>,
 }
@@ -190,13 +188,11 @@ pub struct CompleteThunkResult {
 #[derive(Deserialize, Debug)]
 pub struct StateUpdateAckArgs {
     pub update_id: String,
-    pub source_label: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct SubscribeArgs {
     pub keys: Vec<String>,
-    pub source_label: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -207,17 +203,11 @@ pub struct SubscribeResult {
 #[derive(Deserialize, Debug)]
 pub struct UnsubscribeArgs {
     pub keys: Vec<String>,
-    pub source_label: String,
 }
 
 #[derive(Serialize, Debug)]
 pub struct UnsubscribeResult {
     pub keys: Vec<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct GetWindowSubscriptionsArgs {
-    pub source_label: String,
 }
 
 #[derive(Serialize, Debug)]

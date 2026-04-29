@@ -308,15 +308,20 @@ describe('@zubridge/tauri', () => {
       });
     });
 
-    it('subscribe forwards keys + sourceLabel and returns the resolved set', async () => {
+    it('subscribe forwards keys and returns the resolved set (label injected by runtime)', async () => {
       const result = await subscribe(['a', 'b']);
       expect(result).toEqual(['a', 'b']);
       expect(mockInvoke).toHaveBeenCalledWith(
         TauriCommands.SUBSCRIBE,
         expect.objectContaining({
-          args: expect.objectContaining({ keys: ['a', 'b'], source_label: 'main' }),
+          args: expect.objectContaining({ keys: ['a', 'b'] }),
         }),
       );
+      // Renderer must NOT pass source_label — Tauri's runtime injects it.
+      const subscribeCall = mockInvoke.mock.calls.find((c) => c[0] === TauriCommands.SUBSCRIBE);
+      expect(
+        (subscribeCall?.[1] as { args?: Record<string, unknown> } | undefined)?.args,
+      ).not.toHaveProperty('source_label');
     });
 
     it('unsubscribe clears keys', async () => {
