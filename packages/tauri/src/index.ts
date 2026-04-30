@@ -103,12 +103,20 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
 /**
  * Tear down the Tauri bridge — unsubscribes events and resets the local store.
  *
+ * **BREAKING (vs `@zubridge/tauri@1.x`)**: this function is now `async`. The
+ * v1 signature was `void`. Callers who only need fire-and-forget semantics
+ * (React `useEffect` destructors, window `beforeunload` handlers) can keep
+ * calling it without `await` — the function's internal work swallows errors
+ * via `debug` logging so a missing await won't surface as an unhandled
+ * promise rejection. Callers who need a guaranteed teardown before the next
+ * step (typically a re-`initializeBridge`) should `await` it.
+ *
  * Module-level state (`bridgeClient`, `initializePromise`, store status) is
  * reset synchronously so a fire-and-forget caller followed by a new
- * `initializeBridge` call sees a clean slate. The actual listener teardown
- * runs asynchronously inside `cleanupPromise`; `initializeBridge` awaits that
- * promise before constructing a new client, so the two clients can never share
- * an active state-update listener.
+ * `initializeBridge` sees a clean slate even before the listener teardown
+ * resolves. `initializeBridge` itself awaits `cleanupPromise` before creating
+ * a new client, so the two clients can never share an active state-update
+ * listener regardless of whether the caller awaited cleanup.
  *
  * Concurrent calls share the same in-flight cleanup.
  */
@@ -127,9 +135,16 @@ export async function cleanupZubridge(): Promise<void> {
   // `cleanupPromise = null`, but the *outer* `cleanupPromise = (IIFE)()`
   // assignment evaluates after the IIFE returns and would immediately
   // overwrite it back to the IIFE's resolved Promise.
+  //
+  // Errors from `client.destroy()` are caught and logged so a fire-and-forget
+  // caller (no await) doesn't generate an unhandled promise rejection.
   const work = (async () => {
     if (client) {
-      await client.destroy();
+      try {
+        await client.destroy();
+      } catch (err) {
+        debug('tauri:error', 'Cleanup error during BridgeClient.destroy():', err);
+      }
     }
   })();
   cleanupPromise = work;
