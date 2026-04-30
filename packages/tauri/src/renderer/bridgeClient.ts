@@ -86,7 +86,13 @@ async function probeCommandFlavour(
 ): Promise<{ flavour: 'plugin' | 'direct'; initialState: AnyState }> {
   if (config?.getInitialState) {
     const initial = await invoke<AnyState>(config.getInitialState);
-    return { flavour: 'plugin', initialState: initial };
+    // Infer flavour from the override's shape rather than hardcoding 'plugin'.
+    // resolveCommands uses the flavour as the default for every non-overridden
+    // command, so a direct-format override with no other overrides would
+    // otherwise leave dispatch_action / batch_dispatch / etc. resolving to
+    // the plugin format — and every subsequent invoke would fail.
+    const flavour = config.getInitialState.startsWith('plugin:') ? 'plugin' : 'direct';
+    return { flavour, initialState: initial };
   }
 
   try {
@@ -122,6 +128,7 @@ export class BridgeClient {
   private thunkProcessor: RendererThunkProcessor | null = null;
   private currentState: AnyState = {};
   private destroyed = false;
+  private resyncInFlight: Promise<void> | null = null;
 
   constructor(options: BackendOptions, callbacks: BridgeClientCallbacks) {
     this.invoke = options.invoke;
@@ -132,6 +139,13 @@ export class BridgeClient {
 
   async initialize(options: BackendOptions): Promise<AnyState> {
     const { flavour, initialState } = await probeCommandFlavour(this.invoke, options.commands);
+    // If `destroy()` ran while the probe was in flight (e.g. a concurrent
+    // cleanupZubridge during init), abort before publishing stale state. The
+    // outer IIFE in index.ts will catch this and — guarded against clobbering
+    // a successor client — clear module state appropriately.
+    if (this.destroyed) {
+      throw new Error('BridgeClient destroyed during initialization');
+    }
     this.commands = resolveCommands(flavour, options.commands);
 
     this.currentState = initialState ?? {};
@@ -141,6 +155,9 @@ export class BridgeClient {
       this.commands.stateUpdateEvent,
       (raw) => this.handleStateUpdate(raw),
     );
+    if (this.destroyed) {
+      throw new Error('BridgeClient destroyed during initialization');
+    }
 
     setSubscriptionFetcher(() => this.getWindowSubscriptions());
     setActionValidatorStateProvider(async () => this.currentState as Record<string, unknown>);
@@ -193,7 +210,11 @@ export class BridgeClient {
     }
   }
 
-  /** Used by the renderer thunk processor to register a thunk before it runs. */
+  /**
+   * Used by the renderer thunk processor to register a thunk before it runs.
+   * The webview label is derived authoritatively on the Rust side from the
+   * Tauri runtime; the renderer must not pass it.
+   */
   async registerThunk(
     thunkId: string,
     parentId?: string,
@@ -206,7 +227,6 @@ export class BridgeClient {
         args: {
           thunk_id: thunkId,
           parent_id: parentId,
-          source_label: this.windowLabel,
           immediate,
           bypass_access_control: bypassAccessControl,
         },
@@ -227,7 +247,6 @@ export class BridgeClient {
       await this.invoke(cmds.completeThunk, {
         args: {
           thunk_id: thunkId,
-          source_label: this.windowLabel,
           error,
         },
       });
@@ -240,7 +259,7 @@ export class BridgeClient {
     const cmds = this.requireCommands();
     try {
       const result = await this.invoke<{ keys: string[] }>(cmds.subscribe, {
-        args: { keys, source_label: this.windowLabel },
+        args: { keys },
       });
       return result.keys;
     } catch (error) {
@@ -256,7 +275,7 @@ export class BridgeClient {
     const cmds = this.requireCommands();
     try {
       const result = await this.invoke<{ keys: string[] }>(cmds.unsubscribe, {
-        args: { keys, source_label: this.windowLabel },
+        args: { keys },
       });
       return result.keys;
     } catch (error) {
@@ -271,9 +290,7 @@ export class BridgeClient {
   async getWindowSubscriptions(): Promise<string[]> {
     const cmds = this.requireCommands();
     try {
-      const result = await this.invoke<{ keys: string[] }>(cmds.getWindowSubscriptions, {
-        args: { source_label: this.windowLabel },
-      });
+      const result = await this.invoke<{ keys: string[] }>(cmds.getWindowSubscriptions);
       return result.keys;
     } catch (error) {
       debug('tauri:error', 'get_window_subscriptions failed:', error);
@@ -323,20 +340,46 @@ export class BridgeClient {
       const response = await this.invoke<{
         batch_id: string;
         acked_action_ids: string[];
+        failed?: { action_id: string; message: string };
       }>(cmds.batchDispatch, {
         args: {
           batch_id: payload.batchId,
           actions: wireActions,
         },
       });
+      // Resolve per-action: actions whose ids appear in `acked_action_ids`
+      // were applied to backend state. Anything else either failed
+      // (matches `failed.action_id`) or was aborted because the loop bailed
+      // out before reaching it. Propagating these distinctions instead of
+      // rejecting every action in the batch prevents callers from re-
+      // dispatching already-committed actions on retry.
+      const acked = new Set(response.acked_action_ids);
+      const results = payload.actions.map((entry) => {
+        if (acked.has(entry.id)) {
+          return { actionId: entry.id, success: true };
+        }
+        if (response.failed && response.failed.action_id === entry.id) {
+          return {
+            actionId: entry.id,
+            success: false,
+            error: response.failed.message,
+          };
+        }
+        return {
+          actionId: entry.id,
+          success: false,
+          error: response.failed
+            ? `Aborted: batch failed at action ${response.failed.action_id} before this one was processed`
+            : `Action ${entry.id} not acknowledged by backend`,
+        };
+      });
       return {
         batchId: response.batch_id,
-        results: response.acked_action_ids.map((actionId) => ({
-          actionId,
-          success: true,
-        })),
+        results,
+        error: response.failed?.message,
       };
     } catch (error) {
+      // Transport / serialisation failure — no per-action info available.
       const message = describe(error);
       return {
         batchId: payload.batchId,
@@ -356,11 +399,12 @@ export class BridgeClient {
   }
 
   private toWireAction(action: Action, parentId?: string) {
+    // source_label is set authoritatively on the Rust side from the runtime;
+    // the renderer must not pass it (would be ignored anyway).
     return {
       id: action.__id,
       action_type: action.type,
       payload: action.payload,
-      source_label: this.windowLabel,
       thunk_parent_id: parentId ?? action.__thunkParentId,
       immediate: action.__immediate,
       keys: action.__keys,
@@ -378,6 +422,14 @@ export class BridgeClient {
         ? (raw as { payload: StateUpdatePayload }).payload
         : (raw as StateUpdatePayload);
     if (!payload || typeof payload !== 'object') return;
+
+    // Drop in-flight events while a resync is pending. Applying them on top of
+    // a state that's about to be replaced wholesale risks transient inconsistent
+    // snapshots leaking to consumers.
+    if (this.resyncInFlight) {
+      debug('tauri', 'Dropping state update while resync is in flight', payload);
+      return;
+    }
 
     if (typeof payload.seq === 'number') {
       // Detect sequence gaps and trigger resync. Allow seq to start at 1 for
@@ -419,10 +471,7 @@ export class BridgeClient {
     if (!this.commands) return;
     try {
       await this.invoke(this.commands.stateUpdateAck, {
-        args: {
-          update_id: updateId,
-          source_label: this.windowLabel,
-        },
+        args: { update_id: updateId },
       });
     } catch (err) {
       debug('tauri:error', `state_update_ack failed for ${updateId}:`, err);
@@ -430,15 +479,41 @@ export class BridgeClient {
   }
 
   private async resync(): Promise<void> {
+    // De-dupe concurrent resyncs (multiple gaps can fire before the first
+    // get_initial_state resolves).
+    if (this.resyncInFlight) return this.resyncInFlight;
     const cmds = this.requireCommands();
-    try {
-      const fresh = await this.invoke<AnyState>(cmds.getInitialState);
-      this.currentState = fresh;
-      this.lastSeq = 0;
-      this.callbacks.onState(fresh);
-    } catch (err) {
-      debug('tauri:error', 'Resync failed:', err);
-    }
+    this.resyncInFlight = (async () => {
+      try {
+        // Use get_state (subscription-filtered) rather than get_initial_state,
+        // which returns the unfiltered store. With active subscriptions a full
+        // dump would leave unsubscribed keys in `currentState` that the backend
+        // never updates again — they would silently diverge.
+        //
+        // `is_resync: true` tells the backend to drop the pending
+        // state-update-ack entries for this webview — events we skipped when
+        // detecting the gap will never be acked otherwise.
+        const result = await this.invoke<{ value: AnyState }>(cmds.getState, {
+          args: { is_resync: true },
+        });
+        // If destroy() ran while the resync was awaiting the backend, the
+        // client's callbacks now write into a store that may be owned by a
+        // successor BridgeClient. Skip the state update.
+        if (this.destroyed) {
+          debug('tauri', 'Resync resolved after destroy; skipping state update');
+          return;
+        }
+        const fresh = result.value;
+        this.currentState = fresh;
+        this.lastSeq = 0;
+        this.callbacks.onState(fresh);
+      } catch (err) {
+        debug('tauri:error', 'Resync failed:', err);
+      } finally {
+        this.resyncInFlight = null;
+      }
+    })();
+    return this.resyncInFlight;
   }
 
   // ---- Lifecycle ----
@@ -446,6 +521,18 @@ export class BridgeClient {
   async destroy(): Promise<void> {
     if (this.destroyed) return;
     this.destroyed = true;
+    // Wait for any in-flight resync so its continuation runs (and now sees
+    // `this.destroyed === true`, skipping the state update). Without this
+    // wait, destroy could return while the resync is still pending and a
+    // late resolve would clobber whatever module-level store state the
+    // successor client has published.
+    if (this.resyncInFlight) {
+      try {
+        await this.resyncInFlight;
+      } catch {
+        /* swallow — we're tearing down */
+      }
+    }
     await this.listeners.destroy();
     this.batcher?.destroy();
     this.batcher = null;

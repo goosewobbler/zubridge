@@ -142,12 +142,34 @@ pub struct BatchDispatchArgs {
 pub struct BatchDispatchResult {
     pub batch_id: String,
     pub acked_action_ids: Vec<String>,
+    /// Present when at least one action in the batch was applied successfully
+    /// before the batch encountered a per-action failure. The renderer reads
+    /// this to selectively resolve actions that did commit (their ids are in
+    /// `acked_action_ids`) while rejecting the failing action and any actions
+    /// that were aborted because the loop bailed out. A fully successful
+    /// batch leaves this `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed: Option<BatchFailure>,
+}
+
+/// Per-action failure descriptor for `BatchDispatchResult.failed`.
+#[derive(Serialize, Debug, Clone)]
+pub struct BatchFailure {
+    pub action_id: String,
+    pub message: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct GetStateArgs {
     #[serde(default)]
     pub keys: Option<Vec<String>>,
+    /// When true, indicates the call is part of a renderer-driven resync
+    /// (e.g. after detecting a state-update sequence gap). The backend uses
+    /// this to drop pending state-update-ack entries for the calling webview
+    /// — entries the renderer dropped during the gap will never be acked
+    /// and would otherwise leak in `StateUpdateTracker.pending_by_label`.
+    #[serde(default)]
+    pub is_resync: Option<bool>,
 }
 
 #[derive(Serialize, Debug)]
@@ -160,7 +182,6 @@ pub struct RegisterThunkArgs {
     pub thunk_id: String,
     #[serde(default)]
     pub parent_id: Option<String>,
-    pub source_label: String,
     #[serde(default)]
     pub keys: Option<Vec<String>>,
     #[serde(default)]
@@ -177,7 +198,6 @@ pub struct RegisterThunkResult {
 #[derive(Deserialize, Debug)]
 pub struct CompleteThunkArgs {
     pub thunk_id: String,
-    pub source_label: String,
     #[serde(default)]
     pub error: Option<String>,
 }
@@ -190,13 +210,11 @@ pub struct CompleteThunkResult {
 #[derive(Deserialize, Debug)]
 pub struct StateUpdateAckArgs {
     pub update_id: String,
-    pub source_label: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct SubscribeArgs {
     pub keys: Vec<String>,
-    pub source_label: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -207,17 +225,11 @@ pub struct SubscribeResult {
 #[derive(Deserialize, Debug)]
 pub struct UnsubscribeArgs {
     pub keys: Vec<String>,
-    pub source_label: String,
 }
 
 #[derive(Serialize, Debug)]
 pub struct UnsubscribeResult {
     pub keys: Vec<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct GetWindowSubscriptionsArgs {
-    pub source_label: String,
 }
 
 #[derive(Serialize, Debug)]

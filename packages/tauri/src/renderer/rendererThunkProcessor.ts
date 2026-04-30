@@ -153,13 +153,16 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
     let isFirstAction = true;
 
     debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} immediate: ${thunk.immediate}`);
-    // Register the thunk with the Tauri backend
+    // Register the thunk with the Tauri backend before running the body. A
+    // failure here means the backend won't track the thunk's actions for queue
+    // ordering, ack flow, or completion bookkeeping — running the body anyway
+    // would silently produce diverged state. Surface the error to the caller.
     if (this.thunkRegistrar && this.currentWindowLabel) {
+      debug(
+        'ipc',
+        `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (immediate=${thunk.immediate})`,
+      );
       try {
-        debug(
-          'ipc',
-          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (immediate=${thunk.immediate})`,
-        );
         await this.thunkRegistrar(
           thunk.id,
           parentId,
@@ -169,8 +172,16 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
       } catch (error: unknown) {
         debug('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
+        throw error instanceof Error
+          ? error
+          : new Error(`thunk registration failed: ${String(error)}`);
       }
     }
+
+    // Captured by the catch + finally below so the thunk completion can be
+    // reported to the backend with the error message instead of silently
+    // succeeding when the thunk body threw.
+    let thunkErrorMessage: string | undefined;
 
     try {
       const getState = async (getStateOptions?: { bypassAccessControl?: boolean }): Promise<S> => {
@@ -301,17 +312,28 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
             debug('tauri', `[RENDERER_THUNK] Action ${actionId} acknowledged`);
             this.completeAction(actionId, actionObj);
           } catch (error: unknown) {
+            // completeAction below fires the resolve callback registered via
+            // setupActionCompletion, which rejects `actionPromise`. Falling
+            // through to `return actionPromise` (rather than re-throwing
+            // synchronously) means the caller awaits the rejected promise —
+            // throwing first would orphan `actionPromise` and surface as an
+            // unhandled-rejection console warning.
             this.completeAction(actionId, { error: String(error) });
             this.pendingDispatches.delete(actionId);
             debug('tauri:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
-            throw error;
           }
         } else {
           debug(
             'tauri:error',
             `[RENDERER_THUNK] No action sender configured, cannot send action ${actionId}`,
           );
-          throw new Error('Action sender not configured for renderer thunk processor');
+          // Same reasoning: reject `actionPromise` rather than throw
+          // synchronously, so the returned promise is the single source of
+          // rejection that the caller awaits.
+          this.completeAction(actionId, {
+            error: 'Action sender not configured for renderer thunk processor',
+          });
+          this.pendingDispatches.delete(actionId);
         }
 
         return actionPromise;
@@ -356,13 +378,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       }
     } catch (error: unknown) {
       debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunk.id}:`, error);
+      thunkErrorMessage = error instanceof Error ? error.message : String(error);
       throw error; // Rethrow to be caught by caller
     } finally {
-      // Notify the Tauri backend that the thunk has completed
+      // Notify the Tauri backend that the thunk has completed. Forward the
+      // error message (if any) so backend bookkeeping marks the thunk Failed
+      // rather than Completed — without this, a thrown thunk would log as
+      // a successful completion in the registry.
       if (this.thunkCompleter && this.currentWindowLabel) {
         try {
           debug('ipc', `[RENDERER_THUNK] Notifying main process of thunk ${thunk.id} completion`);
-          await this.thunkCompleter(thunk.id);
+          await this.thunkCompleter(thunk.id, thunkErrorMessage);
           debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} completion notified`);
         } catch (e) {
           debug('ipc:error', `[RENDERER_THUNK] Error notifying thunk completion: ${e}`);
@@ -448,6 +474,13 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       this.actionSender?.(actionObj, parentId)
         .then(() => {
           debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);
+          // Tauri's invoke is synchronous from the caller's perspective — when
+          // actionSender resolves, the action has been processed by the
+          // backend. There is no separate ack channel (cf. Electron) so we
+          // complete the action ourselves here. Without this, the awaiting
+          // resolve() registered via setupActionCompletion never fires until
+          // the safety timeout (30s/60s), causing dispatchAction to hang.
+          this.completeAction(actionId, actionObj);
         })
         .catch((error) => {
           // If sending fails, clean up and reject
@@ -482,6 +515,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
    */
   public destroy(): void {
     debug('ipc', '[RENDERER_THUNK] Destroying RendererThunkProcessor instance');
+
+    // Reject every awaiter that's still pending before clearing the base
+    // class's callback / timeout maps. Without this, callers awaiting
+    // `dispatch(...)` at destroy time would hang forever — completeAction
+    // wouldn't fire because the registered callbacks are about to be wiped.
+    const pendingIds = Array.from(this.pendingDispatches);
+    for (const actionId of pendingIds) {
+      this.completeAction(actionId, {
+        error: 'RendererThunkProcessor destroyed',
+      });
+    }
 
     // Clean up all resources first
     this.forceCleanupExpiredActions();

@@ -20,6 +20,7 @@ import {
   useZubridgeDispatch,
   useZubridgeStore,
 } from '../src/index.js';
+import { getThunkProcessor } from '../src/renderer/rendererThunkProcessor.js';
 import type { StateUpdatePayload } from '../src/types/tauri.js';
 
 // --- Mocks Setup ---
@@ -28,31 +29,45 @@ let stateUpdateListener: ((event: { payload: unknown }) => void) | null = null;
 const unlistenMock = vi.fn();
 
 const mockInvoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promise<R> => {
-  switch (cmd) {
-    case TauriCommands.GET_INITIAL_STATE:
+  // Match either plugin:zubridge|<name> or bare <name> so tests can drive
+  // both the plugin and direct command flavours.
+  const bare = cmd.startsWith('plugin:zubridge|') ? cmd.slice('plugin:zubridge|'.length) : cmd;
+  switch (bare) {
+    case 'get_initial_state':
       return mockBackendState as unknown as R;
-    case TauriCommands.GET_STATE:
+    case 'get_state':
       return { value: mockBackendState } as unknown as R;
-    case TauriCommands.DISPATCH_ACTION:
+    case 'dispatch_action':
       return {
         action_id: (args as { args: { action: { id?: string } } }).args.action.id ?? 'a1',
       } as unknown as R;
-    case TauriCommands.BATCH_DISPATCH:
+    case 'batch_dispatch': {
+      const batchArgs = (
+        args as {
+          args: {
+            batch_id: string;
+            actions: Array<{ id?: string }>;
+          };
+        }
+      ).args;
       return {
-        batch_id: (args as { args: { batch_id: string } }).args.batch_id,
-        acked_action_ids: [],
+        batch_id: batchArgs.batch_id,
+        acked_action_ids: batchArgs.actions
+          .map((a) => a.id)
+          .filter((id): id is string => typeof id === 'string'),
       } as unknown as R;
-    case TauriCommands.REGISTER_THUNK:
+    }
+    case 'register_thunk':
       return { thunk_id: (args as { args: { thunk_id: string } }).args.thunk_id } as unknown as R;
-    case TauriCommands.COMPLETE_THUNK:
+    case 'complete_thunk':
       return { thunk_id: (args as { args: { thunk_id: string } }).args.thunk_id } as unknown as R;
-    case TauriCommands.STATE_UPDATE_ACK:
+    case 'state_update_ack':
       return undefined as unknown as R;
-    case TauriCommands.SUBSCRIBE:
+    case 'subscribe':
       return { keys: (args as { args: { keys: string[] } }).args.keys } as unknown as R;
-    case TauriCommands.UNSUBSCRIBE:
+    case 'unsubscribe':
       return { keys: [] } as unknown as R;
-    case TauriCommands.GET_WINDOW_SUBSCRIPTIONS:
+    case 'get_window_subscriptions':
       return { keys: [] } as unknown as R;
     default:
       throw new Error(`[Mock Invoke] Unknown command: ${cmd}`);
@@ -169,6 +184,39 @@ describe('@zubridge/tauri', () => {
       await expect(initializeBridge(baseOptions)).rejects.toThrow();
       expect(internalStore.getState().__bridge_status).toBe('error');
     });
+
+    it('honours direct-format getInitialState override and routes other commands to direct too', async () => {
+      // When a caller provides only a direct-format getInitialState override
+      // and leaves the rest at defaults, the bridge must infer the flavour
+      // from the override's shape rather than hardcoding 'plugin' — otherwise
+      // dispatch_action and friends would resolve to plugin:zubridge|... and
+      // every subsequent invoke would fail.
+      const directOptions: BackendOptions = {
+        invoke: mockInvoke as BackendOptions['invoke'],
+        listen: mockListen,
+        commands: {
+          getInitialState: 'get_initial_state',
+        },
+      };
+      await act(async () => {
+        await initializeBridge(directOptions);
+      });
+      const { result } = renderHook(() => useZubridgeDispatch());
+      await act(async () => {
+        await result.current('INCREMENT');
+      });
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'dispatch_action',
+        expect.objectContaining({
+          args: expect.objectContaining({
+            action: expect.objectContaining({ action_type: 'INCREMENT' }),
+          }),
+        }),
+      );
+      // Sanity: plugin-format dispatch_action must NOT have been called.
+      const calls = mockInvoke.mock.calls.map((c) => c[0]);
+      expect(calls).not.toContain(TauriCommands.DISPATCH_ACTION);
+    });
   });
 
   describe('state-update events', () => {
@@ -206,10 +254,12 @@ describe('@zubridge/tauri', () => {
       expect(internalStore.getState().a).toBe(1);
     });
 
-    it('triggers a resync on a sequence gap', async () => {
+    it('triggers a resync on a sequence gap (via subscription-filtered get_state)', async () => {
       emitStateUpdate({ seq: 1, update_id: 'u1', full_state: { counter: 1 } });
       mockBackendState = { counter: 1000 };
-      // Skip seq 2 — bridge should resync via get_initial_state
+      // Skip seq 2 — bridge should resync via get_state (subscription-filtered),
+      // not get_initial_state (unfiltered) which would leave stale unsubscribed
+      // keys in the local replica.
       emitStateUpdate({
         seq: 5,
         update_id: 'u5',
@@ -217,9 +267,7 @@ describe('@zubridge/tauri', () => {
       });
       await waitFor(() => expect(internalStore.getState().counter).toBe(1000));
       const calls = mockInvoke.mock.calls.map((c) => c[0]);
-      expect(
-        calls.filter((c) => c === TauriCommands.GET_INITIAL_STATE).length,
-      ).toBeGreaterThanOrEqual(2);
+      expect(calls).toContain(TauriCommands.GET_STATE);
     });
 
     it('acknowledges receipt by invoking state_update_ack', async () => {
@@ -299,6 +347,297 @@ describe('@zubridge/tauri', () => {
       expect(calls).toContain(TauriCommands.COMPLETE_THUNK);
       expect(calls).toContain(TauriCommands.DISPATCH_ACTION);
     });
+
+    it('returns a stable dispatch reference across re-renders', async () => {
+      await act(async () => {
+        await initializeBridge(baseOptions);
+      });
+      const { result, rerender } = renderHook(() => useZubridgeDispatch());
+      const first = result.current;
+      rerender();
+      const second = result.current;
+      expect(first).toBe(second);
+    });
+
+    it('surfaces thunk registration failures instead of silently dropping the body', async () => {
+      // Make register_thunk reject. The thunk body must NOT run, and the
+      // dispatch() call must reject with the registration error. Restore the
+      // base mock impl after the assertion so subsequent tests aren't affected.
+      const originalImpl = mockInvoke.getMockImplementation();
+      const registrationError = new Error('register_thunk backend rejection');
+      mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        const bare = cmd.startsWith('plugin:zubridge|')
+          ? cmd.slice('plugin:zubridge|'.length)
+          : cmd;
+        if (bare === 'register_thunk') throw registrationError;
+        if (originalImpl) return originalImpl(cmd, args);
+        return undefined;
+      });
+
+      try {
+        await act(async () => {
+          await initializeBridge(baseOptions);
+        });
+        const { result } = renderHook(() => useZubridgeDispatch());
+
+        const bodyRan = vi.fn();
+        let caught: unknown;
+        await act(async () => {
+          try {
+            await result.current(async () => {
+              bodyRan();
+            });
+          } catch (err) {
+            caught = err;
+          }
+        });
+        expect(bodyRan).not.toHaveBeenCalled();
+        expect((caught as Error)?.message).toMatch(/register_thunk/i);
+      } finally {
+        if (originalImpl) {
+          mockInvoke.mockImplementation(originalImpl);
+        }
+      }
+    });
+
+    it('forwards a thrown thunk error to complete_thunk', async () => {
+      const { result } = renderHook(() => useZubridgeDispatch());
+      let caught: unknown;
+      await act(async () => {
+        try {
+          await result.current(async () => {
+            throw new Error('thunk body boom');
+          });
+        } catch (err) {
+          caught = err;
+        }
+      });
+      expect((caught as Error)?.message).toBe('thunk body boom');
+
+      const completeCall = mockInvoke.mock.calls.find((c) => c[0] === TauriCommands.COMPLETE_THUNK);
+      expect(completeCall).toBeDefined();
+      const args = (completeCall?.[1] as { args: { error?: string } } | undefined)?.args;
+      expect(args?.error).toBe('thunk body boom');
+    });
+
+    it('does not orphan the action promise when actionSender fails inside a thunk', async () => {
+      // Listen for unhandled rejections — the bug being guarded against was
+      // that baseDispatch threw synchronously in the actionSender catch
+      // block before returning the action promise, leaving the now-rejected
+      // action promise un-awaited and surfacing as an unhandledRejection.
+      const unhandled: unknown[] = [];
+      const handler = (reason: unknown) => unhandled.push(reason);
+      process.on('unhandledRejection', handler);
+
+      const originalImpl = mockInvoke.getMockImplementation();
+      mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        const bare = cmd.startsWith('plugin:zubridge|')
+          ? cmd.slice('plugin:zubridge|'.length)
+          : cmd;
+        if (bare === 'dispatch_action') throw new Error('backend rejected dispatch');
+        if (originalImpl) return originalImpl(cmd, args);
+        return undefined;
+      });
+
+      try {
+        const { result } = renderHook(() => useZubridgeDispatch());
+        let caught: unknown;
+        await act(async () => {
+          try {
+            await result.current(async (_getStateFn, dispatchFn) => {
+              await dispatchFn('FAILS_INSIDE_THUNK');
+            });
+          } catch (err) {
+            caught = err;
+          }
+        });
+        expect((caught as Error)?.message).toMatch(/dispatch_action failed|backend rejected/);
+        // Allow any pending microtask-based unhandled rejections to surface.
+        await new Promise((r) => setTimeout(r, 10));
+        expect(unhandled).toEqual([]);
+      } finally {
+        process.off('unhandledRejection', handler);
+        if (originalImpl) {
+          mockInvoke.mockImplementation(originalImpl);
+        }
+      }
+    });
+  });
+
+  describe('RendererThunkProcessor.dispatchAction', () => {
+    beforeEach(async () => {
+      await act(async () => {
+        await initializeBridge(baseOptions);
+      });
+    });
+
+    it('resolves promptly on actionSender success (no waiting for safety timeout)', async () => {
+      // Tauri's invoke is synchronous from the caller's perspective so there
+      // is no separate ack channel — the success path must call completeAction
+      // itself. Without that, dispatchAction would hang for the full
+      // actionCompletionTimeoutMs (30s/60s) before completing.
+      const processor = getThunkProcessor();
+      const start = Date.now();
+      await processor.dispatchAction('DIRECT_DISPATCH');
+      const elapsed = Date.now() - start;
+      expect(elapsed).toBeLessThan(1000);
+      expect(mockInvoke).toHaveBeenCalledWith(
+        TauriCommands.DISPATCH_ACTION,
+        expect.objectContaining({
+          args: expect.objectContaining({
+            action: expect.objectContaining({ action_type: 'DIRECT_DISPATCH' }),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('batch dispatch partial failure', () => {
+    it('resolves committed actions and rejects only the failed/aborted ones', async () => {
+      // Simulate a backend partial failure: action[0] commits, action[1]
+      // fails, action[2] is aborted. The renderer must resolve the awaiter
+      // for action[0] and reject only [1] and [2] — otherwise an outer
+      // retry loop would re-dispatch the already-committed action[0].
+      const originalImpl = mockInvoke.getMockImplementation();
+      mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        const bare = cmd.startsWith('plugin:zubridge|')
+          ? cmd.slice('plugin:zubridge|'.length)
+          : cmd;
+        if (bare === 'batch_dispatch') {
+          const batchArgs = (
+            args as {
+              args: {
+                batch_id: string;
+                actions: Array<{ id?: string }>;
+              };
+            }
+          ).args;
+          const ids = batchArgs.actions.map((a) => a.id ?? '');
+          // Only the first action is acked; second is the failure point.
+          return {
+            batch_id: batchArgs.batch_id,
+            acked_action_ids: [ids[0]],
+            failed: { action_id: ids[1], message: 'simulated mid-batch failure' },
+          };
+        }
+        if (originalImpl) return originalImpl(cmd, args);
+        return undefined;
+      });
+
+      try {
+        await act(async () => {
+          await initializeBridge(baseOptions);
+        });
+        const { result } = renderHook(() => useZubridgeDispatch());
+
+        const outcomes: Array<{ status: 'fulfilled' | 'rejected'; reason?: string }> = [];
+        await act(async () => {
+          await result.current(async (_getStateFn, dispatchFn) => {
+            const settle = async (label: string, p: Promise<unknown>) => {
+              try {
+                await p;
+                outcomes.push({ status: 'fulfilled' });
+              } catch (err) {
+                outcomes.push({
+                  status: 'rejected',
+                  reason: `${label}:${(err as Error).message}`,
+                });
+              }
+            };
+            const p1 = dispatchFn.batch('A_COMMITS');
+            const p2 = dispatchFn.batch('B_FAILS');
+            const p3 = dispatchFn.batch('C_ABORTED');
+            await dispatchFn.flush();
+            await Promise.all([settle('A', p1), settle('B', p2), settle('C', p3)]);
+          });
+        });
+
+        expect(outcomes[0].status).toBe('fulfilled');
+        expect(outcomes[1].status).toBe('rejected');
+        expect(outcomes[1].reason).toMatch(/simulated mid-batch failure/);
+        expect(outcomes[2].status).toBe('rejected');
+        expect(outcomes[2].reason).toMatch(/Aborted: batch failed/);
+      } finally {
+        if (originalImpl) {
+          mockInvoke.mockImplementation(originalImpl);
+        }
+      }
+    });
+  });
+
+  describe('useZubridgeDispatch race conditions', () => {
+    it('thunks dispatched before init completes wait for ready and still fire backend commands', async () => {
+      // Make get_initial_state slow so the bridge stays in 'initializing' for
+      // a while. A thunk dispatched in that window must wait for ready before
+      // running, otherwise its actionSender/thunkRegistrar callbacks haven't
+      // been wired into the thunk processor yet and the thunk executes against
+      // an uninitialised processor.
+      let releaseInit: (() => void) | undefined;
+      const initStalled = new Promise<void>((r) => {
+        releaseInit = r;
+      });
+      mockInvoke.mockImplementationOnce(async (cmd: string) => {
+        if (cmd === TauriCommands.GET_INITIAL_STATE) {
+          await initStalled;
+          return mockBackendState;
+        }
+        return mockBackendState;
+      });
+
+      const initPromise = initializeBridge(baseOptions);
+
+      // bridgeClient is non-null here (assigned synchronously inside the IIFE)
+      // but BridgeClient.initialize() hasn't completed. Dispatch a thunk now.
+      const { result } = renderHook(() => useZubridgeDispatch());
+      const thunkDone = act(async () => {
+        await result.current(async (_getStateFn, dispatchFn) => {
+          await dispatchFn('STARTED_BEFORE_READY');
+        });
+      });
+
+      // Now let init resolve.
+      releaseInit?.();
+      await initPromise;
+      await thunkDone;
+
+      // Thunk lifecycle commands must have been invoked AFTER init wired up
+      // the processor.
+      const calls = mockInvoke.mock.calls.map((c) => c[0]);
+      expect(calls).toContain(TauriCommands.REGISTER_THUNK);
+      expect(calls).toContain(TauriCommands.DISPATCH_ACTION);
+      expect(calls).toContain(TauriCommands.COMPLETE_THUNK);
+    });
+
+    it('cleanup mid-initialization does not clobber a successor client', async () => {
+      // First init: stall get_initial_state so the IIFE is suspended.
+      let releaseFirstProbe: (() => void) | undefined;
+      const firstStalled = new Promise<void>((r) => {
+        releaseFirstProbe = r;
+      });
+      mockInvoke.mockImplementationOnce(async () => {
+        await firstStalled;
+        return mockBackendState;
+      });
+
+      const firstInit = initializeBridge(baseOptions);
+
+      // Tear down mid-init.
+      await cleanupZubridge();
+
+      // Start a second init while the first probe is still suspended. This
+      // second init must NOT be clobbered when the first eventually rejects
+      // (BridgeClient throws because it sees this.destroyed === true).
+      mockBackendState = { counter: 77, fresh: true };
+      const secondInit = initializeBridge(baseOptions);
+
+      // Release the first probe so its IIFE resumes and throws.
+      releaseFirstProbe?.();
+      await expect(firstInit).rejects.toThrow();
+      await secondInit;
+
+      expect(internalStore.getState().__bridge_status).toBe('ready');
+      expect(internalStore.getState().counter).toBe(77);
+    });
   });
 
   describe('subscriptions', () => {
@@ -308,15 +647,20 @@ describe('@zubridge/tauri', () => {
       });
     });
 
-    it('subscribe forwards keys + sourceLabel and returns the resolved set', async () => {
+    it('subscribe forwards keys and returns the resolved set (label injected by runtime)', async () => {
       const result = await subscribe(['a', 'b']);
       expect(result).toEqual(['a', 'b']);
       expect(mockInvoke).toHaveBeenCalledWith(
         TauriCommands.SUBSCRIBE,
         expect.objectContaining({
-          args: expect.objectContaining({ keys: ['a', 'b'], source_label: 'main' }),
+          args: expect.objectContaining({ keys: ['a', 'b'] }),
         }),
       );
+      // Renderer must NOT pass source_label — Tauri's runtime injects it.
+      const subscribeCall = mockInvoke.mock.calls.find((c) => c[0] === TauriCommands.SUBSCRIBE);
+      expect(
+        (subscribeCall?.[1] as { args?: Record<string, unknown> } | undefined)?.args,
+      ).not.toHaveProperty('source_label');
     });
 
     it('unsubscribe clears keys', async () => {
@@ -362,6 +706,31 @@ describe('@zubridge/tauri', () => {
       expect(result.current).toBe(10);
       emitStateUpdate({ seq: 1, update_id: 'u1', full_state: { counter: 99 } });
       await waitFor(() => expect(result.current).toBe(99));
+    });
+
+    it('honours equalityFn by reusing the previous slice reference when equal', async () => {
+      await act(async () => {
+        await initializeBridge(baseOptions);
+      });
+      type Pair = { a: number; b: number };
+      const equalityFn = (x: Pair, y: Pair) => x.a === y.a && x.b === y.b;
+      const { result } = renderHook(() =>
+        useZubridgeStore(
+          (s) => ({ a: (s as { counter?: number }).counter ?? 0, b: 1 }) as Pair,
+          equalityFn,
+        ),
+      );
+      const first = result.current;
+      // Emit an update that doesn't change the selected slice's logical value;
+      // equalityFn should return true and the hook should keep the same ref.
+      emitStateUpdate({ seq: 1, update_id: 'u1', full_state: { counter: 10, other: 'changed' } });
+      await waitFor(() => expect(result.current.a).toBe(10));
+      expect(result.current).toBe(first);
+
+      // A real change must produce a new reference.
+      emitStateUpdate({ seq: 2, update_id: 'u2', full_state: { counter: 11 } });
+      await waitFor(() => expect(result.current.a).toBe(11));
+      expect(result.current).not.toBe(first);
     });
   });
 

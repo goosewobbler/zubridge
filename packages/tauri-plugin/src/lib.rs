@@ -1,6 +1,6 @@
 use tauri::{
     plugin::{Builder, TauriPlugin},
-    Manager, Runtime,
+    Manager, RunEvent, Runtime, WindowEvent,
 };
 
 pub use models::*;
@@ -68,6 +68,7 @@ pub fn plugin<R: Runtime, S: StateManager>(
             app.manage(zubridge);
             Ok(())
         })
+        .on_event(forget_on_destroy::<R>)
         .build()
 }
 
@@ -100,5 +101,26 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             app.manage(zubridge);
             Ok(())
         })
+        .on_event(forget_on_destroy::<R>)
         .build()
+}
+
+/// Drop per-label state (subscriptions, deltas, sequence counter, pending acks,
+/// and any thunks owned by the webview) when its window is destroyed. Without
+/// this hook, those maps grow unboundedly across the application's lifetime as
+/// webviews open and close.
+fn forget_on_destroy<R: Runtime>(app: &tauri::AppHandle<R>, event: &RunEvent) {
+    if let RunEvent::WindowEvent {
+        label,
+        event: WindowEvent::Destroyed,
+        ..
+    } = event
+    {
+        #[cfg(desktop)]
+        if let Some(zubridge) = app.try_state::<Zubridge<R>>() {
+            zubridge.forget_label(label);
+        }
+        #[cfg(not(desktop))]
+        let _ = (app, label);
+    }
 }
