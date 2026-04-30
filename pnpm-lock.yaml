@@ -983,6 +983,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.8.0
         version: 2.9.0
+      '@zubridge/apps-shared':
+        specifier: workspace:*
+        version: link:../../../packages/apps-shared
       '@zubridge/core':
         specifier: workspace:*
         version: link:../../../packages/core
