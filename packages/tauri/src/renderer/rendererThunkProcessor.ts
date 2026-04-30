@@ -239,6 +239,9 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         // Handle nested thunks
         if (typeof action === 'function') {
           debug('ipc', `[RENDERER_THUNK] Handling nested thunk in ${thunk.id}`);
+          // Dispatching a nested thunk counts as first dispatch for isFirstAction purposes —
+          // any direct action dispatched after this should not receive __startsThunk.
+          isFirstAction = false;
           // For nested thunks, we use the current thunk ID as the parent
           return this.executeThunk(action, dispatchOptions, thunk.id);
         }
