@@ -107,6 +107,20 @@ describe('subscriptionValidator (Tauri)', () => {
 
       expect(fetcher).toHaveBeenCalledTimes(2);
     });
+
+    it('caches an empty subscription result (default-all webviews must not refetch)', async () => {
+      // Regression: previously the cache hit was gated on
+      // `cachedSubscriptions.length > 0`, so a webview with zero subscriptions
+      // (the default-all case) would hit the backend on every call.
+      const fetcher = vi.fn().mockResolvedValue([]);
+      setSubscriptionFetcher(fetcher);
+
+      await getWindowSubscriptions();
+      await getWindowSubscriptions();
+      await getWindowSubscriptions();
+
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('isSubscribedToKey', () => {
