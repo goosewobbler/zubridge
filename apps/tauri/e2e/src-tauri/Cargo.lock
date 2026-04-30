@@ -3513,7 +3513,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-zubridge"
-version = "0.2.0-next.1"
+version = "0.1.1-next.1"
 dependencies = [
  "log",
  "serde",
