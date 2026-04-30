@@ -111,12 +111,24 @@ impl<R: Runtime> Zubridge<R> {
         }
     }
 
-    /// Dispatch a single action and broadcast the resulting state.
+    /// Dispatch a single action and broadcast the resulting state. The
+    /// broadcast lock is acquired *before* the state-manager dispatch so the
+    /// state we read is always the state we broadcast — without that, two
+    /// concurrent dispatches A → state_A and (A → A→B) → state_AB could
+    /// interleave (B's broadcast wins the lock first, records state_AB; A's
+    /// broadcast then emits state_A as a delta against state_AB and records
+    /// state_A as the new baseline, silently undoing B's changes).
     pub fn dispatch_action(&self, action: ZubridgeAction) -> crate::Result<String> {
         let action_id = action
             .id
             .clone()
             .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+        let _broadcast_guard = self
+            .broadcast_lock
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
+
         let new_state = state_manager::dispatch(&self.state_handle()?, action.to_legacy_json())
             .map_err(|e| crate::Error::ActionProcessing {
                 action_id: Some(action_id.clone()),
@@ -128,7 +140,7 @@ impl<R: Runtime> Zubridge<R> {
             thunk_id: action.thunk_parent_id.clone(),
         };
 
-        self.broadcast_state(new_state, Some(source))?;
+        self.broadcast_state_locked(new_state, Some(source))?;
         Ok(action_id)
     }
 
@@ -142,6 +154,10 @@ impl<R: Runtime> Zubridge<R> {
     /// still broadcasts the resulting state before returning the error. This
     /// keeps the renderer's local replica from silently diverging from a
     /// partially-applied backend state.
+    ///
+    /// The broadcast lock is held across both the per-action dispatch loop and
+    /// the coalesced broadcast, so a concurrent dispatch_action can't insert
+    /// its broadcast in between and stale-base our delta.
     pub fn batch_dispatch(
         &self,
         batch_id: String,
@@ -153,6 +169,11 @@ impl<R: Runtime> Zubridge<R> {
                 acked_action_ids: Vec::new(),
             });
         }
+
+        let _broadcast_guard = self
+            .broadcast_lock
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
 
         let mut acked = Vec::with_capacity(actions.len());
         let handle = self.state_handle()?;
@@ -190,7 +211,7 @@ impl<R: Runtime> Zubridge<R> {
                 action_id: last_action_id,
                 thunk_id: last_thunk_id,
             };
-            self.broadcast_state(new_state, Some(source))?;
+            self.broadcast_state_locked(new_state, Some(source))?;
         }
 
         if let Some(e) = error {
@@ -203,21 +224,33 @@ impl<R: Runtime> Zubridge<R> {
         })
     }
 
-    /// Compute and emit a state update for every active webview.
+    /// Compute and emit a state update for every active webview. Acquires
+    /// `broadcast_lock` for the duration, then delegates to
+    /// `broadcast_state_locked`. Use `broadcast_state_locked` directly if the
+    /// caller already holds the lock (e.g. dispatch_action, batch_dispatch,
+    /// subscribe/unsubscribe).
+    #[allow(dead_code)]
     fn broadcast_state(
         &self,
         new_state: JsonValue,
         source: Option<UpdateSource>,
     ) -> crate::Result<()> {
-        // Serialise the entire compute → emit → record sequence so two concurrent
-        // dispatches can't both compute deltas against the same prev baseline,
-        // emit them with adjacent sequence numbers, and leave the renderer with
-        // a state that's been merged from two parallel diff bases.
         let _broadcast_guard = self
             .broadcast_lock
             .lock()
             .map_err(|e| crate::Error::StateError(e.to_string()))?;
+        self.broadcast_state_locked(new_state, source)
+    }
 
+    /// Inner broadcast that assumes `broadcast_lock` is already held by the
+    /// caller. Two concurrent dispatches must not be able to interleave the
+    /// (compute delta → emit → record baseline) sequence — see
+    /// `dispatch_action` for the lock-acquisition path.
+    fn broadcast_state_locked(
+        &self,
+        new_state: JsonValue,
+        source: Option<UpdateSource>,
+    ) -> crate::Result<()> {
         let event_name = self.options.event_name.clone();
 
         let webviews = self.app.webview_windows();
@@ -300,10 +333,11 @@ impl<R: Runtime> Zubridge<R> {
 
     /// Subscribe a webview to a set of top-level state keys.
     pub fn subscribe(&self, source_label: &str, keys: &[String]) -> crate::Result<Vec<String>> {
-        // Take the broadcast lock for the subscription mutation + delta-baseline
-        // reset + immediate-state-push so a concurrent dispatch_action's
-        // broadcast can't observe an inconsistent (new subscriptions, old
-        // baseline) snapshot and emit a delta computed against the wrong base.
+        // Hold the broadcast lock across the subscription mutation, the
+        // delta-baseline reset, and the immediate state push. Without this a
+        // concurrent dispatch_action's broadcast could observe an inconsistent
+        // (new subscriptions, old baseline) snapshot and emit a delta computed
+        // against the wrong base.
         let _broadcast_guard = self
             .broadcast_lock
             .lock()
@@ -332,8 +366,7 @@ impl<R: Runtime> Zubridge<R> {
         // newly-included keys without waiting for the next dispatch. Best
         // effort: if no state manager is registered yet, skip the broadcast
         // (the next dispatch will catch up).
-        drop(_broadcast_guard);
-        self.broadcast_current_state();
+        self.broadcast_current_state_locked();
         Ok(resulting)
     }
 
@@ -363,8 +396,7 @@ impl<R: Runtime> Zubridge<R> {
         // Push the current state so the renderer's replica drops the
         // now-unsubscribed keys instead of leaving them stale until the next
         // dispatch.
-        drop(_broadcast_guard);
-        self.broadcast_current_state();
+        self.broadcast_current_state_locked();
         Ok(resulting)
     }
 
@@ -372,10 +404,13 @@ impl<R: Runtime> Zubridge<R> {
     /// Errors (no state manager registered, transient lock failure) are
     /// swallowed because the caller's subscription change has already
     /// succeeded — the next real dispatch will reconcile.
-    fn broadcast_current_state(&self) {
+    ///
+    /// **Caller must hold `broadcast_lock`** (this function calls
+    /// `broadcast_state_locked` directly to avoid a drop+reacquire window).
+    fn broadcast_current_state_locked(&self) {
         if let Ok(handle) = self.state_handle() {
             if let Ok(state) = state_manager::read_state(&handle) {
-                if let Err(err) = self.broadcast_state(state, None) {
+                if let Err(err) = self.broadcast_state_locked(state, None) {
                     log::warn!("zubridge: post-subscription broadcast failed: {err}");
                 }
             }
