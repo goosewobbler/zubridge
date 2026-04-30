@@ -28,8 +28,20 @@ impl Default for ZubridgeOptions {
 }
 
 /// A trait that manages state for the app.
+///
+/// # Contract
+///
+/// `get_initial_state` **must** always return the current state — i.e. the state
+/// that reflects every `dispatch_action` call made so far.  The plugin reads
+/// `get_initial_state` after dispatching one or more actions to obtain the
+/// authoritative state to emit to the frontend.  If an implementation returns a
+/// stale or cached snapshot the emitted state will be inconsistent with what
+/// `dispatch_action` actually applied.
 pub trait StateManager: Send + Sync + 'static {
-    /// Get the initial state of the app.
+    /// Get the current state of the app.
+    ///
+    /// Must reflect all prior `dispatch_action` calls immediately; returning a
+    /// stale snapshot will cause the frontend to receive outdated state.
     fn get_initial_state(&self) -> JsonValue;
 
     /// Apply an action to the state and return the new state.

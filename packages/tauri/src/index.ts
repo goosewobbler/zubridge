@@ -9,7 +9,7 @@ import type {
   DispatchFunc,
   Thunk,
 } from '@zubridge/types';
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { createStore } from 'zustand/vanilla';
 
 // Add type declaration reference if vite-env.d.ts is used
@@ -266,20 +266,23 @@ export function useZubridgeStore<StateSlice>(
   selector: (state: BridgeState) => StateSlice,
   equalityFn?: (a: StateSlice, b: StateSlice) => boolean,
 ): StateSlice {
-  // Use useSyncExternalStore for safe subscription to the vanilla store
-  const slice = useSyncExternalStore(
+  const lastSliceRef = useRef<{ value: StateSlice } | undefined>(undefined);
+
+  return useSyncExternalStore(
     internalStore.subscribe,
-    () => selector(internalStore.getState()),
+    () => {
+      const next = selector(internalStore.getState());
+      if (equalityFn) {
+        const prev = lastSliceRef.current;
+        if (prev && equalityFn(prev.value, next)) {
+          return prev.value; // stable reference prevents unnecessary re-renders
+        }
+        lastSliceRef.current = { value: next };
+      }
+      return next;
+    },
     () => selector(internalStore.getState()), // SSR/initial snapshot
   );
-
-  // Note: React's default shallow equality check works well with useSyncExternalStore
-  // If a custom equalityFn is provided, React uses it. No extra implementation needed here.
-  if (equalityFn) {
-    // Just acknowledging it's used by useSyncExternalStore
-  }
-
-  return slice;
 }
 
 /**
