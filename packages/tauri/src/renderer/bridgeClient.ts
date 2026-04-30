@@ -340,20 +340,46 @@ export class BridgeClient {
       const response = await this.invoke<{
         batch_id: string;
         acked_action_ids: string[];
+        failed?: { action_id: string; message: string };
       }>(cmds.batchDispatch, {
         args: {
           batch_id: payload.batchId,
           actions: wireActions,
         },
       });
+      // Resolve per-action: actions whose ids appear in `acked_action_ids`
+      // were applied to backend state. Anything else either failed
+      // (matches `failed.action_id`) or was aborted because the loop bailed
+      // out before reaching it. Propagating these distinctions instead of
+      // rejecting every action in the batch prevents callers from re-
+      // dispatching already-committed actions on retry.
+      const acked = new Set(response.acked_action_ids);
+      const results = payload.actions.map((entry) => {
+        if (acked.has(entry.id)) {
+          return { actionId: entry.id, success: true };
+        }
+        if (response.failed && response.failed.action_id === entry.id) {
+          return {
+            actionId: entry.id,
+            success: false,
+            error: response.failed.message,
+          };
+        }
+        return {
+          actionId: entry.id,
+          success: false,
+          error: response.failed
+            ? `Aborted: batch failed at action ${response.failed.action_id} before this one was processed`
+            : `Action ${entry.id} not acknowledged by backend`,
+        };
+      });
       return {
         batchId: response.batch_id,
-        results: response.acked_action_ids.map((actionId) => ({
-          actionId,
-          success: true,
-        })),
+        results,
+        error: response.failed?.message,
       };
     } catch (error) {
+      // Transport / serialisation failure — no per-action info available.
       const message = describe(error);
       return {
         batchId: payload.batchId,

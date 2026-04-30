@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::core::{DeltaCalculator, StateUpdateTracker, SubscriptionManager, ThunkRegistry};
 use crate::core::state_manager::{self, StateManagerHandle};
 use crate::models::{
-    BatchDispatchResult, JsonValue, StateManager, StateUpdatePayload, UpdateSource,
+    BatchDispatchResult, BatchFailure, JsonValue, StateManager, StateUpdatePayload, UpdateSource,
     ZubridgeAction, ZubridgeOptions,
 };
 
@@ -151,9 +151,13 @@ impl<R: Runtime> Zubridge<R> {
     ///
     /// On a mid-batch dispatch error the actions that succeeded are NOT rolled
     /// back (the state manager has no transaction model), so the function
-    /// still broadcasts the resulting state before returning the error. This
-    /// keeps the renderer's local replica from silently diverging from a
-    /// partially-applied backend state.
+    /// still broadcasts the resulting state and returns Ok with `failed` set,
+    /// carrying the failing action's id and message. This lets the renderer
+    /// resolve the awaiters for actions that did commit (in
+    /// `acked_action_ids`) and reject only the failing action plus any that
+    /// were aborted because the loop bailed out — without it, the renderer
+    /// would have to reject every action in the batch and a caller retrying
+    /// on rejection would double-apply already-committed actions.
     ///
     /// The broadcast lock is held across both the per-action dispatch loop and
     /// the coalesced broadcast, so a concurrent dispatch_action can't insert
@@ -167,6 +171,7 @@ impl<R: Runtime> Zubridge<R> {
             return Ok(BatchDispatchResult {
                 batch_id,
                 acked_action_ids: Vec::new(),
+                failed: None,
             });
         }
 
@@ -179,7 +184,7 @@ impl<R: Runtime> Zubridge<R> {
         let handle = self.state_handle()?;
         let mut last_action_id: Option<String> = None;
         let mut last_thunk_id: Option<String> = None;
-        let mut error: Option<crate::Error> = None;
+        let mut failed: Option<BatchFailure> = None;
 
         for action in actions {
             let action_id = action
@@ -193,8 +198,8 @@ impl<R: Runtime> Zubridge<R> {
                     acked.push(action_id);
                 }
                 Err(e) => {
-                    error = Some(crate::Error::ActionProcessing {
-                        action_id: Some(action_id),
+                    failed = Some(BatchFailure {
+                        action_id,
                         message: e.to_string(),
                     });
                     break;
@@ -214,13 +219,10 @@ impl<R: Runtime> Zubridge<R> {
             self.broadcast_state_locked(new_state, Some(source))?;
         }
 
-        if let Some(e) = error {
-            return Err(e);
-        }
-
         Ok(BatchDispatchResult {
             batch_id,
             acked_action_ids: acked,
+            failed,
         })
     }
 

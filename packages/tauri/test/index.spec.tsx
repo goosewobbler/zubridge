@@ -41,11 +41,22 @@ const mockInvoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promi
       return {
         action_id: (args as { args: { action: { id?: string } } }).args.action.id ?? 'a1',
       } as unknown as R;
-    case 'batch_dispatch':
+    case 'batch_dispatch': {
+      const batchArgs = (
+        args as {
+          args: {
+            batch_id: string;
+            actions: Array<{ id?: string }>;
+          };
+        }
+      ).args;
       return {
-        batch_id: (args as { args: { batch_id: string } }).args.batch_id,
-        acked_action_ids: [],
+        batch_id: batchArgs.batch_id,
+        acked_action_ids: batchArgs.actions
+          .map((a) => a.id)
+          .filter((id): id is string => typeof id === 'string'),
       } as unknown as R;
+    }
     case 'register_thunk':
       return { thunk_id: (args as { args: { thunk_id: string } }).args.thunk_id } as unknown as R;
     case 'complete_thunk':
@@ -478,6 +489,79 @@ describe('@zubridge/tauri', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('batch dispatch partial failure', () => {
+    it('resolves committed actions and rejects only the failed/aborted ones', async () => {
+      // Simulate a backend partial failure: action[0] commits, action[1]
+      // fails, action[2] is aborted. The renderer must resolve the awaiter
+      // for action[0] and reject only [1] and [2] — otherwise an outer
+      // retry loop would re-dispatch the already-committed action[0].
+      const originalImpl = mockInvoke.getMockImplementation();
+      mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        const bare = cmd.startsWith('plugin:zubridge|')
+          ? cmd.slice('plugin:zubridge|'.length)
+          : cmd;
+        if (bare === 'batch_dispatch') {
+          const batchArgs = (
+            args as {
+              args: {
+                batch_id: string;
+                actions: Array<{ id?: string }>;
+              };
+            }
+          ).args;
+          const ids = batchArgs.actions.map((a) => a.id ?? '');
+          // Only the first action is acked; second is the failure point.
+          return {
+            batch_id: batchArgs.batch_id,
+            acked_action_ids: [ids[0]],
+            failed: { action_id: ids[1], message: 'simulated mid-batch failure' },
+          };
+        }
+        if (originalImpl) return originalImpl(cmd, args);
+        return undefined;
+      });
+
+      try {
+        await act(async () => {
+          await initializeBridge(baseOptions);
+        });
+        const { result } = renderHook(() => useZubridgeDispatch());
+
+        const outcomes: Array<{ status: 'fulfilled' | 'rejected'; reason?: string }> = [];
+        await act(async () => {
+          await result.current(async (_getStateFn, dispatchFn) => {
+            const settle = async (label: string, p: Promise<unknown>) => {
+              try {
+                await p;
+                outcomes.push({ status: 'fulfilled' });
+              } catch (err) {
+                outcomes.push({
+                  status: 'rejected',
+                  reason: `${label}:${(err as Error).message}`,
+                });
+              }
+            };
+            const p1 = dispatchFn.batch('A_COMMITS');
+            const p2 = dispatchFn.batch('B_FAILS');
+            const p3 = dispatchFn.batch('C_ABORTED');
+            await dispatchFn.flush();
+            await Promise.all([settle('A', p1), settle('B', p2), settle('C', p3)]);
+          });
+        });
+
+        expect(outcomes[0].status).toBe('fulfilled');
+        expect(outcomes[1].status).toBe('rejected');
+        expect(outcomes[1].reason).toMatch(/simulated mid-batch failure/);
+        expect(outcomes[2].status).toBe('rejected');
+        expect(outcomes[2].reason).toMatch(/Aborted: batch failed/);
+      } finally {
+        if (originalImpl) {
+          mockInvoke.mockImplementation(originalImpl);
+        }
+      }
     });
   });
 

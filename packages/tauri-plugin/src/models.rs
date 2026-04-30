@@ -142,6 +142,21 @@ pub struct BatchDispatchArgs {
 pub struct BatchDispatchResult {
     pub batch_id: String,
     pub acked_action_ids: Vec<String>,
+    /// Present when at least one action in the batch was applied successfully
+    /// before the batch encountered a per-action failure. The renderer reads
+    /// this to selectively resolve actions that did commit (their ids are in
+    /// `acked_action_ids`) while rejecting the failing action and any actions
+    /// that were aborted because the loop bailed out. A fully successful
+    /// batch leaves this `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed: Option<BatchFailure>,
+}
+
+/// Per-action failure descriptor for `BatchDispatchResult.failed`.
+#[derive(Serialize, Debug, Clone)]
+pub struct BatchFailure {
+    pub action_id: String,
+    pub message: String,
 }
 
 #[derive(Deserialize, Debug)]
