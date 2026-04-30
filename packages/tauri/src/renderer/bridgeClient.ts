@@ -460,6 +460,13 @@ export class BridgeClient {
         const result = await this.invoke<{ value: AnyState }>(cmds.getState, {
           args: {},
         });
+        // If destroy() ran while the resync was awaiting the backend, the
+        // client's callbacks now write into a store that may be owned by a
+        // successor BridgeClient. Skip the state update.
+        if (this.destroyed) {
+          debug('tauri', 'Resync resolved after destroy; skipping state update');
+          return;
+        }
         const fresh = result.value;
         this.currentState = fresh;
         this.lastSeq = 0;
@@ -478,6 +485,18 @@ export class BridgeClient {
   async destroy(): Promise<void> {
     if (this.destroyed) return;
     this.destroyed = true;
+    // Wait for any in-flight resync so its continuation runs (and now sees
+    // `this.destroyed === true`, skipping the state update). Without this
+    // wait, destroy could return while the resync is still pending and a
+    // late resolve would clobber whatever module-level store state the
+    // successor client has published.
+    if (this.resyncInFlight) {
+      try {
+        await this.resyncInFlight;
+      } catch {
+        /* swallow — we're tearing down */
+      }
+    }
     await this.listeners.destroy();
     this.batcher?.destroy();
     this.batcher = null;

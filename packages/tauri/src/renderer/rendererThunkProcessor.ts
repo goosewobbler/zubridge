@@ -172,6 +172,11 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       }
     }
 
+    // Captured by the catch + finally below so the thunk completion can be
+    // reported to the backend with the error message instead of silently
+    // succeeding when the thunk body threw.
+    let thunkErrorMessage: string | undefined;
+
     try {
       const getState = async (getStateOptions?: { bypassAccessControl?: boolean }): Promise<S> => {
         debug('ipc', `[RENDERER_THUNK] getState called for thunk ${thunk.id}`);
@@ -356,13 +361,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       }
     } catch (error: unknown) {
       debug('ipc:error', `[RENDERER_THUNK] Error executing thunk ${thunk.id}:`, error);
+      thunkErrorMessage = error instanceof Error ? error.message : String(error);
       throw error; // Rethrow to be caught by caller
     } finally {
-      // Notify the Tauri backend that the thunk has completed
+      // Notify the Tauri backend that the thunk has completed. Forward the
+      // error message (if any) so backend bookkeeping marks the thunk Failed
+      // rather than Completed — without this, a thrown thunk would log as
+      // a successful completion in the registry.
       if (this.thunkCompleter && this.currentWindowLabel) {
         try {
           debug('ipc', `[RENDERER_THUNK] Notifying main process of thunk ${thunk.id} completion`);
-          await this.thunkCompleter(thunk.id);
+          await this.thunkCompleter(thunk.id, thunkErrorMessage);
           debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} completion notified`);
         } catch (e) {
           debug('ipc:error', `[RENDERER_THUNK] Error notifying thunk completion: ${e}`);

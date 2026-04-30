@@ -299,6 +299,26 @@ describe('@zubridge/tauri', () => {
       expect(calls).toContain(TauriCommands.COMPLETE_THUNK);
       expect(calls).toContain(TauriCommands.DISPATCH_ACTION);
     });
+
+    it('forwards a thrown thunk error to complete_thunk', async () => {
+      const { result } = renderHook(() => useZubridgeDispatch());
+      let caught: unknown;
+      await act(async () => {
+        try {
+          await result.current(async () => {
+            throw new Error('thunk body boom');
+          });
+        } catch (err) {
+          caught = err;
+        }
+      });
+      expect((caught as Error)?.message).toBe('thunk body boom');
+
+      const completeCall = mockInvoke.mock.calls.find((c) => c[0] === TauriCommands.COMPLETE_THUNK);
+      expect(completeCall).toBeDefined();
+      const args = (completeCall?.[1] as { args: { error?: string } } | undefined)?.args;
+      expect(args?.error).toBe('thunk body boom');
+    });
   });
 
   describe('useZubridgeDispatch race conditions', () => {
