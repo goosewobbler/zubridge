@@ -69,10 +69,21 @@ impl ThunkRegistry {
         }
     }
 
-    pub fn complete(&mut self, thunk_id: &str, error: Option<String>) -> Result<(), String> {
-        let record = self
+    /// Mark a thunk completed and remove it from the registry. Completed
+    /// records are dropped immediately rather than retained — without that,
+    /// every register/complete pair grows `by_id` for the lifetime of the
+    /// process, accumulating into a steady leak in apps that dispatch many
+    /// short-lived thunks. The returned record is the final form (state set
+    /// to Completed/Failed, error attached) so callers that care about it can
+    /// inspect or log before it goes out of scope.
+    pub fn complete(
+        &mut self,
+        thunk_id: &str,
+        error: Option<String>,
+    ) -> Result<ThunkRecord, String> {
+        let mut record = self
             .by_id
-            .get_mut(thunk_id)
+            .remove(thunk_id)
             .ok_or_else(|| format!("thunk {thunk_id} not found"))?;
         record.state = if error.is_some() {
             ThunkState::Failed
@@ -80,16 +91,16 @@ impl ThunkRegistry {
             ThunkState::Completed
         };
         record.error = error;
-        Ok(())
+        Ok(record)
     }
 
     pub fn get(&self, thunk_id: &str) -> Option<&ThunkRecord> {
         self.by_id.get(thunk_id)
     }
 
-    /// Drop completed/failed thunks. Useful for periodic cleanup; not currently
-    /// scheduled but exposed for future maintenance.
-    #[allow(dead_code)]
+    /// Drop completed/failed thunks. Now redundant with `complete()` removing
+    /// entries on success, but kept as a public escape hatch for callers that
+    /// want to compact the registry explicitly (e.g. in long-running tests).
     pub fn drain_terminal(&mut self) {
         self.by_id
             .retain(|_, r| !matches!(r.state, ThunkState::Completed | ThunkState::Failed));
@@ -155,15 +166,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn register_then_complete() {
+    fn register_then_complete_drops_entry() {
         let mut reg = ThunkRegistry::new();
         reg.register("t1".into(), None, "main".into(), None, false, false)
             .unwrap();
         assert_eq!(reg.get("t1").unwrap().state, ThunkState::Pending);
         reg.mark_executing("t1");
         assert_eq!(reg.get("t1").unwrap().state, ThunkState::Executing);
-        reg.complete("t1", None).unwrap();
-        assert_eq!(reg.get("t1").unwrap().state, ThunkState::Completed);
+        let final_record = reg.complete("t1", None).unwrap();
+        assert_eq!(final_record.state, ThunkState::Completed);
+        assert!(reg.get("t1").is_none(), "completed thunk should be removed");
+    }
+
+    #[test]
+    fn complete_with_error_drops_entry() {
+        let mut reg = ThunkRegistry::new();
+        reg.register("t1".into(), None, "main".into(), None, false, false)
+            .unwrap();
+        let final_record = reg.complete("t1", Some("boom".into())).unwrap();
+        assert_eq!(final_record.state, ThunkState::Failed);
+        assert_eq!(final_record.error.as_deref(), Some("boom"));
+        assert!(reg.get("t1").is_none());
     }
 
     #[test]
