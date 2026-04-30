@@ -12,7 +12,7 @@ pub mod tray;
 pub mod window;
 
 use tauri::{Listener, Manager};
-use tauri_plugin_zubridge::STATE_UPDATE_EVENT;
+use tauri_plugin_zubridge::{ZubridgeExt, STATE_UPDATE_EVENT};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -31,29 +31,22 @@ pub fn run() {
                 Err(e) => eprintln!("[App] Tray setup failed: {}", e),
             }
 
-            // Listen for state-update events emitted by the plugin so the tray
-            // menu always reflects the latest counter / theme values.
+            // Refresh the tray on every state-update event. We read the full
+            // state straight from the plugin's StateManager rather than trying
+            // to reconstruct it from the event payload - delta payloads only
+            // carry the keys that changed, so deserialising one as a complete
+            // TrayState would default the unchanged keys (e.g. theme would
+            // silently revert to "dark" on a counter-only change).
             let tray_handle = app_handle.clone();
-            app_handle.listen(STATE_UPDATE_EVENT, move |event| {
-                let payload_str = event.payload();
-                let parsed: serde_json::Value = match serde_json::from_str(payload_str) {
-                    Ok(v) => v,
+            app_handle.listen(STATE_UPDATE_EVENT, move |_event| {
+                let state = match tray_handle.zubridge().get_initial_state() {
+                    Ok(value) => value,
                     Err(e) => {
-                        eprintln!("[App] Could not parse state-update payload: {}", e);
+                        eprintln!("[App] Failed to read state for tray refresh: {}", e);
                         return;
                     }
                 };
-                let state_value = parsed
-                    .get("full_state")
-                    .cloned()
-                    .or_else(|| {
-                        parsed
-                            .get("delta")
-                            .and_then(|delta| delta.get("changed"))
-                            .cloned()
-                    })
-                    .unwrap_or(parsed);
-                let tray_state = tray::TrayState::from_json(&state_value);
+                let tray_state = tray::TrayState::from_json(&state);
                 tray::refresh_menu(&tray_handle, &tray_state);
             });
 
