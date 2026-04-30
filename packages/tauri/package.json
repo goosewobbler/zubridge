@@ -76,12 +76,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@types/debug": "^4.1.12",
     "@zubridge/core": "workspace:*",
     "@zubridge/types": "workspace:*",
-    "dequal": "^2.0.3",
-    "uuid": "^13.0.0",
-    "zod": "^4.3.6",
     "zustand": "^5.0.8"
   }
 }
