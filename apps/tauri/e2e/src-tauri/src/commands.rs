@@ -32,7 +32,7 @@ pub fn get_mode() -> ModeInfo {
     let mode = resolve_mode();
     ModeInfo {
         mode: mode.label().to_string(),
-        mode_name: mode.label().to_string(),
+        mode_name: mode.display_name().to_string(),
     }
 }
 
@@ -85,14 +85,24 @@ mod tests {
     fn mode_info_serializes_with_camel_case_keys() {
         let info = ModeInfo {
             mode: "redux".into(),
-            mode_name: "redux".into(),
+            mode_name: "Redux".into(),
         };
         let value = serde_json::to_value(&info).unwrap();
         assert_eq!(
             value,
-            json!({ "mode": "redux", "modeName": "redux" }),
+            json!({ "mode": "redux", "modeName": "Redux" }),
             "renderer reads `modeName` (camelCase) from this payload",
         );
+    }
+
+    #[test]
+    fn get_mode_returns_distinct_label_and_display_name() {
+        let info = get_mode();
+        assert!(!info.mode.is_empty());
+        assert!(!info.mode_name.is_empty());
+        // mode is the kebab-case identifier; mode_name is the human-readable
+        // display name. They should never be the same string.
+        assert_ne!(info.mode, info.mode_name);
     }
 
     #[test]

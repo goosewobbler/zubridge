@@ -19,7 +19,7 @@ import {
 import { withTauri } from '@zubridge/ui/tauri';
 import { useEffect, useState } from 'react';
 import type { ModeInfo, WindowInfo, WindowType } from '../types/index.js';
-import { ZUBRIDGE_MODE_LABELS, ZubridgeMode } from '../utils/mode.js';
+import { parseZubridgeMode, ZUBRIDGE_MODE_LABELS, ZubridgeMode } from '../utils/mode.js';
 
 const TauriApp = withTauri();
 
@@ -62,11 +62,11 @@ export function AppRoot({ windowLabel }: AppRootProps) {
     return <div>Loading window info...</div>;
   }
 
-  const modeName = (modeInfo.modeName ?? modeInfo.mode ?? 'zustand-basic').toLowerCase();
-  const modeKey = (Object.values(ZubridgeMode) as string[]).includes(modeName)
-    ? (modeName as ZubridgeMode)
-    : ZubridgeMode.ZustandBasic;
-  const modeTitle = ZUBRIDGE_MODE_LABELS[modeKey];
+  // `mode` is the kebab-case identifier; `modeName` is the backend-supplied
+  // human-readable display name. Fall back to the local label table only if
+  // the backend predates the split.
+  const modeKey = parseZubridgeMode(modeInfo.mode);
+  const modeTitle = modeInfo.modeName || ZUBRIDGE_MODE_LABELS[modeKey];
 
   const thunkContext: ThunkContext = {
     environment: 'tauri',

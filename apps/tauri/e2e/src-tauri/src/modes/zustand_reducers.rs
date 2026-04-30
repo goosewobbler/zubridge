@@ -47,7 +47,6 @@ fn reduce_theme(theme: Theme, action: &AppAction) -> Theme {
 fn reduce_filler(filler: Option<Value>, action: &AppAction) -> Option<Value> {
     match action {
         AppAction::StateGenerateFiller(variant) => Some(filler_for(*variant)),
-        AppAction::StateReset => None,
         _ => filler,
     }
 }

@@ -16,6 +16,7 @@ pub enum ZubridgeMode {
 }
 
 impl ZubridgeMode {
+    /// Kebab-case identifier used by the env var and the renderer's mode key.
     pub fn label(self) -> &'static str {
         match self {
             Self::ZustandBasic => "zustand-basic",
@@ -23,6 +24,17 @@ impl ZubridgeMode {
             Self::ZustandReducers => "zustand-reducers",
             Self::Redux => "redux",
             Self::Custom => "custom",
+        }
+    }
+
+    /// Human-readable name used in window titles and the header.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::ZustandBasic => "Zustand Basic",
+            Self::ZustandHandlers => "Zustand Handlers",
+            Self::ZustandReducers => "Zustand Reducers",
+            Self::Redux => "Redux",
+            Self::Custom => "Custom",
         }
     }
 }

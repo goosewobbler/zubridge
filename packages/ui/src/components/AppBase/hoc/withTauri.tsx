@@ -1,5 +1,5 @@
 import { useZubridgeDispatch, useZubridgeStore } from '@zubridge/tauri';
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { PropsWithChildren } from 'react';
 import { type BridgeStateStore, useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { ActionHandlers, WindowInfo } from '../WindowInfo';
 import { ZubridgeApp } from '../ZubridgeApp';
@@ -29,11 +29,6 @@ export interface TauriAppProps extends PropsWithChildren {
    * Additional CSS classes to apply to the component
    */
   className?: string;
-
-  /**
-   * Child elements to render
-   */
-  children?: ReactNode;
 
   /**
    * Custom action handlers - thunk/window operations supplied by the app.
