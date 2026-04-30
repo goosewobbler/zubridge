@@ -151,12 +151,17 @@ describe('RendererThunkProcessor (Tauri)', () => {
       expect(mockThunkCompleter).toHaveBeenCalled();
     });
 
-    it('still runs and notifies completion when the registrar throws', async () => {
+    it('rethrows when the registrar throws (running the body would risk state divergence)', async () => {
       mockThunkRegistrar.mockRejectedValue(new Error('register fail'));
       const thunk = vi.fn(async () => 'survived');
 
-      await expect(processor.executeThunk(thunk)).resolves.toBe('survived');
-      expect(mockThunkCompleter).toHaveBeenCalled();
+      // The Tauri renderer surfaces registrar failures rather than swallowing
+      // them: with no backend-side thunk record, action acks would be misrouted
+      // and the local replica could diverge silently. Compare with the
+      // completer-error path below, which is non-fatal because the body has
+      // already run.
+      await expect(processor.executeThunk(thunk)).rejects.toThrow(/register fail/);
+      expect(thunk).not.toHaveBeenCalled();
     });
 
     it('still resolves the thunk result when the completer throws', async () => {

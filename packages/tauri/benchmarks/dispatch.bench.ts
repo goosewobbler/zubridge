@@ -1,4 +1,5 @@
 import type { UnlistenFn } from '@tauri-apps/api/event';
+import { renderHook } from '@testing-library/react';
 import type { DispatchFunc } from '@zubridge/types';
 import { afterAll, beforeAll, bench, describe } from 'vitest';
 import {
@@ -73,11 +74,16 @@ const baseOptions: BackendOptions = {
 };
 
 // Captured once in beforeAll so bench iterations don't pay setup cost.
+// useZubridgeDispatch is a real React hook in v2 (uses useRef for closure
+// stability), so we obtain the dispatch function via renderHook rather than
+// calling the hook bare — but the resulting closure has no React entanglement,
+// so iterations only measure the dispatch path itself.
 let dispatch: DispatchFunc<Record<string, unknown>>;
 
 beforeAll(async () => {
   await initializeBridge(baseOptions);
-  dispatch = useZubridgeDispatch();
+  const { result } = renderHook(() => useZubridgeDispatch<Record<string, unknown>>());
+  dispatch = result.current;
 });
 
 afterAll(async () => {
