@@ -408,6 +408,49 @@ describe('@zubridge/tauri', () => {
       const args = (completeCall?.[1] as { args: { error?: string } } | undefined)?.args;
       expect(args?.error).toBe('thunk body boom');
     });
+
+    it('does not orphan the action promise when actionSender fails inside a thunk', async () => {
+      // Listen for unhandled rejections — the bug being guarded against was
+      // that baseDispatch threw synchronously in the actionSender catch
+      // block before returning the action promise, leaving the now-rejected
+      // action promise un-awaited and surfacing as an unhandledRejection.
+      const unhandled: unknown[] = [];
+      const handler = (reason: unknown) => unhandled.push(reason);
+      process.on('unhandledRejection', handler);
+
+      const originalImpl = mockInvoke.getMockImplementation();
+      mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        const bare = cmd.startsWith('plugin:zubridge|')
+          ? cmd.slice('plugin:zubridge|'.length)
+          : cmd;
+        if (bare === 'dispatch_action') throw new Error('backend rejected dispatch');
+        if (originalImpl) return originalImpl(cmd, args);
+        return undefined;
+      });
+
+      try {
+        const { result } = renderHook(() => useZubridgeDispatch());
+        let caught: unknown;
+        await act(async () => {
+          try {
+            await result.current(async (_getStateFn, dispatchFn) => {
+              await dispatchFn('FAILS_INSIDE_THUNK');
+            });
+          } catch (err) {
+            caught = err;
+          }
+        });
+        expect((caught as Error)?.message).toMatch(/dispatch_action failed|backend rejected/);
+        // Allow any pending microtask-based unhandled rejections to surface.
+        await new Promise((r) => setTimeout(r, 10));
+        expect(unhandled).toEqual([]);
+      } finally {
+        process.off('unhandledRejection', handler);
+        if (originalImpl) {
+          mockInvoke.mockImplementation(originalImpl);
+        }
+      }
+    });
   });
 
   describe('RendererThunkProcessor.dispatchAction', () => {

@@ -312,17 +312,28 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
             debug('tauri', `[RENDERER_THUNK] Action ${actionId} acknowledged`);
             this.completeAction(actionId, actionObj);
           } catch (error: unknown) {
+            // completeAction below fires the resolve callback registered via
+            // setupActionCompletion, which rejects `actionPromise`. Falling
+            // through to `return actionPromise` (rather than re-throwing
+            // synchronously) means the caller awaits the rejected promise —
+            // throwing first would orphan `actionPromise` and surface as an
+            // unhandled-rejection console warning.
             this.completeAction(actionId, { error: String(error) });
             this.pendingDispatches.delete(actionId);
             debug('tauri:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
-            throw error;
           }
         } else {
           debug(
             'tauri:error',
             `[RENDERER_THUNK] No action sender configured, cannot send action ${actionId}`,
           );
-          throw new Error('Action sender not configured for renderer thunk processor');
+          // Same reasoning: reject `actionPromise` rather than throw
+          // synchronously, so the returned promise is the single source of
+          // rejection that the caller awaits.
+          this.completeAction(actionId, {
+            error: 'Action sender not configured for renderer thunk processor',
+          });
+          this.pendingDispatches.delete(actionId);
         }
 
         return actionPromise;
