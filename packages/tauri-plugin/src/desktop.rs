@@ -74,6 +74,10 @@ impl<R: Runtime> Zubridge<R> {
         &self.subscriptions
     }
 
+    pub fn deltas(&self) -> &Arc<RwLock<DeltaCalculator>> {
+        &self.deltas
+    }
+
     pub fn thunks(&self) -> &Arc<RwLock<ThunkRegistry>> {
         &self.thunks
     }
@@ -265,27 +269,28 @@ impl<R: Runtime> Zubridge<R> {
                 subs.filter_for(label, &new_state)
             };
 
-            // Compute delta and record the new baseline atomically under the
-            // deltas write lock. Holding this across emit_to is safe because
-            // emit_to does not touch the deltas store.
-            //
-            // `DeltaResult` distinguishes the three cases explicitly:
+            // Compute the delta under a read lock. `DeltaResult` distinguishes
+            // three cases:
             //   FullState  → no baseline / shape change → emit full state
             //   Unchanged  → state identical to baseline → skip emit
             //   Delta(d)   → emit incremental update
+            //
+            // The baseline is recorded in a *separate* write-lock acquisition
+            // AFTER emit_to succeeds. Recording before the emit would advance
+            // the baseline past a state the renderer never received: if emit_to
+            // then fails, subsequent deltas would be computed against that
+            // phantom state and silently diverge.
             let outcome = {
-                let mut calc = self
+                let calc = self
                     .deltas
-                    .write()
+                    .read()
                     .map_err(|e| crate::Error::StateError(e.to_string()))?;
-                let outcome = calc.compute(label, &scoped);
-                calc.record(label, scoped.clone());
-                outcome
+                calc.compute(label, &scoped)
             };
 
             let (delta, full_state) = match outcome {
                 DeltaResult::Unchanged => continue,
-                DeltaResult::FullState => (None, Some(scoped)),
+                DeltaResult::FullState => (None, Some(scoped.clone())),
                 DeltaResult::Delta(d) => (Some(d), None),
             };
 
@@ -309,6 +314,18 @@ impl<R: Runtime> Zubridge<R> {
             self.app
                 .emit_to(label.clone(), &event_name, payload)
                 .map_err(|e| crate::Error::EmitError(e.to_string()))?;
+
+            // Record the new delta baseline only after the emit succeeded.
+            // If emit_to failed above, we propagate the error without updating
+            // the baseline, so the next broadcast recomputes against the last
+            // successfully-delivered state.
+            {
+                let mut calc = self
+                    .deltas
+                    .write()
+                    .map_err(|e| crate::Error::StateError(e.to_string()))?;
+                calc.record(label, scoped);
+            }
 
             {
                 let mut tracker = self
