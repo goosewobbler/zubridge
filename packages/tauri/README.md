@@ -94,9 +94,18 @@ await initializeBridge({
     getWindowSubscriptions?: string,
     stateUpdateEvent?: string,
   },
-  batching?: BatchingOptions, // ActionBatcher tuning (window/maxBatchSize/...)
+  batching?: BatchingOptions | false, // pass `false` to disable batching
 });
 ```
+
+`BatchingOptions` controls the renderer-side `ActionBatcher`:
+
+| Field          | Default | Description                                                         |
+| -------------- | ------- | ------------------------------------------------------------------- |
+| `windowMs`     | `16`    | Flush window in milliseconds (one animation frame).                 |
+| `maxBatchSize` | `50`    | Hard upper bound on actions per flush; reaching it forces a flush.  |
+
+Pass `batching: false` to opt out entirely and send every action as its own `dispatch_action` invoke.
 
 If the plugin probe fails the client falls back to direct command names (e.g. `dispatch_action` instead of `plugin:zubridge|dispatch_action`).
 
