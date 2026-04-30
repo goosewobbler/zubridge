@@ -206,10 +206,12 @@ describe('@zubridge/tauri', () => {
       expect(internalStore.getState().a).toBe(1);
     });
 
-    it('triggers a resync on a sequence gap', async () => {
+    it('triggers a resync on a sequence gap (via subscription-filtered get_state)', async () => {
       emitStateUpdate({ seq: 1, update_id: 'u1', full_state: { counter: 1 } });
       mockBackendState = { counter: 1000 };
-      // Skip seq 2 — bridge should resync via get_initial_state
+      // Skip seq 2 — bridge should resync via get_state (subscription-filtered),
+      // not get_initial_state (unfiltered) which would leave stale unsubscribed
+      // keys in the local replica.
       emitStateUpdate({
         seq: 5,
         update_id: 'u5',
@@ -217,9 +219,7 @@ describe('@zubridge/tauri', () => {
       });
       await waitFor(() => expect(internalStore.getState().counter).toBe(1000));
       const calls = mockInvoke.mock.calls.map((c) => c[0]);
-      expect(
-        calls.filter((c) => c === TauriCommands.GET_INITIAL_STATE).length,
-      ).toBeGreaterThanOrEqual(2);
+      expect(calls).toContain(TauriCommands.GET_STATE);
     });
 
     it('acknowledges receipt by invoking state_update_ack', async () => {

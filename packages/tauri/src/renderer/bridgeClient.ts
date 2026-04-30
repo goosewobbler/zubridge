@@ -443,7 +443,14 @@ export class BridgeClient {
     const cmds = this.requireCommands();
     this.resyncInFlight = (async () => {
       try {
-        const fresh = await this.invoke<AnyState>(cmds.getInitialState);
+        // Use get_state (subscription-filtered) rather than get_initial_state,
+        // which returns the unfiltered store. With active subscriptions a full
+        // dump would leave unsubscribed keys in `currentState` that the backend
+        // never updates again — they would silently diverge.
+        const result = await this.invoke<{ value: AnyState }>(cmds.getState, {
+          args: {},
+        });
+        const fresh = result.value;
         this.currentState = fresh;
         this.lastSeq = 0;
         this.callbacks.onState(fresh);
