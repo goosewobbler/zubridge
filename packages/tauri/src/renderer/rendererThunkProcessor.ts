@@ -153,13 +153,16 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
     let isFirstAction = true;
 
     debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} immediate: ${thunk.immediate}`);
-    // Register the thunk with the Tauri backend
+    // Register the thunk with the Tauri backend before running the body. A
+    // failure here means the backend won't track the thunk's actions for queue
+    // ordering, ack flow, or completion bookkeeping — running the body anyway
+    // would silently produce diverged state. Surface the error to the caller.
     if (this.thunkRegistrar && this.currentWindowLabel) {
+      debug(
+        'ipc',
+        `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (immediate=${thunk.immediate})`,
+      );
       try {
-        debug(
-          'ipc',
-          `[RENDERER_THUNK] Registering thunk ${thunk.id} with main process (immediate=${thunk.immediate})`,
-        );
         await this.thunkRegistrar(
           thunk.id,
           parentId,
@@ -169,6 +172,9 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         debug('ipc', `[RENDERER_THUNK] Thunk ${thunk.id} registered successfully`);
       } catch (error: unknown) {
         debug('ipc:error', `[RENDERER_THUNK] Error registering thunk: ${error}`);
+        throw error instanceof Error
+          ? error
+          : new Error(`thunk registration failed: ${String(error)}`);
       }
     }
 
@@ -498,6 +504,17 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
    */
   public destroy(): void {
     debug('ipc', '[RENDERER_THUNK] Destroying RendererThunkProcessor instance');
+
+    // Reject every awaiter that's still pending before clearing the base
+    // class's callback / timeout maps. Without this, callers awaiting
+    // `dispatch(...)` at destroy time would hang forever — completeAction
+    // wouldn't fire because the registered callbacks are about to be wiped.
+    const pendingIds = Array.from(this.pendingDispatches);
+    for (const actionId of pendingIds) {
+      this.completeAction(actionId, {
+        error: 'RendererThunkProcessor destroyed',
+      });
+    }
 
     // Clean up all resources first
     this.forceCleanupExpiredActions();

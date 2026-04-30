@@ -300,6 +300,15 @@ impl<R: Runtime> Zubridge<R> {
 
     /// Subscribe a webview to a set of top-level state keys.
     pub fn subscribe(&self, source_label: &str, keys: &[String]) -> crate::Result<Vec<String>> {
+        // Take the broadcast lock for the subscription mutation + delta-baseline
+        // reset + immediate-state-push so a concurrent dispatch_action's
+        // broadcast can't observe an inconsistent (new subscriptions, old
+        // baseline) snapshot and emit a delta computed against the wrong base.
+        let _broadcast_guard = self
+            .broadcast_lock
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
+
         let resulting = {
             let mut subs = self
                 .subscriptions
@@ -323,11 +332,17 @@ impl<R: Runtime> Zubridge<R> {
         // newly-included keys without waiting for the next dispatch. Best
         // effort: if no state manager is registered yet, skip the broadcast
         // (the next dispatch will catch up).
+        drop(_broadcast_guard);
         self.broadcast_current_state();
         Ok(resulting)
     }
 
     pub fn unsubscribe(&self, source_label: &str, keys: &[String]) -> crate::Result<Vec<String>> {
+        let _broadcast_guard = self
+            .broadcast_lock
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
+
         let resulting = {
             let mut subs = self
                 .subscriptions
@@ -348,6 +363,7 @@ impl<R: Runtime> Zubridge<R> {
         // Push the current state so the renderer's replica drops the
         // now-unsubscribed keys instead of leaving them stale until the next
         // dispatch.
+        drop(_broadcast_guard);
         self.broadcast_current_state();
         Ok(resulting)
     }

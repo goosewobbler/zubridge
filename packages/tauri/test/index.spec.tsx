@@ -337,6 +337,58 @@ describe('@zubridge/tauri', () => {
       expect(calls).toContain(TauriCommands.DISPATCH_ACTION);
     });
 
+    it('returns a stable dispatch reference across re-renders', async () => {
+      await act(async () => {
+        await initializeBridge(baseOptions);
+      });
+      const { result, rerender } = renderHook(() => useZubridgeDispatch());
+      const first = result.current;
+      rerender();
+      const second = result.current;
+      expect(first).toBe(second);
+    });
+
+    it('surfaces thunk registration failures instead of silently dropping the body', async () => {
+      // Make register_thunk reject. The thunk body must NOT run, and the
+      // dispatch() call must reject with the registration error. Restore the
+      // base mock impl after the assertion so subsequent tests aren't affected.
+      const originalImpl = mockInvoke.getMockImplementation();
+      const registrationError = new Error('register_thunk backend rejection');
+      mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        const bare = cmd.startsWith('plugin:zubridge|')
+          ? cmd.slice('plugin:zubridge|'.length)
+          : cmd;
+        if (bare === 'register_thunk') throw registrationError;
+        if (originalImpl) return originalImpl(cmd, args);
+        return undefined;
+      });
+
+      try {
+        await act(async () => {
+          await initializeBridge(baseOptions);
+        });
+        const { result } = renderHook(() => useZubridgeDispatch());
+
+        const bodyRan = vi.fn();
+        let caught: unknown;
+        await act(async () => {
+          try {
+            await result.current(async () => {
+              bodyRan();
+            });
+          } catch (err) {
+            caught = err;
+          }
+        });
+        expect(bodyRan).not.toHaveBeenCalled();
+        expect((caught as Error)?.message).toMatch(/register_thunk/i);
+      } finally {
+        if (originalImpl) {
+          mockInvoke.mockImplementation(originalImpl);
+        }
+      }
+    });
+
     it('forwards a thrown thunk error to complete_thunk', async () => {
       const { result } = renderHook(() => useZubridgeDispatch());
       let caught: unknown;

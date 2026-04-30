@@ -202,37 +202,44 @@ export function useZubridgeStore<StateSlice>(
  * Returns a dispatch function that supports actions, action strings, and
  * thunks. Thunks execute locally and have access to a `dispatch` that talks
  * to the backend via Tauri commands.
+ *
+ * The returned reference is stable across re-renders so consumers can pass
+ * it to `useEffect` / `useCallback` / memoised children without triggering
+ * spurious work.
  */
 export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFunc<S> {
-  const dispatch = async (
-    actionOrThunk: Thunk<S> | Action | string,
-    payload?: unknown,
-  ): Promise<unknown> => {
-    if (!bridgeClient) {
-      throw new Error('Zubridge is not initialized. Call initializeBridge first.');
-    }
+  const dispatchRef = useRef<DispatchFunc<S> | null>(null);
+  if (dispatchRef.current === null) {
+    const dispatch = async (
+      actionOrThunk: Thunk<S> | Action | string,
+      payload?: unknown,
+    ): Promise<unknown> => {
+      if (!bridgeClient) {
+        throw new Error('Zubridge is not initialized. Call initializeBridge first.');
+      }
 
-    // Wait for the bridge to be 'ready' before either path. The thunk
-    // processor's actionSender/thunkRegistrar/thunkCompleter are wired up
-    // inside BridgeClient.initialize() — which runs *after* `bridgeClient` is
-    // assigned in the init IIFE — so a thunk dispatched in that window would
-    // execute against an uninitialised processor and silently drop every
-    // backend interaction.
-    await ensureReady();
+      // Wait for the bridge to be 'ready' before either path. The thunk
+      // processor's actionSender/thunkRegistrar/thunkCompleter are wired up
+      // inside BridgeClient.initialize() — which runs *after* `bridgeClient`
+      // is assigned in the init IIFE — so a thunk dispatched in that window
+      // would execute against an uninitialised processor and silently drop
+      // every backend interaction.
+      await ensureReady();
 
-    if (typeof actionOrThunk === 'function') {
-      const processor = getThunkProcessor();
-      return processor.executeThunk(actionOrThunk as Thunk<S>);
-    }
+      if (typeof actionOrThunk === 'function') {
+        const processor = getThunkProcessor();
+        return processor.executeThunk(actionOrThunk as Thunk<S>);
+      }
 
-    const action: Action =
-      typeof actionOrThunk === 'string' ? { type: actionOrThunk, payload } : actionOrThunk;
+      const action: Action =
+        typeof actionOrThunk === 'string' ? { type: actionOrThunk, payload } : actionOrThunk;
 
-    await bridgeClient.dispatch(action);
-    return Promise.resolve();
-  };
-
-  return dispatch as DispatchFunc<S>;
+      await bridgeClient.dispatch(action);
+      return Promise.resolve();
+    };
+    dispatchRef.current = dispatch as DispatchFunc<S>;
+  }
+  return dispatchRef.current;
 }
 
 async function ensureReady(): Promise<void> {
