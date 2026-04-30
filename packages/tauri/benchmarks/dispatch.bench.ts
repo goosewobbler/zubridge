@@ -1,10 +1,12 @@
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { afterAll, bench, describe } from 'vitest';
+import type { DispatchFunc } from '@zubridge/types';
+import { afterAll, beforeAll, bench, describe } from 'vitest';
 import {
   type BackendOptions,
   cleanupZubridge,
   initializeBridge,
   TauriCommands,
+  useZubridgeDispatch,
 } from '../src/index.js';
 
 /**
@@ -17,6 +19,10 @@ import {
  * (constructing the wire payload, action validation, and the renderer
  * thunk processor's bookkeeping). Network / IPC cost is excluded by
  * design — those are environment-dependent and would dominate any signal.
+ *
+ * The bridge is initialised once in beforeAll and the dispatch closure is
+ * captured at module scope, so each bench iteration measures only the
+ * dispatch path itself — not module resolution or initialisation cost.
  */
 
 let stateUpdateListener: ((event: { payload: unknown }) => void) | null = null;
@@ -66,16 +72,16 @@ const baseOptions: BackendOptions = {
   listen: mockListen,
 };
 
-let initialized = false;
-async function ensureInitialized() {
-  if (initialized) return;
+// Captured once in beforeAll so bench iterations don't pay setup cost.
+let dispatch: DispatchFunc<Record<string, unknown>>;
+
+beforeAll(async () => {
   await initializeBridge(baseOptions);
-  initialized = true;
-}
+  dispatch = useZubridgeDispatch();
+});
 
 afterAll(async () => {
   await cleanupZubridge();
-  initialized = false;
   stateUpdateListener = null;
 });
 
@@ -86,25 +92,14 @@ void stateUpdateListener;
 
 describe('dispatch latency', () => {
   bench('string action', async () => {
-    await ensureInitialized();
-    // Invoke the bridge client's dispatch directly through the same path
-    // useZubridgeDispatch takes for a string action.
-    const { useZubridgeDispatch } = await import('../src/index.js');
-    const dispatch = useZubridgeDispatch();
     await dispatch('INCREMENT');
   });
 
   bench('object action with payload', async () => {
-    await ensureInitialized();
-    const { useZubridgeDispatch } = await import('../src/index.js');
-    const dispatch = useZubridgeDispatch();
     await dispatch({ type: 'SET_COUNTER', payload: 42 });
   });
 
   bench('object action with deeply-nested payload', async () => {
-    await ensureInitialized();
-    const { useZubridgeDispatch } = await import('../src/index.js');
-    const dispatch = useZubridgeDispatch();
     await dispatch({
       type: 'SET_TREE',
       payload: {
@@ -116,18 +111,12 @@ describe('dispatch latency', () => {
 
 describe('dispatch latency - high-volume sequence', () => {
   bench('10 sequential string dispatches', async () => {
-    await ensureInitialized();
-    const { useZubridgeDispatch } = await import('../src/index.js');
-    const dispatch = useZubridgeDispatch();
     for (let i = 0; i < 10; i++) {
       await dispatch(`ACTION_${i}`);
     }
   });
 
   bench('50 sequential string dispatches', async () => {
-    await ensureInitialized();
-    const { useZubridgeDispatch } = await import('../src/index.js');
-    const dispatch = useZubridgeDispatch();
     for (let i = 0; i < 50; i++) {
       await dispatch(`ACTION_${i}`);
     }
