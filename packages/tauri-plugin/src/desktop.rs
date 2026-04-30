@@ -226,6 +226,16 @@ impl<R: Runtime> Zubridge<R> {
                 result
             };
 
+            // No-op delta: the action produced an identical state for this
+            // webview's scoped view. Skip the event entirely — emitting an
+            // empty delta would still trigger a Zustand state replacement and
+            // re-render on the renderer.
+            if let Some(d) = &delta {
+                if d.is_no_op() {
+                    continue;
+                }
+            }
+
             let seq = {
                 let mut sequences = self
                     .sequences

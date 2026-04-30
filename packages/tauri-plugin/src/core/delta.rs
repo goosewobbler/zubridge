@@ -65,6 +65,16 @@ impl DeltaCalculator {
     }
 }
 
+impl StateDelta {
+    /// True when the delta has no changes and no removals — i.e. the action
+    /// produced an identical state for this webview's scoped view. The caller
+    /// (`broadcast_state`) skips emitting events for no-op deltas so the
+    /// renderer doesn't replace its store and trigger a re-render cycle.
+    pub fn is_no_op(&self) -> bool {
+        self.changed.is_empty() && self.removed.is_empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +115,22 @@ mod tests {
             .compute("main", &serde_json::json!({ "a": 1 }))
             .expect("delta");
         assert!(delta.changed.is_empty() && delta.removed.is_empty());
+        assert!(delta.is_no_op());
+    }
+
+    #[test]
+    fn is_no_op_distinguishes_empty_from_changed() {
+        let empty = StateDelta::default();
+        assert!(empty.is_no_op());
+
+        let mut changed = StateDelta::default();
+        changed
+            .changed
+            .insert("a".into(), serde_json::json!(1));
+        assert!(!changed.is_no_op());
+
+        let mut removed = StateDelta::default();
+        removed.removed.push("a".into());
+        assert!(!removed.is_no_op());
     }
 }
