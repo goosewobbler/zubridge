@@ -458,10 +458,14 @@ impl<R: Runtime> Zubridge<R> {
         Ok(())
     }
 
-    /// Drop all per-label state for a webview that's been closed. Currently not
-    /// wired to a Tauri lifecycle event but exposed for hosts to call.
-    /// Pending or executing thunks owned by the webview are also discarded so
-    /// their entries don't leak in the registry.
+    /// Drop all per-label state for a webview that's been closed: subscription
+    /// keys, delta baseline, sequence counter, pending state-update acks, and
+    /// any thunks owned by the webview.
+    ///
+    /// Wired automatically to `RunEvent::WindowEvent { event: Destroyed, .. }`
+    /// in `lib.rs::forget_on_destroy`. Also exposed publicly so hosts that
+    /// manage webviews outside the standard close flow (e.g. embedded webview
+    /// pools) can release per-label state explicitly.
     pub fn forget_label(&self, label: &str) {
         if let Ok(mut subs) = self.subscriptions.write() {
             subs.drop_label(label);
