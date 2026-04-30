@@ -183,19 +183,23 @@ export function useZubridgeStore<StateSlice>(
   selector: (state: BridgeState) => StateSlice,
   equalityFn?: (a: StateSlice, b: StateSlice) => boolean,
 ): StateSlice {
-  const lastSliceRef = useRef<{ value: StateSlice } | null>(null);
+  const lastSliceRef = useRef<{ value: StateSlice } | undefined>(undefined);
 
-  const getSnapshot = (): StateSlice => {
-    const next = selector(internalStore.getState());
-    const prev = lastSliceRef.current;
-    if (prev && equalityFn && equalityFn(prev.value, next)) {
-      return prev.value;
-    }
-    lastSliceRef.current = { value: next };
-    return next;
-  };
-
-  return useSyncExternalStore(internalStore.subscribe, getSnapshot, getSnapshot);
+  return useSyncExternalStore(
+    internalStore.subscribe,
+    () => {
+      const next = selector(internalStore.getState());
+      if (equalityFn) {
+        const prev = lastSliceRef.current;
+        if (prev && equalityFn(prev.value, next)) {
+          return prev.value; // stable reference prevents unnecessary re-renders
+        }
+        lastSliceRef.current = { value: next };
+      }
+      return next;
+    },
+    () => selector(internalStore.getState()), // SSR/initial snapshot
+  );
 }
 
 /**
