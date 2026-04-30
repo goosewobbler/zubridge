@@ -104,6 +104,8 @@ If the plugin probe fails the client falls back to direct command names (e.g. `d
 
 Tears down the bridge — unlistens the state-update event, destroys the thunk processor, and resets `__bridge_status` to `uninitialized`.
 
+> **Breaking in 2.x**: this is now `async` and returns `Promise<void>`. In 1.x it was synchronous (`void`). Always `await` it (or chain `.then(...)`) — un-awaited callers will continue before `bridgeClient.destroy()` finishes, which can leave dangling event listeners and lose any error raised by destruction. See the migration section below.
+
 ### `useZubridgeStore<S>(selector, equalityFn?): SliceOfS`
 
 React hook backed by `useSyncExternalStore`. Returns the selected slice of the local replica and re-renders when it changes.
@@ -242,9 +244,35 @@ const keys = await getWindowSubscriptions();
 
 If you do not call `subscribe`, the webview receives the full filtered state (the Rust default-all behaviour). The TS-side validators also default to permissive when no fetcher is configured.
 
-### `cleanupZubridge` replaces `cleanup`
+### `cleanupZubridge` replaces `cleanup` — and is now async
 
-Rename any `cleanup()` calls to `cleanupZubridge()` and prefer awaiting it. The new implementation also tears down the renderer thunk processor and the state-update listener.
+Two breaking changes here:
+
+1. The function is renamed from `cleanup()` to `cleanupZubridge()`.
+2. The return type changes from `void` to `Promise<void>`. The 1.x function ran synchronously; the 2.x function awaits `bridgeClient.destroy()` (which unlistens the state-update event, destroys the renderer thunk processor, and resets the local store).
+
+You **must** `await` (or `.then(...)`) the returned promise. Fire-and-forget callers — common in React effect destructors and `beforeunload` handlers — will:
+
+- continue before destruction finishes, leaving the state-update listener attached and the thunk processor live for the duration of the in-flight teardown;
+- silently swallow any error raised during destruction (no rejection handler).
+
+```diff
+- // 1.x — synchronous
+- useEffect(() => {
+-   initializeBridge({ invoke, listen });
+-   return () => cleanup();
+- }, []);
+
++ // 2.x — async; await it
++ useEffect(() => {
++   initializeBridge({ invoke, listen });
++   return () => {
++     cleanupZubridge().catch((err) => console.error('cleanup failed', err));
++   };
++ }, []);
+```
+
+If you cannot easily await it from your call site (e.g. a synchronous `beforeunload` handler), wrap it: `void cleanupZubridge().catch(...)`. Do not rely on the call resolving before the surrounding scope returns.
 
 ### Errors
 
