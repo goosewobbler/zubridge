@@ -10,7 +10,7 @@ import type {
 import { PRIORITY_LEVELS } from './types.js';
 
 const uuidv4 = (): string => {
-  return self.crypto.randomUUID();
+  return globalThis.crypto.randomUUID();
 };
 
 export class ActionBatcher {
