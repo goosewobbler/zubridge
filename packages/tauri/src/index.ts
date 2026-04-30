@@ -17,14 +17,25 @@ export const internalStore = createStore<BridgeState>(() => ({
 
 let bridgeClient: BridgeClient | null = null;
 let initializePromise: Promise<void> | null = null;
+let cleanupPromise: Promise<void> | null = null;
 
 /**
  * Initialise the Tauri bridge. Idempotent — repeat calls share the in-flight
  * initialise promise and reuse the live client.
+ *
+ * If a previous `cleanupZubridge` is still tearing down its listeners, this
+ * function waits for that to complete before creating a new client. Without
+ * the wait, fire-and-forget callers (`cleanupZubridge(); initializeBridge();`)
+ * could race and leave the previous client's state-update listener firing
+ * into the new client's store.
  */
 export async function initializeBridge(options?: BackendOptions): Promise<void> {
   if (!options?.invoke || !options?.listen) {
     throw new Error("Zubridge Tauri: 'invoke' AND 'listen' functions must be provided in options.");
+  }
+
+  if (cleanupPromise) {
+    await cleanupPromise;
   }
 
   if (initializePromise) return initializePromise;
@@ -91,14 +102,42 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
 
 /**
  * Tear down the Tauri bridge — unsubscribes events and resets the local store.
+ *
+ * Module-level state (`bridgeClient`, `initializePromise`, store status) is
+ * reset synchronously so a fire-and-forget caller followed by a new
+ * `initializeBridge` call sees a clean slate. The actual listener teardown
+ * runs asynchronously inside `cleanupPromise`; `initializeBridge` awaits that
+ * promise before constructing a new client, so the two clients can never share
+ * an active state-update listener.
+ *
+ * Concurrent calls share the same in-flight cleanup.
  */
 export async function cleanupZubridge(): Promise<void> {
-  if (bridgeClient) {
-    await bridgeClient.destroy();
-    bridgeClient = null;
-  }
+  if (cleanupPromise) return cleanupPromise;
+
+  const client = bridgeClient;
+  bridgeClient = null;
   initializePromise = null;
   internalStore.setState({ __bridge_status: 'uninitialized' } as BridgeState, true);
+
+  // Start the async work, expose it as cleanupPromise for concurrent callers,
+  // then await it and clear cleanupPromise in the outer finally. Putting the
+  // clear inside the IIFE itself was unsafe: when the IIFE body finished
+  // synchronously (no client to destroy), its finally would set
+  // `cleanupPromise = null`, but the *outer* `cleanupPromise = (IIFE)()`
+  // assignment evaluates after the IIFE returns and would immediately
+  // overwrite it back to the IIFE's resolved Promise.
+  const work = (async () => {
+    if (client) {
+      await client.destroy();
+    }
+  })();
+  cleanupPromise = work;
+  try {
+    await work;
+  } finally {
+    cleanupPromise = null;
+  }
 }
 
 // React hook to access state slices of the local replica.

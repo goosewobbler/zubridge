@@ -136,6 +136,12 @@ impl<R: Runtime> Zubridge<R> {
     /// state-update event after the last action has been processed. Per-action
     /// broadcasts are skipped — emitting N events for N actions defeats the
     /// purpose of batching.
+    ///
+    /// On a mid-batch dispatch error the actions that succeeded are NOT rolled
+    /// back (the state manager has no transaction model), so the function
+    /// still broadcasts the resulting state before returning the error. This
+    /// keeps the renderer's local replica from silently diverging from a
+    /// partially-applied backend state.
     pub fn batch_dispatch(
         &self,
         batch_id: String,
@@ -150,32 +156,46 @@ impl<R: Runtime> Zubridge<R> {
 
         let mut acked = Vec::with_capacity(actions.len());
         let handle = self.state_handle()?;
-        // Apply each action against the state manager; do NOT broadcast per action.
         let mut last_action_id: Option<String> = None;
         let mut last_thunk_id: Option<String> = None;
+        let mut error: Option<crate::Error> = None;
+
         for action in actions {
             let action_id = action
                 .id
                 .clone()
                 .unwrap_or_else(|| Uuid::new_v4().to_string());
-            state_manager::dispatch(&handle, action.to_legacy_json()).map_err(|e| {
-                crate::Error::ActionProcessing {
-                    action_id: Some(action_id.clone()),
-                    message: e.to_string(),
+            match state_manager::dispatch(&handle, action.to_legacy_json()) {
+                Ok(_) => {
+                    last_action_id = Some(action_id.clone());
+                    last_thunk_id = action.thunk_parent_id.clone();
+                    acked.push(action_id);
                 }
-            })?;
-            last_action_id = Some(action_id.clone());
-            last_thunk_id = action.thunk_parent_id.clone();
-            acked.push(action_id);
+                Err(e) => {
+                    error = Some(crate::Error::ActionProcessing {
+                        action_id: Some(action_id),
+                        message: e.to_string(),
+                    });
+                    break;
+                }
+            }
         }
 
-        // Single coalesced broadcast attributed to the last action in the batch.
-        let new_state = state_manager::read_state(&handle)?;
-        let source = UpdateSource {
-            action_id: last_action_id,
-            thunk_id: last_thunk_id,
-        };
-        self.broadcast_state(new_state, Some(source))?;
+        // Broadcast even when the loop bailed early so the renderer's replica
+        // catches up to whatever actions did commit before the error. Skipped
+        // only when nothing committed (acked is empty).
+        if !acked.is_empty() {
+            let new_state = state_manager::read_state(&handle)?;
+            let source = UpdateSource {
+                action_id: last_action_id,
+                thunk_id: last_thunk_id,
+            };
+            self.broadcast_state(new_state, Some(source))?;
+        }
+
+        if let Some(e) = error {
+            return Err(e);
+        }
 
         Ok(BatchDispatchResult {
             batch_id,
@@ -280,39 +300,70 @@ impl<R: Runtime> Zubridge<R> {
 
     /// Subscribe a webview to a set of top-level state keys.
     pub fn subscribe(&self, source_label: &str, keys: &[String]) -> crate::Result<Vec<String>> {
-        let mut subs = self
-            .subscriptions
-            .write()
-            .map_err(|e| crate::Error::Subscription {
-                source_label: source_label.to_string(),
-                message: e.to_string(),
-            })?;
-        let resulting = subs.subscribe(source_label, keys);
+        let resulting = {
+            let mut subs = self
+                .subscriptions
+                .write()
+                .map_err(|e| crate::Error::Subscription {
+                    source_label: source_label.to_string(),
+                    message: e.to_string(),
+                })?;
+            subs.subscribe(source_label, keys)
+        };
         // Force a full-state resync for this label so the renderer's local
         // replica matches the new key set.
-        let mut deltas = self
-            .deltas
-            .write()
-            .map_err(|e| crate::Error::StateError(e.to_string()))?;
-        deltas.forget(source_label);
+        {
+            let mut deltas = self
+                .deltas
+                .write()
+                .map_err(|e| crate::Error::StateError(e.to_string()))?;
+            deltas.forget(source_label);
+        }
+        // Push the current state immediately so the subscriber sees its
+        // newly-included keys without waiting for the next dispatch. Best
+        // effort: if no state manager is registered yet, skip the broadcast
+        // (the next dispatch will catch up).
+        self.broadcast_current_state();
         Ok(resulting)
     }
 
     pub fn unsubscribe(&self, source_label: &str, keys: &[String]) -> crate::Result<Vec<String>> {
-        let mut subs = self
-            .subscriptions
-            .write()
-            .map_err(|e| crate::Error::Subscription {
-                source_label: source_label.to_string(),
-                message: e.to_string(),
-            })?;
-        let resulting = subs.unsubscribe(source_label, keys);
-        let mut deltas = self
-            .deltas
-            .write()
-            .map_err(|e| crate::Error::StateError(e.to_string()))?;
-        deltas.forget(source_label);
+        let resulting = {
+            let mut subs = self
+                .subscriptions
+                .write()
+                .map_err(|e| crate::Error::Subscription {
+                    source_label: source_label.to_string(),
+                    message: e.to_string(),
+                })?;
+            subs.unsubscribe(source_label, keys)
+        };
+        {
+            let mut deltas = self
+                .deltas
+                .write()
+                .map_err(|e| crate::Error::StateError(e.to_string()))?;
+            deltas.forget(source_label);
+        }
+        // Push the current state so the renderer's replica drops the
+        // now-unsubscribed keys instead of leaving them stale until the next
+        // dispatch.
+        self.broadcast_current_state();
         Ok(resulting)
+    }
+
+    /// Best-effort current-state broadcast used by subscription mutations.
+    /// Errors (no state manager registered, transient lock failure) are
+    /// swallowed because the caller's subscription change has already
+    /// succeeded — the next real dispatch will reconcile.
+    fn broadcast_current_state(&self) {
+        if let Ok(handle) = self.state_handle() {
+            if let Ok(state) = state_manager::read_state(&handle) {
+                if let Err(err) = self.broadcast_state(state, None) {
+                    log::warn!("zubridge: post-subscription broadcast failed: {err}");
+                }
+            }
+        }
     }
 
     pub fn get_window_subscriptions(&self, source_label: &str) -> crate::Result<Vec<String>> {
