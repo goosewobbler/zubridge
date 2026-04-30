@@ -133,6 +133,13 @@ export class BridgeClient {
 
   async initialize(options: BackendOptions): Promise<AnyState> {
     const { flavour, initialState } = await probeCommandFlavour(this.invoke, options.commands);
+    // If `destroy()` ran while the probe was in flight (e.g. a concurrent
+    // cleanupZubridge during init), abort before publishing stale state. The
+    // outer IIFE in index.ts will catch this and — guarded against clobbering
+    // a successor client — clear module state appropriately.
+    if (this.destroyed) {
+      throw new Error('BridgeClient destroyed during initialization');
+    }
     this.commands = resolveCommands(flavour, options.commands);
 
     this.currentState = initialState ?? {};
@@ -142,6 +149,9 @@ export class BridgeClient {
       this.commands.stateUpdateEvent,
       (raw) => this.handleStateUpdate(raw),
     );
+    if (this.destroyed) {
+      throw new Error('BridgeClient destroyed during initialization');
+    }
 
     setSubscriptionFetcher(() => this.getWindowSubscriptions());
     setActionValidatorStateProvider(async () => this.currentState as Record<string, unknown>);

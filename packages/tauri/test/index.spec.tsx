@@ -343,6 +343,37 @@ describe('@zubridge/tauri', () => {
       expect(calls).toContain(TauriCommands.DISPATCH_ACTION);
       expect(calls).toContain(TauriCommands.COMPLETE_THUNK);
     });
+
+    it('cleanup mid-initialization does not clobber a successor client', async () => {
+      // First init: stall get_initial_state so the IIFE is suspended.
+      let releaseFirstProbe: (() => void) | undefined;
+      const firstStalled = new Promise<void>((r) => {
+        releaseFirstProbe = r;
+      });
+      mockInvoke.mockImplementationOnce(async () => {
+        await firstStalled;
+        return mockBackendState;
+      });
+
+      const firstInit = initializeBridge(baseOptions);
+
+      // Tear down mid-init.
+      await cleanupZubridge();
+
+      // Start a second init while the first probe is still suspended. This
+      // second init must NOT be clobbered when the first eventually rejects
+      // (BridgeClient throws because it sees this.destroyed === true).
+      mockBackendState = { counter: 77, fresh: true };
+      const secondInit = initializeBridge(baseOptions);
+
+      // Release the first probe so its IIFE resumes and throws.
+      releaseFirstProbe?.();
+      await expect(firstInit).rejects.toThrow();
+      await secondInit;
+
+      expect(internalStore.getState().__bridge_status).toBe('ready');
+      expect(internalStore.getState().counter).toBe(77);
+    });
   });
 
   describe('subscriptions', () => {

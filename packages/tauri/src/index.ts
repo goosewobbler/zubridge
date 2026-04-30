@@ -72,27 +72,44 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
 
     try {
       await client.initialize(options);
-      internalStore.setState((s: BridgeState) => ({ ...s, __bridge_status: 'ready' as const }));
-      debug('tauri', 'Initialization successful');
+      // Only mark this IIFE's run as the active 'ready' state if `client` is
+      // still the active BridgeClient. A racing cleanupZubridge + new
+      // initializeBridge could have swapped in a successor client whose own
+      // IIFE will publish its own status; we mustn't overwrite it.
+      if (bridgeClient === client) {
+        internalStore.setState((s: BridgeState) => ({ ...s, __bridge_status: 'ready' as const }));
+        debug('tauri', 'Initialization successful');
+      } else {
+        debug('tauri', 'Initialization completed for a superseded client; not publishing state');
+      }
     } catch (error) {
       debug('tauri:error', 'Initialization failed:', error);
-      // On failure clear the global state so a subsequent initializeBridge
-      // call starts fresh.
       try {
         await client.destroy();
       } catch {
         /* swallow */
       }
-      bridgeClient = null;
-      initializePromise = null;
-      internalStore.setState(
-        (s: BridgeState) => ({
-          ...s,
-          __bridge_status: 'error' as const,
-          __bridge_error: error,
-        }),
-        true,
-      );
+      // Same successor-aware guard on the failure path: only clear module
+      // state if no newer client took over while this one was initialising.
+      // Without this, a stale failure could clobber a successor's bridgeClient
+      // / initializePromise / store status.
+      if (bridgeClient === client) {
+        bridgeClient = null;
+        initializePromise = null;
+        internalStore.setState(
+          (s: BridgeState) => ({
+            ...s,
+            __bridge_status: 'error' as const,
+            __bridge_error: error,
+          }),
+          true,
+        );
+      } else {
+        debug(
+          'tauri',
+          'Initialization failed for a superseded client; not clobbering successor state',
+        );
+      }
       throw error;
     }
   })();
