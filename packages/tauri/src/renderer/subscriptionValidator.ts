@@ -27,10 +27,11 @@ export function setSubscriptionFetcher(fetcher: SubscriptionFetcher | null): voi
 export async function getWindowSubscriptions(): Promise<string[]> {
   try {
     const now = Date.now();
-    if (
-      cachedSubscriptions.length > 0 &&
-      now - lastSubscriptionFetchTime < SUBSCRIPTION_CACHE_TTL
-    ) {
+    // Cache hit when we've fetched at least once within the TTL — gating on
+    // `lastSubscriptionFetchTime > 0` rather than `cachedSubscriptions.length`
+    // is what lets default-all webviews (empty subscription list) hit the
+    // cache instead of refetching on every action validation.
+    if (lastSubscriptionFetchTime > 0 && now - lastSubscriptionFetchTime < SUBSCRIPTION_CACHE_TTL) {
       return cachedSubscriptions;
     }
 

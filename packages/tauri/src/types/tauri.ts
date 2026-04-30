@@ -51,9 +51,9 @@ export interface BackendOptions<T = unknown> extends BaseBackendOptions<T> {
 }
 
 export interface BatchingOptions {
-  /** Max actions per batch before forcing a flush. Default 100. */
+  /** Max actions per batch before forcing a flush. Default 50. */
   maxBatchSize?: number;
-  /** Flush window in milliseconds. Default 5ms. */
+  /** Flush window in milliseconds. Default 16ms (one animation frame). */
   windowMs?: number;
 }
 

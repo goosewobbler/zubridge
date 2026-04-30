@@ -1219,24 +1219,12 @@ importers:
 
   packages/tauri:
     dependencies:
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.12
       '@zubridge/core':
         specifier: workspace:*
         version: link:../core
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types
-      dequal:
-        specifier: ^2.0.3
-        version: 2.0.3
-      uuid:
-        specifier: ^13.0.0
-        version: 13.0.0
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
       zustand:
         specifier: ^5.0.8
         version: 5.0.8(@types/react@19.2.2)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
