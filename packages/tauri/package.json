@@ -17,6 +17,7 @@
     "release": "pnpm pack && pnpm publish",
     "test:unit": "vitest run",
     "test:dev": "vitest --coverage",
+    "bench": "vitest bench --run",
     "typecheck": "tsc --noEmit"
   },
   "repository": {

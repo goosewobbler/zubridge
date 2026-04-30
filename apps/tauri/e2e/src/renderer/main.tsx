@@ -1,38 +1,26 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { debug } from '@zubridge/core';
 import { cleanupZubridge, initializeBridge } from '@zubridge/tauri';
-import { withTauri } from '@zubridge/ui/tauri';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
+import { AppRoot } from './App.js';
 
-// Create the Tauri app component
-const TauriApp = withTauri();
-
-type WindowType = 'main' | 'secondary' | 'runtime';
-
-function AppWrapper() {
-  const [windowType, setWindowType] = useState<WindowType>('main');
-  const [windowLabel, setWindowLabel] = useState('main');
-  const [bridgeInitialized, setBridgeInitialized] = useState(false);
+function AppBootstrap() {
+  const [windowLabel, setWindowLabel] = useState<string | null>(null);
+  const [bridgeReady, setBridgeReady] = useState(false);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
 
   useEffect(() => {
-    const setupApp = async () => {
+    let cancelled = false;
+    (async () => {
       try {
-        // Fetch window info first
-        const currentWindow = WebviewWindow.getCurrent();
-        const label = currentWindow.label;
-        setWindowLabel(label);
-        if (label.startsWith('runtime_')) {
-          setWindowType('runtime');
-        } else if (label === 'main') {
-          setWindowType('main');
-        } else {
-          setWindowType('secondary');
-        }
-        // Initialize Zubridge bridge
+        const current = WebviewWindow.getCurrent();
+        if (cancelled) return;
+        setWindowLabel(current.label);
         await initializeBridge({
           invoke: invoke as <R = unknown>(
             cmd: string,
@@ -44,56 +32,34 @@ function AppWrapper() {
             handler: (event: E) => void,
           ) => Promise<UnlistenFn>,
         });
-        setBridgeInitialized(true);
-      } catch (_error) {
-        setWindowLabel('error-label');
-        setBridgeInitialized(false);
+        if (!cancelled) setBridgeReady(true);
+      } catch (error) {
+        debug('ui:error', `Bridge initialization failed: ${error}`);
+        if (!cancelled) setBridgeError(String(error));
       }
-    };
-    setupApp();
+    })();
     return () => {
+      cancelled = true;
       cleanupZubridge();
     };
   }, []);
 
-  if (!bridgeInitialized) {
+  if (bridgeError) {
+    return <div>Bridge initialization failed: {bridgeError}</div>;
+  }
+  if (!bridgeReady || !windowLabel) {
     return <div>Initializing Bridge...</div>;
   }
 
-  // Placeholder/noop handlers for Tauri
-  // const actionHandlers = {
-  //   createWindow: async () => ({ success: false, error: 'Not implemented' }),
-  //   closeWindow: async () => ({ success: false, error: 'Not implemented' }),
-  //   quitApp: async () => ({ success: false, error: 'Not implemented' }),
-  //   doubleCounter: (_counter: number) => undefined,
-  //   doubleCounterSlow: (_counter: number) => undefined,
-  //   distinctiveCounter: (_counter: number) => undefined,
-  //   distinctiveCounterSlow: (_counter: number) => undefined,
-  //   doubleCounterWithGetStateOverride: (_counter: number) => undefined,
-  // };
-
-  // // Subscription handlers (no-op for now)
-  // const handleSubscribe = async (_keys: string[]) => {};
-  // const handleUnsubscribe = async (_keys: string[]) => {};
-
-  return (
-    <TauriApp
-      windowInfo={{
-        id: windowLabel,
-        type: windowType,
-        platform: 'tauri',
-      }}
-      windowTitle={`${windowType.charAt(0).toUpperCase() + windowType.slice(1)} Window`}
-      appName={'Zubridge - Tauri Example'}
-    />
-  );
+  return <AppRoot windowLabel={windowLabel} />;
 }
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Root container not found');
+
 const root = createRoot(container);
 root.render(
   <React.StrictMode>
-    <AppWrapper />
+    <AppBootstrap />
   </React.StrictMode>,
 );

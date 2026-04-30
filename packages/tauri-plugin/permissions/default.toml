@@ -2,4 +2,15 @@
 
 [default]
 description = "Allows state management through the Zubridge plugin"
-permissions = ["allow-get-initial-state", "allow-dispatch-action"]
+permissions = [
+    "allow-get-initial-state",
+    "allow-get-state",
+    "allow-dispatch-action",
+    "allow-batch-dispatch",
+    "allow-register-thunk",
+    "allow-complete-thunk",
+    "allow-state-update-ack",
+    "allow-subscribe",
+    "allow-unsubscribe",
+    "allow-get-window-subscriptions",
+]

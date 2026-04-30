@@ -678,7 +678,7 @@ describe('RendererThunkProcessor', () => {
       expect(result).toBe(null);
     });
 
-    it('should handle getCurrentWindowId returning undefined', async () => {
+    it('should reject when thunkRegistrar is set but currentWindowId is missing', async () => {
       const noWindowProcessor = new RendererThunkProcessor({
         ...defaultPreloadOptions,
       });
@@ -689,15 +689,18 @@ describe('RendererThunkProcessor', () => {
         thunkCompleter: mockThunkCompleter,
       });
 
-      // Set currentWindowId to undefined to test the condition
+      // Set currentWindowId to undefined to simulate partial initialization
       // biome-ignore lint/suspicious/noExplicitAny: Test needs to access private property
       (noWindowProcessor as any).currentWindowId = undefined;
 
       const thunk = vi.fn(async () => 'no-window-id');
 
-      // Should still work without window ID
-      const result = await noWindowProcessor.executeThunk(thunk);
-      expect(result).toBe('no-window-id');
+      // Should throw because thunkRegistrar is set but currentWindowId is not —
+      // executing without backend registration would break queue ordering and ack flow.
+      await expect(noWindowProcessor.executeThunk(thunk)).rejects.toThrow(
+        'Inconsistent initialization',
+      );
+      expect(thunk).not.toHaveBeenCalled();
     });
 
     it('should handle action completion with various result types', () => {
@@ -794,15 +797,18 @@ describe('RendererThunkProcessor', () => {
         thunkCompleter: mockThunkCompleter,
       });
 
-      // Set thunkRegistrar to undefined to test the condition
+      // Set thunkRegistrar to undefined to simulate partial initialization
       // biome-ignore lint/suspicious/noExplicitAny: Test needs to access private property
       (noRegistrarProcessor as any).thunkRegistrar = undefined;
 
       const thunk = vi.fn(async () => 'no-registrar-result');
 
-      // Should still execute even without registrar
-      const result = await noRegistrarProcessor.executeThunk(thunk);
-      expect(result).toBe('no-registrar-result');
+      // Should throw because currentWindowId is set but thunkRegistrar is not —
+      // executing without backend registration would break queue ordering and ack flow.
+      await expect(noRegistrarProcessor.executeThunk(thunk)).rejects.toThrow(
+        'Inconsistent initialization',
+      );
+      expect(thunk).not.toHaveBeenCalled();
     });
 
     it('should handle thunk registration without currentWindowId', async () => {
@@ -816,15 +822,18 @@ describe('RendererThunkProcessor', () => {
         thunkCompleter: mockThunkCompleter,
       });
 
-      // Set currentWindowId to undefined to test the condition
+      // Set currentWindowId to undefined to simulate partial initialization
       // biome-ignore lint/suspicious/noExplicitAny: Test needs to set private property
       (noWindowIdProcessor as any).currentWindowId = undefined;
 
       const thunk = vi.fn(async () => 'no-window-id-result');
 
-      // Should still execute even without window ID
-      const result = await noWindowIdProcessor.executeThunk(thunk);
-      expect(result).toBe('no-window-id-result');
+      // Should throw because thunkRegistrar is set but currentWindowId is not —
+      // executing without backend registration would break queue ordering and ack flow.
+      await expect(noWindowIdProcessor.executeThunk(thunk)).rejects.toThrow(
+        'Inconsistent initialization',
+      );
+      expect(thunk).not.toHaveBeenCalled();
     });
 
     it('should handle thunk completion notification errors', async () => {
