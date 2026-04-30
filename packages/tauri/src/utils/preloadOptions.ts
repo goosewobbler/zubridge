@@ -12,7 +12,6 @@ export function getBatchingConfig(userConfig?: Partial<BatchingConfig>): Require
     maxBatchSize: userConfig?.maxBatchSize ?? BATCHING_DEFAULTS.maxBatchSize,
     priorityFlushThreshold:
       userConfig?.priorityFlushThreshold ?? BATCHING_DEFAULTS.priorityFlushThreshold,
-    ackTimeoutMs: userConfig?.ackTimeoutMs ?? BATCHING_DEFAULTS.ackTimeoutMs,
   };
 }
 

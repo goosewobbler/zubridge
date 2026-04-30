@@ -278,8 +278,12 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
           `[RENDERER_THUNK] Added ${actionId} to pending dispatches, now pending: ${this.pendingDispatches.size}/${this.maxQueueSize}`,
         );
 
-        // Create a promise that will resolve when this action completes
+        // Create a promise that will resolve when this action completes.
+        // rejectActionPromise is hoisted so the actionSender catch block can
+        // reject with the original error rather than a String(error) copy.
+        let rejectActionPromise!: (err: unknown) => void;
         const actionPromise = new Promise<unknown>((resolve, reject) => {
+          rejectActionPromise = reject;
           // Set up completion tracking using base class
           this.setupActionCompletion(
             actionId,
@@ -313,8 +317,8 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         // Send the action to the Tauri backend. Unlike Electron's separate IPC
         // ack channel, Tauri's `invoke` already resolves once the backend has
         // processed the action — so we complete the action ourselves once
-        // actionSender resolves successfully (and on failure, complete with an
-        // error result so the awaiting promise rejects).
+        // actionSender resolves successfully (and on failure, reject the promise
+        // directly to preserve the original error type and stack trace).
         if (this.actionSender) {
           try {
             debug('tauri', `[RENDERER_THUNK] Sending action ${actionId} to backend`);
@@ -322,14 +326,14 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
             debug('tauri', `[RENDERER_THUNK] Action ${actionId} acknowledged`);
             this.completeAction(actionId, actionObj);
           } catch (error: unknown) {
-            // completeAction below fires the resolve callback registered via
-            // setupActionCompletion, which rejects `actionPromise`. Falling
-            // through to `return actionPromise` (rather than re-throwing
-            // synchronously) means the caller awaits the rejected promise —
-            // throwing first would orphan `actionPromise` and surface as an
-            // unhandled-rejection console warning.
-            // completeAction also removes actionId from pendingDispatches.
-            this.completeAction(actionId, { error: String(error) });
+            // Reject with the original error to preserve its type, class, and stack
+            // trace. completeAction is called for cleanup only; its callback's settle
+            // attempt is a no-op since the promise is already rejected. Falling
+            // through to `return actionPromise` means the caller awaits the rejection
+            // rather than receiving a synchronous throw, keeping the rejection surface
+            // consistent (no unhandled-rejection console warnings).
+            rejectActionPromise(error);
+            this.completeAction(actionId, actionObj);
             debug('tauri:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
           }
         } else {
