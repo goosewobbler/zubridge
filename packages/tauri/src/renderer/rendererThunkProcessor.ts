@@ -176,6 +176,16 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
           ? error
           : new Error(`thunk registration failed: ${String(error)}`);
       }
+    } else if (this.thunkRegistrar || this.currentWindowLabel) {
+      // Partially initialized: one dependency is set without the other. Executing
+      // the thunk body without backend registration breaks queue ordering and ack
+      // flow. Both are set together in initialize(), so this indicates use before
+      // initialization is complete.
+      throw new Error(
+        `[RENDERER_THUNK] Inconsistent initialization for thunk ${thunk.id}: ` +
+          `thunkRegistrar=${!!this.thunkRegistrar}, currentWindowLabel=${this.currentWindowLabel}. ` +
+          'Call initialize() before executing thunks.',
+      );
     }
 
     // Captured by the catch + finally below so the thunk completion can be
@@ -393,6 +403,13 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
         } catch (e) {
           debug('ipc:error', `[RENDERER_THUNK] Error notifying thunk completion: ${e}`);
         }
+      } else if (this.thunkCompleter || this.currentWindowLabel) {
+        // Partially initialized: ack flow will be broken for this thunk.
+        debug(
+          'ipc:error',
+          `[RENDERER_THUNK] Inconsistent initialization for thunk completion ${thunk.id}: ` +
+            `thunkCompleter=${!!this.thunkCompleter}, currentWindowLabel=${this.currentWindowLabel}`,
+        );
       }
     }
   }
@@ -483,12 +500,12 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
           this.completeAction(actionId, actionObj);
         })
         .catch((error) => {
-          // If sending fails, clean up and reject
-          // The base class will handle timeout and callback cleanup when we complete the action
-          this.completeAction(actionId, { error: error.message });
-          this.pendingDispatches.delete(actionId);
           debug('ipc:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
+          // Reject with the original error to preserve its type, class, and stack trace.
+          // completeAction is then called for cleanup only; the callback's settle attempt
+          // is a no-op since the promise is already rejected.
           reject(error);
+          this.completeAction(actionId, actionObj);
         });
     });
   }

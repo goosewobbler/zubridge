@@ -204,6 +204,32 @@ describe('RendererThunkProcessor (Tauri)', () => {
       expect(parent).toHaveBeenCalled();
       expect(child).toHaveBeenCalled();
     });
+
+    it('throws on partial initialization — thunkRegistrar set but currentWindowLabel missing', async () => {
+      const partialProcessor = new RendererThunkProcessor(defaultPreloadOptions);
+      partialProcessor.initialize({ ...baseInitOptions() });
+      // biome-ignore lint/suspicious/noExplicitAny: private field access
+      (partialProcessor as any).currentWindowLabel = undefined;
+
+      const thunk = vi.fn(async () => 'should-not-run');
+      await expect(partialProcessor.executeThunk(thunk)).rejects.toThrow(
+        'Inconsistent initialization',
+      );
+      expect(thunk).not.toHaveBeenCalled();
+    });
+
+    it('throws on partial initialization — currentWindowLabel set but thunkRegistrar missing', async () => {
+      const partialProcessor = new RendererThunkProcessor(defaultPreloadOptions);
+      partialProcessor.initialize({ ...baseInitOptions() });
+      // biome-ignore lint/suspicious/noExplicitAny: private field access
+      (partialProcessor as any).thunkRegistrar = undefined;
+
+      const thunk = vi.fn(async () => 'should-not-run');
+      await expect(partialProcessor.executeThunk(thunk)).rejects.toThrow(
+        'Inconsistent initialization',
+      );
+      expect(thunk).not.toHaveBeenCalled();
+    });
   });
 
   describe('action dispatch via thunk', () => {
@@ -380,6 +406,21 @@ describe('RendererThunkProcessor (Tauri)', () => {
       const failing = vi.fn().mockRejectedValue(new Error('boom'));
       processor.initialize({ ...baseInitOptions(), actionSender: failing });
       await expect(processor.dispatchAction('FAIL')).rejects.toThrow('boom');
+    });
+
+    it('rejects with the original error instance to preserve type and stack trace', async () => {
+      class CustomError extends Error {
+        readonly code = 42;
+      }
+      const original = new CustomError('custom');
+      processor.initialize({
+        ...baseInitOptions(),
+        actionSender: vi.fn().mockRejectedValue(original),
+      });
+
+      const caught = await processor.dispatchAction('TYPED_FAIL').catch((e) => e);
+      expect(caught).toBe(original);
+      expect((caught as CustomError).code).toBe(42);
     });
   });
 
