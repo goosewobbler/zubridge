@@ -12,21 +12,35 @@ pub struct DeltaCalculator {
     last_by_label: HashMap<String, JsonValue>,
 }
 
+/// Outcome of a delta computation. Three cases instead of an `Option<StateDelta>`
+/// where `None` and `Some(empty)` carried different meanings:
+///
+/// - `FullState`: no prior baseline (first call), non-object state, or shape
+///   change. The caller should send a full-state payload.
+/// - `Unchanged`: the state for this webview's scoped view is identical to the
+///   prior baseline. The caller should skip emitting an event entirely —
+///   sending an empty delta still triggers a Zustand replace + re-render
+///   cycle on the renderer.
+/// - `Delta(StateDelta)`: incremental update; the caller emits the delta.
+#[derive(Debug, Clone)]
+pub enum DeltaResult {
+    FullState,
+    Unchanged,
+    Delta(StateDelta),
+}
+
 impl DeltaCalculator {
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Compute the delta for `label`. Returns `None` to indicate the renderer
-    /// should receive a full-state payload (no prior state, non-object state,
-    /// or shape change). Returns `Some(delta)` when an incremental update is
-    /// safe to send.
-    pub fn compute(&self, label: &str, new_state: &JsonValue) -> Option<StateDelta> {
+    /// Compute the delta for `label`. See [`DeltaResult`] for the three cases.
+    pub fn compute(&self, label: &str, new_state: &JsonValue) -> DeltaResult {
         let Some(prev) = self.last_by_label.get(label) else {
-            return None;
+            return DeltaResult::FullState;
         };
         let (JsonValue::Object(prev_map), JsonValue::Object(next_map)) = (prev, new_state) else {
-            return None;
+            return DeltaResult::FullState;
         };
 
         let mut changed = serde_json::Map::new();
@@ -47,10 +61,10 @@ impl DeltaCalculator {
         }
 
         if changed.is_empty() && removed.is_empty() {
-            return Some(StateDelta::default());
+            return DeltaResult::Unchanged;
         }
 
-        Some(StateDelta { changed, removed })
+        DeltaResult::Delta(StateDelta { changed, removed })
     }
 
     /// Record `state` as the last state sent to `label`. Always called after a
@@ -66,10 +80,7 @@ impl DeltaCalculator {
 }
 
 impl StateDelta {
-    /// True when the delta has no changes and no removals — i.e. the action
-    /// produced an identical state for this webview's scoped view. The caller
-    /// (`broadcast_state`) skips emitting events for no-op deltas so the
-    /// renderer doesn't replace its store and trigger a re-render cycle.
+    /// True when the delta has no changes and no removals.
     pub fn is_no_op(&self) -> bool {
         self.changed.is_empty() && self.removed.is_empty()
     }
@@ -80,19 +91,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn first_update_returns_none_for_full_state() {
+    fn first_update_returns_full_state() {
         let calc = DeltaCalculator::new();
         let state = serde_json::json!({ "a": 1 });
-        assert!(calc.compute("main", &state).is_none());
+        assert!(matches!(calc.compute("main", &state), DeltaResult::FullState));
+    }
+
+    #[test]
+    fn non_object_state_returns_full_state() {
+        let mut calc = DeltaCalculator::new();
+        calc.record("main", serde_json::json!({ "a": 1 }));
+        assert!(matches!(
+            calc.compute("main", &serde_json::json!(42)),
+            DeltaResult::FullState
+        ));
     }
 
     #[test]
     fn changed_keys_are_reported() {
         let mut calc = DeltaCalculator::new();
         calc.record("main", serde_json::json!({ "a": 1, "b": 2 }));
-        let delta = calc
-            .compute("main", &serde_json::json!({ "a": 1, "b": 3 }))
-            .expect("delta");
+        let DeltaResult::Delta(delta) = calc.compute("main", &serde_json::json!({ "a": 1, "b": 3 }))
+        else {
+            panic!("expected Delta variant");
+        };
         assert!(delta.removed.is_empty());
         assert_eq!(delta.changed.get("b").unwrap(), &serde_json::json!(3));
     }
@@ -101,21 +123,20 @@ mod tests {
     fn removed_keys_are_reported() {
         let mut calc = DeltaCalculator::new();
         calc.record("main", serde_json::json!({ "a": 1, "b": 2 }));
-        let delta = calc
-            .compute("main", &serde_json::json!({ "a": 1 }))
-            .expect("delta");
+        let DeltaResult::Delta(delta) = calc.compute("main", &serde_json::json!({ "a": 1 })) else {
+            panic!("expected Delta variant");
+        };
         assert_eq!(delta.removed, vec!["b".to_string()]);
     }
 
     #[test]
-    fn unchanged_state_returns_empty_delta() {
+    fn unchanged_state_returns_unchanged() {
         let mut calc = DeltaCalculator::new();
         calc.record("main", serde_json::json!({ "a": 1 }));
-        let delta = calc
-            .compute("main", &serde_json::json!({ "a": 1 }))
-            .expect("delta");
-        assert!(delta.changed.is_empty() && delta.removed.is_empty());
-        assert!(delta.is_no_op());
+        assert!(matches!(
+            calc.compute("main", &serde_json::json!({ "a": 1 })),
+            DeltaResult::Unchanged
+        ));
     }
 
     #[test]
@@ -124,9 +145,7 @@ mod tests {
         assert!(empty.is_no_op());
 
         let mut changed = StateDelta::default();
-        changed
-            .changed
-            .insert("a".into(), serde_json::json!(1));
+        changed.changed.insert("a".into(), serde_json::json!(1));
         assert!(!changed.is_no_op());
 
         let mut removed = StateDelta::default();

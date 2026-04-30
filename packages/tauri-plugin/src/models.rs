@@ -163,6 +163,13 @@ pub struct BatchFailure {
 pub struct GetStateArgs {
     #[serde(default)]
     pub keys: Option<Vec<String>>,
+    /// When true, indicates the call is part of a renderer-driven resync
+    /// (e.g. after detecting a state-update sequence gap). The backend uses
+    /// this to drop pending state-update-ack entries for the calling webview
+    /// — entries the renderer dropped during the gap will never be acked
+    /// and would otherwise leak in `StateUpdateTracker.pending_by_label`.
+    #[serde(default)]
+    pub is_resync: Option<bool>,
 }
 
 #[derive(Serialize, Debug)]

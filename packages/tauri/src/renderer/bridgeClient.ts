@@ -489,8 +489,12 @@ export class BridgeClient {
         // which returns the unfiltered store. With active subscriptions a full
         // dump would leave unsubscribed keys in `currentState` that the backend
         // never updates again — they would silently diverge.
+        //
+        // `is_resync: true` tells the backend to drop the pending
+        // state-update-ack entries for this webview — events we skipped when
+        // detecting the gap will never be acked otherwise.
         const result = await this.invoke<{ value: AnyState }>(cmds.getState, {
-          args: {},
+          args: { is_resync: true },
         });
         // If destroy() ran while the resync was awaiting the backend, the
         // client's callbacks now write into a store that may be owned by a

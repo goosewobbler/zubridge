@@ -5,7 +5,7 @@ use serde_json::json;
 use tauri::{plugin::PluginApi, AppHandle, Emitter, Manager, Runtime};
 use uuid::Uuid;
 
-use crate::core::{DeltaCalculator, StateUpdateTracker, SubscriptionManager, ThunkRegistry};
+use crate::core::{DeltaCalculator, DeltaResult, StateUpdateTracker, SubscriptionManager, ThunkRegistry};
 use crate::core::state_manager::{self, StateManagerHandle};
 use crate::models::{
     BatchDispatchResult, BatchFailure, JsonValue, StateManager, StateUpdatePayload, UpdateSource,
@@ -268,28 +268,26 @@ impl<R: Runtime> Zubridge<R> {
             // Compute delta and record the new baseline atomically under the
             // deltas write lock. Holding this across emit_to is safe because
             // emit_to does not touch the deltas store.
-            let (delta, full_state) = {
+            //
+            // `DeltaResult` distinguishes the three cases explicitly:
+            //   FullState  → no baseline / shape change → emit full state
+            //   Unchanged  → state identical to baseline → skip emit
+            //   Delta(d)   → emit incremental update
+            let outcome = {
                 let mut calc = self
                     .deltas
                     .write()
                     .map_err(|e| crate::Error::StateError(e.to_string()))?;
-                let result = match calc.compute(label, &scoped) {
-                    Some(delta) => (Some(delta), None),
-                    None => (None, Some(scoped.clone())),
-                };
-                calc.record(label, scoped);
-                result
+                let outcome = calc.compute(label, &scoped);
+                calc.record(label, scoped.clone());
+                outcome
             };
 
-            // No-op delta: the action produced an identical state for this
-            // webview's scoped view. Skip the event entirely — emitting an
-            // empty delta would still trigger a Zustand state replacement and
-            // re-render on the renderer.
-            if let Some(d) = &delta {
-                if d.is_no_op() {
-                    continue;
-                }
-            }
+            let (delta, full_state) = match outcome {
+                DeltaResult::Unchanged => continue,
+                DeltaResult::FullState => (None, Some(scoped)),
+                DeltaResult::Delta(d) => (Some(d), None),
+            };
 
             let seq = {
                 let mut sequences = self
