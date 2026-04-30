@@ -8,12 +8,14 @@ use crate::modes::{resolve_mode, ZubridgeMode};
 use crate::window;
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModeInfo {
     pub mode: String,
     pub mode_name: String,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRuntimeWindowResult {
     pub success: bool,
     pub window_id: String,
@@ -73,3 +75,37 @@ pub const ALL_MODES: &[ZubridgeMode] = &[
     ZubridgeMode::Redux,
     ZubridgeMode::Custom,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn mode_info_serializes_with_camel_case_keys() {
+        let info = ModeInfo {
+            mode: "redux".into(),
+            mode_name: "redux".into(),
+        };
+        let value = serde_json::to_value(&info).unwrap();
+        assert_eq!(
+            value,
+            json!({ "mode": "redux", "modeName": "redux" }),
+            "renderer reads `modeName` (camelCase) from this payload",
+        );
+    }
+
+    #[test]
+    fn create_runtime_window_result_serializes_with_camel_case_keys() {
+        let result = CreateRuntimeWindowResult {
+            success: true,
+            window_id: "runtime_42".into(),
+        };
+        let value = serde_json::to_value(&result).unwrap();
+        assert_eq!(
+            value,
+            json!({ "success": true, "windowId": "runtime_42" }),
+            "renderer reads `windowId` (camelCase) from this payload",
+        );
+    }
+}
