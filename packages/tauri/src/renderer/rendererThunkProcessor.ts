@@ -328,8 +328,8 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
             // synchronously) means the caller awaits the rejected promise —
             // throwing first would orphan `actionPromise` and surface as an
             // unhandled-rejection console warning.
+            // completeAction also removes actionId from pendingDispatches.
             this.completeAction(actionId, { error: String(error) });
-            this.pendingDispatches.delete(actionId);
             debug('tauri:error', `[RENDERER_THUNK] Error sending action ${actionId}:`, error);
           }
         } else {
@@ -340,10 +340,10 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
           // Same reasoning: reject `actionPromise` rather than throw
           // synchronously, so the returned promise is the single source of
           // rejection that the caller awaits.
+          // completeAction also removes actionId from pendingDispatches.
           this.completeAction(actionId, {
             error: 'Action sender not configured for renderer thunk processor',
           });
-          this.pendingDispatches.delete(actionId);
         }
 
         return actionPromise;

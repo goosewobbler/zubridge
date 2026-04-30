@@ -95,15 +95,25 @@ async function probeCommandFlavour(
     return { flavour, initialState: initial };
   }
 
+  let pluginErr: unknown;
   try {
     const initial = await invoke<AnyState>(TauriCommands.GET_INITIAL_STATE);
     return { flavour: 'plugin', initialState: initial };
-  } catch (pluginErr) {
+  } catch (err) {
+    pluginErr = err;
     debug('tauri', 'Plugin probe failed, falling back to direct format:', pluginErr);
   }
 
-  const initial = await invoke<AnyState>(DirectCommands.GET_INITIAL_STATE);
-  return { flavour: 'direct', initialState: initial };
+  try {
+    const initial = await invoke<AnyState>(DirectCommands.GET_INITIAL_STATE);
+    return { flavour: 'direct', initialState: initial };
+  } catch (directErr) {
+    throw new Error(
+      'Zubridge: failed to connect to backend — both command formats were tried.\n' +
+        `  Plugin format (${TauriCommands.GET_INITIAL_STATE}): ${describe(pluginErr)}\n` +
+        `  Direct format (${DirectCommands.GET_INITIAL_STATE}): ${describe(directErr)}`,
+    );
+  }
 }
 
 export interface BridgeClientCallbacks {
