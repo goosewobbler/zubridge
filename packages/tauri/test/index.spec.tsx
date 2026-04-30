@@ -20,6 +20,7 @@ import {
   useZubridgeDispatch,
   useZubridgeStore,
 } from '../src/index.js';
+import { getThunkProcessor } from '../src/renderer/rendererThunkProcessor.js';
 import type { StateUpdatePayload } from '../src/types/tauri.js';
 
 // --- Mocks Setup ---
@@ -28,31 +29,34 @@ let stateUpdateListener: ((event: { payload: unknown }) => void) | null = null;
 const unlistenMock = vi.fn();
 
 const mockInvoke = vi.fn(async <R = unknown>(cmd: string, args?: unknown): Promise<R> => {
-  switch (cmd) {
-    case TauriCommands.GET_INITIAL_STATE:
+  // Match either plugin:zubridge|<name> or bare <name> so tests can drive
+  // both the plugin and direct command flavours.
+  const bare = cmd.startsWith('plugin:zubridge|') ? cmd.slice('plugin:zubridge|'.length) : cmd;
+  switch (bare) {
+    case 'get_initial_state':
       return mockBackendState as unknown as R;
-    case TauriCommands.GET_STATE:
+    case 'get_state':
       return { value: mockBackendState } as unknown as R;
-    case TauriCommands.DISPATCH_ACTION:
+    case 'dispatch_action':
       return {
         action_id: (args as { args: { action: { id?: string } } }).args.action.id ?? 'a1',
       } as unknown as R;
-    case TauriCommands.BATCH_DISPATCH:
+    case 'batch_dispatch':
       return {
         batch_id: (args as { args: { batch_id: string } }).args.batch_id,
         acked_action_ids: [],
       } as unknown as R;
-    case TauriCommands.REGISTER_THUNK:
+    case 'register_thunk':
       return { thunk_id: (args as { args: { thunk_id: string } }).args.thunk_id } as unknown as R;
-    case TauriCommands.COMPLETE_THUNK:
+    case 'complete_thunk':
       return { thunk_id: (args as { args: { thunk_id: string } }).args.thunk_id } as unknown as R;
-    case TauriCommands.STATE_UPDATE_ACK:
+    case 'state_update_ack':
       return undefined as unknown as R;
-    case TauriCommands.SUBSCRIBE:
+    case 'subscribe':
       return { keys: (args as { args: { keys: string[] } }).args.keys } as unknown as R;
-    case TauriCommands.UNSUBSCRIBE:
+    case 'unsubscribe':
       return { keys: [] } as unknown as R;
-    case TauriCommands.GET_WINDOW_SUBSCRIPTIONS:
+    case 'get_window_subscriptions':
       return { keys: [] } as unknown as R;
     default:
       throw new Error(`[Mock Invoke] Unknown command: ${cmd}`);
@@ -168,6 +172,39 @@ describe('@zubridge/tauri', () => {
       });
       await expect(initializeBridge(baseOptions)).rejects.toThrow();
       expect(internalStore.getState().__bridge_status).toBe('error');
+    });
+
+    it('honours direct-format getInitialState override and routes other commands to direct too', async () => {
+      // When a caller provides only a direct-format getInitialState override
+      // and leaves the rest at defaults, the bridge must infer the flavour
+      // from the override's shape rather than hardcoding 'plugin' — otherwise
+      // dispatch_action and friends would resolve to plugin:zubridge|... and
+      // every subsequent invoke would fail.
+      const directOptions: BackendOptions = {
+        invoke: mockInvoke as BackendOptions['invoke'],
+        listen: mockListen,
+        commands: {
+          getInitialState: 'get_initial_state',
+        },
+      };
+      await act(async () => {
+        await initializeBridge(directOptions);
+      });
+      const { result } = renderHook(() => useZubridgeDispatch());
+      await act(async () => {
+        await result.current('INCREMENT');
+      });
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'dispatch_action',
+        expect.objectContaining({
+          args: expect.objectContaining({
+            action: expect.objectContaining({ action_type: 'INCREMENT' }),
+          }),
+        }),
+      );
+      // Sanity: plugin-format dispatch_action must NOT have been called.
+      const calls = mockInvoke.mock.calls.map((c) => c[0]);
+      expect(calls).not.toContain(TauriCommands.DISPATCH_ACTION);
     });
   });
 
@@ -318,6 +355,34 @@ describe('@zubridge/tauri', () => {
       expect(completeCall).toBeDefined();
       const args = (completeCall?.[1] as { args: { error?: string } } | undefined)?.args;
       expect(args?.error).toBe('thunk body boom');
+    });
+  });
+
+  describe('RendererThunkProcessor.dispatchAction', () => {
+    beforeEach(async () => {
+      await act(async () => {
+        await initializeBridge(baseOptions);
+      });
+    });
+
+    it('resolves promptly on actionSender success (no waiting for safety timeout)', async () => {
+      // Tauri's invoke is synchronous from the caller's perspective so there
+      // is no separate ack channel — the success path must call completeAction
+      // itself. Without that, dispatchAction would hang for the full
+      // actionCompletionTimeoutMs (30s/60s) before completing.
+      const processor = getThunkProcessor();
+      const start = Date.now();
+      await processor.dispatchAction('DIRECT_DISPATCH');
+      const elapsed = Date.now() - start;
+      expect(elapsed).toBeLessThan(1000);
+      expect(mockInvoke).toHaveBeenCalledWith(
+        TauriCommands.DISPATCH_ACTION,
+        expect.objectContaining({
+          args: expect.objectContaining({
+            action: expect.objectContaining({ action_type: 'DIRECT_DISPATCH' }),
+          }),
+        }),
+      );
     });
   });
 

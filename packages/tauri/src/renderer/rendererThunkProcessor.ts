@@ -457,6 +457,13 @@ export class RendererThunkProcessor extends BaseThunkProcessor {
       this.actionSender?.(actionObj, parentId)
         .then(() => {
           debug('ipc', `[RENDERER_THUNK] dispatchAction: Action ${actionObj.__id} sent.`);
+          // Tauri's invoke is synchronous from the caller's perspective — when
+          // actionSender resolves, the action has been processed by the
+          // backend. There is no separate ack channel (cf. Electron) so we
+          // complete the action ourselves here. Without this, the awaiting
+          // resolve() registered via setupActionCompletion never fires until
+          // the safety timeout (30s/60s), causing dispatchAction to hang.
+          this.completeAction(actionId, actionObj);
         })
         .catch((error) => {
           // If sending fails, clean up and reject

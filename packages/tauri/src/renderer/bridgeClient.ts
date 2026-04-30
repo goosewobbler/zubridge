@@ -86,7 +86,13 @@ async function probeCommandFlavour(
 ): Promise<{ flavour: 'plugin' | 'direct'; initialState: AnyState }> {
   if (config?.getInitialState) {
     const initial = await invoke<AnyState>(config.getInitialState);
-    return { flavour: 'plugin', initialState: initial };
+    // Infer flavour from the override's shape rather than hardcoding 'plugin'.
+    // resolveCommands uses the flavour as the default for every non-overridden
+    // command, so a direct-format override with no other overrides would
+    // otherwise leave dispatch_action / batch_dispatch / etc. resolving to
+    // the plugin format — and every subsequent invoke would fail.
+    const flavour = config.getInitialState.startsWith('plugin:') ? 'plugin' : 'direct';
+    return { flavour, initialState: initial };
   }
 
   try {
