@@ -301,6 +301,50 @@ describe('@zubridge/tauri', () => {
     });
   });
 
+  describe('useZubridgeDispatch race conditions', () => {
+    it('thunks dispatched before init completes wait for ready and still fire backend commands', async () => {
+      // Make get_initial_state slow so the bridge stays in 'initializing' for
+      // a while. A thunk dispatched in that window must wait for ready before
+      // running, otherwise its actionSender/thunkRegistrar callbacks haven't
+      // been wired into the thunk processor yet and the thunk executes against
+      // an uninitialised processor.
+      let releaseInit: (() => void) | undefined;
+      const initStalled = new Promise<void>((r) => {
+        releaseInit = r;
+      });
+      mockInvoke.mockImplementationOnce(async (cmd: string) => {
+        if (cmd === TauriCommands.GET_INITIAL_STATE) {
+          await initStalled;
+          return mockBackendState;
+        }
+        return mockBackendState;
+      });
+
+      const initPromise = initializeBridge(baseOptions);
+
+      // bridgeClient is non-null here (assigned synchronously inside the IIFE)
+      // but BridgeClient.initialize() hasn't completed. Dispatch a thunk now.
+      const { result } = renderHook(() => useZubridgeDispatch());
+      const thunkDone = act(async () => {
+        await result.current(async (_getStateFn, dispatchFn) => {
+          await dispatchFn('STARTED_BEFORE_READY');
+        });
+      });
+
+      // Now let init resolve.
+      releaseInit?.();
+      await initPromise;
+      await thunkDone;
+
+      // Thunk lifecycle commands must have been invoked AFTER init wired up
+      // the processor.
+      const calls = mockInvoke.mock.calls.map((c) => c[0]);
+      expect(calls).toContain(TauriCommands.REGISTER_THUNK);
+      expect(calls).toContain(TauriCommands.DISPATCH_ACTION);
+      expect(calls).toContain(TauriCommands.COMPLETE_THUNK);
+    });
+  });
+
   describe('subscriptions', () => {
     beforeEach(async () => {
       await act(async () => {

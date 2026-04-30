@@ -180,6 +180,14 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
       throw new Error('Zubridge is not initialized. Call initializeBridge first.');
     }
 
+    // Wait for the bridge to be 'ready' before either path. The thunk
+    // processor's actionSender/thunkRegistrar/thunkCompleter are wired up
+    // inside BridgeClient.initialize() — which runs *after* `bridgeClient` is
+    // assigned in the init IIFE — so a thunk dispatched in that window would
+    // execute against an uninitialised processor and silently drop every
+    // backend interaction.
+    await ensureReady();
+
     if (typeof actionOrThunk === 'function') {
       const processor = getThunkProcessor();
       return processor.executeThunk(actionOrThunk as Thunk<S>);
@@ -188,22 +196,23 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
     const action: Action =
       typeof actionOrThunk === 'string' ? { type: actionOrThunk, payload } : actionOrThunk;
 
-    let status = internalStore.getState().__bridge_status;
-    if (status !== 'ready') {
-      if (initializePromise) {
-        await initializePromise;
-        status = internalStore.getState().__bridge_status;
-      }
-      if (status !== 'ready') {
-        throw new Error(`Zubridge initialization failed with status: ${status}`);
-      }
-    }
-
     await bridgeClient.dispatch(action);
     return Promise.resolve();
   };
 
   return dispatch as DispatchFunc<S>;
+}
+
+async function ensureReady(): Promise<void> {
+  let status = internalStore.getState().__bridge_status;
+  if (status === 'ready') return;
+  if (initializePromise) {
+    await initializePromise;
+    status = internalStore.getState().__bridge_status;
+  }
+  if (status !== 'ready') {
+    throw new Error(`Zubridge initialization failed with status: ${status}`);
+  }
 }
 
 /**
