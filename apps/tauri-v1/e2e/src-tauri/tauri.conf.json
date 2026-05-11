@@ -29,7 +29,10 @@
       },
       "protocol": {
         "asset": true,
-        "assetScope": ["$APPDATA/**", "$RESOURCE/**"]
+        "assetScope": [
+          "$APPDATA/**",
+          "$RESOURCE/**"
+        ]
       }
     },
     "bundle": {

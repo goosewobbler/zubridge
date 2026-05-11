@@ -58,9 +58,9 @@
   },
   "devDependencies": {
     "shx": "^0.4.0",
-    "tsdown": "^0.16.1",
+    "tsdown": "^0.21.3",
     "typescript": "^5.9.3",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.11"
   },
   "repository": {
     "type": "git",

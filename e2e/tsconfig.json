@@ -6,9 +6,18 @@
     "sourceMap": false,
     "inlineSources": false,
     "noEmit": true,
-    "types": ["node", "@wdio/globals/types", "mocha"],
-    "typeRoots": ["./node_modules", "./node_modules/@types"]
+    "types": [
+      "node",
+      "@wdio/globals/types",
+      "mocha"
+    ],
+    "typeRoots": [
+      "./node_modules",
+      "./node_modules/@types"
+    ]
   },
-  "include": ["./**/*.spec.ts"],
+  "include": [
+    "./**/*.spec.ts"
+  ],
   "exclude": []
 }

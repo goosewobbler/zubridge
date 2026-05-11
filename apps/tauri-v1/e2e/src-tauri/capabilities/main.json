@@ -1,7 +1,9 @@
 {
   "identifier": "main-capability",
   "description": "Main application capabilities",
-  "windows": ["*"],
+  "windows": [
+    "*"
+  ],
   "permissions": [
     {
       "identifier": "core:webview:allow-create-webview-window",
@@ -14,15 +16,27 @@
     },
     {
       "identifier": "core:window:allow-close",
-      "allow": [{ "label": "*" }]
+      "allow": [
+        {
+          "label": "*"
+        }
+      ]
     },
     {
       "identifier": "core:event:allow-emit",
-      "allow": [{ "event": "*" }]
+      "allow": [
+        {
+          "event": "*"
+        }
+      ]
     },
     {
       "identifier": "core:event:allow-listen",
-      "allow": [{ "event": "__zubridge_state_update" }]
+      "allow": [
+        {
+          "event": "__zubridge_state_update"
+        }
+      ]
     },
     "core:window:allow-get-all-windows"
   ]
