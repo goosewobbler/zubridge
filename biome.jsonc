@@ -53,7 +53,11 @@
         "noConsole": {
           "level": "warn",
           "options": {
-            "allow": ["log", "warn", "error"]
+            "allow": [
+              "log",
+              "warn",
+              "error"
+            ]
           }
         },
         "noExplicitAny": "warn",
@@ -77,6 +81,11 @@
       "semicolons": "always"
     }
   },
+  "json": {
+    "formatter": {
+      "expand": "always"
+    }
+  },
   "css": {
     "parser": {
       "cssModules": false,
@@ -87,7 +96,9 @@
   "overrides": [
     {
       // ignore tailwind rules in CSS files
-      "includes": ["**/*.css"],
+      "includes": [
+        "**/*.css"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
