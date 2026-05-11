@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock external dependencies for preload tests
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

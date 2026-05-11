@@ -17,6 +17,7 @@ keywords = [ "tauri", "zubridge", "state-management", "zustand" ]
 categories = [ "gui", "api-bindings", "web-programming" ]
 
 [dependencies]
+zubridge-core = { path = "../core", features = ["tauri"] }
 serde_json = "1.0"
 thiserror = "1.0"
 log = "0.4"

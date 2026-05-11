@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, FlushResult } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type {
   BatchingConfig,
   BatchPayload,

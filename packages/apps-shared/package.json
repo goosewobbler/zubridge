@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zubridge/core": "workspace:*",
+    "@zubridge/utils": "workspace:*",
     "@zubridge/types": "workspace:*"
   },
   "peerDependencies": {

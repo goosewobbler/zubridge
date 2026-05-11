@@ -1,5 +1,5 @@
 {
-  "name": "@zubridge/core",
+  "name": "@zubridge/utils",
   "version": "2.0.0",
   "author": "Sam Maister <goosewobbler@protonmail.com>",
   "description": "Core utilities and shared functionality for Zubridge packages",
@@ -33,12 +33,12 @@
   },
   "keywords": [
     "zubridge",
-    "core",
+    "utils",
     "utilities"
   ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/goosewobbler/zubridge/issues"
   },
-  "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/core#readme"
+  "homepage": "https://github.com/goosewobbler/zubridge/tree/main/packages/utils#readme"
 }

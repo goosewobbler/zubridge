@@ -7,7 +7,7 @@ settings:
 overrides:
   '@types/node': 24.3.0
   '@zubridge/electron': workspace:*
-  '@zubridge/core': workspace:*
+  '@zubridge/utils': workspace:*
 
 importers:
 
@@ -58,9 +58,6 @@ importers:
       '@zubridge/apps-shared':
         specifier: workspace:*
         version: link:../../../packages/apps-shared
-      '@zubridge/core':
-        specifier: workspace:*
-        version: link:../../../packages/core
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../../../packages/electron
@@ -70,6 +67,9 @@ importers:
       '@zubridge/ui':
         specifier: workspace:*
         version: link:../../../packages/ui
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../../../packages/utils
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -928,15 +928,15 @@ importers:
       '@tauri-apps/api':
         specifier: ^1.5.3
         version: 1.6.0
-      '@zubridge/core':
-        specifier: workspace:*
-        version: link:../../../packages/core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../../../packages/tauri
       '@zubridge/ui':
         specifier: workspace:*
         version: link:../../../packages/ui
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../../../packages/utils
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -986,15 +986,15 @@ importers:
       '@zubridge/apps-shared':
         specifier: workspace:*
         version: link:../../../packages/apps-shared
-      '@zubridge/core':
-        specifier: workspace:*
-        version: link:../../../packages/core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../../../packages/tauri
       '@zubridge/ui':
         specifier: workspace:*
         version: link:../../../packages/ui
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../../../packages/utils
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -1090,12 +1090,12 @@ importers:
 
   packages/apps-shared:
     dependencies:
-      '@zubridge/core':
-        specifier: workspace:*
-        version: link:../core
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../utils
       zustand:
         specifier: ^4.3.0
         version: 4.5.7(@types/react@19.2.2)(immer@10.2.0)(react@19.2.0)
@@ -1103,22 +1103,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-
-  packages/core:
-    devDependencies:
-      shx:
-        specifier: ^0.4.0
-        version: 0.4.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-    optionalDependencies:
-      '@wdio/logger':
-        specifier: ^9.4.4
-        version: 9.18.0
-      weald:
-        specifier: ^1.0.6
-        version: 1.1.1
 
   packages/electron:
     dependencies:
@@ -1128,9 +1112,9 @@ importers:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
-      '@zubridge/core':
+      '@zubridge/utils':
         specifier: workspace:*
-        version: link:../core
+        version: link:../utils
       dequal:
         specifier: ^2.0.3
         version: 2.0.3
@@ -1219,12 +1203,12 @@ importers:
 
   packages/tauri:
     dependencies:
-      '@zubridge/core':
-        specifier: workspace:*
-        version: link:../core
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../utils
       zustand:
         specifier: ^5.0.8
         version: 5.0.8(@types/react@19.2.2)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
@@ -1289,12 +1273,12 @@ importers:
 
   packages/ui:
     dependencies:
-      '@zubridge/core':
-        specifier: workspace:*
-        version: link:../core
       '@zubridge/tauri':
         specifier: workspace:*
         version: link:../tauri
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../utils
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1344,6 +1328,22 @@ importers:
       vite:
         specifier: ^7.1.10
         version: 7.2.2(@types/node@24.3.0)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/utils:
+    devDependencies:
+      shx:
+        specifier: ^0.4.0
+        version: 0.4.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+    optionalDependencies:
+      '@wdio/logger':
+        specifier: ^9.4.4
+        version: 9.18.0
+      weald:
+        specifier: ^1.0.6
+        version: 1.1.1
 
 packages:
 

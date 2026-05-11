@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
-import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { ThunkPriority } from '../../constants.js';
 import type { ThunkAction, ThunkTask } from '../../types/thunk.js';
 import type { ActionProcessor } from '../processing/ActionProcessor.js';

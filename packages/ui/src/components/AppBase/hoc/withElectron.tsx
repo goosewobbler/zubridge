@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import { createUseStore, useDispatch } from '@zubridge/electron';
+import { debug } from '@zubridge/utils';
 import { type PropsWithChildren, type ReactNode, useCallback } from 'react';
 import { useBridgeStatus } from '../hooks/useBridgeStatus';
 import type { ActionHandlers, WindowInfo } from '../WindowInfo';

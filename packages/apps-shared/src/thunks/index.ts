@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Thunk } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { BaseState, ThunkContext } from '../types.js';
 
 /**

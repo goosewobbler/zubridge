@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { debug } from '@zubridge/core';
 import type { AnyState, StateManager, WrapperOrWebContents } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { WebContents } from 'electron';
 import { IpcChannel } from '../../constants.js';
 import { DeltaCalculator } from '../../deltas/DeltaCalculator.js';

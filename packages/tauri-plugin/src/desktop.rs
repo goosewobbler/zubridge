@@ -96,7 +96,7 @@ impl<R: Runtime> Zubridge<R> {
 
     /// Read the current state from the state manager.
     pub fn get_initial_state(&self) -> crate::Result<JsonValue> {
-        state_manager::read_state(&self.state_handle()?)
+        Ok(state_manager::read_state(&self.state_handle()?)?)
     }
 
     /// Read state filtered to the keys subscribed by `source_label`. If the

@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { WebContentsWrapper, WrapperOrWebContents } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { WebContents } from 'electron';
 
 /**

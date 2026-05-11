@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "packages/core",
+    "packages/tauri-plugin",
+]
+resolver = "2"

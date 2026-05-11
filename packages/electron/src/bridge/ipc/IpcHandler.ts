@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
 import type { BatchAckPayload, BatchPayload } from '../../batching/types.js';

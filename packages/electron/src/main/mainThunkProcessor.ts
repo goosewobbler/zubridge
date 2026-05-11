@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -8,6 +7,7 @@ import type {
   StateManager,
   Thunk,
 } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { thunkManager } from '../thunk/init.js';
 import { ThunkRegistrationQueue } from '../thunk/registration/ThunkRegistrationQueue.js';
 import { BaseThunkProcessor } from '../thunk/shared/BaseThunkProcessor.js';

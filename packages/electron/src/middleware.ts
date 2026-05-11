@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { AnyState, Action as TypesAction } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 
 // Local definition for the Action type expected by the NAPI middleware
 // This is used if direct import `from '@zubridge/middleware'` fails for type resolution.

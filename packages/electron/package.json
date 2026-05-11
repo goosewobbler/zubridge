@@ -112,7 +112,7 @@
   "dependencies": {
     "@oxc-project/runtime": "^0.96.0",
     "@types/debug": "^4.1.12",
-    "@zubridge/core": "workspace:*",
+    "@zubridge/utils": "workspace:*",
     "dequal": "^2.0.3",
     "uuid": "^13.0.0",
     "zod": "^4.3.6",

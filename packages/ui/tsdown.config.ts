@@ -9,7 +9,7 @@ export default defineConfig({
     'react-dom',
     '@zubridge/electron',
     '@zubridge/tauri',
-    '@zubridge/core',
+    '@zubridge/utils',
     '@tauri-apps/api/webviewWindow',
   ],
   noExternal: ['clsx'],

@@ -4,7 +4,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import { createZustandAdapter } from '../../src/adapters/zustand.js';
 
 // Mock the debug utility
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(), // Simplified mock
 }));
 

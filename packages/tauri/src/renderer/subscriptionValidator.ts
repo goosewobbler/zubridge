@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 
 // Cache for window subscriptions - updated when getWindowSubscriptions is called
 let cachedSubscriptions: string[] = [];

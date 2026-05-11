@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 
 export enum ThunkState {
   PENDING = 'pending',

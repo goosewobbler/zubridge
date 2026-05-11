@@ -53,6 +53,31 @@ pub enum Error {
     StateManagerMissing,
 }
 
+impl From<zubridge_core::ZubridgeError> for Error {
+    fn from(err: zubridge_core::ZubridgeError) -> Self {
+        use zubridge_core::ZubridgeError as Z;
+        match err {
+            Z::StateError(msg) => Error::StateError(msg),
+            Z::ActionProcessing(msg) => Error::ActionProcessing {
+                action_id: None,
+                message: msg,
+            },
+            Z::StateManagerMissing => Error::StateManagerMissing,
+            Z::ThunkNotFound { thunk_id } => Error::ThunkNotFound { thunk_id },
+            Z::ThunkRegistration(msg) => Error::ThunkRegistration {
+                thunk_id: String::new(),
+                message: msg,
+            },
+            Z::Subscription(msg) => Error::Subscription {
+                source_label: String::new(),
+                message: msg,
+            },
+            Z::EmitError(msg) => Error::EmitError(msg),
+            Z::Serialization(msg) => Error::SerializationError(msg),
+        }
+    }
+}
+
 impl Serialize for Error {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where

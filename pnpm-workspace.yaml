@@ -19,3 +19,4 @@ packages:
   - 'packages/tauri-plugin'
   - 'packages/types'
   - 'packages/ui'
+  - 'packages/utils'

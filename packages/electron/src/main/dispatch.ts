@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -8,6 +7,7 @@ import type {
   StateManager,
   Thunk,
 } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand/vanilla';
 import type { ReduxOptions } from '../adapters/redux.js';

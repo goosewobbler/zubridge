@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 
 type ListenFn = <E = unknown>(event: string, handler: (event: E) => void) => Promise<() => void>;
 

@@ -4,7 +4,7 @@ import { ActionBatcher, calculatePriority } from '../../src/batching/ActionBatch
 import type { BatchAckPayload, BatchPayload } from '../../src/batching/types.js';
 import { BATCHING_DEFAULTS } from '../../src/batching/types.js';
 
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

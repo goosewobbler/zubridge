@@ -22,7 +22,7 @@ export default defineConfig([
       if (externalizeUnenvRuntime(id)) return true;
       return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
     },
-    noExternal: ['@zubridge/core', 'weald', '@wdio/logger'],
+    noExternal: ['@zubridge/utils', 'weald', '@wdio/logger'],
     outDir: 'dist',
     clean: true,
     sourcemap: false,
@@ -56,7 +56,7 @@ export default defineConfig([
     format: ['esm', 'cjs'],
     dts: true,
     external: ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'],
-    noExternal: ['@zubridge/core'],
+    noExternal: ['@zubridge/utils'],
     outDir: 'dist',
     clean: false,
     sourcemap: false,
@@ -82,7 +82,7 @@ export default defineConfig([
       if (externalizeUnenvRuntime(id)) return true;
       return ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'].includes(id);
     },
-    noExternal: ['@zubridge/core'],
+    noExternal: ['@zubridge/utils'],
     outDir: 'dist',
     clean: false,
     sourcemap: false,
