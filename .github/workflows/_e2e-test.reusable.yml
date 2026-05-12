@@ -177,7 +177,7 @@ jobs:
           name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             e2e/wdio-logs-${{ inputs.app }}/**/*.log
-            apps/*/wdio-logs-*/**/*.log
+            apps/**/wdio-logs-*/**/*.log
           retention-days: 90
           if-no-files-found: warn
 
