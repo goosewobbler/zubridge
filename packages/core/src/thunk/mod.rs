@@ -310,7 +310,14 @@ impl ThunkManager {
 
     /// Remove every thunk registered against `source_label`.
     pub fn drop_label(&mut self, source_label: &str) {
+        let dropped_ids: HashSet<String> = self
+            .by_id
+            .iter()
+            .filter(|(_, r)| r.source_label == source_label)
+            .map(|(id, _)| id.clone())
+            .collect();
         self.by_id.retain(|_, r| r.source_label != source_label);
+        self.running_tasks.retain(|t| !dropped_ids.contains(&t.thunk_id));
         // Clean root thunk pointer if the root was owned by this label.
         if let Some(root_id) = &self.root_thunk_id.clone() {
             if !self.by_id.contains_key(root_id.as_str()) {
@@ -502,6 +509,21 @@ mod tests {
 
         let ctx = mgr.scheduler_context();
         assert!(ctx.running_non_concurrent_thunk_ids.is_empty());
+    }
+
+    #[test]
+    fn drop_label_clears_running_tasks() {
+        let mut mgr = ThunkManager::new();
+        mgr.register("t1".into(), None, "popup".into(), None, false, false)
+            .unwrap();
+        mgr.execute_thunk("t1");
+        mgr.start_task("task1".into(), "t1".into(), false);
+        assert!(!mgr.non_concurrent_thunk_ids().is_empty());
+        mgr.drop_label("popup");
+        assert!(
+            mgr.non_concurrent_thunk_ids().is_empty(),
+            "running_tasks for dropped label must be pruned to prevent ghost IDs stalling dispatch"
+        );
     }
 
     #[test]

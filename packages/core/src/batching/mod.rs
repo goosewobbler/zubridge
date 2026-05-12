@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 
 use crate::models::ZubridgeAction;
-use crate::action::{PRIORITY_IMMEDIATE, PRIORITY_THUNK};
+use crate::action::{PRIORITY_IMMEDIATE, PRIORITY_NORMAL, PRIORITY_THUNK};
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -126,6 +126,8 @@ pub struct ActionBatcher {
     /// Exposed for tests; use `stats().queue_limit` in production code.
     pub hard_queue_limit: usize,
     is_destroyed: bool,
+    /// Items currently in-flight (drained but not yet acked). Restored on fail_batch.
+    pending_batch_items: Vec<QueuedBatchItem>,
 }
 
 impl ActionBatcher {
@@ -144,6 +146,7 @@ impl ActionBatcher {
             stats,
             hard_queue_limit,
             is_destroyed: false,
+            pending_batch_items: Vec::new(),
         }
     }
 
@@ -246,6 +249,7 @@ impl ActionBatcher {
         if self.active_batch_id.as_deref() != Some(&ack.batch_id) {
             return Vec::new();
         }
+        self.pending_batch_items.clear();
         self.is_flushing = false;
         self.active_batch_id = None;
         self.last_flush_at = Some(Instant::now());
@@ -256,11 +260,15 @@ impl ActionBatcher {
             .collect()
     }
 
-    /// Called when the batch send failed (e.g. IPC error). Requeues items.
+    /// Called when the batch send failed (e.g. IPC error). Restores the
+    /// in-flight items to the front of the queue so the next flush retries them.
     pub fn fail_batch(&mut self, failed_batch_id: &str) {
         if self.active_batch_id.as_deref() != Some(failed_batch_id) {
             return;
         }
+        let mut pending = std::mem::take(&mut self.pending_batch_items);
+        pending.extend(self.queue.drain(..));
+        self.queue = pending;
         self.is_flushing = false;
         self.active_batch_id = None;
     }
@@ -276,6 +284,7 @@ impl ActionBatcher {
     pub fn destroy(&mut self) {
         self.is_destroyed = true;
         self.queue.clear();
+        self.pending_batch_items.clear();
         self.is_flushing = false;
         self.active_batch_id = None;
     }
@@ -299,13 +308,16 @@ impl ActionBatcher {
         self.stats.total_actions += batch.len() as u64;
 
         let actions = batch
-            .into_iter()
+            .iter()
             .map(|item| BatchActionEntry {
-                id: item.id,
-                parent_id: item.parent_id,
-                action: item.action,
+                id: item.id.clone(),
+                parent_id: item.parent_id.clone(),
+                action: item.action.clone(),
             })
             .collect();
+
+        // Stash items so fail_batch can restore them if the IPC send fails.
+        self.pending_batch_items = batch;
 
         BatchPayload { batch_id, actions }
     }
@@ -323,8 +335,7 @@ pub fn calculate_priority(action: &ZubridgeAction) -> i32 {
     if action.thunk_parent_id.is_some() {
         return PRIORITY_THUNK;
     }
-    // Default: NORMAL_THUNK_ACTION (50) in renderer context, matching TS.
-    PRIORITY_THUNK
+    PRIORITY_NORMAL
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -440,6 +451,26 @@ mod tests {
         assert!(b.is_flushing);
         b.complete_batch(&ack_ok(&batch.batch_id, &aid));
         assert!(!b.is_flushing);
+    }
+
+    #[test]
+    fn fail_batch_requeues_items() {
+        let mut b = ActionBatcher::with_defaults();
+        let a = action("INC");
+        let aid = a.id.clone().unwrap();
+        let batch = b.enqueue(a, PRIORITY_IMMEDIATE, None).unwrap().unwrap();
+        assert_eq!(b.stats().current_queue_size, 0);
+        b.fail_batch(&batch.batch_id);
+        assert!(!b.is_flushing);
+        assert_eq!(b.stats().current_queue_size, 1);
+        assert_eq!(b.queue[0].id, aid);
+    }
+
+    #[test]
+    fn calculate_priority_non_thunk_returns_priority_normal() {
+        use crate::action::PRIORITY_NORMAL;
+        let a = action("INC");
+        assert_eq!(calculate_priority(&a), PRIORITY_NORMAL);
     }
 
     #[test]

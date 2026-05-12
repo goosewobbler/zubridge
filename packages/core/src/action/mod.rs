@@ -235,7 +235,7 @@ impl ActionScheduler {
                 OverflowDecision::AcceptNew
             }
             None => {
-                if new_priority < OVERFLOW_DROP_THRESHOLD {
+                if new_priority <= OVERFLOW_DROP_THRESHOLD {
                     OverflowDecision::RejectNew
                 } else {
                     // High-priority action, no droppable slot: evict the oldest.
@@ -516,6 +516,26 @@ mod tests {
         let result = sched.enqueue(action("NORMAL"), "main".into(), &ctx);
         assert!(matches!(result, EnqueueResult::Rejected(_)));
         assert_eq!(sched.dropped_count(), 1);
+    }
+
+    #[test]
+    fn overflow_rejects_thunk_priority_when_no_droppable_slot() {
+        let mut sched = ActionScheduler::with_max_queue_size(ActionScheduler::new(), 2);
+        let ctx = SchedulerContext {
+            root_thunk_id: Some("t1".into()),
+            is_root_thunk_active: true,
+            running_non_concurrent_thunk_ids: vec!["t1".into()],
+        };
+        // Fill with THUNK-priority actions (50 == threshold — not droppable).
+        sched.enqueue(thunk_action("TA1", "t2"), "main".into(), &ctx);
+        sched.enqueue(thunk_action("TA2", "t3"), "main".into(), &ctx);
+        assert_eq!(sched.queue_len(), 2);
+        // Incoming THUNK action: no droppable slot, new_priority <= threshold → reject.
+        let result = sched.enqueue(thunk_action("TA3", "t4"), "main".into(), &ctx);
+        assert!(
+            matches!(result, EnqueueResult::Rejected(_)),
+            "THUNK-priority action must be rejected rather than evicting an equal-priority predecessor"
+        );
     }
 
     #[test]
