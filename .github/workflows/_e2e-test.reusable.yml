@@ -134,6 +134,7 @@ jobs:
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
           MODE: ${{ inputs.mode }}
+          ZUBRIDGE_MODE: ${{ inputs.mode }}
         run: xvfb-run --auto-servernum pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
         shell: bash
 
@@ -143,6 +144,7 @@ jobs:
           DEBUG: "zubridge:*"
           E2E_APP_TYPE: ${{ inputs.app }}
           MODE: ${{ inputs.mode }}
+          ZUBRIDGE_MODE: ${{ inputs.mode }}
         run: pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
         shell: bash
 
