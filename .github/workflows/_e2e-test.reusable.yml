@@ -137,6 +137,15 @@ jobs:
         run: xvfb-run --auto-servernum pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
         shell: bash
 
+      - name: Execute E2E Tests (Tauri — macOS/Windows)
+        if: inputs.app == 'tauri' && inputs.os != 'linux'
+        env:
+          DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
+        run: pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
+        shell: bash
+
       - name: Execute E2E Tests
         if: inputs.app == 'electron'
         env:
