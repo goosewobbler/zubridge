@@ -25,14 +25,14 @@
     "@zubridge/core": "workspace:*",
     "@zubridge/tauri": "workspace:*",
     "@zubridge/ui": "workspace:*",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.3",
     "@types/node": "24.8.1",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.4",
     "@zubridge/types": "workspace:*",
     "cross-env": "^10.1.0",

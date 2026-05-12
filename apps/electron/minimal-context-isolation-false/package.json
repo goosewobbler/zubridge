@@ -13,18 +13,18 @@
   "dependencies": {
     "@zubridge/electron": "workspace:*",
     "clsx": "^2.1.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "scheduler": "^0.27.0",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
     "@tailwindcss/vite": "^4.1.14",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.8.1",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.4",
     "@wdio/cli": "9.20.0",
     "@wdio/globals": "9.17.0",
@@ -34,7 +34,7 @@
     "@zubridge/types": "^2.0.1",
     "autoprefixer": "^10.4.21",
     "cross-env": "^10.1.0",
-    "electron": "38.3.0",
+    "electron": "38.8.6",
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.1",
     "is-ci": "^4.1.0",
