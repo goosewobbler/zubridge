@@ -32,6 +32,12 @@ pub struct ThunkRecord {
     pub thunk_id: String,
     /// Parent thunk ID if this is a nested thunk.
     pub parent_id: Option<String>,
+    /// The root thunk that owns this subtree, stamped at registration time.
+    ///
+    /// Storing the root here (rather than deriving it lazily) means cascade
+    /// cleanup in `complete()` is O(n) even when intermediate ancestors have
+    /// already completed and been removed from `by_id`.
+    pub root_thunk_id: Option<String>,
     /// Webview label or "main" for main-process thunks.
     pub source_label: String,
     /// State keys this thunk will affect (for key-based access control).
@@ -137,11 +143,32 @@ impl ThunkManager {
             }
         }
 
+        // Walk the parent chain to find the topmost ancestor. Using the chain
+        // (rather than the manager's root_thunk_id snapshot) means the stamp
+        // is correct even when a child is registered before execute_thunk
+        // promotes its root ancestor.
+        let root_thunk_id = match &parent_id {
+            None => None,
+            Some(pid) => {
+                let mut current = pid.clone();
+                loop {
+                    match self.by_id.get(&current) {
+                        Some(r) if r.parent_id.is_some() => {
+                            current = r.parent_id.as_ref().unwrap().clone();
+                        }
+                        Some(_) => break Some(current), // topmost registered ancestor
+                        None => break None,             // broken chain (shouldn't occur)
+                    }
+                }
+            }
+        };
+
         self.by_id.insert(
             thunk_id.clone(),
             ThunkRecord {
                 thunk_id: thunk_id.clone(),
                 parent_id,
+                root_thunk_id,
                 source_label,
                 keys,
                 bypass_access_control,
@@ -222,29 +249,20 @@ impl ThunkManager {
             events.push(ThunkEvent::RootThunkCompleted(thunk_id.to_string()));
             events.push(ThunkEvent::RootThunkChanged(None));
 
-            // Cascade-remove any descendants still alive. Build a
-            // parent→children index first (O(n)), then BFS from the root's
-            // direct children (O(n) total). Scanning via parent_id rather than
-            // children lists means grandchildren whose intermediate parent was
-            // already completed (and removed from by_id) are still reachable.
-            let mut parent_to_children: HashMap<String, Vec<String>> = HashMap::new();
-            for (id, r) in &self.by_id {
-                if let Some(pid) = &r.parent_id {
-                    parent_to_children
-                        .entry(pid.clone())
-                        .or_default()
-                        .push(id.clone());
-                }
-            }
-            let mut orphan_ids: HashSet<String> = HashSet::new();
-            let mut frontier: Vec<String> = record.children.iter().cloned().collect();
-            while let Some(id) = frontier.pop() {
-                if orphan_ids.insert(id.clone()) {
-                    if let Some(children) = parent_to_children.get(&id) {
-                        frontier.extend(children.iter().cloned());
-                    }
-                }
-            }
+            // Cascade-remove all surviving descendants of the failed root.
+            //
+            // root_thunk_id is stamped on every descendant at registration
+            // time (see ThunkRecord), so a single O(n) scan finds all of them
+            // even when intermediate ancestors have already completed and been
+            // removed from by_id — a BFS through a children-map built from the
+            // remaining by_id would miss descendants at depth ≥ 3 when two or
+            // more consecutive intermediates are gone.
+            let orphan_ids: HashSet<String> = self
+                .by_id
+                .iter()
+                .filter(|(_, r)| r.root_thunk_id.as_deref() == Some(thunk_id))
+                .map(|(id, _)| id.clone())
+                .collect();
             if !orphan_ids.is_empty() {
                 self.by_id.retain(|id, _| !orphan_ids.contains(id));
                 self.running_tasks.retain(|t| !orphan_ids.contains(&t.thunk_id));
@@ -561,6 +579,34 @@ mod tests {
             !mgr.has_thunk("grandchild"),
             "grandchild of already-completed child must still be removed on root failure"
         );
+    }
+
+    #[test]
+    fn failed_root_cascade_removes_depth_3_descendants() {
+        // root → c1 → gc1 → ggc1; c1 and gc1 complete normally before root
+        // fails. ggc1 must still be removed even though both intermediate
+        // ancestors are already gone from by_id.
+        let mut mgr = ThunkManager::new();
+        reg(&mut mgr, "root");
+        reg_child(&mut mgr, "c1", "root");
+        mgr.execute_thunk("root");
+        mgr.execute_thunk("c1");
+        reg_child(&mut mgr, "gc1", "c1");
+        mgr.execute_thunk("gc1");
+        mgr.register("ggc1".into(), Some("gc1".into()), "main".into(), None, false, false)
+            .unwrap();
+        mgr.execute_thunk("ggc1");
+        mgr.start_task("task_ggc1".into(), "ggc1".into(), false);
+
+        mgr.complete("c1", None).unwrap();
+        mgr.complete("gc1", None).unwrap();
+        assert!(!mgr.has_thunk("c1"));
+        assert!(!mgr.has_thunk("gc1"));
+        assert!(mgr.has_thunk("ggc1"));
+
+        mgr.complete("root", Some("boom".into())).unwrap();
+        assert!(!mgr.has_thunk("ggc1"), "depth-3 descendant must be removed when root fails");
+        assert!(mgr.non_concurrent_thunk_ids().is_empty(), "zombie task must be cleared");
     }
 
     #[test]

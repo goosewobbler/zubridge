@@ -42,4 +42,3 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]
 serde_json = "1.0"
-proptest = "1"
