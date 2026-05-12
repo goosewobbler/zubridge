@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "cross-env": "^10.1.0",
-    "electron": "38.3.0"
+    "electron": "38.8.6"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

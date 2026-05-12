@@ -18,9 +18,9 @@
     "@zubridge/utils": "workspace:*",
     "@zubridge/tauri": "workspace:*",
     "@zubridge/ui": "workspace:*",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "zustand": "^5.0.11"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.6.3",

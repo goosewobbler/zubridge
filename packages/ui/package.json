@@ -60,7 +60,7 @@
     "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.4.27",
     "postcss": "^8.5.8",
-    "react": "^19.2.4",
+    "react": "^19.2.6",
     "shx": "^0.4.0",
     "tailwindcss": "^4.2.1",
     "tsdown": "^0.21.3",

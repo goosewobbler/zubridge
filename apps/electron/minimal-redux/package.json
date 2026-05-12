@@ -22,11 +22,11 @@
     "@reduxjs/toolkit": "^2.11.2",
     "@zubridge/electron": "workspace:*",
     "clsx": "^2.1.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "redux": "^5.0.1",
     "scheduler": "^0.27.0",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
@@ -44,7 +44,7 @@
     "@zubridge/types": "^2.0.1",
     "autoprefixer": "^10.4.27",
     "cross-env": "^10.1.0",
-    "electron": "38.3.0",
+    "electron": "38.8.6",
     "electron-builder": "^26.8.1",
     "electron-vite": "^4.0.1",
     "is-ci": "^4.1.0",
