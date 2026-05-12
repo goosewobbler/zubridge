@@ -23,12 +23,15 @@ pub fn run() {
 
     let use_embedded_server = std::env::var("WDIO_EMBEDDED_SERVER").is_ok();
 
-    let mut builder = tauri::Builder::default().plugin(zubridge_plugin);
+    // tauri_plugin_wdio provides browser.tauri.execute/mock/etc — always needed for E2E.
+    // tauri_plugin_wdio_webdriver provides the built-in WebDriver HTTP server, which is
+    // only required when using the embedded provider (WDIO_EMBEDDED_SERVER=true).
+    let mut builder = tauri::Builder::default()
+        .plugin(zubridge_plugin)
+        .plugin(tauri_plugin_wdio::init());
 
     if use_embedded_server {
-        builder = builder
-            .plugin(tauri_plugin_wdio::init())
-            .plugin(tauri_plugin_wdio_webdriver::init());
+        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     }
 
     builder
