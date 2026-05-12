@@ -86,19 +86,14 @@ impl ActionQueueManager {
         thunk_id: &str,
         error: Option<String>,
     ) -> Result<Option<JsonValue>> {
-        let events = match self.thunk_manager.complete(thunk_id, error) {
-            Ok((_, events)) => events,
+        match self.thunk_manager.complete(thunk_id, error) {
+            Ok(_) => {}
             Err(_) => return Ok(None), // Thunk not found — ignore.
         };
 
-        let root_completed = events
-            .iter()
-            .any(|e| matches!(e, ThunkEvent::RootThunkCompleted(_)));
-
-        if root_completed {
-            // Root thunk finished → drain any blocked actions.
-            let _ = self.drain_queue()?;
-        }
+        // Drain unconditionally: child-thunk completions remove non-concurrent
+        // tasks that may have been blocking already-queued actions.
+        self.drain_queue()?;
 
         Ok(None) // State updates emitted by drain_queue callers.
     }
@@ -287,6 +282,29 @@ mod tests {
         mgr.on_thunk_complete("t1", None).unwrap();
         assert_eq!(mgr.queue_len(), 0);
         assert_eq!(*counter.lock().unwrap(), 2);
+    }
+
+    #[test]
+    fn queue_drained_on_child_thunk_complete() {
+        let (mut mgr, counter) = manager();
+
+        // Root T1 active; T2 is a registered child with a non-concurrent task.
+        mgr.register_thunk("t1".into(), None, "main".into(), None, false, false)
+            .unwrap();
+        mgr.register_thunk("t2".into(), Some("t1".into()), "main".into(), None, false, false)
+            .unwrap();
+        mgr.execute_thunk("t1");
+        mgr.thunk_manager_mut().start_task("task_t2".into(), "t2".into(), false);
+
+        // Action for root T1 is blocked because T2's non-concurrent task is running.
+        let result = mgr.dispatch(thunk_action("INC", "t1"), "main".into()).unwrap();
+        assert!(result.is_none());
+        assert_eq!(mgr.queue_len(), 1);
+
+        // Child T2 completes — its task is removed; drain should unblock the queued action.
+        mgr.on_thunk_complete("t2", None).unwrap();
+        assert_eq!(mgr.queue_len(), 0);
+        assert_eq!(*counter.lock().unwrap(), 1);
     }
 
     #[test]

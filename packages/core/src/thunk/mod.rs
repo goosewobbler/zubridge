@@ -165,6 +165,9 @@ impl ThunkManager {
         let Some(record) = self.by_id.get_mut(thunk_id) else {
             return Vec::new();
         };
+        if record.state != ThunkState::Pending {
+            return Vec::new();
+        }
         record.state = ThunkState::Executing;
 
         let mut events = vec![ThunkEvent::ThunkStarted(thunk_id.to_string())];
@@ -222,6 +225,22 @@ impl ThunkManager {
             self.root_thunk_id = None;
             events.push(ThunkEvent::RootThunkCompleted(thunk_id.to_string()));
             events.push(ThunkEvent::RootThunkChanged(None));
+
+            // Cascade-remove any children still alive. On clean success children
+            // are already gone; this handles orphaned children when root fails.
+            let mut orphan_ids: HashSet<String> = HashSet::new();
+            let mut frontier = record.children.clone();
+            while let Some(child_id) = frontier.pop() {
+                if orphan_ids.insert(child_id.clone()) {
+                    if let Some(child_rec) = self.by_id.get(&child_id) {
+                        frontier.extend(child_rec.children.clone());
+                    }
+                }
+            }
+            if !orphan_ids.is_empty() {
+                self.by_id.retain(|id, _| !orphan_ids.contains(id));
+                self.running_tasks.retain(|t| !orphan_ids.contains(&t.thunk_id));
+            }
         }
 
         // Clean up task tracking for this thunk.
@@ -509,6 +528,35 @@ mod tests {
 
         let ctx = mgr.scheduler_context();
         assert!(ctx.running_non_concurrent_thunk_ids.is_empty());
+    }
+
+    #[test]
+    fn execute_thunk_is_idempotent() {
+        let mut mgr = ThunkManager::new();
+        reg(&mut mgr, "t1");
+        let events1 = mgr.execute_thunk("t1");
+        assert!(events1.contains(&ThunkEvent::ThunkStarted("t1".into())));
+        let events2 = mgr.execute_thunk("t1");
+        assert!(events2.is_empty(), "duplicate execute_thunk must be a no-op");
+    }
+
+    #[test]
+    fn failed_root_cascades_cleanup_to_children() {
+        let mut mgr = ThunkManager::new();
+        reg(&mut mgr, "root");
+        reg_child(&mut mgr, "child", "root");
+        mgr.execute_thunk("root");
+        mgr.execute_thunk("child");
+        mgr.start_task("task_child".into(), "child".into(), false);
+        assert!(!mgr.non_concurrent_thunk_ids().is_empty());
+
+        let (_, events) = mgr.complete("root", Some("boom".into())).unwrap();
+        assert!(events.iter().any(|e| matches!(e, ThunkEvent::RootThunkCompleted(_))));
+        assert!(!mgr.has_thunk("child"), "orphaned child must be removed on root failure");
+        assert!(
+            mgr.non_concurrent_thunk_ids().is_empty(),
+            "running tasks for orphaned children must be cleared"
+        );
     }
 
     #[test]
