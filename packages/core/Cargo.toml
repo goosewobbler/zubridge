@@ -19,7 +19,7 @@ crate-type = ["rlib"]
 default = []
 uniffi = ["dep:uniffi"]
 napi = ["dep:napi", "dep:napi-derive"]
-tauri = ["dep:tauri", "dep:uuid"]
+tauri = ["dep:tauri"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -36,7 +36,10 @@ napi-derive = { version = "2", optional = true }
 
 # Optional: tauri feature
 tauri = { workspace = true, optional = true }
-uuid = { version = "1", features = ["v4", "serde"], optional = true }
+
+# UUID generation is unconditional — P2 unifies on UUIDv4 for cross-platform action IDs.
+uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]
 serde_json = "1.0"
+proptest = "1"
