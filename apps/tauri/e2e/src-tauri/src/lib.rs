@@ -23,12 +23,12 @@ pub fn run() {
 
     let use_embedded_server = std::env::var("WDIO_EMBEDDED_SERVER").is_ok();
 
-    let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_wdio::init())
-        .plugin(zubridge_plugin);
+    let mut builder = tauri::Builder::default().plugin(zubridge_plugin);
 
     if use_embedded_server {
-        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
+        builder = builder
+            .plugin(tauri_plugin_wdio::init())
+            .plugin(tauri_plugin_wdio_webdriver::init());
     }
 
     builder

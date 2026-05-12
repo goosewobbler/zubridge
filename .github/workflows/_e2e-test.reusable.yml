@@ -163,6 +163,11 @@ jobs:
         shell: bash
         run: pnpm exec tsx e2e/scripts/show-logs.ts
 
+      - name: Show Logs on Failure (Tauri)
+        if: failure() && inputs.app == 'tauri'
+        shell: bash
+        run: find apps/tauri/e2e/wdio-logs-* -type f -name "*.log" 2>/dev/null | xargs -I{} sh -c 'echo "=== {} ==="; cat "{}"' || echo "No Tauri WDIO logs found"
+
       - name: Upload E2E Test Logs
         if: always()
         continue-on-error: true
