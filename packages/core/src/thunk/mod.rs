@@ -183,11 +183,6 @@ impl ThunkManager {
         events
     }
 
-    /// Backward-compatible alias used by the Tauri plugin.
-    pub fn mark_executing(&mut self, thunk_id: &str) {
-        let _ = self.execute_thunk(thunk_id);
-    }
-
     // ── Completion ────────────────────────────────────────────────────────────
 
     /// Complete (or fail) a thunk. Removes it from the live registry.
@@ -652,7 +647,7 @@ mod tests {
         let mut reg: ThunkRegistry = ThunkRegistry::new();
         reg.register("t1".into(), None, "main".into(), None, false, false)
             .unwrap();
-        reg.mark_executing("t1");
+        let _ = reg.execute_thunk("t1");
         assert!(reg.has_thunk("t1"));
         let (record, _) = reg.complete("t1", None).unwrap();
         assert_eq!(record.state, ThunkState::Completed);
