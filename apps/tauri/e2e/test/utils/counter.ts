@@ -1,5 +1,4 @@
 import { browser } from '@wdio/globals';
-import { TIMING } from './constants.js';
 
 export const getCounterValue = async (): Promise<number> => {
   const el = await browser.$('h2');
@@ -23,12 +22,12 @@ export const resetCounter = async (): Promise<void> => {
   let value = await getCounterValue();
   while (value > 0) {
     await (await browser.$('[aria-label="Decrement counter"]')).click();
-    await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-    value = await getCounterValue();
+    await waitForCounterValue(value - 1);
+    value -= 1;
   }
   while (value < 0) {
     await (await browser.$('[aria-label="Increment counter"]')).click();
-    await browser.pause(TIMING.BUTTON_CLICK_PAUSE);
-    value = await getCounterValue();
+    await waitForCounterValue(value + 1);
+    value += 1;
   }
 };

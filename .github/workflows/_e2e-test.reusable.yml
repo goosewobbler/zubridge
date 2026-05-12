@@ -159,7 +159,7 @@ jobs:
         shell: bash
 
       - name: Show Logs on Failure
-        if: failure()
+        if: failure() && inputs.app == 'electron'
         shell: bash
         run: pnpm exec tsx e2e/scripts/show-logs.ts
 
