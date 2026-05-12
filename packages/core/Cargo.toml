@@ -35,7 +35,7 @@ napi = { version = "2", optional = true, features = ["napi4"] }
 napi-derive = { version = "2", optional = true }
 
 # Optional: tauri feature
-tauri = { version = "2.0.0-beta", optional = true }
+tauri = { workspace = true, optional = true }
 uuid = { version = "1", features = ["v4", "serde"], optional = true }
 
 [dev-dependencies]

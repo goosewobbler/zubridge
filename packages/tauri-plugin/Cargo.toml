@@ -24,7 +24,7 @@ log = "0.4"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 [dependencies.tauri]
-version = "2.0.0-beta"
+workspace = true
 
 [dependencies.serde]
 version = "1.0"
@@ -32,7 +32,7 @@ features = [ "derive" ]
 
 [build-dependencies]
 [build-dependencies.tauri-build]
-version = "2.0.0-beta"
+workspace = true
 
 [features]
 custom-protocol = [ "tauri/custom-protocol" ]
