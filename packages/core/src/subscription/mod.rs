@@ -66,7 +66,7 @@ impl SubscriptionManager {
 
     /// Filter `state` to only the keys this webview is subscribed to. If the
     /// webview has no explicit subscription, the full state is returned.
-    pub fn filter_for<'a>(&self, label: &str, state: &'a JsonValue) -> JsonValue {
+    pub fn filter_for(&self, label: &str, state: &JsonValue) -> JsonValue {
         let Some(keys) = self.by_label.get(label) else {
             return state.clone();
         };

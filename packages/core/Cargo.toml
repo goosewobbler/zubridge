@@ -13,7 +13,7 @@ keywords = ["zubridge", "state-management", "tauri", "electron", "uniffi"]
 categories = ["gui", "api-bindings"]
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [features]
 default = []
