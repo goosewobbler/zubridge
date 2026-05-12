@@ -34,6 +34,7 @@ export const config = {
       },
     ],
   ],
+  outputDir: './wdio-logs-tauri',
   framework: 'mocha',
   reporters: ['spec'],
   mochaOpts: {
