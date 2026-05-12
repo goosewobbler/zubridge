@@ -131,8 +131,9 @@ impl ThunkManager {
 
         // Wire up parent-child relationship.
         if let Some(pid) = &parent_id {
-            if let Some(parent) = self.by_id.get_mut(pid) {
-                parent.children.push(thunk_id.clone());
+            match self.by_id.get_mut(pid) {
+                Some(parent) => parent.children.push(thunk_id.clone()),
+                None => return Err(format!("parent thunk {pid} not found")),
             }
         }
 
@@ -528,6 +529,13 @@ mod tests {
 
         let ctx = mgr.scheduler_context();
         assert!(ctx.running_non_concurrent_thunk_ids.is_empty());
+    }
+
+    #[test]
+    fn register_with_missing_parent_returns_error() {
+        let mut mgr = ThunkManager::new();
+        let result = mgr.register("child".into(), Some("ghost".into()), "main".into(), None, false, false);
+        assert!(result.is_err(), "registering with a non-existent parent must fail");
     }
 
     #[test]

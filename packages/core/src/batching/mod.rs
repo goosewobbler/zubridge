@@ -249,6 +249,11 @@ impl ActionBatcher {
         if self.active_batch_id.as_deref() != Some(&ack.batch_id) {
             return Vec::new();
         }
+        // Batch-level error means the renderer rejected the whole batch — requeue.
+        if ack.error.is_some() {
+            self.fail_batch(&ack.batch_id.clone());
+            return Vec::new();
+        }
         self.pending_batch_items.clear();
         self.is_flushing = false;
         self.active_batch_id = None;
@@ -451,6 +456,25 @@ mod tests {
         assert!(b.is_flushing);
         b.complete_batch(&ack_ok(&batch.batch_id, &aid));
         assert!(!b.is_flushing);
+    }
+
+    #[test]
+    fn complete_batch_with_error_requeues_items() {
+        let mut b = ActionBatcher::with_defaults();
+        let a = action("INC");
+        let aid = a.id.clone().unwrap();
+        let batch = b.enqueue(a, PRIORITY_IMMEDIATE, None).unwrap().unwrap();
+        // Renderer-side error on the whole batch — complete_batch should requeue.
+        let ack = BatchAckPayload {
+            batch_id: batch.batch_id.clone(),
+            results: Vec::new(),
+            error: Some("renderer error".into()),
+        };
+        let succeeded = b.complete_batch(&ack);
+        assert!(succeeded.is_empty());
+        assert!(!b.is_flushing);
+        assert_eq!(b.stats().current_queue_size, 1);
+        assert_eq!(b.queue[0].id, aid);
     }
 
     #[test]
