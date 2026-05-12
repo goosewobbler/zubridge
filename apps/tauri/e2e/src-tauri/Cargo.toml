@@ -1,11 +1,11 @@
 [package]
-name = "app"
+name = "e2e-tauri"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["Zubridge team"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "e2e-tauri"
 edition = "2021"
 rust-version = "1.77.2"
 
