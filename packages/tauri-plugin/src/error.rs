@@ -64,14 +64,12 @@ impl From<zubridge_core::ZubridgeError> for Error {
             },
             Z::StateManagerMissing => Error::StateManagerMissing,
             Z::ThunkNotFound { thunk_id } => Error::ThunkNotFound { thunk_id },
-            Z::ThunkRegistration(msg) => Error::ThunkRegistration {
-                thunk_id: String::new(),
-                message: msg,
-            },
-            Z::Subscription(msg) => Error::Subscription {
-                source_label: String::new(),
-                message: msg,
-            },
+            Z::ThunkRegistration { thunk_id, message } => {
+                Error::ThunkRegistration { thunk_id, message }
+            }
+            Z::Subscription { source_label, message } => {
+                Error::Subscription { source_label, message }
+            }
             Z::EmitError(msg) => Error::EmitError(msg),
             Z::Serialization(msg) => Error::SerializationError(msg),
         }

@@ -10,10 +10,10 @@ pub enum ZubridgeError {
     StateManagerMissing,
     #[error("thunk not found: {thunk_id}")]
     ThunkNotFound { thunk_id: String },
-    #[error("thunk registration error: {0}")]
-    ThunkRegistration(String),
-    #[error("subscription error: {0}")]
-    Subscription(String),
+    #[error("thunk registration failed for {thunk_id}: {message}")]
+    ThunkRegistration { thunk_id: String, message: String },
+    #[error("subscription error for {source_label}: {message}")]
+    Subscription { source_label: String, message: String },
     #[error("emit error: {0}")]
     EmitError(String),
     #[error("serialization error: {0}")]
