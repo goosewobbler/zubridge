@@ -138,7 +138,7 @@ jobs:
         shell: bash
 
       - name: Execute E2E Tests
-        if: inputs.app != 'tauri' || inputs.os != 'linux'
+        if: inputs.app == 'electron'
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
