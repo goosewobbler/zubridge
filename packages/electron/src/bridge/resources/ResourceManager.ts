@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { webContents } from 'electron';
 import type { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import type { CoreBridgeOptions } from '../../types/bridge.js';

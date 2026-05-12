@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "packages/core",
+    "packages/middleware",
+    "packages/middleware/node",
+    "packages/tauri",
+    "packages/tauri-plugin",
+]
+exclude = [
+    "apps/tauri/e2e/src-tauri",
+    "apps/tauri-v1/e2e/src-tauri",
+]
+resolver = "2"
+
+[workspace.dependencies]
+tauri = { version = "2.0.0", default-features = false }
+tauri-build = { version = "2.0.0", default-features = false }

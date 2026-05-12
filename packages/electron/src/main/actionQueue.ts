@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { ActionExecutor } from '../action/ActionExecutor.js';
 import { ThunkSchedulerEvents } from '../constants.js';
 import { actionScheduler, thunkManager } from '../thunk/init.js';

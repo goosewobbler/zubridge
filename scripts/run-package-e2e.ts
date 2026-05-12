@@ -52,7 +52,7 @@ if (specificApp && !targetApp) {
 const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const TEMP_DIR = path.join(os.tmpdir(), `zubridge-e2e-${Date.now()}`);
 const ZUBRIDGE_PACKAGES = {
-  dependencies: ['@zubridge/electron'],
+  dependencies: ['@zubridge/utils', '@zubridge/electron'],
   devDependencies: ['@zubridge/types'],
 };
 
@@ -176,6 +176,23 @@ function prepareApp(appPath: string): string {
       console.log(`[DEBUG] Removing workspace dependency: ${pkg} from devDependencies`);
       delete packageJson.devDependencies[pkg];
     }
+  }
+
+  // Add pnpm overrides to redirect zubridge packages to local tarballs.
+  // This prevents pnpm from trying to fetch transitive dependencies (like
+  // @zubridge/utils) from npm registry when they aren't published there.
+  const pnpmOverrides: Record<string, string> = {};
+  for (const pkg of allZubridgePackages) {
+    const pkgName = pkg.replace('@zubridge/', '');
+    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
+    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
+    if (tarballs.length > 0) {
+      pnpmOverrides[pkg] = `file:${path.join(pkgDir, tarballs[0])}`;
+      console.log(`[DEBUG] Adding pnpm override: ${pkg} → ${pnpmOverrides[pkg]}`);
+    }
+  }
+  if (Object.keys(pnpmOverrides).length > 0) {
+    packageJson.pnpm = { ...packageJson.pnpm, overrides: pnpmOverrides };
   }
 
   // Write cleaned package.json

@@ -15,9 +15,18 @@
     "noUnusedParameters": true,
     "noImplicitAny": false,
     "noImplicitReturns": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "composite": true,
     "baseUrl": "."
   },
-  "include": ["src/features/**/*", "src/renderer/**/*", "src/preload/*", "src/types/**/*"]
+  "include": [
+    "src/features/**/*",
+    "src/renderer/**/*",
+    "src/preload/*",
+    "src/types/**/*"
+  ]
 }

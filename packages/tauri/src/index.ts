@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { Action, AnyState, BridgeState, DispatchFunc, Thunk } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { useRef, useSyncExternalStore } from 'react';
 import { createStore } from 'zustand/vanilla';
 

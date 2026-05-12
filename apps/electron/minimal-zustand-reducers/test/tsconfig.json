@@ -5,14 +5,26 @@
     "sourceMap": false,
     "inlineSources": false,
     "noEmit": true,
-    "types": ["node", "@wdio/globals/types", "mocha"],
-    "typeRoots": ["../node_modules", "../node_modules/@types"],
+    "types": [
+      "node",
+      "@wdio/globals/types",
+      "mocha"
+    ],
+    "typeRoots": [
+      "../node_modules",
+      "../node_modules/@types"
+    ],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "strict": true,
     "module": "ESNext",
     "target": "ESNext"
   },
-  "include": ["./**/*.ts", "./**/*.js"],
-  "exclude": ["node_modules/**/*"]
+  "include": [
+    "./**/*.ts",
+    "./**/*.js"
+  ],
+  "exclude": [
+    "node_modules/**/*"
+  ]
 }

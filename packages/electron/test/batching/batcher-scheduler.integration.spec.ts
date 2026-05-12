@@ -7,7 +7,7 @@ import { BATCHING_DEFAULTS, PRIORITY_LEVELS } from '../../src/batching/types.js'
 import { ThunkScheduler } from '../../src/thunk/scheduling/ThunkScheduler.js';
 import { ThunkManager } from '../../src/thunk/ThunkManager.js';
 
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

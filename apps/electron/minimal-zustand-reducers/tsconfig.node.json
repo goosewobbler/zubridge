@@ -17,7 +17,9 @@
     "noImplicitReturns": true,
     "composite": true,
     "baseUrl": ".",
-    "types": ["electron-vite/node"]
+    "types": [
+      "electron-vite/node"
+    ]
   },
   "include": [
     "electron.vite.config.*",

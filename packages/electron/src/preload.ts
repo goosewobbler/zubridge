@@ -1,4 +1,3 @@
-import { debug } from '@zubridge/core';
 import type {
   Action,
   AnyState,
@@ -8,6 +7,7 @@ import type {
   InternalThunk,
   Thunk,
 } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
 import { ActionBatcher, calculatePriority } from './batching/ActionBatcher.js';

@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { debug } from '@zubridge/core';
 import { cleanupZubridge, initializeBridge } from '@zubridge/tauri';
+import { debug } from '@zubridge/utils';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@zubridge/ui/styles.css';

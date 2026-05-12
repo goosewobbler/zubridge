@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BatchAckPayload, BatchPayload } from '../../src/batching/types.js';
 import { getBatchingConfig } from '../../src/utils/preloadOptions.js';
 
-vi.mock('@zubridge/core', () => ({
+vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(),
 }));
 

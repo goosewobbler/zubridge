@@ -1,6 +1,10 @@
 {
-  "include": ["packages/electron/src/**/*.ts"],
-  "exclude": ["node_modules/**/*"],
+  "include": [
+    "packages/electron/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules/**/*"
+  ],
   "compilerOptions": {
     "declaration": true,
     "moduleResolution": "Bundler",

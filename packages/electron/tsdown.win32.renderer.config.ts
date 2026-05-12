@@ -21,7 +21,7 @@ export default defineConfig({
     if (externalizeUnenvRuntime(id)) return true;
     return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
   },
-  noExternal: ['@zubridge/core', 'weald', '@wdio/logger'],
+  noExternal: ['@zubridge/utils', 'weald', '@wdio/logger'],
   outDir: 'dist',
   clean: true,
   sourcemap: false,

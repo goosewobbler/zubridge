@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { StoreApi } from 'zustand/vanilla';
 import { ActionProcessingError } from '../errors/index.js';
 import type { ZubridgeMiddleware } from '../middleware.js';

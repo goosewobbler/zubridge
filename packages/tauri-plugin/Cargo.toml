@@ -5,7 +5,7 @@ description = "A Tauri plugin for state management between frontend and backend"
 authors = [ "Sam Maister" ]
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.75"
 exclude = [ "/examples" ]
 include = [ "Cargo.toml", "src/**/*", "build.rs", "README.md", "target/package/tauri-plugin-zubridge-*/gen/**/*" ]
 links = "tauri-plugin-zubridge"
@@ -17,13 +17,14 @@ keywords = [ "tauri", "zubridge", "state-management", "zustand" ]
 categories = [ "gui", "api-bindings", "web-programming" ]
 
 [dependencies]
+zubridge-core = { path = "../core", features = ["tauri"] }
 serde_json = "1.0"
 thiserror = "1.0"
 log = "0.4"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 [dependencies.tauri]
-version = "2.0.0-beta"
+workspace = true
 
 [dependencies.serde]
 version = "1.0"
@@ -31,7 +32,7 @@ features = [ "derive" ]
 
 [build-dependencies]
 [build-dependencies.tauri-build]
-version = "2.0.0-beta"
+workspace = true
 
 [features]
 custom-protocol = [ "tauri/custom-protocol" ]

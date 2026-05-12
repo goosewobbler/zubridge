@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/core';
+import { debug } from '@zubridge/utils';
 
 const randomUUID = (): string => globalThis.crypto.randomUUID();
 

@@ -6,7 +6,7 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
   external: ['electron', 'zustand', 'zustand/vanilla'],
-  noExternal: ['@zubridge/core', 'weald', '@wdio/logger', 'tty', 'util', 'fs', 'os', 'process'],
+  noExternal: ['@zubridge/utils', 'weald', '@wdio/logger', 'tty', 'util', 'fs', 'os', 'process'],
   outDir: 'dist',
   clean: false,
   sourcemap: false,

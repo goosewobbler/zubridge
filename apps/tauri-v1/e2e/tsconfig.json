@@ -15,10 +15,25 @@
     "noUnusedParameters": true,
     "noImplicitAny": false,
     "noImplicitReturns": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "baseUrl": ".",
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ]
   },
-  "include": ["src/features/**/*", "src/renderer/**/*", "src/preload/*", "src/types/**/*"],
-  "exclude": ["node_modules", "dist", "src-tauri"]
+  "include": [
+    "src/features/**/*",
+    "src/renderer/**/*",
+    "src/preload/*",
+    "src/types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src-tauri"
+  ]
 }

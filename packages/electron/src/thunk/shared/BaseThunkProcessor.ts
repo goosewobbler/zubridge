@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { QueueOverflowError } from '../../types/errors.js';
 import type { ThunkProcessorOptions } from '../../types/thunk.js';
 

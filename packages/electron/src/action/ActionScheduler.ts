@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { debug } from '@zubridge/core';
 import type { Action } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import { PRIORITY_LEVELS } from '../batching/types.js';
 import { ResourceManagementError } from '../errors/index.js';
 import type { ThunkScheduler } from '../thunk/scheduling/ThunkScheduler.js';

@@ -10,13 +10,13 @@ import {
   createDoubleCounterWithGetStateOverrideThunk,
   type ThunkContext,
 } from '@zubridge/apps-shared';
-import { debug } from '@zubridge/core';
 import {
   getWindowSubscriptions,
   subscribe as subscribeKeys,
   unsubscribe as unsubscribeKeys,
 } from '@zubridge/tauri';
 import { withTauri } from '@zubridge/ui/tauri';
+import { debug } from '@zubridge/utils';
 import { useEffect, useState } from 'react';
 import type { ModeInfo, WindowInfo, WindowType } from '../types/index.js';
 import { parseZubridgeMode, ZUBRIDGE_MODE_LABELS, ZubridgeMode } from '../utils/mode.js';

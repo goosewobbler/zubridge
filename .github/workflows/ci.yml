@@ -77,6 +77,66 @@ jobs:
       - name: 🧪 Run Unit Tests
         run: pnpm test:unit
 
+  # Rust tests for zubridge-core across all feature combinations
+  zubridge-core-rust-tests:
+    name: zubridge-core (features=${{ matrix.features }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - ""
+          - "uniffi"
+          - "napi"
+          - "tauri"
+          - "uniffi,napi"
+          - "uniffi,tauri"
+          - "napi,tauri"
+          - "uniffi,napi,tauri"
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: 🦀 Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 🗄️ Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: 🐧 Install Linux system dependencies (tauri feature)
+        if: contains(matrix.features, 'tauri')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: 🏗️ Build zubridge-core (features=${{ matrix.features }})
+        run: |
+          if [ -z "${{ matrix.features }}" ]; then
+            cargo build -p zubridge-core
+          else
+            cargo build -p zubridge-core --features "${{ matrix.features }}"
+          fi
+
+      - name: 🧪 Test zubridge-core (features=${{ matrix.features }})
+        run: |
+          if [ -z "${{ matrix.features }}" ]; then
+            cargo test -p zubridge-core
+          else
+            cargo test -p zubridge-core --features "${{ matrix.features }}"
+          fi
+
   # E2E + Package tests - Full test suite
   e2e-and-package-tests:
     needs: [build-shared-packages, code-quality]
@@ -140,6 +200,7 @@ jobs:
     needs: [
       build-shared-packages,
       code-quality,
+      zubridge-core-rust-tests,
       e2e-and-package-tests,
       package-only-tests
     ]

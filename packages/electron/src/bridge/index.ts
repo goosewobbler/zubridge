@@ -1,5 +1,5 @@
-import { debug } from '@zubridge/core';
 import type { AnyState, BackendBridge, StateManager } from '@zubridge/types';
+import { debug } from '@zubridge/utils';
 import type { Store } from 'redux';
 import type { StoreApi } from 'zustand';
 import type { ReduxOptions } from '../adapters/redux.js';

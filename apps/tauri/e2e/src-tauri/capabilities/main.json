@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
   "description": "Capability for all application windows, including Zubridge access",
-  "windows": ["*"],
+  "windows": [
+    "*"
+  ],
   "permissions": [
     {
       "identifier": "core:webview:allow-create-webview-window",
@@ -15,15 +17,27 @@
     },
     {
       "identifier": "core:window:allow-close",
-      "allow": [{ "label": "*" }]
+      "allow": [
+        {
+          "label": "*"
+        }
+      ]
     },
     {
       "identifier": "core:event:allow-emit",
-      "allow": [{ "event": "*" }]
+      "allow": [
+        {
+          "event": "*"
+        }
+      ]
     },
     {
       "identifier": "core:event:allow-listen",
-      "allow": [{ "event": "*" }]
+      "allow": [
+        {
+          "event": "*"
+        }
+      ]
     },
     "zubridge:default",
     "core:default",
