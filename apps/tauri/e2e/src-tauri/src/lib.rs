@@ -25,9 +25,10 @@ pub fn run() {
         .map(|v| !matches!(v.to_lowercase().as_str(), "" | "0" | "false"))
         .unwrap_or(false);
 
-    // tauri_plugin_wdio provides browser.tauri.execute/mock/etc — always needed for E2E.
-    // tauri_plugin_wdio_webdriver provides the built-in WebDriver HTTP server, which is
-    // only required when using the embedded provider (WDIO_EMBEDDED_SERVER=true).
+    // This is a dedicated E2E-only binary; tauri_plugin_wdio is always loaded so that
+    // browser.tauri.execute/mock/etc are available in every test session regardless of
+    // which WebDriver provider is used. tauri_plugin_wdio_webdriver (the HTTP server) is
+    // only needed for the embedded provider and is gated behind WDIO_EMBEDDED_SERVER.
     let mut builder = tauri::Builder::default()
         .plugin(zubridge_plugin)
         .plugin(tauri_plugin_wdio::init());
