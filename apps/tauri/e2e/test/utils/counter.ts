@@ -11,11 +11,13 @@ export const getCounterValue = async (): Promise<number> => {
 
 export const waitForCounterValue = async (expected: number, timeoutMs = 10000): Promise<void> => {
   const start = Date.now();
+  let actual: number | undefined;
   while (Date.now() - start < timeoutMs) {
-    if ((await getCounterValue()) === expected) return;
+    actual = await getCounterValue();
+    if (actual === expected) return;
     await browser.pause(200);
   }
-  throw new Error(`Timeout waiting for counter ${expected}`);
+  throw new Error(`Timeout waiting for counter ${expected} (last seen: ${actual})`);
 };
 
 export const resetCounter = async (): Promise<void> => {
