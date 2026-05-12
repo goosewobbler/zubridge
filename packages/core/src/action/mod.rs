@@ -269,6 +269,17 @@ impl ActionScheduler {
 ///
 /// Mirrors `getPriorityForAction` in `ActionScheduler.ts` and
 /// `calculatePriority` in `ActionBatcher.ts`.
+///
+/// # Priority is snapshot-correct at enqueue time
+///
+/// The priority is derived from `ctx` at the moment of the call. If the
+/// scheduler context changes after enqueue (e.g. a different thunk becomes
+/// root), an already-queued action retains the priority it was assigned
+/// originally — an action enqueued as `PRIORITY_ROOT_THUNK` while T1 was
+/// root keeps that priority even if T1 later completes and T2 becomes the new
+/// root. This is a deliberate trade-off of the deferred-sort design: re-sorting
+/// the queue on every context change would be O(n log n); instead, priorities
+/// are treated as immutable once stamped.
 pub fn priority_for(action: &ZubridgeAction, ctx: &SchedulerContext) -> i32 {
     if action.immediate.unwrap_or(false) {
         return PRIORITY_IMMEDIATE;

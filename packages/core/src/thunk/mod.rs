@@ -222,28 +222,28 @@ impl ThunkManager {
             events.push(ThunkEvent::RootThunkCompleted(thunk_id.to_string()));
             events.push(ThunkEvent::RootThunkChanged(None));
 
-            // Cascade-remove any descendants still alive. Scans from the
-            // child side (parent_id field) rather than following children
-            // lists, so grandchildren whose intermediate parent was already
-            // completed (removed from by_id) are still found.
-            let mut orphan_ids: HashSet<String> = record.children.iter().cloned().collect();
-            loop {
-                let new_orphans: HashSet<String> = self
-                    .by_id
-                    .iter()
-                    .filter(|(id, r)| {
-                        !orphan_ids.contains(*id)
-                            && r.parent_id
-                                .as_ref()
-                                .map(|pid| orphan_ids.contains(pid))
-                                .unwrap_or(false)
-                    })
-                    .map(|(id, _)| id.clone())
-                    .collect();
-                if new_orphans.is_empty() {
-                    break;
+            // Cascade-remove any descendants still alive. Build a
+            // parent→children index first (O(n)), then BFS from the root's
+            // direct children (O(n) total). Scanning via parent_id rather than
+            // children lists means grandchildren whose intermediate parent was
+            // already completed (and removed from by_id) are still reachable.
+            let mut parent_to_children: HashMap<String, Vec<String>> = HashMap::new();
+            for (id, r) in &self.by_id {
+                if let Some(pid) = &r.parent_id {
+                    parent_to_children
+                        .entry(pid.clone())
+                        .or_default()
+                        .push(id.clone());
                 }
-                orphan_ids.extend(new_orphans);
+            }
+            let mut orphan_ids: HashSet<String> = HashSet::new();
+            let mut frontier: Vec<String> = record.children.iter().cloned().collect();
+            while let Some(id) = frontier.pop() {
+                if orphan_ids.insert(id.clone()) {
+                    if let Some(children) = parent_to_children.get(&id) {
+                        frontier.extend(children.iter().cloned());
+                    }
+                }
             }
             if !orphan_ids.is_empty() {
                 self.by_id.retain(|id, _| !orphan_ids.contains(id));
