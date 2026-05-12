@@ -474,7 +474,7 @@ impl<R: Runtime> Zubridge<R> {
                 thunk_id: thunk_id.clone(),
                 message,
             })?;
-        registry.mark_executing(&thunk_id);
+        let _ = registry.execute_thunk(&thunk_id);
         Ok(())
     }
 
