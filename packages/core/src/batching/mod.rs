@@ -185,7 +185,7 @@ impl ActionBatcher {
             ));
         }
 
-        let should_flush = self.should_flush_now(priority);
+        let should_flush = self.should_flush_now(priority) && !self.is_flushing;
 
         if should_flush {
             // Insert at front for guaranteed inclusion in the immediate flush.
@@ -451,6 +451,21 @@ mod tests {
         assert!(b.is_flushing);
         b.complete_batch(&ack_ok(&batch.batch_id, &aid));
         assert!(!b.is_flushing);
+    }
+
+    #[test]
+    fn second_immediate_action_queued_when_flush_in_flight() {
+        let mut b = ActionBatcher::with_defaults();
+        // First high-priority action → immediate flush, is_flushing = true.
+        let batch1 = b.enqueue(action("A"), PRIORITY_IMMEDIATE, None).unwrap().unwrap();
+        assert!(b.is_flushing);
+        // Second high-priority action arrives before ack — must NOT overwrite pending_batch_items.
+        let result2 = b.enqueue(action("B"), PRIORITY_IMMEDIATE, None).unwrap();
+        assert!(result2.is_none(), "second immediate action must queue, not flush, while in-flight");
+        assert_eq!(b.stats().current_queue_size, 1);
+        // fail_batch still recovers the original items.
+        b.fail_batch(&batch1.batch_id);
+        assert_eq!(b.stats().current_queue_size, 2); // original + queued B
     }
 
     #[test]
