@@ -16,8 +16,9 @@ on:
         required: true
         type: string
       artifact_name:
-        description: "Name of the build artifact to download"
-        required: true
+        description: "Name of the build artifact to download (Electron only)"
+        required: false
+        default: ''
         type: string
     secrets:
       TURBO_TOKEN:
