@@ -227,16 +227,28 @@ impl ThunkManager {
             events.push(ThunkEvent::RootThunkCompleted(thunk_id.to_string()));
             events.push(ThunkEvent::RootThunkChanged(None));
 
-            // Cascade-remove any children still alive. On clean success children
-            // are already gone; this handles orphaned children when root fails.
-            let mut orphan_ids: HashSet<String> = HashSet::new();
-            let mut frontier = record.children.clone();
-            while let Some(child_id) = frontier.pop() {
-                if orphan_ids.insert(child_id.clone()) {
-                    if let Some(child_rec) = self.by_id.get(&child_id) {
-                        frontier.extend(child_rec.children.clone());
-                    }
+            // Cascade-remove any descendants still alive. Scans from the
+            // child side (parent_id field) rather than following children
+            // lists, so grandchildren whose intermediate parent was already
+            // completed (removed from by_id) are still found.
+            let mut orphan_ids: HashSet<String> = record.children.iter().cloned().collect();
+            loop {
+                let new_orphans: HashSet<String> = self
+                    .by_id
+                    .iter()
+                    .filter(|(id, r)| {
+                        !orphan_ids.contains(*id)
+                            && r.parent_id
+                                .as_ref()
+                                .map(|pid| orphan_ids.contains(pid))
+                                .unwrap_or(false)
+                    })
+                    .map(|(id, _)| id.clone())
+                    .collect();
+                if new_orphans.is_empty() {
+                    break;
                 }
+                orphan_ids.extend(new_orphans);
             }
             if !orphan_ids.is_empty() {
                 self.by_id.retain(|id, _| !orphan_ids.contains(id));
@@ -529,6 +541,31 @@ mod tests {
 
         let ctx = mgr.scheduler_context();
         assert!(ctx.running_non_concurrent_thunk_ids.is_empty());
+    }
+
+    #[test]
+    fn failed_root_cascade_finds_grandchild_of_completed_child() {
+        let mut mgr = ThunkManager::new();
+        reg(&mut mgr, "root");
+        reg_child(&mut mgr, "child", "root");
+        mgr.execute_thunk("root");
+        mgr.execute_thunk("child");
+        mgr.register("grandchild".into(), Some("child".into()), "main".into(), None, false, false)
+            .unwrap();
+        mgr.execute_thunk("grandchild");
+
+        // child completes normally — removed from by_id, grandchild still alive.
+        mgr.complete("child", None).unwrap();
+        assert!(!mgr.has_thunk("child"));
+        assert!(mgr.has_thunk("grandchild"));
+
+        // root fails — grandchild must be found via its own parent_id field
+        // even though its intermediate parent is already gone from by_id.
+        mgr.complete("root", Some("failed".into())).unwrap();
+        assert!(
+            !mgr.has_thunk("grandchild"),
+            "grandchild of already-completed child must still be removed on root failure"
+        );
     }
 
     #[test]
