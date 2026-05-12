@@ -17,7 +17,9 @@
     "dev:custom": "cross-env ZUBRIDGE_MODE=custom pnpm dev",
     "dev:ui": "cross-env WATCH_UI=true vite build && cross-env WATCH_UI=true pnpm tauri dev",
     "build": "pnpm run typecheck && pnpm build:zustand-basic",
-    "build:zustand-basic": "cross-env ZUBRIDGE_MODE=zustand-basic vite build && cross-env ZUBRIDGE_MODE=zustand-basic pnpm tauri build -- --verbose"
+    "build:zustand-basic": "cross-env ZUBRIDGE_MODE=zustand-basic vite build && cross-env ZUBRIDGE_MODE=zustand-basic pnpm tauri build -- --verbose",
+    "test:e2e:tauri": "wdio run wdio.conf.ts",
+    "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
@@ -38,6 +40,13 @@
     "cross-env": "^10.1.0",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
-    "vite": "^7.1.10"
+    "vite": "^7.1.10",
+    "@wdio/cli": "9.26.0",
+    "@wdio/globals": "9.26.0",
+    "@wdio/local-runner": "9.26.0",
+    "@wdio/mocha-framework": "9.26.0",
+    "@wdio/spec-reporter": "9.26.0",
+    "@wdio/tauri-service": "^1.0.0",
+    "@types/mocha": "^10.0.10"
   }
 }

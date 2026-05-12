@@ -37,9 +37,7 @@ jobs:
   e2e-test:
     name: ${{ inputs.os == 'linux' && 'Linux' || inputs.os == 'macos' && 'macOS' || 'Windows' }} E2E Test
     runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
-    # Tauri E2E tests are disabled for now due to WDIO compatibility issues
-    # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
-    if: inputs.app == 'electron'
+    if: inputs.app == 'electron' || inputs.app == 'tauri'
     steps:
       # Install Linux dependencies for Tauri apps before running E2E tests
       - name: Install Linux dependencies for Tauri & E2E (including WebKitWebDriver)
@@ -95,18 +93,6 @@ jobs:
             sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
           fi
 
-      - name: Install tauri-driver
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        shell: bash
-        run: |
-          echo "Installing tauri-driver..."
-          cargo install tauri-driver --locked
-          if ! command -v tauri-driver &> /dev/null; then
-          echo "::error::tauri-driver installation failed or not in PATH"
-          exit 1
-          fi
-          echo "tauri-driver installed successfully."
-
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
@@ -121,8 +107,20 @@ jobs:
           name: shared-packages
           path: packages
 
-      - name: Setup E2E Environment
+      # For the Tauri embedded provider we build a debug binary locally.
+      # No release artifact download or tauri-driver needed.
+      - name: Build Tauri debug binary
+        if: inputs.app == 'tauri'
+        shell: bash
+        run: |
+          cd apps/tauri/e2e
+          pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} vite build
+          cd src-tauri
+          cargo build
+
+      - name: Setup E2E Environment (Electron)
         id: setup_e2e
+        if: inputs.app == 'electron'
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
@@ -130,7 +128,17 @@ jobs:
           mode: ${{ inputs.mode }}
           artifact_name: ${{ inputs.artifact_name }}
 
+      - name: Execute E2E Tests (Linux Tauri — xvfb)
+        if: inputs.app == 'tauri' && inputs.os == 'linux'
+        env:
+          DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
+        run: xvfb-run --auto-servernum pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
+        shell: bash
+
       - name: Execute E2E Tests
+        if: inputs.app != 'tauri' || inputs.os != 'linux'
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
