@@ -79,23 +79,24 @@ impl ActionQueueManager {
 
     /// Called by the platform layer when a thunk completes (or fails).
     ///
-    /// Processes any actions that were waiting for the thunk to finish.
-    /// Returns the updated state if any queued actions were executed.
+    /// Drains any queued actions that became eligible, then returns the
+    /// lifecycle events so platform wrappers can react (e.g. surface
+    /// `ThunkFailed`, observe `RootThunkCompleted`, update telemetry).
     pub fn on_thunk_complete(
         &mut self,
         thunk_id: &str,
         error: Option<String>,
-    ) -> Result<Option<JsonValue>> {
-        match self.thunk_manager.complete(thunk_id, error) {
-            Ok(_) => {}
-            Err(_) => return Ok(None), // Thunk not found — ignore.
+    ) -> Result<Vec<ThunkEvent>> {
+        let (_, events) = match self.thunk_manager.complete(thunk_id, error) {
+            Ok(result) => result,
+            Err(_) => return Ok(Vec::new()), // Thunk not found — ignore.
         };
 
         // Drain unconditionally: child-thunk completions remove non-concurrent
         // tasks that may have been blocking already-queued actions.
         self.drain_queue()?;
 
-        Ok(None) // State updates emitted by drain_queue callers.
+        Ok(events)
     }
 
     /// Register a thunk.

@@ -532,6 +532,21 @@ mod tests {
     }
 
     #[test]
+    fn complete_pending_thunk_succeeds_without_root_event() {
+        let mut mgr = ThunkManager::new();
+        reg(&mut mgr, "t1");
+        // t1 was never executed — still Pending.
+        let (record, events) = mgr.complete("t1", None).unwrap();
+        assert_eq!(record.state, ThunkState::Completed);
+        assert!(events.contains(&ThunkEvent::ThunkCompleted("t1".into())));
+        assert!(
+            !events.iter().any(|e| matches!(e, ThunkEvent::RootThunkCompleted(_))),
+            "completing a never-executed thunk must not emit RootThunkCompleted"
+        );
+        assert!(mgr.root_thunk_id().is_none());
+    }
+
+    #[test]
     fn register_with_missing_parent_returns_error() {
         let mut mgr = ThunkManager::new();
         let result = mgr.register("child".into(), Some("ghost".into()), "main".into(), None, false, false);
