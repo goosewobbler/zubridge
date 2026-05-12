@@ -79,24 +79,26 @@ impl ActionQueueManager {
 
     /// Called by the platform layer when a thunk completes (or fails).
     ///
-    /// Drains any queued actions that became eligible, then returns the
-    /// lifecycle events so platform wrappers can react (e.g. surface
-    /// `ThunkFailed`, observe `RootThunkCompleted`, update telemetry).
+    /// Drains any queued actions that became eligible and returns both the
+    /// lifecycle events and the new state produced by each drained action.
+    /// Platform wrappers must emit the returned states to subscribers —
+    /// `StateManager` has no subscriber mechanism, so this is the only path
+    /// through which those updates become visible after thunk completion.
     pub fn on_thunk_complete(
         &mut self,
         thunk_id: &str,
         error: Option<String>,
-    ) -> Result<Vec<ThunkEvent>> {
+    ) -> Result<(Vec<ThunkEvent>, Vec<JsonValue>)> {
         let (_, events) = match self.thunk_manager.complete(thunk_id, error) {
             Ok(result) => result,
-            Err(_) => return Ok(Vec::new()), // Thunk not found — ignore.
+            Err(_) => return Ok((Vec::new(), Vec::new())), // Thunk not found — ignore.
         };
 
         // Drain unconditionally: child-thunk completions remove non-concurrent
         // tasks that may have been blocking already-queued actions.
-        self.drain_queue()?;
+        let states = self.drain_queue()?;
 
-        Ok(events)
+        Ok((events, states))
     }
 
     /// Register a thunk.
@@ -164,7 +166,10 @@ impl ActionQueueManager {
     }
 
     /// Drain all immediately-eligible actions from the queue and execute them.
-    fn drain_queue(&mut self) -> Result<()> {
+    ///
+    /// Returns the new state produced by each executed action in order.
+    fn drain_queue(&mut self) -> Result<Vec<JsonValue>> {
+        let mut states = Vec::new();
         loop {
             let ctx = self.thunk_manager.scheduler_context();
             let ready = self.scheduler.drain_ready(&ctx);
@@ -172,10 +177,10 @@ impl ActionQueueManager {
                 break;
             }
             for queued in ready {
-                self.execute_action(queued)?;
+                states.push(self.execute_action(queued)?);
             }
         }
-        Ok(())
+        Ok(states)
     }
 }
 
@@ -306,6 +311,27 @@ mod tests {
         mgr.on_thunk_complete("t2", None).unwrap();
         assert_eq!(mgr.queue_len(), 0);
         assert_eq!(*counter.lock().unwrap(), 1);
+    }
+
+    #[test]
+    fn on_thunk_complete_returns_drained_states() {
+        let (mut mgr, _counter) = manager();
+
+        mgr.register_thunk("t1".into(), None, "main".into(), None, false, false)
+            .unwrap();
+        mgr.execute_thunk("t1");
+
+        // Queue two normal actions while the thunk blocks.
+        mgr.dispatch(action("INC"), "main".into()).unwrap();
+        mgr.dispatch(action("INC"), "main".into()).unwrap();
+        assert_eq!(mgr.queue_len(), 2);
+
+        // Complete the thunk — states from both drained actions are returned.
+        let (_events, states) = mgr.on_thunk_complete("t1", None).unwrap();
+        assert_eq!(mgr.queue_len(), 0);
+        assert_eq!(states.len(), 2, "one state per drained action");
+        assert_eq!(states[0], serde_json::json!({ "count": 1 }));
+        assert_eq!(states[1], serde_json::json!({ "count": 2 }));
     }
 
     #[test]
