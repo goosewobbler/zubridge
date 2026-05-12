@@ -7,7 +7,7 @@ pub mod state;
 pub mod subscription;
 pub mod thunk;
 
-#[cfg(feature = "tauri")]
+#[cfg(any(feature = "tauri", feature = "uniffi", feature = "napi"))]
 pub mod wrappers;
 
 pub use error::{Result, ZubridgeError};
