@@ -22,8 +22,13 @@ export default defineConfig({
     },
   },
   preload: {
+    // Sandbox preload scripts can only `require` Electron built-ins, so every
+    // userland dep must be inlined into the bundle. Disable electron-vite's
+    // default `externalizeDeps` plugin so node_modules deps actually get
+    // bundled in.
     build: {
       outDir: 'out/preload',
+      externalizeDeps: false,
       rollupOptions: {
         external: [
           'electron',
