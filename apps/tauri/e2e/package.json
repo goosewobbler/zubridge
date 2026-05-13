@@ -47,6 +47,7 @@
     "@wdio/mocha-framework": "9.26.0",
     "@wdio/spec-reporter": "9.26.0",
     "@wdio/tauri-service": "1.0.0",
+    "@wdio/tauri-plugin": "1.0.0",
     "@types/mocha": "^10.0.10"
   }
 }

@@ -1035,6 +1035,9 @@ importers:
       '@wdio/spec-reporter':
         specifier: 9.26.0
         version: 9.26.0
+      '@wdio/tauri-plugin':
+        specifier: 1.0.0
+        version: 1.0.0
       '@wdio/tauri-service':
         specifier: 1.0.0
         version: 1.0.0(expect-webdriverio@5.6.5)(webdriverio@9.26.0(puppeteer-core@22.15.0))
@@ -3407,6 +3410,9 @@ packages:
     resolution: {integrity: sha512-rqI++FWClU5I2UBp4HXFvl+sBWkdigBkxnpJDQUWttNyG7IZP4FwQGhTNL5EOw0vI8i6eSAJ5frLqO7n7jbJdg==}
     engines: {node: '>= 14.6.0', npm: '>= 6.6.0', yarn: '>= 1.19.1'}
 
+  '@tauri-apps/api@2.10.1':
+    resolution: {integrity: sha512-hKL/jWf293UDSUN09rR69hrToyIXBb8CjGaWC7gfinvnQrBVvnLr08FeFi38gxtugAVyVcTa5/FD/Xnkb1siBw==}
+
   '@tauri-apps/api@2.9.0':
     resolution: {integrity: sha512-qD5tMjh7utwBk9/5PrTA/aGr3i5QaJ/Mlt7p8NilQ45WgbifUNPyKWsA63iQ8YfQq6R8ajMapU+/Q8nMcPRLNw==}
 
@@ -3545,6 +3551,9 @@ packages:
     resolution: {integrity: sha512-BQ7iLUXTQcyG1PpzLWeVSmBCedYDpnA/6Cm/kRFGtqjTf/eVUlyYO5S2ee07tLum3nWwDBWTGFZeruO8yEukfA==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-log@2.8.0':
+    resolution: {integrity: sha512-a+7rOq3MJwpTOLLKbL8d0qGZ85hgHw5pNOWusA9o3cf7cEgtYHiGY/+O8fj8MvywQIGqFv0da2bYQDlrqLE7rw==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -3844,6 +3853,10 @@ packages:
   '@wdio/spec-reporter@9.27.1':
     resolution: {integrity: sha512-q9UMJJbCcP+nCOojIvOIcsXnerhHICmWu94guRMRYPbW2IsG/5VM/uhzwru8SU/1WRXLtKgTjkuXXsjzjVpf2w==}
     engines: {node: '>=18.20.0'}
+
+  '@wdio/tauri-plugin@1.0.0':
+    resolution: {integrity: sha512-3dr20sYrFPTmgTllgq5hELeWKKP26rk95BAgWYMkLxTxf9iM8UyCwH8MsuaDUlEK74S2cy91tlO0sJaRZRqQzw==}
+    engines: {node: ^18.12.0 || ^20.9.0 || >=22.11.0}
 
   '@wdio/tauri-service@1.0.0':
     resolution: {integrity: sha512-o8NDK5nEwJxuEmsM7tGdySCwiWxkSjmffABHQFwh+J0b8FQYxSVgKFFf5y8ve2mIFGTsf85YrD46tGgts6A39A==}
@@ -9339,6 +9352,8 @@ snapshots:
 
   '@tauri-apps/api@1.6.0': {}
 
+  '@tauri-apps/api@2.10.1': {}
+
   '@tauri-apps/api@2.9.0': {}
 
   '@tauri-apps/cli-darwin-arm64@1.6.3':
@@ -9432,6 +9447,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.9.3
       '@tauri-apps/cli-win32-ia32-msvc': 2.9.3
       '@tauri-apps/cli-win32-x64-msvc': 2.9.3
+
+  '@tauri-apps/plugin-log@2.8.0':
+    dependencies:
+      '@tauri-apps/api': 2.10.1
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -9916,6 +9935,15 @@ snapshots:
       chalk: 5.6.2
       easy-table: 1.2.0
       pretty-ms: 9.3.0
+
+  '@wdio/tauri-plugin@1.0.0':
+    dependencies:
+      '@tauri-apps/api': 2.10.1
+      '@tauri-apps/plugin-log': 2.8.0
+      '@wdio/native-spy': 1.0.10
+      '@wdio/native-utils': 2.3.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@wdio/tauri-service@1.0.0(expect-webdriverio@5.6.5)(webdriverio@9.26.0(puppeteer-core@22.15.0))':
     dependencies:
