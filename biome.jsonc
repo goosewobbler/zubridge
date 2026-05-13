@@ -106,6 +106,20 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "**/test/**/*.ts",
+        "**/test/**/*.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            // vitest 4 needs `function` for constructible mocks; don't rewrite to arrows in tests.
+            "useArrowFunction": "off"
+          }
+        }
+      }
     }
   ]
 }

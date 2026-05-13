@@ -40,21 +40,27 @@ describe('Global Error Handlers', () => {
     }
 
     // Set up error constructor mocks
-    (ConfigurationError as unknown as Mock).mockImplementation((message, context) => ({
-      name: 'ConfigurationError',
-      message,
-      context,
-    }));
+    (ConfigurationError as unknown as Mock).mockImplementation(function (
+      message: string,
+      context: unknown,
+    ) {
+      return { name: 'ConfigurationError', message, context };
+    });
 
-    (ResourceManagementError as unknown as Mock).mockImplementation(
-      (message, resource, operation, context) => ({
+    (ResourceManagementError as unknown as Mock).mockImplementation(function (
+      message: string,
+      resource: unknown,
+      operation: unknown,
+      context: unknown,
+    ) {
+      return {
         name: 'ResourceManagementError',
         message,
         resource,
         operation,
         context,
-      }),
-    );
+      };
+    });
   });
 
   afterEach(() => {
@@ -90,6 +96,8 @@ describe('Global Error Handlers', () => {
 
       const testError = new Error('Promise rejection test');
       const testPromise = Promise.reject(testError);
+      // Swallow the rejection so vitest 4 doesn't bubble it to the runner.
+      testPromise.catch(() => {});
 
       // Trigger unhandled rejection
       process.emit('unhandledRejection', testError, testPromise);
@@ -147,6 +155,8 @@ describe('Global Error Handlers', () => {
 
       const testReason = 'String rejection reason';
       const testPromise = Promise.reject(testReason);
+      // Swallow the rejection so vitest 4 doesn't bubble it to the runner.
+      testPromise.catch(() => {});
 
       // Trigger unhandled rejection
       process.emit('unhandledRejection', testReason, testPromise);

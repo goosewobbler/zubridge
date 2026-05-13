@@ -34,6 +34,31 @@ pub struct WindowInfo {
     pub subscriptions: Vec<String>,
 }
 
+/// Create the two test windows ('main' and 'secondary') at runtime.
+/// Mirrors `wdio-desktop-mobile-example/packages/tauri/src-tauri/src/main.rs`
+/// which creates its windows in the setup callback rather than pre-declaring
+/// them in `tauri.conf.json` — pre-declared windows in tauri.conf.json are
+/// created before plugins finish initialising, which prevents the wdio
+/// frontend plugin from intercepting `window.__TAURI__.core.invoke` in time.
+pub fn create_initial_windows<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    if app.get_webview_window("main").is_none() {
+        WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+            .title("Zubridge E2E Tauri (Main)")
+            .inner_size(800.0, 600.0)
+            .build()
+            .map_err(|e| format!("Failed to create main window: {}", e))?;
+    }
+    if app.get_webview_window("secondary").is_none() {
+        WebviewWindowBuilder::new(app, "secondary", WebviewUrl::App("index.html".into()))
+            .title("Zubridge E2E Tauri (Secondary)")
+            .inner_size(700.0, 500.0)
+            .position(100.0, 100.0)
+            .build()
+            .map_err(|e| format!("Failed to create secondary window: {}", e))?;
+    }
+    Ok(())
+}
+
 /// Create a fresh runtime window. Mirrors `createRuntimeWindow` in
 /// `apps/electron/e2e/src/main/window.ts` and the inline `WebviewWindow`
 /// builder calls the renderer used to do for itself.

@@ -55,6 +55,7 @@ Notable state at the time this plan was written:
 | **P1** | Carve out `zubridge-core` crate | New `packages/core/` Rust crate with `uniffi`/`napi`/`tauri` features; `packages/tauri-plugin/` re-consumes it; existing Tauri E2E green |
 | **P2** | Port full action + thunk scheduler | Core gains `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`; Tauri renderer exercises the new APIs |
 | **P3** | Middleware absorption | `packages/middleware/` merged into `core::middleware`; conditional `telemetry`/`websocket`/`messagepack` features |
+| **P3.5** | Tauri E2E test suite | `@wdio/tauri-service` (embedded provider) standing up counter + window-sync specs; CI enabled on macOS + Linux |
 | **P4** | Tauri v2.0 release | `tauri-plugin-zubridge@0.2.0` + `@zubridge/tauri@2.0.0` published on unified core |
 | **P5** | NAPI-RS bindings + Electron 3.1 prep | Core exposes `napi` facade; `@zubridge/node-native` ships platform `.node` artifacts |
 | **P6** | Electron 3.1 migration | `packages/electron/src/{action,thunk,main,subscription,deltas,batching,middleware}` replaced with NAPI calls; renderer/preload TS unchanged |
@@ -259,6 +260,42 @@ P1–P4 are the critical path to **Tauri v2**. P5–P7 are the critical path to 
 - `cargo build -p zubridge-core --features uniffi,napi,tauri` (no observability features) succeeds — confirms optional gating is clean.
 - Existing middleware unit tests (in `packages/middleware/tests/` if any) pass at their new location.
 - Smoke test: a logging middleware records every action through both Tauri (E2E) and a Rust unit test.
+
+---
+
+### P3.5 — Tauri E2E test suite
+
+**Goal:** Validate the Tauri service against the unified Rust core before the v2.0 release, using `@wdio/tauri-service` with the embedded WebDriver provider.
+
+**Steps:**
+
+1. **Register Tauri WDIO plugins** in `apps/tauri/e2e/src-tauri`:
+   - Add `tauri-plugin-wdio = "1.0.0"` and `tauri-plugin-wdio-webdriver = "1.0.0"` to `Cargo.toml`.
+   - In `src/lib.rs`: always register `tauri_plugin_wdio::init()`; register `tauri_plugin_wdio_webdriver::init()` only when `WDIO_EMBEDDED_SERVER` env var is set (embedded provider sets this automatically).
+   - Add `"wdio:default"` to `capabilities/main.json`.
+2. **Add WDIO config** (`apps/tauri/e2e/wdio.conf.ts`): embedded provider, `windowLabel: 'main'`, specs at `./test/specs/**/*.spec.ts`.
+3. **Add test specs** (`apps/tauri/e2e/test/specs/basic-sync.spec.ts`): counter increment/decrement and bidirectional window-sync tests mirroring the Electron minimal-app suite.
+4. **Wire the turbo task**: replace the `exit 0` stub in `apps/tauri/e2e/package.json` with `wdio run wdio.conf.ts`.
+5. **Enable CI** (`_e2e-test.reusable.yml`): remove the `if: inputs.app == 'electron'` job condition; for Tauri, skip tauri-driver and instead build the debug binary + run WDIO directly (with `xvfb-run` on Linux).
+
+**Critical files:**
+
+- `apps/tauri/e2e/src-tauri/Cargo.toml`
+- `apps/tauri/e2e/src-tauri/src/lib.rs`
+- `apps/tauri/e2e/src-tauri/capabilities/main.json`
+- `apps/tauri/e2e/wdio.conf.ts` (new)
+- `apps/tauri/e2e/test/tsconfig.json` (new)
+- `apps/tauri/e2e/test/specs/basic-sync.spec.ts` (new)
+- `apps/tauri/e2e/test/utils/{constants,counter,window}.ts` (new)
+- `apps/tauri/e2e/package.json`
+- `.github/workflows/_e2e-test.reusable.yml`
+
+**Verification:**
+
+- `cargo build` in `apps/tauri/e2e/src-tauri` compiles with both wdio plugins.
+- `pnpm test:e2e:tauri` (from `apps/tauri/e2e`) runs all specs green locally.
+- CI Tauri E2E job passes on macOS runner; Linux runner passes with `xvfb-run`.
+- Electron E2E unaffected — `inputs.app == 'electron'` path unchanged.
 
 ---
 

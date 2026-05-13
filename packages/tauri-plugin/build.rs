@@ -20,7 +20,9 @@ fn main() {
 
     tauri_build::try_build(tauri_build::Attributes::new().plugin(
         "zubridge",
-        tauri_build::InlinedPlugin::new().commands(COMMANDS),
+        tauri_build::InlinedPlugin::new()
+            .commands(COMMANDS)
+            .default_permission(tauri_build::DefaultPermissionRule::AllowAllCommands),
     ))
     .unwrap_or_else(|_| {
         println!("cargo:warning=Failed to build with tauri.conf.json, skipping config verification");

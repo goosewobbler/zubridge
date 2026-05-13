@@ -60,21 +60,23 @@ vi.mock('../../src/utils/serialization.js', () => ({
 }));
 
 vi.mock('../../src/bridge/ipc/IpcHandler.js', () => ({
-  IpcHandler: vi.fn().mockImplementation(() => ({
-    cleanup: vi.fn(),
-  })),
+  IpcHandler: vi.fn().mockImplementation(function () {
+    return { cleanup: vi.fn() };
+  }),
 }));
 
 vi.mock('../../src/bridge/resources/ResourceManager.js', () => ({
-  ResourceManager: vi.fn().mockImplementation(() => {}),
+  ResourceManager: vi.fn().mockImplementation(function () {}),
 }));
 
 vi.mock('../../src/bridge/subscription/SubscriptionHandler.js', () => ({
-  SubscriptionHandler: vi.fn().mockImplementation(() => ({
-    subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    selectiveSubscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    unsubscribe: vi.fn(),
-  })),
+  SubscriptionHandler: vi.fn().mockImplementation(function () {
+    return {
+      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      selectiveSubscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      unsubscribe: vi.fn(),
+    };
+  }),
 }));
 
 // Mock the main thunk processor
@@ -132,10 +134,12 @@ describe('BridgeCore', () => {
     const { createWebContentsTracker } = await import('../../src/utils/windows.js');
 
     // Setup mocks to return our mock instances
-    vi.mocked(IpcHandler).mockReturnValue(mockIpcHandler as unknown as IpcHandler<AnyState>);
-    vi.mocked(ResourceManager).mockReturnValue(
-      mockResourceManager as unknown as ResourceManager<AnyState>,
-    );
+    vi.mocked(IpcHandler).mockImplementation(function () {
+      return mockIpcHandler as unknown as IpcHandler<AnyState>;
+    } as unknown as new () => IpcHandler<AnyState>);
+    vi.mocked(ResourceManager).mockImplementation(function () {
+      return mockResourceManager as unknown as ResourceManager<AnyState>;
+    } as unknown as new () => ResourceManager<AnyState>);
     vi.mocked(createWebContentsTracker).mockReturnValue(mockWebContentsTracker);
   });
 
@@ -177,7 +181,9 @@ describe('BridgeCore', () => {
       // Mock the return value to include the middleware options
       const processedOptions = { ...middlewareOptions };
       (createMiddlewareOptions as Mock).mockReturnValue(processedOptions);
-      (ResourceManager as Mock).mockImplementation(() => mockResourceManager);
+      (ResourceManager as Mock).mockImplementation(function () {
+        return mockResourceManager;
+      });
 
       const _bridge = createCoreBridge(mockStateManager, {
         middleware: middlewareOptions as CoreBridgeOptions['middleware'],
@@ -402,7 +408,9 @@ describe('BridgeCore', () => {
       const { ResourceManager } = await import('../../src/bridge/resources/ResourceManager.js');
 
       (createMiddlewareOptions as Mock).mockReturnValue(middlewareOptions);
-      (ResourceManager as Mock).mockImplementation(() => mockResourceManager);
+      (ResourceManager as Mock).mockImplementation(function () {
+        return mockResourceManager;
+      });
 
       createCoreBridge(mockStateManager, {
         middleware: middlewareOptions as CoreBridgeOptions['middleware'],

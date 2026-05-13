@@ -16,8 +16,9 @@ on:
         required: true
         type: string
       artifact_name:
-        description: "Name of the build artifact to download"
-        required: true
+        description: "Name of the build artifact to download (Electron only)"
+        required: false
+        default: ''
         type: string
     secrets:
       TURBO_TOKEN:
@@ -37,9 +38,7 @@ jobs:
   e2e-test:
     name: ${{ inputs.os == 'linux' && 'Linux' || inputs.os == 'macos' && 'macOS' || 'Windows' }} E2E Test
     runs-on: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
-    # Tauri E2E tests are disabled for now due to WDIO compatibility issues
-    # See: https://github.com/tauri-apps/tauri/issues?q=is%3Aopen%20label%3A%22scope%3A%20webdriver%22
-    if: inputs.app == 'electron'
+    if: inputs.app == 'electron' || inputs.app == 'tauri'
     steps:
       # Install Linux dependencies for Tauri apps before running E2E tests
       - name: Install Linux dependencies for Tauri & E2E (including WebKitWebDriver)
@@ -68,7 +67,7 @@ jobs:
 
           TAURI_V2_DEPS=\
           "libwebkit2gtk-4.1-dev \
-          webkitgtk-webdriver \
+          webkit2gtk-driver \
           libjavascriptcoregtk-4.1-dev"
 
 
@@ -95,18 +94,6 @@ jobs:
             sudo apt-get install -y --no-install-recommends $COMMON_DEPS $TAURI_V2_DEPS
           fi
 
-      - name: Install tauri-driver
-        if: inputs.app == 'tauri' || inputs.app == 'tauri-v1'
-        shell: bash
-        run: |
-          echo "Installing tauri-driver..."
-          cargo install tauri-driver --locked
-          if ! command -v tauri-driver &> /dev/null; then
-          echo "::error::tauri-driver installation failed or not in PATH"
-          exit 1
-          fi
-          echo "tauri-driver installed successfully."
-
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
@@ -121,8 +108,20 @@ jobs:
           name: shared-packages
           path: packages
 
-      - name: Setup E2E Environment
+      # For the Tauri embedded provider we build a debug binary locally.
+      # No release artifact download or tauri-driver needed.
+      - name: Build Tauri debug binary
+        if: inputs.app == 'tauri'
+        shell: bash
+        run: |
+          cd apps/tauri/e2e
+          pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} vite build
+          cd src-tauri
+          cargo build --features custom-protocol
+
+      - name: Setup E2E Environment (Electron)
         id: setup_e2e
+        if: inputs.app == 'electron'
         uses: ./.github/workflows/actions/setup-e2e-environment
         with:
           os: ${{ inputs.os == 'linux' && 'ubuntu-latest' || inputs.os == 'macos' && 'macOS-latest' || 'windows-latest' }}
@@ -130,7 +129,28 @@ jobs:
           mode: ${{ inputs.mode }}
           artifact_name: ${{ inputs.artifact_name }}
 
+      - name: Execute E2E Tests (Linux Tauri — xvfb)
+        if: inputs.app == 'tauri' && inputs.os == 'linux'
+        env:
+          DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
+          ZUBRIDGE_MODE: ${{ inputs.mode }}
+        run: xvfb-run --auto-servernum pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
+        shell: bash
+
+      - name: Execute E2E Tests (Tauri — macOS/Windows)
+        if: inputs.app == 'tauri' && inputs.os != 'linux'
+        env:
+          DEBUG: "zubridge:*"
+          E2E_APP_TYPE: ${{ inputs.app }}
+          MODE: ${{ inputs.mode }}
+          ZUBRIDGE_MODE: ${{ inputs.mode }}
+        run: pnpm --filter=tauri-e2e run test:e2e:tauri --concurrency=1
+        shell: bash
+
       - name: Execute E2E Tests
+        if: inputs.app == 'electron'
         env:
           APP_PATH: ${{ steps.setup_e2e.outputs.app_path }}
           DEBUG: "zubridge:*"
@@ -140,9 +160,14 @@ jobs:
         shell: bash
 
       - name: Show Logs on Failure
-        if: failure()
+        if: failure() && inputs.app == 'electron'
         shell: bash
         run: pnpm exec tsx e2e/scripts/show-logs.ts
+
+      - name: Show Logs on Failure (Tauri)
+        if: failure() && inputs.app == 'tauri'
+        shell: bash
+        run: find apps/tauri/e2e/wdio-logs-* -type f -name "*.log" 2>/dev/null | (xargs -I{} sh -c 'echo "=== {} ==="; cat "{}"' || echo "No Tauri WDIO logs found")
 
       - name: Upload E2E Test Logs
         if: always()
@@ -152,7 +177,7 @@ jobs:
           name: e2e-logs-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             e2e/wdio-logs-${{ inputs.app }}/**/*.log
-            apps/*/wdio-logs-*/**/*.log
+            apps/**/wdio-logs-*/**/*.log
           retention-days: 90
           if-no-files-found: warn
 

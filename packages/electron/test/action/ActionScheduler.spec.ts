@@ -25,25 +25,34 @@ vi.mock('@zubridge/utils', () => ({
 // crypto.randomUUID is used for generating action IDs - no need to mock
 
 vi.mock('../../src/thunk/ThunkManager.js', () => ({
-  ThunkManager: vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-    getRootThunkId: vi.fn(),
-    isThunkActive: vi.fn(),
-    handleActionComplete: vi.fn(),
-    getScheduler: vi.fn(() => ({
-      getRunningTasks: vi.fn(() => []),
-    })),
-  })),
+  ThunkManager: vi.fn().mockImplementation(function () {
+    return {
+      on: vi.fn(),
+      getRootThunkId: vi.fn(),
+      isThunkActive: vi.fn(),
+      handleActionComplete: vi.fn(),
+      getScheduler: vi.fn(() => ({
+        getRunningTasks: vi.fn(() => []),
+      })),
+    };
+  }),
 }));
 
 vi.mock('../../src/errors/index.js', () => ({
-  ResourceManagementError: vi.fn().mockImplementation((message, resource, operation, context) => ({
-    name: 'ResourceManagementError',
-    message,
-    resource,
-    operation,
-    context,
-  })),
+  ResourceManagementError: vi.fn().mockImplementation(function (
+    message: string,
+    resource: unknown,
+    operation: unknown,
+    context: unknown,
+  ) {
+    return {
+      name: 'ResourceManagementError',
+      message,
+      resource,
+      operation,
+      context,
+    };
+  }),
 }));
 
 describe('ActionScheduler', () => {
