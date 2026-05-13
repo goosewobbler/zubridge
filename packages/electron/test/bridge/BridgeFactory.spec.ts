@@ -132,9 +132,13 @@ describe('BridgeCore', () => {
     const { createWebContentsTracker } = await import('../../src/utils/windows.js');
 
     // Setup mocks to return our mock instances
-    vi.mocked(IpcHandler).mockReturnValue(mockIpcHandler as unknown as IpcHandler<AnyState>);
-    vi.mocked(ResourceManager).mockReturnValue(
-      mockResourceManager as unknown as ResourceManager<AnyState>,
+    vi.mocked(IpcHandler).mockImplementation(
+      (() =>
+        mockIpcHandler as unknown as IpcHandler<AnyState>) as unknown as new () => IpcHandler<AnyState>,
+    );
+    vi.mocked(ResourceManager).mockImplementation(
+      (() =>
+        mockResourceManager as unknown as ResourceManager<AnyState>) as unknown as new () => ResourceManager<AnyState>,
     );
     vi.mocked(createWebContentsTracker).mockReturnValue(mockWebContentsTracker);
   });

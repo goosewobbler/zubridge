@@ -74,16 +74,18 @@ describe('ActionQueueManager', () => {
     mockActionExecutor = {
       executeAction: vi.fn(),
     };
-    vi.mocked(ActionExecutor).mockReturnValue(
-      mockActionExecutor as unknown as ActionExecutor<AnyState>,
+    vi.mocked(ActionExecutor).mockImplementation(
+      (() =>
+        mockActionExecutor as unknown as ActionExecutor<AnyState>) as unknown as new () => ActionExecutor<AnyState>,
     );
 
     // Mock the ThunkRegistrationQueue constructor
     mockThunkRegistrationQueue = {
       registerThunk: vi.fn(),
     };
-    vi.mocked(ThunkRegistrationQueue).mockReturnValue(
-      mockThunkRegistrationQueue as unknown as ThunkRegistrationQueue,
+    vi.mocked(ThunkRegistrationQueue).mockImplementation(
+      (() =>
+        mockThunkRegistrationQueue as unknown as ThunkRegistrationQueue) as unknown as new () => ThunkRegistrationQueue,
     );
 
     // Mock thunkManager

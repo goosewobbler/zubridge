@@ -326,13 +326,12 @@ describe('subscriptionValidator', () => {
       };
 
       // Setup dynamic responses based on the key
-      mockWindowSubscriptionValidator.stateKeyExists.mockImplementation((_s, k) => {
-        return (
+      mockWindowSubscriptionValidator.stateKeyExists.mockImplementation(
+        (_s, k) =>
           k.startsWith('user.profile.personal') ||
           k === 'user.profile.preferences.notifications.email' ||
-          k === 'user.profile.preferences.notifications.push'
-        );
-      });
+          k === 'user.profile.preferences.notifications.push',
+      );
 
       // Execute & Verify
       expect(stateKeyExists(state, 'user.profile.personal.name')).toBe(true);
