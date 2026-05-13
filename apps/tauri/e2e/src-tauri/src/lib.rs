@@ -30,6 +30,15 @@ pub fn run() {
     // which WebDriver provider is used. tauri_plugin_wdio_webdriver (the HTTP server) is
     // only needed for the embedded provider and is gated behind WDIO_EMBEDDED_SERVER.
     let mut builder = tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .level(log::LevelFilter::Debug)
+                .build(),
+        )
         .plugin(zubridge_plugin)
         .plugin(tauri_plugin_wdio::init());
 
@@ -46,6 +55,17 @@ pub fn run() {
             // any test runs. Mirrors the wdio-desktop-mobile-example app.
             if let Err(e) = window::create_initial_windows(&app_handle) {
                 eprintln!("[App] Failed to create initial windows: {}", e);
+            }
+
+            // Auto-open DevTools when explicitly requested (e.g. ZUBRIDGE_DEVTOOLS=1).
+            // Off by default so it doesn't interfere with WDIO test runs.
+            if std::env::var("ZUBRIDGE_DEVTOOLS")
+                .map(|v| !matches!(v.to_lowercase().as_str(), "" | "0" | "false"))
+                .unwrap_or(false)
+            {
+                for window in app_handle.webview_windows().values() {
+                    window.open_devtools();
+                }
             }
 
             match tray::setup_tray(app_handle.clone()) {

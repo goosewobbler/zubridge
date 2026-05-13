@@ -1,5 +1,3 @@
-import './setup-wdio-globals.js';
-import '@wdio/tauri-plugin';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -10,6 +8,41 @@ import { createRoot } from 'react-dom/client';
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
 import { AppRoot } from './App.js';
+
+const renderError = (label: string, message: string, stack?: string) => {
+  const root = document.body || document.documentElement;
+  if (!root) return;
+  let panel = document.getElementById('__renderer_error__');
+  if (!panel) {
+    panel = document.createElement('pre');
+    panel.id = '__renderer_error__';
+    panel.style.cssText =
+      'position:fixed;inset:0;z-index:2147483647;margin:0;padding:16px;background:#1e1b4b;color:#fca5a5;font:12px/1.4 ui-monospace,monospace;white-space:pre-wrap;overflow:auto;';
+    root.appendChild(panel);
+  }
+  panel.textContent = `${panel.textContent ?? ''}\n[${label}] ${message}\n${stack ?? ''}`.trim();
+};
+
+window.addEventListener('error', (event) => {
+  const err = event.error ?? event.message;
+  const message = err instanceof Error ? err.message : String(err);
+  renderError('window.onerror', message, err instanceof Error ? err.stack : undefined);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason;
+  const message = reason instanceof Error ? reason.message : String(reason);
+  renderError('unhandledrejection', message, reason instanceof Error ? reason.stack : undefined);
+});
+
+// Load the WebDriverIO Tauri frontend plugin so `window.wdioTauri` is available
+// for the test runner. Fire-and-forget — the plugin's own waitForInit / retry
+// logic handles ordering vs Tauri's globals.
+import('@wdio/tauri-plugin').catch((error) => {
+  // Non-fatal: tests will fail loudly if this never arrives, but the app itself
+  // doesn't need it to function.
+  console.warn('[App] @wdio/tauri-plugin failed to load:', error);
+});
 
 function AppBootstrap() {
   const [windowLabel, setWindowLabel] = useState<string | null>(null);

@@ -42,6 +42,7 @@
     "zubridge:default",
     "wdio:default",
     "wdio-webdriver:default",
+    "log:default",
     "core:default",
     "core:window:allow-get-all-windows"
   ]
