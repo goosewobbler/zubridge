@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "25.7.0",
+    "@types/node": "24.12.4",
     "@types/ws": "^8.18.1",
     "@wdio/cli": "^9.27.1",
     "@wdio/globals": "^9.27.1",
