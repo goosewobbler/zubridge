@@ -16,13 +16,9 @@ vi.mock('../../src/constants.js', () => ({
 }));
 
 vi.mock('../../src/action/ActionExecutor.js', () => ({
-  ActionExecutor: vi.fn().mockImplementation(
-    class {
-      constructor() {
-        return { executeAction: vi.fn() };
-      }
-    },
-  ),
+  ActionExecutor: vi.fn().mockImplementation(function () {
+    return { executeAction: vi.fn() };
+  }),
 }));
 
 vi.mock('../../src/thunk/init.js', () => ({
@@ -42,13 +38,9 @@ vi.mock('../../src/thunk/init.js', () => ({
 }));
 
 vi.mock('../../src/thunk/registration/ThunkRegistrationQueue.js', () => ({
-  ThunkRegistrationQueue: vi.fn().mockImplementation(
-    class {
-      constructor() {
-        return { registerThunk: vi.fn() };
-      }
-    },
-  ),
+  ThunkRegistrationQueue: vi.fn().mockImplementation(function () {
+    return { registerThunk: vi.fn() };
+  }),
 }));
 
 import { ActionExecutor } from '../../src/action/ActionExecutor.js';
@@ -82,25 +74,17 @@ describe('ActionQueueManager', () => {
     mockActionExecutor = {
       executeAction: vi.fn(),
     };
-    vi.mocked(ActionExecutor).mockImplementation(
-      class {
-        constructor() {
-          return mockActionExecutor as unknown as ActionExecutor<AnyState>;
-        }
-      } as unknown as new () => ActionExecutor<AnyState>,
-    );
+    vi.mocked(ActionExecutor).mockImplementation(function () {
+      return mockActionExecutor as unknown as ActionExecutor<AnyState>;
+    } as unknown as new () => ActionExecutor<AnyState>);
 
     // Mock the ThunkRegistrationQueue constructor
     mockThunkRegistrationQueue = {
       registerThunk: vi.fn(),
     };
-    vi.mocked(ThunkRegistrationQueue).mockImplementation(
-      class {
-        constructor() {
-          return mockThunkRegistrationQueue as unknown as ThunkRegistrationQueue;
-        }
-      } as unknown as new () => ThunkRegistrationQueue,
-    );
+    vi.mocked(ThunkRegistrationQueue).mockImplementation(function () {
+      return mockThunkRegistrationQueue as unknown as ThunkRegistrationQueue;
+    } as unknown as new () => ThunkRegistrationQueue);
 
     // Mock thunkManager
     vi.mocked(thunkManager.hasThunk).mockReturnValue(true);

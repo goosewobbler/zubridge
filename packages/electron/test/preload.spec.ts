@@ -18,16 +18,12 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../src/renderer/rendererThunkProcessor.js', () => ({
-  RendererThunkProcessor: vi.fn().mockImplementation(
-    class {
-      constructor() {
-        return {
-          initialize: vi.fn(),
-          setStateProvider: vi.fn(),
-        };
-      }
-    },
-  ),
+  RendererThunkProcessor: vi.fn().mockImplementation(function () {
+    return {
+      initialize: vi.fn(),
+      setStateProvider: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('../src/utils/globalErrorHandlers.js', () => ({

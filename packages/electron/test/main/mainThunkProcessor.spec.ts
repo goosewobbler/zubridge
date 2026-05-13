@@ -43,20 +43,16 @@ vi.mock('../../src/main/actionQueue.js', () => ({
 }));
 
 vi.mock('../../src/thunk/registration/ThunkRegistrationQueue.js', () => ({
-  ThunkRegistrationQueue: vi.fn().mockImplementation(
-    class {
-      constructor() {
-        return {
-          registerThunk: vi.fn().mockImplementation(async (_thunk, mainCallback) => {
-            if (mainCallback) {
-              return await mainCallback();
-            }
-            return 'mocked-result';
-          }),
-        };
-      }
-    },
-  ),
+  ThunkRegistrationQueue: vi.fn().mockImplementation(function () {
+    return {
+      registerThunk: vi.fn().mockImplementation(async (_thunk, mainCallback) => {
+        if (mainCallback) {
+          return await mainCallback();
+        }
+        return 'mocked-result';
+      }),
+    };
+  }),
 }));
 
 // Helper to create mock state manager

@@ -40,27 +40,27 @@ describe('Global Error Handlers', () => {
     }
 
     // Set up error constructor mocks
-    (ConfigurationError as unknown as Mock).mockImplementation(
-      class {
-        constructor(message: string, context: unknown) {
-          return { name: 'ConfigurationError', message, context };
-        }
-      },
-    );
+    (ConfigurationError as unknown as Mock).mockImplementation(function (
+      message: string,
+      context: unknown,
+    ) {
+      return { name: 'ConfigurationError', message, context };
+    });
 
-    (ResourceManagementError as unknown as Mock).mockImplementation(
-      class {
-        constructor(message: string, resource: unknown, operation: unknown, context: unknown) {
-          return {
-            name: 'ResourceManagementError',
-            message,
-            resource,
-            operation,
-            context,
-          };
-        }
-      },
-    );
+    (ResourceManagementError as unknown as Mock).mockImplementation(function (
+      message: string,
+      resource: unknown,
+      operation: unknown,
+      context: unknown,
+    ) {
+      return {
+        name: 'ResourceManagementError',
+        message,
+        resource,
+        operation,
+        context,
+      };
+    });
   });
 
   afterEach(() => {

@@ -48,27 +48,23 @@ vi.mock('../../../src/main/actionQueue.js', () => ({
 }));
 
 vi.mock('../../../src/thunk/Thunk.js', () => ({
-  Thunk: vi.fn().mockImplementation(
-    class {
-      constructor(config: { id: string; sourceWindowId: number; source: string }) {
-        return {
-          id: config.id,
-          sourceWindowId: config.sourceWindowId,
-          source: config.source,
-        };
-      }
-    },
-  ),
+  Thunk: vi.fn().mockImplementation(function (config: {
+    id: string;
+    sourceWindowId: number;
+    source: string;
+  }) {
+    return {
+      id: config.id,
+      sourceWindowId: config.sourceWindowId,
+      source: config.source,
+    };
+  }),
 }));
 
 vi.mock('../../../src/thunk/registration/ThunkRegistrationQueue.js', () => ({
-  ThunkRegistrationQueue: vi.fn().mockImplementation(
-    class {
-      constructor() {
-        return { registerThunk: vi.fn() };
-      }
-    },
-  ),
+  ThunkRegistrationQueue: vi.fn().mockImplementation(function () {
+    return { registerThunk: vi.fn() };
+  }),
 }));
 
 vi.mock('../../../src/utils/windows.js', () => ({
