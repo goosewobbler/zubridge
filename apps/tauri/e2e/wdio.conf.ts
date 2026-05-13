@@ -3,6 +3,11 @@ import url from 'node:url';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
+// Tell the spawned Tauri binary to register tauri-plugin-wdio-webdriver
+// (the embedded WebDriver HTTP server). Matches the wdio-desktop-mobile
+// example's embedded config.
+process.env.WDIO_EMBEDDED_SERVER = 'true';
+
 export const config = {
   runner: 'local',
   specs: ['./test/specs/**/*.spec.ts'],

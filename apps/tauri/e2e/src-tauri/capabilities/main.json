@@ -41,6 +41,7 @@
     },
     "zubridge:default",
     "wdio:default",
+    "wdio-webdriver:default",
     "core:default",
     "core:window:allow-get-all-windows"
   ]
