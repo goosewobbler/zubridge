@@ -117,7 +117,7 @@ jobs:
           cd apps/tauri/e2e
           pnpm exec cross-env ZUBRIDGE_MODE=${{ inputs.mode }} vite build
           cd src-tauri
-          cargo build
+          cargo build --features custom-protocol
 
       - name: Setup E2E Environment (Electron)
         id: setup_e2e
