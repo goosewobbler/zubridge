@@ -14,7 +14,9 @@ const ZUBRIDGE_COMMANDS: &[&str] = &[
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().plugin(
         "zubridge",
-        tauri_build::InlinedPlugin::new().commands(ZUBRIDGE_COMMANDS),
+        tauri_build::InlinedPlugin::new()
+            .commands(ZUBRIDGE_COMMANDS)
+            .default_permission(tauri_build::DefaultPermissionRule::AllowAllCommands),
     ))
     .expect("failed to run tauri-build");
 }
