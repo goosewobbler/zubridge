@@ -12,13 +12,16 @@ export const config = {
     {
       browserName: 'tauri',
       'tauri:options': {
-        // @wdio/tauri-service@1.0.0 on Windows breaks early after the Edge WebDriver check and
-        // never writes the resolved binary path back to tauriOptions.application, so workers
-        // receive the app directory and fail with ENOENT. Pass the binary directly on Windows.
-        application:
-          process.platform === 'win32'
-            ? path.join(__dirname, 'src-tauri', 'target', 'debug', 'e2e-tauri.exe')
-            : __dirname,
+        // Explicit binary path avoids silent auto-discovery failure modes and also works around a
+        // @wdio/tauri-service@1.0.0 Windows bug where the resolved path is never written back to
+        // tauriOptions.application, causing workers to spawn the directory and get ENOENT.
+        application: path.join(
+          __dirname,
+          'src-tauri',
+          'target',
+          'debug',
+          `e2e-tauri${process.platform === 'win32' ? '.exe' : ''}`,
+        ),
       },
     },
   ],
