@@ -67,7 +67,7 @@ jobs:
 
           TAURI_V2_DEPS=\
           "libwebkit2gtk-4.1-dev \
-          webkitgtk-webdriver \
+          webkit2gtk-driver \
           libjavascriptcoregtk-4.1-dev"
 
 

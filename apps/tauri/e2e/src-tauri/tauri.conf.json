@@ -10,6 +10,7 @@
     "beforeBuildCommand": "pnpm vite build"
   },
   "app": {
+    "withGlobalTauri": true,
     "security": {
       "csp": {
         "default-src": [
