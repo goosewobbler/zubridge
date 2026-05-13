@@ -9,7 +9,8 @@ export const THUNK_PROCESSOR_DEFAULTS: Required<ThunkProcessorOptions> = {
   /** Default maximum queue size */
   maxQueueSize: 100,
   /** Platform-specific timeout - Linux gets longer timeout due to slower IPC */
-  actionCompletionTimeoutMs: process.platform === 'linux' ? 60000 : 30000,
+  actionCompletionTimeoutMs:
+    typeof process !== 'undefined' && process.platform === 'linux' ? 60000 : 30000,
 };
 
 /**
