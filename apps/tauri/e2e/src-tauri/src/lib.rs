@@ -41,6 +41,13 @@ pub fn run() {
         .setup(move |app| {
             let app_handle = app.app_handle().clone();
 
+            // Create windows AFTER plugins (especially tauri-plugin-wdio) have
+            // initialised so the frontend plugin can intercept invoke before
+            // any test runs. Mirrors the wdio-desktop-mobile-example app.
+            if let Err(e) = window::create_initial_windows(&app_handle) {
+                eprintln!("[App] Failed to create initial windows: {}", e);
+            }
+
             match tray::setup_tray(app_handle.clone()) {
                 Ok(_tray) => println!("[App] Tray installed"),
                 Err(e) => eprintln!("[App] Tray setup failed: {}", e),
