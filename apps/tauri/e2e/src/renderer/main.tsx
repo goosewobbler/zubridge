@@ -1,4 +1,3 @@
-import '@wdio/tauri-plugin';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -9,6 +8,14 @@ import { createRoot } from 'react-dom/client';
 import '@zubridge/ui/styles.css';
 import './styles/index.css';
 import { AppRoot } from './App.js';
+
+if (typeof window !== 'undefined') {
+  if (!window.__TAURI__) window.__TAURI__ = {};
+  if (!window.__TAURI__.core) window.__TAURI__.core = {};
+  window.__TAURI__.core.invoke = invoke as (cmd: string, args?: unknown) => Promise<unknown>;
+}
+
+void import('@wdio/tauri-plugin');
 
 function AppBootstrap() {
   const [windowLabel, setWindowLabel] = useState<string | null>(null);
