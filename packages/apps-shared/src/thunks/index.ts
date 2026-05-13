@@ -119,7 +119,8 @@ export const createDoubleCounterThunk = <S extends BaseState = BaseState>(
 
       // If using slow actions with non-async handlers, add a delay to simulate async behavior
       if (useSlow && !asyncHandlers && actionType.includes('SLOW')) {
-        const delayTime = process.platform === 'linux' ? 5000 : 2500;
+        const delayTime =
+          typeof process !== 'undefined' && process.platform === 'linux' ? 5000 : 2500;
         logWithTimestamp(
           `${logPrefix} [DEBUG] [${thunkType}] Adding ${delayTime}ms delay after ${actionType} for non-async handler`,
         );
@@ -372,7 +373,8 @@ export const createDistinctiveCounterThunk = <S extends BaseState = BaseState>(
 
       // If using slow actions with non-async handlers, add a delay to simulate async behavior
       if (useSlow && !asyncHandlers) {
-        const delayTime = process.platform === 'linux' ? 5000 : 2500;
+        const delayTime =
+          typeof process !== 'undefined' && process.platform === 'linux' ? 5000 : 2500;
         logWithTimestamp(
           `${logPrefix} [DEBUG] [${thunkType}] Adding ${delayTime}ms delay after ${action} for non-async handler`,
         );
