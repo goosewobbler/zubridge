@@ -5,12 +5,18 @@ import { SubscriptionManager } from '../../../src/subscription/SubscriptionManag
 
 // Mock dependencies
 vi.mock('../../../src/subscription/SubscriptionManager.js', () => ({
-  SubscriptionManager: vi.fn().mockImplementation(() => ({
-    subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    unsubscribe: vi.fn(),
-    getCurrentSubscriptionKeys: vi.fn(() => []),
-    notify: vi.fn(),
-  })),
+  SubscriptionManager: vi.fn().mockImplementation(
+    class {
+      constructor() {
+        return {
+          subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+          unsubscribe: vi.fn(),
+          getCurrentSubscriptionKeys: vi.fn(() => []),
+          notify: vi.fn(),
+        };
+      }
+    },
+  ),
 }));
 
 describe('ResourceManager', () => {

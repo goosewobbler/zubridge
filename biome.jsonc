@@ -106,6 +106,21 @@
           }
         }
       }
+    },
+    {
+      // Tests use `class { constructor() { return mock; } }` to mock constructible
+      // exports under vitest 4 (arrow functions cannot be invoked with `new`).
+      "includes": [
+        "**/test/**/*.ts",
+        "**/test/**/*.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noConstructorReturn": "off"
+          }
+        }
+      }
     }
   ]
 }

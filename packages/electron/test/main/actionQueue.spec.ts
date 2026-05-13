@@ -16,9 +16,13 @@ vi.mock('../../src/constants.js', () => ({
 }));
 
 vi.mock('../../src/action/ActionExecutor.js', () => ({
-  ActionExecutor: vi.fn().mockImplementation(() => ({
-    executeAction: vi.fn(),
-  })),
+  ActionExecutor: vi.fn().mockImplementation(
+    class {
+      constructor() {
+        return { executeAction: vi.fn() };
+      }
+    },
+  ),
 }));
 
 vi.mock('../../src/thunk/init.js', () => ({
@@ -38,9 +42,13 @@ vi.mock('../../src/thunk/init.js', () => ({
 }));
 
 vi.mock('../../src/thunk/registration/ThunkRegistrationQueue.js', () => ({
-  ThunkRegistrationQueue: vi.fn().mockImplementation(() => ({
-    registerThunk: vi.fn(),
-  })),
+  ThunkRegistrationQueue: vi.fn().mockImplementation(
+    class {
+      constructor() {
+        return { registerThunk: vi.fn() };
+      }
+    },
+  ),
 }));
 
 import { ActionExecutor } from '../../src/action/ActionExecutor.js';
@@ -75,8 +83,11 @@ describe('ActionQueueManager', () => {
       executeAction: vi.fn(),
     };
     vi.mocked(ActionExecutor).mockImplementation(
-      (() =>
-        mockActionExecutor as unknown as ActionExecutor<AnyState>) as unknown as new () => ActionExecutor<AnyState>,
+      class {
+        constructor() {
+          return mockActionExecutor as unknown as ActionExecutor<AnyState>;
+        }
+      } as unknown as new () => ActionExecutor<AnyState>,
     );
 
     // Mock the ThunkRegistrationQueue constructor
@@ -84,8 +95,11 @@ describe('ActionQueueManager', () => {
       registerThunk: vi.fn(),
     };
     vi.mocked(ThunkRegistrationQueue).mockImplementation(
-      (() =>
-        mockThunkRegistrationQueue as unknown as ThunkRegistrationQueue) as unknown as new () => ThunkRegistrationQueue,
+      class {
+        constructor() {
+          return mockThunkRegistrationQueue as unknown as ThunkRegistrationQueue;
+        }
+      } as unknown as new () => ThunkRegistrationQueue,
     );
 
     // Mock thunkManager
