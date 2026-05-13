@@ -16,6 +16,11 @@ export const config = {
   capabilities: [
     {
       browserName: 'tauri',
+      // Force WebDriver Classic. Without this, WDIO 9.27 will try to upgrade
+      // the session to BiDi (WebSocket) which the embedded driver doesn't
+      // speak — on Windows the worker crashes outright (STATUS_STACK_BUFFER_OVERRUN)
+      // instead of failing cleanly. Matches the wdio-desktop-mobile-example.
+      'wdio:enforceWebDriverClassic': true,
       'tauri:options': {
         // Explicit binary path avoids silent auto-discovery failure modes and also works around a
         // @wdio/tauri-service@1.0.0 Windows bug where the resolved path is never written back to
