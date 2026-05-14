@@ -19,6 +19,10 @@
     "test:e2e:electron-custom": "cross-env APP_DIR=electron/e2e MODE=custom pnpm run exec",
     "test:e2e:tauri": "echo 'Tauri E2E tests temporarily disabled' && exit 0",
     "test:e2e:tauri-v1": "echo 'Tauri V1 E2E tests temporarily disabled' && exit 0",
+    "bench:electron": "pnpm bench:electron-zustand-basic && pnpm bench:electron-redux && pnpm bench:electron-custom && tsx ../scripts/bench-aggregate.ts",
+    "bench:electron-zustand-basic": "cross-env APP_DIR=electron/e2e MODE=zustand-basic SPEC_FILE=bench-performance.spec.ts pnpm run exec",
+    "bench:electron-redux": "cross-env APP_DIR=electron/e2e MODE=redux SPEC_FILE=bench-performance.spec.ts pnpm run exec",
+    "bench:electron-custom": "cross-env APP_DIR=electron/e2e MODE=custom SPEC_FILE=bench-performance.spec.ts pnpm run exec",
     "exec": "xvfb-maybe wdio run ./wdio.conf.ts"
   },
   "dependencies": {
