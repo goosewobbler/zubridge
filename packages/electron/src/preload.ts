@@ -170,19 +170,6 @@ export const preloadBridge = <S extends AnyState>(
     { resolve: () => void; reject: (err: unknown) => void }
   >();
 
-  // Helper function to track action dispatch
-  const trackActionDispatch = (action: Action) => {
-    // Send a message to the main process to track this action dispatch
-    try {
-      if (action.__id) {
-        debug('middleware', `Tracking dispatch of action ${action.__id} (${action.type})`);
-        ipcRenderer.send(IpcChannel.TRACK_ACTION_DISPATCH, { action });
-      }
-    } catch (error) {
-      debug('middleware:error', 'Error tracking action dispatch:', error);
-    }
-  };
-
   // Define the handlers object with subscribe, getState, and dispatch methods
   const handlers: Handlers<S> = {
     // Subscribe to state changes
@@ -478,9 +465,6 @@ export const preloadBridge = <S extends AnyState>(
           actionObj.type
         }, bypassAccessControl=${!!actionObj.__bypassAccessControl}, immediate=${!!actionObj.__immediate}`,
       );
-
-      // Track action dispatch for performance metrics
-      trackActionDispatch(actionObj);
 
       // Route through batcher when available — high-priority actions (e.g. immediate)
       // trigger an immediate flush via the batcher's priority system, so all actions benefit

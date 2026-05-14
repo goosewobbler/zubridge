@@ -164,49 +164,19 @@ Zubridge provides comprehensive thunk support for complex asynchronous logic. Fo
 - Cross-window coordination
 - Bypass flags and completion acknowledgement
 
-## Middleware Integration
+## Bridge Lifecycle Hooks
 
-> **⚠️ Coming Soon**: The `@zubridge/middleware` package is not yet released. This section documents the planned middleware integration for future reference.
-
-Zubridge will support integration with external middleware systems through the upcoming `@zubridge/middleware` package. The middleware will provide logging, performance tracking, and action monitoring capabilities:
+The bridge exposes `onBridgeDestroy` for cleanup logic that needs to run before the bridge tears down its resources:
 
 ```ts
-// in main process
-import { createZustandBridge } from '@zubridge/electron/main';
-import { initZubridgeMiddleware } from '@zubridge/middleware'; // Not yet available
-import { store } from './store.js';
-
-// Initialize middleware with configuration
-const middleware = initZubridgeMiddleware({
-  logging: {
-    enabled: true,
-    console: true,
-    pretty_print: true
-  },
-  performance: {
-    measure_performance: true
-  }
-});
-
-// Create bridge with middleware
 const bridge = createZustandBridge(store, [mainWindow], {
-  middleware: middleware,
-
-  // Bridge lifecycle hook (currently available)
-  onBridgeDestroy: () => {
-    console.log('Bridge is being destroyed');
-    // Clean up any resources
+  onBridgeDestroy: async () => {
+    // Save final state before cleanup
+    const finalState = store.getState();
+    await persistState(finalState);
   },
 });
 ```
-
-The planned middleware will automatically handle:
-- **Action processing** - Logs actions before they're sent to the store
-- **State updates** - Tracks state changes and updates
-- **Performance monitoring** - Measures action processing times
-- **Resource cleanup** - Automatically destroys middleware when bridge is destroyed
-
-**Currently Available**: The `onBridgeDestroy` hook is available now and can be used for custom cleanup logic when the bridge is destroyed.
 
 ## Testing with Zubridge
 

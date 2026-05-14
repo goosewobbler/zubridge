@@ -660,9 +660,6 @@ Configuration options for the core bridge created with `createCoreBridge`.
 
 ```ts
 interface CoreBridgeOptions {
-  // Middleware - **⚠️ Experimental** (not yet released)
-  middleware?: ZubridgeMiddleware;
-
   // Lifecycle hooks
   onBridgeDestroy?: () => Promise<void> | void;
 
@@ -698,10 +695,6 @@ interface CoreBridgeOptions {
 - `enablePeriodicCleanup`: Automatically clean up subscription managers for destroyed windows (default: true)
 - `cleanupIntervalMs`: How often to run cleanup in milliseconds (default: 600000 = 10 minutes)
 - `maxSubscriptionManagers`: Force cleanup when this many managers exist (default: 1000)
-
-**Middleware:**
-
-- `middleware`: **⚠️ Experimental** - Zubridge middleware for tracking actions and state updates. The `@zubridge/middleware` package is not yet released and will be rewritten in the UniFFI rewrite. This API may change.
 
 **Lifecycle Hooks:**
 

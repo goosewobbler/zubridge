@@ -157,7 +157,7 @@ This approach is **not suitable** for comparing selective subscriptions vs full 
 - **Latency budgets**: Verifying that the full round-trip stays within an acceptable bound (e.g., "a counter increment with XL state should process in < Nms")
 - **Scaling behaviour**: Measuring how processing time changes as state size or subscriber count increases, to catch non-linear degradation
 
-These tests depend on the `@zubridge/middleware` package (not yet released) and are currently skipped.
+These tests are planned for the P3 perf comparison harness — see [UNIFFI_REFACTOR_PLAN.md](../../../UNIFFI_REFACTOR_PLAN.md) §P3.
 
 ## Action Priority System
 

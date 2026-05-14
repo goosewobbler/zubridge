@@ -34,10 +34,6 @@ vi.mock('../../src/main/actionQueue.js', () => ({
   initActionQueue: vi.fn(),
 }));
 
-vi.mock('../../src/middleware.js', () => ({
-  createMiddlewareOptions: vi.fn(() => ({})),
-}));
-
 vi.mock('../../src/utils/globalErrorHandlers.js', () => ({
   setupMainProcessErrorHandlers: vi.fn(),
 }));
@@ -90,8 +86,6 @@ describe('BridgeCore', () => {
   let mockIpcHandler: { cleanup: Mock };
   let mockResourceManager: {
     getSubscriptionManager: Mock;
-    setMiddlewareCallbacks: Mock;
-    getMiddlewareCallbacks: Mock;
     clearAll: Mock;
   };
 
@@ -121,8 +115,6 @@ describe('BridgeCore', () => {
 
     mockResourceManager = {
       getSubscriptionManager: vi.fn(),
-      setMiddlewareCallbacks: vi.fn(),
-      getMiddlewareCallbacks: vi.fn(() => ({})),
       clearAll: vi.fn(),
     };
 
@@ -165,32 +157,6 @@ describe('BridgeCore', () => {
       expect(setupMainProcessErrorHandlers).toHaveBeenCalled();
       expect(initActionQueue).toHaveBeenCalledWith(mockStateManager);
       expect(createWebContentsTracker).toHaveBeenCalled();
-    });
-
-    it('should setup middleware callbacks when provided', async () => {
-      const middlewareOptions: Partial<CoreBridgeOptions['middleware']> = {
-        trackActionDispatch: vi.fn(),
-        trackActionReceived: vi.fn(),
-        trackStateUpdate: vi.fn(),
-        trackActionAcknowledged: vi.fn(),
-      };
-
-      const { createMiddlewareOptions } = await import('../../src/middleware.js');
-      const { ResourceManager } = await import('../../src/bridge/resources/ResourceManager.js');
-
-      // Mock the return value to include the middleware options
-      const processedOptions = { ...middlewareOptions };
-      (createMiddlewareOptions as Mock).mockReturnValue(processedOptions);
-      (ResourceManager as Mock).mockImplementation(function () {
-        return mockResourceManager;
-      });
-
-      const _bridge = createCoreBridge(mockStateManager, {
-        middleware: middlewareOptions as CoreBridgeOptions['middleware'],
-      });
-
-      expect(createMiddlewareOptions).toHaveBeenCalledWith(middlewareOptions);
-      expect(mockResourceManager.setMiddlewareCallbacks).toHaveBeenCalled();
     });
 
     it('should handle state manager subscription and notifications', async () => {
@@ -392,53 +358,6 @@ describe('BridgeCore', () => {
       await bridge.destroy();
 
       expect(unsubscribeMock).toHaveBeenCalled();
-    });
-  });
-
-  describe('middleware integration', () => {
-    it('should register middleware callbacks correctly', async () => {
-      const middlewareOptions: Partial<CoreBridgeOptions['middleware']> = {
-        trackActionDispatch: vi.fn(),
-        trackActionReceived: vi.fn(),
-        trackStateUpdate: vi.fn(),
-        trackActionAcknowledged: vi.fn(),
-      };
-
-      const { createMiddlewareOptions } = await import('../../src/middleware.js');
-      const { ResourceManager } = await import('../../src/bridge/resources/ResourceManager.js');
-
-      (createMiddlewareOptions as Mock).mockReturnValue(middlewareOptions);
-      (ResourceManager as Mock).mockImplementation(function () {
-        return mockResourceManager;
-      });
-
-      createCoreBridge(mockStateManager, {
-        middleware: middlewareOptions as CoreBridgeOptions['middleware'],
-      });
-
-      expect(mockResourceManager.setMiddlewareCallbacks).toHaveBeenCalled();
-      const callArgs = mockResourceManager.setMiddlewareCallbacks.mock.calls[0][0];
-      expect(typeof callArgs.trackActionDispatch).toBe('function');
-      expect(typeof callArgs.trackActionReceived).toBe('function');
-      expect(typeof callArgs.trackStateUpdate).toBe('function');
-      expect(typeof callArgs.trackActionAcknowledged).toBe('function');
-    });
-
-    it('should handle partial middleware options', async () => {
-      const middlewareOptions: Partial<CoreBridgeOptions['middleware']> = {
-        trackActionDispatch: vi.fn(),
-        // Missing other callbacks
-      };
-
-      const { createMiddlewareOptions } = await import('../../src/middleware.js');
-
-      (createMiddlewareOptions as Mock).mockReturnValue(middlewareOptions);
-
-      createCoreBridge(mockStateManager, {
-        middleware: middlewareOptions as CoreBridgeOptions['middleware'],
-      });
-
-      expect(createMiddlewareOptions).toHaveBeenCalledWith(middlewareOptions);
     });
   });
 

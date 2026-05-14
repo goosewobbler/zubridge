@@ -3,10 +3,7 @@ import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import { ipcMain } from 'electron';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { IpcHandler } from '../../../src/bridge/ipc/IpcHandler.js';
-import type {
-  MiddlewareCallbacks,
-  ResourceManager,
-} from '../../../src/bridge/resources/ResourceManager.js';
+import type { ResourceManager } from '../../../src/bridge/resources/ResourceManager.js';
 import { IpcChannel } from '../../../src/constants.js';
 import { actionQueue } from '../../../src/main/actionQueue.js';
 import { getPartialState } from '../../../src/subscription/SubscriptionManager.js';
@@ -94,7 +91,6 @@ describe('IpcHandler', () => {
   let mockStateManager: StateManager<AnyState>;
   let mockResourceManager: {
     getSubscriptionManager: () => Mock;
-    getMiddlewareCallbacks: () => MiddlewareCallbacks;
   };
   let ipcHandler: IpcHandler<AnyState>;
   let mockWebContents: WebContents;
@@ -112,7 +108,6 @@ describe('IpcHandler', () => {
     // Create mock resource manager
     mockResourceManager = {
       getSubscriptionManager: vi.fn(),
-      getMiddlewareCallbacks: vi.fn(() => ({})),
     };
 
     // Create mock WebContents
@@ -132,10 +127,6 @@ describe('IpcHandler', () => {
   describe('initialization', () => {
     it('should register all IPC handlers during construction', () => {
       expect(ipcMain.on).toHaveBeenCalledWith(IpcChannel.DISPATCH, expect.any(Function));
-      expect(ipcMain.on).toHaveBeenCalledWith(
-        IpcChannel.TRACK_ACTION_DISPATCH,
-        expect.any(Function),
-      );
       expect(ipcMain.on).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK, expect.any(Function));
       expect(ipcMain.on).toHaveBeenCalledWith(IpcChannel.COMPLETE_THUNK, expect.any(Function));
       expect(ipcMain.on).toHaveBeenCalledWith(IpcChannel.STATE_UPDATE_ACK, expect.any(Function));
@@ -280,81 +271,6 @@ describe('IpcHandler', () => {
         thunkState: { version: 0, thunks: [] },
         error: 'serialized error',
       });
-    });
-  });
-
-  describe('handleTrackActionDispatch', () => {
-    let mockEvent: IpcMainEvent;
-
-    beforeEach(() => {
-      mockEvent = {
-        sender: mockWebContents,
-      } as IpcMainEvent;
-    });
-
-    it('should handle valid action tracking', async () => {
-      const actionData = {
-        action: { type: 'TRACK_TEST', __id: 'track-123' },
-      };
-
-      (mockResourceManager.getMiddlewareCallbacks as Mock).mockReturnValue({
-        trackActionDispatch: vi.fn(),
-      });
-
-      await ipcHandler.handleTrackActionDispatch(mockEvent, actionData);
-
-      const middlewareCallbacks = mockResourceManager.getMiddlewareCallbacks();
-      expect(middlewareCallbacks.trackActionDispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'TRACK_TEST',
-          __id: 'track-123',
-          __sourceWindowId: 123,
-        }),
-      );
-    });
-
-    it('should handle invalid action tracking data gracefully', async () => {
-      const invalidData = { action: null };
-
-      await expect(
-        ipcHandler.handleTrackActionDispatch(mockEvent, invalidData),
-      ).resolves.not.toThrow();
-    });
-
-    it('should handle action without type gracefully', async () => {
-      const invalidActionData = {
-        action: { __id: 'invalid-track' },
-      };
-
-      await expect(
-        ipcHandler.handleTrackActionDispatch(mockEvent, invalidActionData),
-      ).resolves.not.toThrow();
-    });
-
-    it('should serialize action payload for middleware', async () => {
-      const actionData = {
-        action: {
-          type: 'PAYLOAD_TEST',
-          __id: 'payload-123',
-          payload: { complex: 'data' },
-        },
-      };
-
-      (mockResourceManager.getMiddlewareCallbacks as Mock).mockReturnValue({
-        trackActionDispatch: vi.fn(),
-      });
-
-      await ipcHandler.handleTrackActionDispatch(mockEvent, actionData);
-
-      const middlewareCallbacks =
-        mockResourceManager.getMiddlewareCallbacks() as MiddlewareCallbacks;
-      expect(middlewareCallbacks.trackActionDispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'PAYLOAD_TEST',
-          __id: 'payload-123',
-          payload: '{"complex":"data"}', // Should be serialized
-        }),
-      );
     });
   });
 
@@ -630,7 +546,6 @@ describe('IpcHandler', () => {
       expect(ipcMain.removeHandler).toHaveBeenCalledWith(IpcChannel.GET_STATE);
       expect(ipcMain.removeHandler).toHaveBeenCalledWith(IpcChannel.GET_WINDOW_SUBSCRIPTIONS);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.DISPATCH);
-      expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.TRACK_ACTION_DISPATCH);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.COMPLETE_THUNK);
     });

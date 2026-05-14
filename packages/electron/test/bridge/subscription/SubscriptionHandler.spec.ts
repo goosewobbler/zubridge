@@ -53,8 +53,6 @@ describe('SubscriptionHandler', () => {
     removeSubscriptionManager: Mock<(id: number) => void>;
     hasDestroyListener: Mock<(id: number) => boolean>;
     addDestroyListener: Mock<(id: number) => void>;
-    getMiddlewareCallbacks: Mock<() => unknown>;
-    setMiddlewareCallbacks: Mock<(callbacks: unknown) => void>;
     clearAll: Mock<() => void>;
   };
   let mockStateManager: StateManager<AnyState>;
@@ -77,8 +75,6 @@ describe('SubscriptionHandler', () => {
       removeSubscriptionManager: vi.fn(),
       hasDestroyListener: vi.fn(() => false),
       addDestroyListener: vi.fn(),
-      getMiddlewareCallbacks: vi.fn(() => ({})),
-      setMiddlewareCallbacks: vi.fn(),
       clearAll: vi.fn(),
     };
 
@@ -700,8 +696,6 @@ describe('SubscriptionHandler', () => {
           addDestroyListener: vi.fn((id: number) => {
             destroyListeners.add(id);
           }),
-          getMiddlewareCallbacks: vi.fn(() => ({})),
-          setMiddlewareCallbacks: vi.fn(),
           clearAll: vi.fn(),
         } as unknown as ResourceManager<AnyState>,
         subManagers,

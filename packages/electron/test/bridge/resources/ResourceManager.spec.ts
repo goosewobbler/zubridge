@@ -75,40 +75,6 @@ describe('ResourceManager', () => {
     });
   });
 
-  describe('setMiddlewareCallbacks', () => {
-    it('should store middleware callbacks', () => {
-      const middlewareCallbacks = {
-        trackActionDispatch: vi.fn(),
-        trackActionReceived: vi.fn(),
-        trackStateUpdate: vi.fn(),
-        trackActionAcknowledged: vi.fn(),
-      };
-
-      resourceManager.setMiddlewareCallbacks(middlewareCallbacks);
-
-      expect(resourceManager.getMiddlewareCallbacks()).toEqual(middlewareCallbacks);
-    });
-  });
-
-  describe('getMiddlewareCallbacks', () => {
-    it('should return stored middleware callbacks', () => {
-      const middlewareCallbacks = {
-        trackActionDispatch: vi.fn(),
-        trackStateUpdate: vi.fn(),
-      };
-
-      resourceManager.setMiddlewareCallbacks(middlewareCallbacks);
-
-      const result = resourceManager.getMiddlewareCallbacks();
-      expect(result).toEqual(middlewareCallbacks);
-    });
-
-    it('should return empty object when no callbacks set', () => {
-      const result = resourceManager.getMiddlewareCallbacks();
-      expect(result).toEqual({});
-    });
-  });
-
   describe('removeSubscriptionManager', () => {
     it('should remove specific subscription manager', () => {
       const windowId = 123;
@@ -299,15 +265,6 @@ describe('ResourceManager', () => {
       expect(resourceManager.getSubscriptionManager(windowId2)).toBeUndefined();
     });
 
-    it('should clear middleware callbacks', () => {
-      const middlewareCallbacks = { trackActionDispatch: vi.fn() };
-      resourceManager.setMiddlewareCallbacks(middlewareCallbacks);
-
-      resourceManager.clearAll();
-
-      expect(resourceManager.getMiddlewareCallbacks()).toEqual({});
-    });
-
     it('should clear destroy listeners', () => {
       resourceManager.addDestroyListener(123);
       resourceManager.addDestroyListener(456);
@@ -336,36 +293,6 @@ describe('ResourceManager', () => {
       expect(timerResourceManager).toBeDefined();
 
       vi.useRealTimers();
-    });
-  });
-
-  describe('middleware callback handling', () => {
-    it('should handle partial middleware callbacks', () => {
-      const partialCallbacks = {
-        trackActionDispatch: vi.fn(),
-        // Missing other callbacks
-      };
-
-      resourceManager.setMiddlewareCallbacks(partialCallbacks);
-      const result = resourceManager.getMiddlewareCallbacks();
-
-      expect(result.trackActionDispatch).toBe(partialCallbacks.trackActionDispatch);
-      expect(result.trackActionReceived).toBeUndefined();
-      expect(result.trackStateUpdate).toBeUndefined();
-      expect(result.trackActionAcknowledged).toBeUndefined();
-    });
-
-    it('should replace existing callbacks when setting new ones', () => {
-      const firstCallbacks = { trackActionDispatch: vi.fn() };
-      const secondCallbacks = { trackStateUpdate: vi.fn() };
-
-      resourceManager.setMiddlewareCallbacks(firstCallbacks);
-      resourceManager.setMiddlewareCallbacks(secondCallbacks);
-
-      const result = resourceManager.getMiddlewareCallbacks();
-
-      expect(result.trackActionDispatch).toBeUndefined();
-      expect(result.trackStateUpdate).toBe(secondCallbacks.trackStateUpdate);
     });
   });
 });

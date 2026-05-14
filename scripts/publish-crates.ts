@@ -38,13 +38,6 @@ const knownCrates = [
     dirName: 'tauri-plugin', // Directory name under packages/
     path: 'packages/tauri-plugin',
   },
-  {
-    name: 'zubridge-middleware',
-    dirName: 'middleware', // Directory name under packages/
-    path: 'packages/middleware',
-    isHybrid: true,
-    hasNodeBindings: true,
-  },
   // Add more crates here if needed
 ];
 

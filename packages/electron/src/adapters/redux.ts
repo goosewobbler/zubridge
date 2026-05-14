@@ -2,7 +2,6 @@ import type { Action, AnyState, Handler, StateManager } from '@zubridge/types';
 import { debug } from '@zubridge/utils';
 import type { Store } from 'redux';
 import { ActionProcessingError } from '../errors/index.js';
-import type { ZubridgeMiddleware } from '../middleware.js';
 import { logZubridgeError } from '../utils/errorHandling.js';
 import { resolveHandler } from '../utils/handlers.js';
 import { isPromise } from '../utils/serialization.js';
@@ -12,7 +11,6 @@ import { isPromise } from '../utils/serialization.js';
  */
 export interface ReduxOptions<_S extends AnyState> {
   handlers?: Record<string, Handler | Record<string, unknown>>;
-  middleware?: ZubridgeMiddleware;
 }
 
 /**

@@ -837,9 +837,6 @@ describe('bridge.ts', () => {
         IpcChannel.DISPATCH,
       );
       expect(ipcMain.removeAllListeners as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
-        IpcChannel.TRACK_ACTION_DISPATCH,
-      );
-      expect(ipcMain.removeAllListeners as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
         IpcChannel.REGISTER_THUNK,
       );
       expect(ipcMain.removeAllListeners as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
@@ -879,21 +876,6 @@ describe('bridge.ts', () => {
       const bridge = createCoreBridge(stateManager, { resourceManagement: resourceOptions });
 
       expect(bridge).toHaveProperty('subscribe');
-    });
-
-    it('should handle middleware callbacks during destroy', async () => {
-      const stateManager = createMockStateManager();
-      const mockMiddleware = {
-        processAction: vi.fn(),
-        setState: vi.fn(),
-        destroy: vi.fn(),
-      };
-
-      const bridge = createCoreBridge(stateManager, { middleware: mockMiddleware });
-
-      await bridge.destroy();
-
-      expect(mockMiddleware.destroy).toHaveBeenCalled();
     });
 
     it('should handle subscription functionality', () => {
@@ -1070,22 +1052,6 @@ describe('bridge.ts', () => {
       }
 
       await bridge.destroy(); // Clean up the timer
-    });
-
-    it('should handle middleware callbacks in resource manager', () => {
-      const stateManager = createMockStateManager();
-      const mockMiddleware = {
-        processAction: vi.fn(),
-        setState: vi.fn(),
-        destroy: vi.fn(),
-      };
-
-      const bridge = createCoreBridge(stateManager, { middleware: mockMiddleware });
-
-      // Test that bridge works with middleware
-      expect(bridge).toBeDefined();
-      expect(bridge.subscribe).toBeDefined();
-      expect(bridge.destroy).toBeDefined();
     });
 
     it('should handle destroy listener tracking', () => {
@@ -1686,81 +1652,6 @@ describe('bridge.ts', () => {
         expect(() =>
           stateUpdateAckHandler(mockEvent as unknown as IpcMainEvent, {
             // Missing updateId
-          }),
-        ).not.toThrow();
-      }
-    });
-
-    it('should handle action dispatch tracking with missing action type', () => {
-      const stateManager = createMockStateManager();
-      createCoreBridge(stateManager);
-
-      // Get the TRACK_ACTION_DISPATCH handler
-      const onCalls = (ipcMain.on as ReturnType<typeof vi.fn>).mock.calls;
-      const trackActionHandler = onCalls.find(
-        (call) => call[0] === IpcChannel.TRACK_ACTION_DISPATCH,
-      )?.[1];
-      expect(trackActionHandler).toBeDefined();
-
-      if (trackActionHandler) {
-        const mockEvent = {
-          sender: { id: 123 },
-        };
-
-        // Test with missing action type
-        expect(() =>
-          trackActionHandler(mockEvent as unknown as IpcMainEvent, {
-            action: { __id: 'test-id' }, // Missing type
-          }),
-        ).not.toThrow();
-      }
-    });
-
-    it('should handle action dispatch tracking with non-object action', () => {
-      const stateManager = createMockStateManager();
-      createCoreBridge(stateManager);
-
-      // Get the TRACK_ACTION_DISPATCH handler
-      const onCalls = (ipcMain.on as ReturnType<typeof vi.fn>).mock.calls;
-      const trackActionHandler = onCalls.find(
-        (call) => call[0] === IpcChannel.TRACK_ACTION_DISPATCH,
-      )?.[1];
-      expect(trackActionHandler).toBeDefined();
-
-      if (trackActionHandler) {
-        const mockEvent = {
-          sender: { id: 123 },
-        };
-
-        // Test with non-object action
-        expect(() =>
-          trackActionHandler(mockEvent as unknown as IpcMainEvent, {
-            action: 'invalid-action', // String instead of object
-          }),
-        ).not.toThrow();
-      }
-    });
-
-    it('should handle action dispatch tracking with null action', () => {
-      const stateManager = createMockStateManager();
-      createCoreBridge(stateManager);
-
-      // Get the TRACK_ACTION_DISPATCH handler
-      const onCalls = (ipcMain.on as ReturnType<typeof vi.fn>).mock.calls;
-      const trackActionHandler = onCalls.find(
-        (call) => call[0] === IpcChannel.TRACK_ACTION_DISPATCH,
-      )?.[1];
-      expect(trackActionHandler).toBeDefined();
-
-      if (trackActionHandler) {
-        const mockEvent = {
-          sender: { id: 123 },
-        };
-
-        // Test with null action
-        expect(() =>
-          trackActionHandler(mockEvent as unknown as IpcMainEvent, {
-            action: null,
           }),
         ).not.toThrow();
       }

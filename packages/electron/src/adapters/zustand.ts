@@ -2,7 +2,6 @@ import type { AnyState, Handler, RootReducer, StateManager } from '@zubridge/typ
 import { debug } from '@zubridge/utils';
 import type { StoreApi } from 'zustand/vanilla';
 import { ActionProcessingError } from '../errors/index.js';
-import type { ZubridgeMiddleware } from '../middleware.js';
 import { logZubridgeError } from '../utils/errorHandling.js';
 import { findCaseInsensitiveMatch, findNestedHandler, resolveHandler } from '../utils/handlers.js';
 import { isPromise } from '../utils/serialization.js';
@@ -13,7 +12,6 @@ import { isPromise } from '../utils/serialization.js';
 export interface ZustandOptions<S extends AnyState> {
   handlers?: Record<string, Handler>;
   reducer?: RootReducer<S>;
-  middleware?: ZubridgeMiddleware;
 }
 
 /**
