@@ -19,7 +19,7 @@
     "clean:logs": "pnpx shx rm -rf ./wdio-logs-*"
   },
   "dependencies": {
-    "@reduxjs/toolkit": "^2.11.2",
+    "@reduxjs/toolkit": "^2.12.0",
     "@zubridge/electron": "workspace:*",
     "clsx": "^2.1.1",
     "react": "^19.2.4",
@@ -44,7 +44,7 @@
     "@zubridge/types": "^2.0.1",
     "autoprefixer": "^10.4.27",
     "cross-env": "^10.1.0",
-    "electron": "42.0.1",
+    "electron": "42.1.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "6.0.0-beta.1",
     "is-ci": "^4.1.0",

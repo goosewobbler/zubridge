@@ -111,7 +111,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@oxc-project/runtime": "^0.130.0",
+    "@oxc-project/runtime": "^0.131.0",
     "@types/debug": "^4.1.12",
     "@zubridge/utils": "workspace:*",
     "dequal": "^2.0.3",
