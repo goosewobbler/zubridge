@@ -54,15 +54,15 @@
     "@tauri-apps/api": "^2.8.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.15",
     "@types/shelljs": "^0.10.0",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.7",
     "react": "^19.2.4",
-    "rollup": "^4.59.0",
+    "rollup": "^4.60.4",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "files": [
     "dist/*",
