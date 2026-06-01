@@ -47,14 +47,14 @@ importers:
         specifier: ^2.8.17
         version: 2.9.12
       weald:
-        specifier: ^1.0.6
-        version: 1.1.1
+        specifier: ^1.1.3
+        version: 1.1.3
 
   apps/electron/e2e:
     dependencies:
       '@reduxjs/toolkit':
-        specifier: ^2.11.2
-        version: 2.11.2(react@19.2.6)
+        specifier: ^2.12.0
+        version: 2.12.0(react@19.2.6)
       '@zubridge/apps-shared':
         specifier: workspace:*
         version: link:../../../packages/apps-shared
@@ -83,8 +83,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -114,8 +114,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -136,7 +136,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
 
   apps/electron/minimal-context-isolation-false:
     dependencies:
@@ -156,8 +156,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -197,7 +197,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -205,8 +205,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -230,7 +230,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -253,8 +253,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -294,7 +294,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -302,8 +302,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -327,7 +327,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -335,8 +335,8 @@ importers:
   apps/electron/minimal-redux:
     dependencies:
       '@reduxjs/toolkit':
-        specifier: ^2.11.2
-        version: 2.11.2(react@19.2.6)
+        specifier: ^2.12.0
+        version: 2.12.0(react@19.2.6)
       '@zubridge/electron':
         specifier: workspace:*
         version: link:../../../packages/electron
@@ -356,8 +356,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -397,7 +397,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -405,8 +405,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -430,7 +430,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -453,8 +453,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -494,7 +494,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -502,8 +502,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -527,7 +527,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -550,8 +550,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -591,7 +591,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -599,8 +599,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -624,7 +624,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -647,8 +647,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -688,7 +688,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -696,8 +696,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -721,7 +721,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -747,8 +747,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -788,7 +788,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -796,8 +796,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -821,7 +821,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -844,8 +844,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.2.1
@@ -885,7 +885,7 @@ importers:
         version: 9.27.1
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
+        version: 2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.14)
@@ -893,8 +893,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -918,7 +918,7 @@ importers:
         version: 8.0.12(@types/node@24.3.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -944,8 +944,8 @@ importers:
         specifier: ^19.2.4
         version: 19.2.6(react@19.2.6)
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^1.6.3
@@ -1063,8 +1063,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.0.1
-        version: 42.0.1
+        specifier: 42.3.0
+        version: 42.3.0
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10
@@ -1101,7 +1101,7 @@ importers:
         version: 5.9.3
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0))
       webdriverio:
         specifier: ^9.27.1
         version: 9.27.1(puppeteer-core@22.15.0)
@@ -1131,8 +1131,8 @@ importers:
   packages/electron:
     dependencies:
       '@oxc-project/runtime':
-        specifier: ^0.130.0
-        version: 0.130.0
+        specifier: ^0.133.0
+        version: 0.133.0
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.13
@@ -1152,8 +1152,8 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@rollup/plugin-commonjs':
         specifier: ^29.0.2
@@ -1237,8 +1237,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@tauri-apps/api':
         specifier: ^2.8.0
@@ -1295,8 +1295,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       zustand:
-        specifier: ^5.0.11
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
 
   packages/ui:
     dependencies:
@@ -1369,8 +1369,8 @@ importers:
         specifier: ^9.4.4
         version: 9.18.0
       weald:
-        specifier: ^1.0.6
-        version: 1.1.1
+        specifier: ^1.1.3
+        version: 1.1.3
 
 packages:
 
@@ -1401,6 +1401,10 @@ packages:
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/code-frame@7.29.7':
+    resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/compat-data@7.29.3':
@@ -1453,6 +1457,10 @@ packages:
     resolution: {integrity: sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/helper-validator-identifier@7.29.7':
+    resolution: {integrity: sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/helper-validator-identifier@8.0.0-rc.4':
     resolution: {integrity: sha512-HTD3bskipk5MSm08twTW6832jzIXUhxMddy4NPPzIMuyMEsrs0ZgwAaMj5ubB5+6hMlUjDu17vNconEmwsmpYg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1487,6 +1495,10 @@ packages:
 
   '@babel/runtime@7.29.2':
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.28.6':
@@ -2744,8 +2756,8 @@ packages:
   '@octokit/types@16.0.0':
     resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
 
-  '@oxc-project/runtime@0.130.0':
-    resolution: {integrity: sha512-A+ZsSAnSO8HOI9Kly0JiImXwovhLakMC0LuKHFu80Nbn1Oxs9OMM7E8TmY8Gb1KxhgtdEsmDYllHYDYQF8B5ZQ==}
+  '@oxc-project/runtime@0.133.0':
+    resolution: {integrity: sha512-PkvjA1Lq5++V5S1E6Patr92ZVcieE6EalDr1VJTqv4BnjZdOUC4W3p8k1wMXSd5/2aFP4b/A6N5sg2Bkzcr9vQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
   '@oxc-project/types@0.129.0':
@@ -2853,8 +2865,8 @@ packages:
   '@quansync/fs@1.0.0':
     resolution: {integrity: sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ==}
 
-  '@reduxjs/toolkit@2.11.2':
-    resolution: {integrity: sha512-Kd6kAHTA6/nUpp8mySPqj3en3dm0tdMIgbttnQ1xFMVpufoj+ADi8pXLBsd4xzTRHQa7t/Jv8W5UnCuW4kuWMQ==}
+  '@reduxjs/toolkit@2.12.0':
+    resolution: {integrity: sha512-KiT+RzZbp6mQET+Mg+h2c97+9j1sNflUxQkIHI7Yuzf6Peu+OYpmkn6nbHWmLLWj+1ZODUJFwGZ7gx3L9R9EOw==}
     peerDependencies:
       react: ^16.9.0 || ^17.0.0 || ^18 || ^19
       react-redux: ^7.2.1 || ^8.1.3 || ^9.0.0
@@ -4483,8 +4495,8 @@ packages:
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
-  electron@42.0.1:
-    resolution: {integrity: sha512-d8HnycE970DGESe91Nj30eonFBUcAI9EZ1TwUGJVzSAnJZdh0BkFEinAXjdklvDYst+bVDc8HsksCuqVLrnqdg==}
+  electron@42.3.0:
+    resolution: {integrity: sha512-9ZiLdRXk+WDxW1OgIUz8J2rIQ5TYU9o629gCOjU48Q3dQiOmym7osWsH5Ubs/Jh4uuFLn6m6SBD2rmRXLAPz9g==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -5603,9 +5615,9 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  ms@3.0.0-canary.202508261828:
-    resolution: {integrity: sha512-NotsCoUCIUkojWCzQff4ttdCfIPoA1UGZsyQbi7KmqkNRfKCrvga8JJi2PknHymHOuor0cJSn/ylj52Cbt2IrQ==}
-    engines: {node: '>=18'}
+  ms@4.0.0-nightly.202508271359:
+    resolution: {integrity: sha512-WC/Eo7NzFrOV/RRrTaI0fxKVbNCzEy76j2VqNV8SxDf9D69gSE2Lh0QwYvDlhiYmheBYExAvEAxVf5NoN0cj2A==}
+    engines: {node: '>=20'}
 
   mute-stream@2.0.0:
     resolution: {integrity: sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA==}
@@ -6087,8 +6099,8 @@ packages:
     resolution: {integrity: sha512-oTeemxwoMuxxTYxXUwjkrOPfngTQehlv0/HoYFNkB4uzsP1Un1A9nI8JQKGOFkxpqkC7qkMs0lUsGrvUlbLNUA==}
     engines: {node: '>=14', npm: '>=7'}
 
-  reselect@5.1.1:
-    resolution: {integrity: sha512-K/BG6eIky/SBpzfHZv/dd+9JBFiS4SWV7FIujVyJRux6e45+73RaUHXLmIR1f7WOMaQ0U1km6qwklRQxpJJY0w==}
+  reselect@5.2.0:
+    resolution: {integrity: sha512-AgZ3UOZm3YndfrJ4OYjgrT7bmCm/1iqkjvEfH/oYjzh6PD2qw4QuT3jjnXIrpdt4MTpMXclMT3lXbmRY+XRakw==}
 
   resolve-alpn@1.2.1:
     resolution: {integrity: sha512-0a1F4l73/ZFZOakJnQ3FvkJ2+gSTQWz/r2KE5OdDY0TxPm5h4GkqkWWfM47T7HsbnOtcJVEF4epCVy6u7Q3K+g==}
@@ -6230,6 +6242,11 @@ packages:
 
   semver@7.8.0:
     resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.1:
+    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -6667,8 +6684,16 @@ packages:
     resolution: {integrity: sha512-ZgpWDC5gmNiuY9CnLVXEH8rl50xhRCuLNA97fAUnKi8RRuV4E6KG31pDTsLVUKnohJE0I3XDrTeEydAXRw47xg==}
     engines: {node: '>=18.17'}
 
+  undici@6.26.0:
+    resolution: {integrity: sha512-4yqz8a3n5HmGTlsbADNtr/dJlhkh/55Rq798G6ibiULcXbDtaLpTl1pvdqcbFfeoj3iSi52lePFM7h9H21cw/A==}
+    engines: {node: '>=18.17'}
+
   undici@7.25.0:
     resolution: {integrity: sha512-xXnp4kTyor2Zq+J1FfPI6Eq3ew5h6Vl0F/8d9XU5zZQf1tX9s2Su1/3PiMmUANFULpmksxkClamIZcaUqryHsQ==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.26.0:
+    resolution: {integrity: sha512-3O9Tf67pGhgOv9jM35AbhkXAKi13f3oy3aE4CSgr+TckGeY+/iu97ZXN+J7DpHPzLbVApFd1IFhcnBjREYXYcg==}
     engines: {node: '>=20.18.1'}
 
   unenv@2.0.0-rc.24:
@@ -6854,8 +6879,8 @@ packages:
       electron:
         optional: true
 
-  weald@1.1.1:
-    resolution: {integrity: sha512-PaEQShzMCz8J/AD2N3dJMc1hTZWkJeLKS2NMeiVkV5KDHwgZe7qXLEzyodsT/SODxWDdXJJqocuwf3kHzcXhSQ==}
+  weald@1.1.3:
+    resolution: {integrity: sha512-vMWtNbYuPb58NeG2+0sKA0Een4VMDwzf+3oHqh68buWRSOMUBlUeRb11LhV28czV+DUpJHRykifijZDuS9bInA==}
 
   web-worker@1.5.0:
     resolution: {integrity: sha512-RiMReJrTAiA+mBjGONMnjVDP2u3p9R1vkcGz6gDIrOMT3oGuYwX2WRMYI9ipkphSuE5XKEhydbhNEJh4NY9mlw==}
@@ -7058,8 +7083,8 @@ packages:
       react:
         optional: true
 
-  zustand@5.0.13:
-    resolution: {integrity: sha512-efI2tVaVQPqtOh114loML/Z80Y4NP3yc+Ff0fYiZJPauNeWZeIp/bRFD7I9bfmCOYBh/PHxlglQ9+wvlwnPikQ==}
+  zustand@5.0.14:
+    resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -7107,6 +7132,12 @@ snapshots:
   '@babel/code-frame@7.29.0':
     dependencies:
       '@babel/helper-validator-identifier': 7.28.5
+      js-tokens: 4.0.0
+      picocolors: 1.1.1
+
+  '@babel/code-frame@7.29.7':
+    dependencies:
+      '@babel/helper-validator-identifier': 7.29.7
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
@@ -7183,6 +7214,8 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.28.5': {}
 
+  '@babel/helper-validator-identifier@7.29.7': {}
+
   '@babel/helper-validator-identifier@8.0.0-rc.4': {}
 
   '@babel/helper-validator-identifier@8.0.0-rc.5': {}
@@ -7208,6 +7241,8 @@ snapshots:
       '@babel/helper-plugin-utils': 7.28.6
 
   '@babel/runtime@7.29.2': {}
+
+  '@babel/runtime@7.29.7': {}
 
   '@babel/template@7.28.6':
     dependencies:
@@ -7282,7 +7317,7 @@ snapshots:
     dependencies:
       '@simple-libs/child-process-utils': 1.0.2
       '@simple-libs/stream-utils': 1.2.0
-      semver: 7.8.0
+      semver: 7.8.1
     optionalDependencies:
       conventional-commits-filter: 5.0.0
       conventional-commits-parser: 6.4.0
@@ -7364,10 +7399,10 @@ snapshots:
       env-paths: 3.0.0
       graceful-fs: 4.2.11
       progress: 2.0.3
-      semver: 7.8.0
+      semver: 7.8.1
       sumchecker: 3.0.1
     optionalDependencies:
-      undici: 7.25.0
+      undici: 7.26.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7411,7 +7446,7 @@ snapshots:
       prettier: 3.8.3
       resedit: 2.0.3
       resolve: 1.22.12
-      semver: 7.8.0
+      semver: 7.8.1
       yargs-parser: 21.1.1
     transitivePeerDependencies:
       - supports-color
@@ -8300,7 +8335,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 27.0.0
 
-  '@oxc-project/runtime@0.130.0': {}
+  '@oxc-project/runtime@0.133.0': {}
 
   '@oxc-project/types@0.129.0': {}
 
@@ -8377,7 +8412,7 @@ snapshots:
       extract-zip: 2.0.1
       progress: 2.0.3
       proxy-agent: 6.5.0
-      semver: 7.8.0
+      semver: 7.8.1
       tar-fs: 3.1.2
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -8392,7 +8427,7 @@ snapshots:
       extract-zip: 2.0.1
       progress: 2.0.3
       proxy-agent: 6.5.0
-      semver: 7.8.0
+      semver: 7.8.1
       tar-fs: 3.1.2
       unbzip2-stream: 1.4.3
       yargs: 17.7.2
@@ -8406,14 +8441,14 @@ snapshots:
     dependencies:
       quansync: 1.0.0
 
-  '@reduxjs/toolkit@2.11.2(react@19.2.6)':
+  '@reduxjs/toolkit@2.12.0(react@19.2.6)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@standard-schema/utils': 0.3.0
       immer: 11.1.8
       redux: 5.0.1
       redux-thunk: 3.1.0(redux@5.0.1)
-      reselect: 5.1.1
+      reselect: 5.2.0
     optionalDependencies:
       react: 19.2.6
 
@@ -8787,8 +8822,8 @@ snapshots:
 
   '@testing-library/dom@10.4.1':
     dependencies:
-      '@babel/code-frame': 7.29.0
-      '@babel/runtime': 7.29.2
+      '@babel/code-frame': 7.29.7
+      '@babel/runtime': 7.29.7
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -9283,10 +9318,10 @@ snapshots:
 
   '@zip.js/zip.js@2.8.26': {}
 
-  '@zubridge/types@2.2.0(electron@42.0.1)(zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))':
+  '@zubridge/types@2.2.0(electron@42.3.0)(zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)))':
     dependencies:
-      electron: 42.0.1
-      zustand: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+      electron: 42.3.0
+      zustand: 5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
 
   abbrev@4.0.0: {}
 
@@ -10130,7 +10165,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@42.0.1:
+  electron@42.3.0:
     dependencies:
       '@electron/get': 5.0.0
       '@types/node': 24.3.0
@@ -10672,7 +10707,7 @@ snapshots:
       es6-error: 4.1.1
       matcher: 3.0.0
       roarr: 2.15.4
-      semver: 7.7.4
+      semver: 7.8.1
       serialize-error: 7.0.1
     optional: true
 
@@ -11216,7 +11251,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.8.0
+      semver: 7.8.1
 
   matcher@3.0.0:
     dependencies:
@@ -11317,7 +11352,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  ms@3.0.0-canary.202508261828: {}
+  ms@4.0.0-nightly.202508271359: {}
 
   mute-stream@2.0.0: {}
 
@@ -11331,7 +11366,7 @@ snapshots:
 
   node-abi@4.31.0:
     dependencies:
-      semver: 7.8.0
+      semver: 7.8.1
 
   node-addon-api@1.7.2:
     optional: true
@@ -11340,7 +11375,7 @@ snapshots:
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.8.0
+      semver: 7.8.1
 
   node-gyp@12.3.0:
     dependencies:
@@ -11349,10 +11384,10 @@ snapshots:
       graceful-fs: 4.2.11
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.8.0
+      semver: 7.8.1
       tar: 7.5.15
       tinyglobby: 0.2.16
-      undici: 6.25.0
+      undici: 6.26.0
       which: 6.0.1
 
   node-releases@2.0.44: {}
@@ -11371,19 +11406,19 @@ snapshots:
   normalize-package-data@6.0.2:
     dependencies:
       hosted-git-info: 7.0.2
-      semver: 7.8.0
+      semver: 7.8.1
       validate-npm-package-license: 3.0.4
 
   normalize-package-data@7.0.1:
     dependencies:
       hosted-git-info: 8.1.0
-      semver: 7.8.0
+      semver: 7.8.1
       validate-npm-package-license: 3.0.4
 
   normalize-package-data@8.0.0:
     dependencies:
       hosted-git-info: 9.0.3
-      semver: 7.8.0
+      semver: 7.8.1
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}
@@ -11838,7 +11873,7 @@ snapshots:
     dependencies:
       pe-library: 1.0.1
 
-  reselect@5.1.1: {}
+  reselect@5.2.0: {}
 
   resolve-alpn@1.2.1: {}
 
@@ -12002,6 +12037,8 @@ snapshots:
   semver@7.7.4: {}
 
   semver@7.8.0: {}
+
+  semver@7.8.1: {}
 
   serialize-error@12.0.0:
     dependencies:
@@ -12434,7 +12471,12 @@ snapshots:
 
   undici@6.25.0: {}
 
+  undici@6.26.0: {}
+
   undici@7.25.0: {}
+
+  undici@7.26.0:
+    optional: true
 
   unenv@2.0.0-rc.24:
     dependencies:
@@ -12555,7 +12597,7 @@ snapshots:
       defaults: 1.0.4
     optional: true
 
-  wdio-electron-service@9.2.1(electron@42.0.1)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0)):
+  wdio-electron-service@9.2.1(electron@42.3.0)(expect-webdriverio@5.6.5)(webdriverio@9.27.1(puppeteer-core@22.15.0)):
     dependencies:
       '@babel/parser': 7.29.3
       '@electron/fuses': 2.1.1
@@ -12576,7 +12618,7 @@ snapshots:
       tinyspy: 4.0.4
       webdriverio: 9.27.1(puppeteer-core@22.15.0)
     optionalDependencies:
-      electron: 42.0.1
+      electron: 42.3.0
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer
@@ -12586,9 +12628,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  weald@1.1.1:
+  weald@1.1.3:
     dependencies:
-      ms: 3.0.0-canary.202508261828
+      ms: 4.0.0-nightly.202508271359
       supports-color: 10.2.2
 
   web-worker@1.5.0: {}
@@ -12813,7 +12855,7 @@ snapshots:
       immer: 11.1.8
       react: 19.2.6
 
-  zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)):
+  zustand@5.0.14(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)):
     optionalDependencies:
       '@types/react': 19.2.14
       immer: 11.1.8

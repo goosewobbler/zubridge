@@ -25,7 +25,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "scheduler": "^0.27.0",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
@@ -43,7 +43,7 @@
     "@zubridge/types": "^2.0.1",
     "autoprefixer": "^10.4.27",
     "cross-env": "^10.1.0",
-    "electron": "42.0.1",
+    "electron": "42.3.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "6.0.0-beta.1",
     "is-ci": "^4.1.0",

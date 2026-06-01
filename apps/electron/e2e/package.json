@@ -42,7 +42,7 @@
     "local:dev": "cd ../.. && pnpm clean:cache && pnpm build:packages && cd - && cross-env DEBUG=zubridge:*,example-app:* pnpm dev"
   },
   "dependencies": {
-    "@reduxjs/toolkit": "^2.11.2",
+    "@reduxjs/toolkit": "^2.12.0",
     "@zubridge/apps-shared": "workspace:*",
     "@zubridge/electron": "workspace:*",
     "@zubridge/middleware": "workspace:*",
@@ -52,7 +52,7 @@
     "react-dom": "^19.2.4",
     "redux": "^5.0.1",
     "scheduler": "^0.27.0",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
@@ -64,7 +64,7 @@
     "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.4.27",
     "cross-env": "^10.1.0",
-    "electron": "42.0.1",
+    "electron": "42.3.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "6.0.0-beta.1",
     "postcss": "^8.5.8",

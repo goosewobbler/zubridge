@@ -78,6 +78,6 @@
   "dependencies": {
     "@zubridge/types": "workspace:*",
     "@zubridge/utils": "workspace:*",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.14"
   }
 }
