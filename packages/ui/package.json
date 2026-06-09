@@ -59,13 +59,13 @@
     "@zubridge/electron": "workspace:*",
     "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
+    "postcss": "^8.5.15",
     "react": "^19.2.4",
     "shx": "^0.4.0",
     "tailwindcss": "^4.2.1",
-    "tsdown": "^0.22.0",
+    "tsdown": "^0.22.2",
     "typescript": "^5.9.3",
-    "vite": "^8.0.0"
+    "vite": "^8.0.16"
   },
   "dependencies": {
     "@zubridge/utils": "workspace:*",
