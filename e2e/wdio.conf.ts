@@ -227,6 +227,7 @@ const appArgs = process.env.ELECTRON_APP_PATH
 
 // Determine which spec files to run based on the mode
 let specPattern: string | string[];
+let excludePattern: string[] = [];
 const specificSpecFile = process.env.SPEC_FILE;
 
 if (specificSpecFile) {
@@ -241,7 +242,12 @@ if (specificSpecFile) {
   // For macOS and Linux, use a direct glob pattern for all test files
   specPattern = `${testDirPath}/**/*.spec.ts`;
 
+  // Bench specs are opt-in only — invoked explicitly via SPEC_FILE from the
+  // `test:bench:*` scripts. Excluded from the default `test:e2e` runs.
+  excludePattern = [path.resolve(__dirname, 'test', 'bench-*.spec.ts')];
+
   console.log(`[DEBUG] Using spec pattern: ${specPattern}`);
+  console.log(`[DEBUG] Excluding bench specs: ${excludePattern.join(', ')}`);
 }
 
 // Get the config that will be exported
@@ -267,6 +273,7 @@ const config = {
   runner: 'local',
   outputDir: `wdio-logs-${appDir}-${mode}`,
   specs: [specPattern],
+  exclude: excludePattern,
   baseUrl: `file://${__dirname}`,
   onPrepare: (config: unknown, _capabilities: unknown) => {
     console.log('[DEBUG] Starting test preparation with WebdriverIO');

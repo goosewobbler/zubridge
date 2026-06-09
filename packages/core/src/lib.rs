@@ -3,7 +3,6 @@ pub mod batching;
 pub mod deltas;
 pub mod emit;
 pub mod error;
-pub mod middleware;
 pub mod models;
 pub mod orchestration;
 pub mod state;

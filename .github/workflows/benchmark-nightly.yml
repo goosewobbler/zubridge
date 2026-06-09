@@ -1,0 +1,92 @@
+name: Benchmark Nightly
+
+on:
+  schedule:
+    # 03:00 UTC daily. Off-peak for both US/EU contributors so noise from
+    # parallel CI activity is minimised.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_API: ${{ secrets.TURBO_API }}
+
+jobs:
+  bench:
+    name: Electron perf bench (${{ matrix.mode }})
+    # Pin to a single runner class for stability across runs. Matrix runners
+    # introduce too much variance to gate regressions on. If we ever want
+    # multi-OS coverage, add it as a separate non-gating job.
+    runs-on: macos-14
+    strategy:
+      matrix:
+        mode: [zustand-basic, redux, custom]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: '24.x'
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Build E2E app for ${{ matrix.mode }}
+        run: pnpm run build:electron-${{ matrix.mode }}
+
+      - name: Run bench
+        env:
+          DEBUG: 'zubridge:*'
+        run: pnpm run bench:electron-${{ matrix.mode }}
+
+      - name: Upload raw result
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-raw-${{ matrix.mode }}-${{ github.run_id }}
+          path: benches/raw/${{ matrix.mode }}.json
+          retention-days: 90
+
+  aggregate:
+    name: Aggregate baseline
+    needs: bench
+    if: always()
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/workflows/actions/setup-workspace
+        with:
+          node-version: '24.x'
+
+      - name: Download all raw results
+        uses: actions/download-artifact@v7
+        with:
+          path: benches/raw-downloaded
+          pattern: bench-raw-*-${{ github.run_id }}
+          merge-multiple: false
+
+      - name: Flatten raw results
+        run: |
+          mkdir -p benches/raw
+          find benches/raw-downloaded -name '*.json' -exec cp {} benches/raw/ \;
+          ls -la benches/raw
+
+      - name: Aggregate
+        run: pnpm exec tsx scripts/bench-aggregate.ts
+
+      - name: Upload aggregated baseline
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-baseline-${{ github.run_id }}
+          path: benches/baseline.json
+          retention-days: 365
+
+      # TODO (post P4.5): compare against committed benches/baseline.json and
+      # fail on >10% regression per metric. Today there is no committed
+      # baseline against the v3.0 architecture; once that lands as part of
+      # the 3.1 release, add a `scripts/bench-compare.ts` step here.

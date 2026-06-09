@@ -14,7 +14,6 @@ packages:
   - 'packages/apps-shared'
   - 'packages/core'
   - 'packages/electron'
-  - 'packages/middleware/node'
   - 'packages/tauri'
   - 'packages/tauri-plugin'
   - 'packages/types'

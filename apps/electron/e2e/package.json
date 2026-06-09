@@ -45,7 +45,6 @@
     "@reduxjs/toolkit": "^2.11.2",
     "@zubridge/apps-shared": "workspace:*",
     "@zubridge/electron": "workspace:*",
-    "@zubridge/middleware": "workspace:*",
     "@zubridge/ui": "workspace:*",
     "@zubridge/utils": "workspace:*",
     "react": "^19.2.4",

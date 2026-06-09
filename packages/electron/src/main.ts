@@ -16,8 +16,6 @@ export type { CoreBridgeOptions } from './bridge/index.js';
  */
 export { createBridgeFromStore, createCoreBridge } from './bridge/index.js';
 export { createDispatch } from './main/dispatch.js';
-export type { ZubridgeMiddleware } from './middleware.js';
-export { createMiddlewareOptions } from './middleware.js';
 // Export action validation functions with proper parameter types
 export {
   canDispatchAction,

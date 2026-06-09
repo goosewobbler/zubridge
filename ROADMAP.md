@@ -31,14 +31,13 @@ Path letters describe the **technical integration mechanism**, not priority — 
 
 | Package | Status |
 |---------|--------|
-| `@zubridge/electron` | Shipped 3.0; 3.1 migrating to native binary in refactor |
+| `@zubridge/electron` | Shipped 3.0; 3.1 ships P3 perf baseline against TS core; 3.2 migrates to Rust core via NAPI |
 | `@zubridge/node-native` (new) | Planned P5 — platform `.node` artifacts |
 | `@zubridge/tauri` | Unreleased 1.1.x-next; v2 in refactor |
 | `tauri-plugin-zubridge` | Unreleased 0.1.x-next; v0.2 in refactor |
 | `zubridge-core` (new Rust crate) | Planned P1 |
 | `@zubridge/utils` (rename of `@zubridge/core`) | Rename in P1 |
 | `@zubridge/types` | Shipped 2.2 |
-| `@zubridge/middleware` | Unreleased; absorbed into `zubridge-core::middleware` in P3 |
 
 ---
 

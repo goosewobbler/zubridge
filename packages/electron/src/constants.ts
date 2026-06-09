@@ -59,11 +59,6 @@ export enum IpcChannel {
   GET_THUNK_STATE = 'zubridge:get-thunk-state',
 
   /**
-   * Used by renderer to track action dispatch for performance metrics
-   */
-  TRACK_ACTION_DISPATCH = 'zubridge:track-action-dispatch',
-
-  /**
    * Used by renderer to get window subscriptions from main process
    */
   GET_WINDOW_SUBSCRIPTIONS = 'zubridge:get-window-subscriptions',

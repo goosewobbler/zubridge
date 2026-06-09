@@ -1,20 +1,13 @@
-import type {
-  Action,
-  AnyState,
-  BackendBridge,
-  StateManager,
-  WrapperOrWebContents,
-} from '@zubridge/types';
+import type { AnyState, BackendBridge, StateManager, WrapperOrWebContents } from '@zubridge/types';
 import { debug } from '@zubridge/utils';
 import { initActionQueue } from '../main/actionQueue.js';
-import { createMiddlewareOptions } from '../middleware.js';
 import { actionScheduler, thunkManager } from '../thunk/init.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
 import { setupMainProcessErrorHandlers } from '../utils/globalErrorHandlers.js';
 import { sanitizeState } from '../utils/serialization.js';
 import { createWebContentsTracker, type WebContentsTracker } from '../utils/windows.js';
 import { IpcHandler } from './ipc/IpcHandler.js';
-import { type MiddlewareCallbacks, ResourceManager } from './resources/ResourceManager.js';
+import { ResourceManager } from './resources/ResourceManager.js';
 import { SubscriptionHandler } from './subscription/SubscriptionHandler.js';
 
 /**
@@ -69,50 +62,6 @@ export function createCoreBridge<State extends AnyState>(
     options?.deltas,
   );
 
-  // Process options with middleware if provided
-  let processedOptions = options;
-  if (options?.middleware) {
-    debug('core', 'Initializing middleware');
-    const middlewareOptions = createMiddlewareOptions(options.middleware);
-    processedOptions = {
-      ...options,
-      ...middlewareOptions,
-    };
-
-    // Register middleware callbacks using resource manager
-    const callbacks: MiddlewareCallbacks = {};
-    if (options?.middleware?.trackActionDispatch) {
-      callbacks.trackActionDispatch = async (action: Action) => {
-        await options.middleware?.trackActionDispatch?.(action);
-      };
-    }
-    if (options?.middleware?.trackActionReceived) {
-      callbacks.trackActionReceived = async (action: Action) => {
-        await options.middleware?.trackActionReceived?.(action);
-      };
-    }
-    if (options?.middleware?.trackStateUpdate) {
-      callbacks.trackStateUpdate = async (action: Action, state: string) => {
-        await options.middleware?.trackStateUpdate?.(action, state);
-      };
-    }
-    if (options?.middleware?.trackActionAcknowledged) {
-      callbacks.trackActionAcknowledged = async (actionId: string) => {
-        await options.middleware?.trackActionAcknowledged?.(actionId);
-      };
-    }
-    if (options?.middleware?.trackBatchReceived) {
-      callbacks.trackBatchReceived = async (
-        batchId: string,
-        actionCount: number,
-        sourceWindowId: number,
-      ) => {
-        await options.middleware?.trackBatchReceived?.(batchId, actionCount, sourceWindowId);
-      };
-    }
-    resourceManager.setMiddlewareCallbacks(callbacks);
-  }
-
   // Subscribe to state manager changes and selectively notify windows
   let prevState: State | undefined;
   let stateManagerUnsubscribe: () => void;
@@ -166,10 +115,10 @@ export function createCoreBridge<State extends AnyState>(
 
     // Apply bridge destroy hook BEFORE cleanup if provided
     // This allows users to access final state, log metrics, etc.
-    if (processedOptions?.onBridgeDestroy) {
+    if (options?.onBridgeDestroy) {
       debug('core', 'Applying onBridgeDestroy hook');
       try {
-        await processedOptions.onBridgeDestroy();
+        await options.onBridgeDestroy();
       } catch (error) {
         debug('core', 'Error in onBridgeDestroy hook:', error);
       }

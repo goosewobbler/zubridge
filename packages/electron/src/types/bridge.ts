@@ -1,5 +1,4 @@
 import type { Action, AnyState } from '@zubridge/types';
-import type { ZubridgeMiddleware } from '../middleware.js';
 
 export interface CoreBridgeOptions {
   // Delta update configuration
@@ -8,8 +7,7 @@ export interface CoreBridgeOptions {
     enabled?: boolean;
   };
 
-  // Middleware hooks
-  middleware?: ZubridgeMiddleware;
+  // Lifecycle hooks
   beforeProcessAction?: (action: Action, windowId?: number) => Promise<Action> | Action;
   afterProcessAction?: (
     action: Action,

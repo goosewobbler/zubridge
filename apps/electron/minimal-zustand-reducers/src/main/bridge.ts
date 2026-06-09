@@ -1,4 +1,4 @@
-import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
+import type { ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { RootReducer } from '@zubridge/types';
 import type { StoreApi } from 'zustand';
@@ -10,10 +10,7 @@ import { rootReducer } from '../features/index.js';
  * Creates a bridge using the reducers approach
  * In this approach, we provide a Redux-style reducer function
  */
-export function createBridge(
-  store: StoreApi<State>,
-  middleware?: ZubridgeMiddleware,
-): ZustandBridge {
+export function createBridge(store: StoreApi<State>): ZustandBridge {
   console.log('[Reducers Mode] Creating bridge with root reducer');
 
   // Add debugging wrapper around reducer
@@ -28,9 +25,5 @@ export function createBridge(
     return newState;
   };
 
-  // Create bridge with root reducer and middleware if provided
-  return createZustandBridge<State>(store, {
-    reducer: debugReducer,
-    middleware,
-  });
+  return createZustandBridge<State>(store, { reducer: debugReducer });
 }

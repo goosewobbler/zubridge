@@ -32,9 +32,6 @@ export class IpcHandler<State extends AnyState> {
     // Handle dispatch events from renderers
     ipcMain.on(IpcChannel.DISPATCH, this.handleDispatch.bind(this));
 
-    // Handle track_action_dispatch events from renderers
-    ipcMain.on(IpcChannel.TRACK_ACTION_DISPATCH, this.handleTrackActionDispatch.bind(this));
-
     // Handle getState requests from renderers
     ipcMain.handle(IpcChannel.GET_STATE, this.handleGetState.bind(this));
 
@@ -93,14 +90,6 @@ export class IpcHandler<State extends AnyState> {
         `Received batch ${batchId} with ${actions.length} actions from renderer ${event.sender.id}`,
       );
 
-      // Track batch receipt for telemetry — enables E2E measurement of IPC reduction.
-      // Uses a dedicated callback instead of a synthetic action to avoid polluting
-      // action logs and replay systems with internal telemetry events.
-      const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
-      if (middlewareCallbacks.trackBatchReceived) {
-        void middlewareCallbacks.trackBatchReceived(batchId, actions.length, event.sender.id);
-      }
-
       const results: BatchAckPayload['results'] = [];
       const processAction = async (
         actionItem: (typeof actions)[number],
@@ -139,12 +128,6 @@ export class IpcHandler<State extends AnyState> {
                 error: error instanceof Error ? error.message : String(error),
               });
             } else {
-              // Track action acknowledged with middleware
-              const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
-              if (middlewareCallbacks.trackActionAcknowledged && action.__id) {
-                void middlewareCallbacks.trackActionAcknowledged(action.__id as string);
-              }
-
               resolve({
                 actionId: id,
                 success: true,
@@ -299,13 +282,6 @@ export class IpcHandler<State extends AnyState> {
               'ipc',
               `[BRIDGE DEBUG] Acknowledgment sent for action ${actionObj.__id} to window ${event.sender.id}`,
             );
-
-            // Track action acknowledged with middleware
-            const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
-            if (middlewareCallbacks.trackActionAcknowledged && actionObj.__id) {
-              // Use void to indicate we're intentionally not awaiting
-              void middlewareCallbacks.trackActionAcknowledged(actionObj.__id);
-            }
           }
         } catch (ackError) {
           const ipcError = new IpcCommunicationError('Failed to send action acknowledgment', {
@@ -351,57 +327,6 @@ export class IpcHandler<State extends AnyState> {
         });
         logZubridgeError(ackIpcError);
       }
-    }
-  }
-
-  public async handleTrackActionDispatch(event: IpcMainEvent, data: unknown): Promise<void> {
-    try {
-      const actionData = data as { action?: unknown };
-      const { action } = actionData || {};
-      if (!action || typeof action !== 'object') {
-        debug('middleware:error', 'Invalid action tracking data received');
-        return;
-      }
-
-      // Cast action to Action type after validation
-      const actionObj = action as Action;
-
-      if (!actionObj.type) {
-        debug('middleware:error', 'Action missing type field');
-        return;
-      }
-
-      debug(
-        'middleware',
-        `Received action dispatch tracking for ${actionObj.type} (ID: ${actionObj.__id})`,
-      );
-
-      // Add source window ID to the action
-      const actionWithSource: Action = {
-        ...actionObj,
-        __sourceWindowId: event.sender.id,
-        type: actionObj.type, // Ensure type is not undefined
-      };
-
-      // Call middleware tracking function if available
-      const middlewareCallbacks = this.resourceManager.getMiddlewareCallbacks();
-      if (middlewareCallbacks.trackActionDispatch) {
-        // Ensure payload is a string for Rust middleware
-        if (
-          actionWithSource.payload !== undefined &&
-          typeof actionWithSource.payload !== 'string'
-        ) {
-          actionWithSource.payload = JSON.stringify(actionWithSource.payload);
-        }
-        await middlewareCallbacks.trackActionDispatch(actionWithSource);
-      }
-    } catch (error) {
-      const ipcError = new IpcCommunicationError('Error handling action dispatch tracking', {
-        channel: IpcChannel.TRACK_ACTION_DISPATCH,
-        windowId: event.sender.id,
-        originalError: error,
-      });
-      logZubridgeError(ipcError);
     }
   }
 
@@ -645,7 +570,6 @@ export class IpcHandler<State extends AnyState> {
     ipcMain.removeHandler(IpcChannel.GET_STATE);
     ipcMain.removeHandler(IpcChannel.GET_WINDOW_SUBSCRIPTIONS);
     ipcMain.removeAllListeners(IpcChannel.DISPATCH);
-    ipcMain.removeAllListeners(IpcChannel.TRACK_ACTION_DISPATCH);
     ipcMain.removeAllListeners(IpcChannel.REGISTER_THUNK);
     ipcMain.removeAllListeners(IpcChannel.COMPLETE_THUNK);
     ipcMain.removeAllListeners(IpcChannel.STATE_UPDATE_ACK);

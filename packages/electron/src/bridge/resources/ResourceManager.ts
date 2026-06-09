@@ -1,22 +1,9 @@
-import type { Action, AnyState } from '@zubridge/types';
+import type { AnyState } from '@zubridge/types';
 import { debug } from '@zubridge/utils';
 import { webContents } from 'electron';
 import type { SubscriptionManager } from '../../subscription/SubscriptionManager.js';
 import type { CoreBridgeOptions } from '../../types/bridge.js';
 import type { WebContentsTracker } from '../../utils/windows.js';
-
-// Middleware callback functions
-export interface MiddlewareCallbacks {
-  trackActionDispatch?: (action: Action) => Promise<void>;
-  trackActionReceived?: (action: Action) => Promise<void>;
-  trackStateUpdate?: (action: Action, state: string) => Promise<void>;
-  trackActionAcknowledged?: (actionId: string) => Promise<void>;
-  trackBatchReceived?: (
-    batchId: string,
-    actionCount: number,
-    sourceWindowId: number,
-  ) => Promise<void>;
-}
 
 /**
  * Resource manager to prevent memory leaks in bridge components
@@ -24,7 +11,6 @@ export interface MiddlewareCallbacks {
 export class ResourceManager<State extends AnyState> {
   private subscriptionManagers = new Map<number, SubscriptionManager<State>>();
   private destroyListenerSet = new Set<number>();
-  private middlewareCallbacks: MiddlewareCallbacks = {};
   private MAX_SUBSCRIPTION_MANAGERS = 1000; // Prevent unbounded growth (configurable)
   private cleanupTimer?: NodeJS.Timeout;
 
@@ -98,16 +84,6 @@ export class ResourceManager<State extends AnyState> {
     this.destroyListenerSet.add(windowId);
   }
 
-  setMiddlewareCallbacks(callbacks: MiddlewareCallbacks): void {
-    this.middlewareCallbacks = { ...callbacks };
-    const callbackKeys = Object.keys(callbacks);
-    debug('core', `Middleware callbacks set (${callbackKeys.length}): ${callbackKeys.join(', ')}`);
-  }
-
-  getMiddlewareCallbacks(): MiddlewareCallbacks {
-    return this.middlewareCallbacks;
-  }
-
   private performPeriodicCleanup(): void {
     debug(
       'bridge:memory',
@@ -158,10 +134,9 @@ export class ResourceManager<State extends AnyState> {
   }
 
   clearAll(): void {
-    debug('bridge:memory', 'Clearing all subscription managers and callbacks');
+    debug('bridge:memory', 'Clearing all subscription managers');
     this.subscriptionManagers.clear();
     this.destroyListenerSet.clear();
-    this.middlewareCallbacks = {};
 
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);

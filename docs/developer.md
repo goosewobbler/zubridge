@@ -12,11 +12,12 @@ The Zubridge monorepo is organized using Turborepo with the following packages:
 packages/
 ├── electron/          # Main Electron package (`@zubridge/electron`)
 ├── types/             # Shared TypeScript types (`@zubridge/types`)
-├── core/              # Core utilities and debug system (`@zubridge/core`)
-├── middleware/        # Rust-based middleware (`@zubridge/middleware` - optional, not yet released)
+├── core/              # Platform-agnostic Rust core (`zubridge-core`)
+├── utils/             # Shared utilities and debug system (`@zubridge/utils`)
 ├── ui/                # Shared UI components for test applications
 └── apps-shared/       # Shared logic and utilities for example apps
 └── tauri/             # Main Tauri package (`@zubridge/tauri`)
+└── tauri-plugin/      # Tauri plugin (`tauri-plugin-zubridge`)
 
 apps/
 ├── electron/
