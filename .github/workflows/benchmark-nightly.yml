@@ -40,8 +40,6 @@ jobs:
         run: pnpm run build:electron-${{ matrix.mode }}
 
       - name: Run bench
-        env:
-          DEBUG: 'zubridge:*'
         run: pnpm run bench:electron-${{ matrix.mode }}
 
       - name: Upload raw result
