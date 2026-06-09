@@ -35,12 +35,16 @@ jobs:
     outputs:
       pr_number: ${{ steps.detect.outputs.pr_number }}
     steps:
-      # Sparse checkout of just the config file — avoids cloning the whole repo while
+      # Sparse checkout of just the config files — avoids cloning the whole repo while
       # letting the branch name come from a single source of truth (ci.standingPr.branch).
+      # Both .json and .jsonc are eligible per releasekit's discovery order; we sparse
+      # in both and let the parse step pick whichever exists.
       - name: Checkout config
         uses: actions/checkout@v6
         with:
-          sparse-checkout: releasekit.config.json
+          sparse-checkout: |
+            releasekit.config.json
+            releasekit.config.jsonc
           sparse-checkout-cone-mode: false
 
       - name: Find PR for merge commit
@@ -52,7 +56,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          STANDING_PR_BRANCH=$(jq -r '.ci.standingPr.branch // "release/next"' releasekit.config.json)
+          # Prefer .jsonc when both exist (matches releasekit's own discovery
+          # precedence). Strip full-line // comments before piping to jq, which
+          # only parses strict JSON. The sed pattern is anchored to line-start
+          # so URLs inside string values (e.g. "https://...") are untouched —
+          # which means trailing inline `// ...` comments after JSON content
+          # are NOT supported. Put comments on their own line.
+          if [ -f releasekit.config.jsonc ]; then
+            CONFIG_JSON=$(sed -E 's:^[[:space:]]*//.*$::' releasekit.config.jsonc)
+          else
+            CONFIG_JSON=$(cat releasekit.config.json)
+          fi
+          STANDING_PR_BRANCH=$(printf '%s' "$CONFIG_JSON" | jq -r '.ci.standingPr.branch // "release/next"')
 
           # Primary path: parse the PR number from the squash-merge subject `(#N)` suffix.
           # GitHub's commits→PRs cross-reference index is eventually consistent and can

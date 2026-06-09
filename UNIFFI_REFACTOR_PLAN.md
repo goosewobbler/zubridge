@@ -329,7 +329,7 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 **Releasekit integration (one-time, lands in this phase):**
 
-- `releasekit.config.json` at repo root — `ci.releaseStrategy: standing-pr`, scope labels mapping `scope:electron|tauri|core|utils|types|ui` to the corresponding packages, Cargo + npm publish enabled, OIDC trusted publishing for npm, Ollama-enhanced release notes.
+- `releasekit.config.jsonc` at repo root — `ci.releaseStrategy: standing-pr`, scope labels mapping `scope:electron|tauri|core|utils|types|ui` to the corresponding packages, Cargo + npm publish enabled (`noVerify: true` on cargo so multi-crate publishes don't trip on registry-index propagation lag between dependent crates), OIDC trusted publishing for npm, Ollama-enhanced release notes.
 - Workflows: `.github/workflows/{release,standing-pr,release-preview}.yml` + the two reusables `_release.reusable.yml` and `_standing-pr-update.reusable.yml`. These replace the prior bespoke `release.yml` + `_release-publish.reusable.yml` + `scripts/{calculate-version,publish,publish-crates}.ts`.
 - One-time maintainer setup before the first publish: configure npm trusted-publisher entries (one per published package) pointing at `release.yml`; add `DEPLOY_KEY` (SSH), `CRATES_IO_TOKEN`, and `OLLAMA_API_KEY` secrets; run `releasekit labels sync` to seed the `scope:*` + `release:*` labels.
 
@@ -345,7 +345,7 @@ Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0,
 
 **Critical files:**
 
-- `releasekit.config.json` (new)
+- `releasekit.config.jsonc` (new)
 - `.github/workflows/{release,standing-pr,release-preview}.yml`, `_release.reusable.yml`, `_standing-pr-update.reusable.yml` (new)
 - `packages/core/README.md` (new — required for first `zubridge-core` Cargo publish)
 - `packages/tauri/package.json` peer-dep `@tauri-apps/api: ^2.0.0` (drop `^1.5.3 ||`)
