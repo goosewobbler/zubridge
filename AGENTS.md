@@ -134,10 +134,14 @@ e2e/
 ```bash
 pnpm test                                 # All tests (unit + E2E)
 pnpm test:unit                            # Unit tests only (requires build:packages)
-pnpm test:e2e                             # All E2E tests (Electron + Tauri)
+pnpm test:e2e                             # All E2E tests (Electron only — see note below)
 pnpm test:e2e:electron-zustand-basic      # Single Electron variant
-pnpm test:e2e:tauri-basic                 # Tauri v2 E2E
 ```
+
+> **Note:** `pnpm test:e2e:tauri-basic` and `pnpm test:e2e:tauri-v1-basic` are currently stubbed
+> with a silent `exit 0` in `e2e/package.json` — they print a disabled message and succeed without
+> running any tests. Do not rely on these commands as a signal of Tauri adapter health during the
+> P4 refactor period.
 
 ### E2E Test Notes
 - E2E tests require built apps — run `pnpm build:electron-<variant>` / `pnpm build:tauri` first
