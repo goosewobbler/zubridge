@@ -186,6 +186,10 @@ jobs:
   # OIDC token's workflow_ref claim is release.yml — the trusted-publisher entry on
   # npmjs.com is keyed off the top-level workflow filename, and only one is allowed per
   # package, so all OIDC publishes have to funnel through here.
+  #
+  # Note: after this job the release commits land on main with [skip ci], so standing-pr.yml
+  # never fires on them. reconcile-after-standing-pr below explicitly rebuilds the standing
+  # PR with reconcile: true to bypass the skip-pattern guard.
   release-standing-pr:
     name: Release from Standing PR
     if: github.event_name == 'workflow_dispatch' && inputs.standing_pr_number != ''
@@ -208,4 +212,18 @@ jobs:
     secrets:
       ssh_key: ${{ secrets.DEPLOY_KEY }}
       crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+
+  reconcile-after-standing-pr:
+    name: Reconcile standing PR
+    needs: [release-standing-pr]
+    if: needs.release-standing-pr.result == 'success'
+    uses: ./.github/workflows/_standing-pr-update.reusable.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    with:
+      reconcile: true
+    secrets:
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
       ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}

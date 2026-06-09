@@ -109,7 +109,12 @@ function main() {
   runCommand('pnpm install', ROOT);
 
   console.log('\n📌 Staging changes...');
-  runCommand('git add .', ROOT);
+  const filesToStage = [
+    'package.json',
+    'pnpm-lock.yaml',
+    ...WORKFLOW_FILES.map((f) => f.replace(ROOT + '/', '')),
+  ];
+  runCommand(`git add ${filesToStage.join(' ')}`, ROOT);
 
   console.log(`\n✅ Done — releasekit updated to v${version}`);
 }
