@@ -325,38 +325,37 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 ### P4 — Tauri v2.0 release
 
-**Goal:** First public release on the unified core. Validates the multi-feature architecture in production before Electron migration begins.
+**Goal:** First public release on the unified core. Validates the multi-feature architecture in production before Electron migration begins. **Also bundles the releasekit integration** (standing-PR strategy) so the Tauri v2.0 publish is the first release driven by releasekit and every subsequent release uses the same path.
 
-**Steps:**
+**Releasekit integration (one-time, lands in this phase):**
 
-1. **Version bumps:**
-   - `tauri-plugin-zubridge`: `0.1.1-next.1` → `0.2.0`
-   - `@zubridge/tauri`: `1.1.1-next.1` → `2.0.0`
-   - `zubridge-core`: → `0.1.0` (first publish)
-2. **Update Tauri dep** in `packages/tauri-plugin/Cargo.toml` and `packages/core/Cargo.toml` from `2.0.0-beta` → `2.x` stable.
-3. **CHANGELOG entries:**
-   - `packages/tauri/CHANGELOG.md`: feature parity with Electron v3 (thunks, deltas, subscriptions, batching), migration from v1.
-   - `packages/tauri-plugin/CHANGELOG.md`: 0.1 → 0.2 release notes; dependency on `zubridge-core`.
-   - `packages/core/CHANGELOG.md` (new): initial 0.1.0 release notes.
-4. **Publish flow:**
-   - `cargo publish` for `zubridge-core` first.
-   - `cargo publish` for `tauri-plugin-zubridge`.
-   - `pnpm publish` for `@zubridge/tauri`.
-5. **Update `ROADMAP.md`:** mark P1–P4 of the refactor complete in §1.1 (Tracks table); update §1.2 (Packages table) for the published versions.
+- `releasekit.config.json` at repo root — `ci.releaseStrategy: standing-pr`, scope labels mapping `scope:electron|tauri|core|utils|types|ui` to the corresponding packages, Cargo + npm publish enabled, OIDC trusted publishing for npm, Ollama-enhanced release notes.
+- Workflows: `.github/workflows/{release,standing-pr,release-preview}.yml` + the two reusables `_release.reusable.yml` and `_standing-pr-update.reusable.yml`. These replace the prior bespoke `release.yml` + `_release-publish.reusable.yml` + `scripts/{calculate-version,publish,publish-crates}.ts`.
+- One-time maintainer setup before the first publish: configure npm trusted-publisher entries (one per published package) pointing at `release.yml`; add `DEPLOY_KEY` (SSH), `CRATES_IO_TOKEN`, and `OLLAMA_API_KEY` secrets; run `releasekit labels sync` to seed the `scope:*` + `release:*` labels.
+
+**Release flow (used for P4 and every release thereafter):**
+
+1. Label feature PRs with the relevant `scope:*` label (e.g. `scope:tauri`) plus `release:stable` (or `release:prerelease`). Merge them to main.
+2. `standing-pr.yml` accumulates the changes onto `release/next`; the standing PR shows the next versions + draft changelog.
+3. When ready to ship, merge the standing PR. `standing-pr.yml` detects the merge and dispatches `release.yml` in manifest mode.
+4. `release.yml` publishes via releasekit: `zubridge-core` (Cargo) → `tauri-plugin-zubridge` (Cargo) → `@zubridge/tauri` (npm with provenance). Tags, GitHub Release drafts, and per-package `CHANGELOG.md` updates land automatically.
+5. Post-publish reconcile rebuilds the standing PR against the new HEAD.
+
+Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0, `zubridge-core` → 0.1.0 first publish) come from the conventional-commit history releasekit reads off main; no manual version edits in `package.json` / `Cargo.toml` are required.
 
 **Critical files:**
 
-- `packages/tauri/CHANGELOG.md`
-- `packages/tauri-plugin/CHANGELOG.md`
-- `packages/core/CHANGELOG.md` (new)
-- `ROADMAP.md`
+- `releasekit.config.json` (new)
+- `.github/workflows/{release,standing-pr,release-preview}.yml`, `_release.reusable.yml`, `_standing-pr-update.reusable.yml` (new)
+- `packages/core/README.md` (new — required for first `zubridge-core` Cargo publish)
+- `packages/tauri/package.json` peer-dep `@tauri-apps/api: ^2.0.0` (drop `^1.5.3 ||`)
 
 **Verification:**
 
-- All `apps/tauri/**` E2E specs pass.
-- `cargo publish --dry-run` succeeds for both Rust crates.
-- `pnpm publish --dry-run` succeeds for `@zubridge/tauri`.
-- Sample Tauri app outside the monorepo can install `@zubridge/tauri@2.0.0` + `tauri-plugin-zubridge@0.2.0` and run end-to-end.
+- `pnpm exec releasekit version --dry-run --json` discovers all expected publishable packages (npm + Cargo) and reports the next versions releasekit would compute, confirming the config + workspace layout is sound.
+- The standing PR opens on the first push to main after the workflow lands.
+- A `scope:tauri` + `release:stable` test PR (a no-op doc tweak) round-trips: merges, lands in standing PR, publishes the Tauri v2 trio on standing-PR merge.
+- All `apps/tauri/**` E2E specs pass on the released `@zubridge/tauri@2.0.0` / `tauri-plugin-zubridge@0.2.0` artifacts.
 
 ---
 

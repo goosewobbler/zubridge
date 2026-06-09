@@ -1,47 +1,211 @@
 name: Release
 
+# Three release paths funnel through this workflow so npm OIDC trusted publishing sees
+# a single workflow_ref:
+#   1. Standing-PR publish — standing-pr.yml detects the standing PR merge and dispatches
+#      this workflow with standing_pr_number.
+#   2. Immediate release — under ci.releaseStrategy: standing-pr the gate only fires for
+#      merges labelled release:immediate (CI-gated via workflow_run, as before).
+#   3. Manual scoped release — workflow_dispatch with scope/bump inputs.
+
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
-      release_version:
-        description: 'Release type (patch/minor/major for stable, prepatch/preminor/premajor/prerelease for pre-release)'
+      scope:
+        description: 'Release scope (electron, tauri, core, utils, types, ui)'
         required: true
-        default: 'patch'
-        type: choice
-        options: ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease']
-      packages:
-        description: 'Package directory to release'
-        required: true
-        default: 'electron'
         type: choice
         options:
-          - core
           - electron
-          - middleware
           - tauri
-          - tauri-plugin
+          - core
+          - utils
           - types
-      dry_run:
-        description: 'Dry run - no changes made'
+          - ui
+        default: electron
+      bump:
+        description: 'Version increment'
         required: true
-        default: false
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+        default: patch
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - stable
+          - prerelease
+        default: stable
+      target_branch:
+        description: 'Branch to release from (default: main)'
+        required: false
+        type: string
+        default: main
+      dry_run:
+        description: 'Dry run (show what would happen without publishing)'
+        required: false
         type: boolean
+        default: false
+      standing_pr_number:
+        description: 'PR number of a merged standing release PR. When set, runs the manifest-driven publish path and ignores scope/bump. Set by standing-pr.yml; manual callers should leave blank.'
+        required: false
+        type: string
+        default: ''
+      reconcile_after:
+        description: 'Rebuild the standing release PR after this release completes. Manual callers may enable it so the standing PR drops the just-released changes.'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
 
 jobs:
-  release:
-    name: Release
+  # Under ci.releaseStrategy: standing-pr the gate is the immediate-release evaluator:
+  # it only fires for merges carrying release:immediate — everything else accumulates
+  # into the standing release PR maintained by standing-pr.yml.
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      contents: read
+      actions: read
+      pull-requests: write
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    outputs:
+      should_release: ${{ steps.gate.outputs.should-release }}
+      bump: ${{ steps.gate.outputs.bump }}
+      scope: ${{ steps.gate.outputs.gate-scope }}
+      stable: ${{ steps.gate.outputs.gate-stable }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run ReleaseKit Gate
+        id: gate
+        uses: goosewobbler/releasekit@v0.26.0
+        with:
+          mode: gate
+          node-version: '24'
+          project-dir: .
+          branch: main
+          json: 'true'
+          summary: 'true'
+          skip-checkout: 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  release-auto:
+    name: Release (Immediate)
+    needs: [gate]
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && needs.gate.outputs.should_release == 'true'
+    uses: ./.github/workflows/_release.reusable.yml
+    permissions:
       contents: write
-    uses: ./.github/workflows/_release-publish.reusable.yml
+      id-token: write
     with:
-      release_version: ${{ inputs.release_version }}
-      packages: ${{ inputs.packages }}
-      dry_run: ${{ inputs.dry_run }}
+      target_branch: main
+      bump: ${{ needs.gate.outputs.bump }}
+      release_type: ${{ needs.gate.outputs.stable == 'true' && 'stable' || 'prerelease' }}
+      dry_run: false
+      scope: ${{ needs.gate.outputs.scope }}
     secrets:
-      GITHUB_BOT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-      TURBO_API: ${{ secrets.TURBO_API }}
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
+      crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+
+  # An immediate release leaves the standing PR holding changes that overlap with what
+  # was just published. Re-running standing-pr update reconciles: closes the standing PR
+  # if nothing's left, otherwise rebuilds the release branch against the new HEAD.
+  # reconcile=true bypasses the skip-pattern guard, which would otherwise noop on the
+  # release commit at HEAD.
+  reconcile-after-auto:
+    name: Reconcile standing PR
+    needs: [release-auto]
+    if: needs.release-auto.result == 'success'
+    uses: ./.github/workflows/_standing-pr-update.reusable.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    with:
+      reconcile: true
+    secrets:
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+
+  release-manual:
+    name: Release (Manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.standing_pr_number == ''
+    uses: ./.github/workflows/_release.reusable.yml
+    permissions:
+      contents: write
+      id-token: write
+    with:
+      target_branch: ${{ inputs.target_branch }}
+      bump: ${{ inputs.bump }}
+      release_type: ${{ inputs.release_type }}
+      dry_run: ${{ inputs.dry_run }}
+      scope: ${{ inputs.scope }}
+    secrets:
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
+      crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+
+  reconcile-after-manual:
+    name: Reconcile standing PR
+    needs: [release-manual]
+    if: github.event_name == 'workflow_dispatch' && inputs.reconcile_after && !inputs.dry_run && needs.release-manual.result == 'success'
+    uses: ./.github/workflows/_standing-pr-update.reusable.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    with:
+      reconcile: true
+    secrets:
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+
+  # Standing-PR publish path. Dispatched by standing-pr.yml via `gh workflow run` so the
+  # OIDC token's workflow_ref claim is release.yml — the trusted-publisher entry on
+  # npmjs.com is keyed off the top-level workflow filename, and only one is allowed per
+  # package, so all OIDC publishes have to funnel through here.
+  release-standing-pr:
+    name: Release from Standing PR
+    if: github.event_name == 'workflow_dispatch' && inputs.standing_pr_number != ''
+    uses: ./.github/workflows/_release.reusable.yml
+    permissions:
+      contents: write
+      id-token: write
+      # standing-pr-publish reads the manifest comment from the merged PR and posts a
+      # completion comment back — without this every PR API call 403s.
+      pull-requests: write
+    with:
+      target_branch: main
+      # bump/release_type are required inputs of the reusable but unused on the
+      # standing-pr publish path — versions come from the merged PR's manifest.
+      bump: patch
+      release_type: stable
+      dry_run: false
+      scope: all
+      standing_pr_number: ${{ inputs.standing_pr_number }}
+    secrets:
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
+      crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://goosewobbler.github.io/releasekit/schema.json",
+  "git": {
+    "pushMethod": "ssh",
+    "skipHooks": true
+  },
+  "version": {
+    "preset": "angular",
+    "sync": false,
+    "versionPrefix": "v",
+    "tagTemplate": "${packageName}@v${version}",
+    "commitMessage": "chore: release ${packageName}@${version} [skip ci]",
+    "prereleaseIdentifier": "next",
+    "packageSpecificTags": true,
+    "mismatchStrategy": "prefer-package",
+    "cargo": {
+      "enabled": true
+    },
+    "skip": [
+      "zubridge-monorepo",
+      "zubridge-e2e",
+      "@zubridge/apps-shared",
+      "electron-e2e",
+      "electron-minimal-context-isolation-false",
+      "electron-minimal-custom",
+      "electron-minimal-redux",
+      "electron-minimal-sandbox-true",
+      "electron-minimal-zustand-basic",
+      "electron-minimal-zustand-handlers",
+      "electron-minimal-zustand-immer",
+      "electron-minimal-zustand-reducers",
+      "tauri-e2e",
+      "tauri-v1-e2e",
+      "e2e-tauri",
+      "app"
+    ]
+  },
+  "ci": {
+    "releaseStrategy": "standing-pr",
+    "releaseTrigger": "label",
+    "labels": {
+      "stable": "release:stable",
+      "prerelease": "release:prerelease"
+    },
+    "standingPr": {
+      "branch": "release/next",
+      "mergeMethod": "squash"
+    },
+    "scopeLabels": {
+      "scope:electron": "@zubridge/electron",
+      "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge",
+      "scope:core": "zubridge-core",
+      "scope:utils": "@zubridge/utils",
+      "scope:types": "@zubridge/types",
+      "scope:ui": "@zubridge/ui"
+    }
+  },
+  "notes": {
+    "changelog": {
+      "file": "CHANGELOG.md"
+    },
+    "releaseNotes": {
+      "llm": {
+        "provider": "ollama",
+        "model": "minimax-m2.7:cloud",
+        "baseURL": "https://ollama.com/api",
+        "tasks": {
+          "enhance": true,
+          "categorize": true
+        },
+        "categories": [
+          {
+            "name": "New",
+            "description": "New features and additions"
+          },
+          {
+            "name": "Fixed",
+            "description": "Bug fixes including security and performance fixes"
+          },
+          {
+            "name": "Changed",
+            "description": "Changes to existing functionality"
+          },
+          {
+            "name": "Removed",
+            "description": "Features that were removed"
+          },
+          {
+            "name": "Documentation",
+            "description": "Documentation updates"
+          },
+          {
+            "name": "Developer",
+            "description": "Internal changes",
+            "scopes": [
+              "Dependencies",
+              "CI",
+              "Testing",
+              "Build System",
+              "Code Quality",
+              "Infrastructure",
+              "Tooling",
+              "Performance",
+              "Security"
+            ]
+          }
+        ],
+        "scopes": {
+          "mode": "restricted",
+          "rules": {
+            "caseSensitive": false,
+            "invalidScopeAction": "remove"
+          }
+        },
+        "style": "Use past tense descriptions. Be concise. Focus on what changed, not implementation details."
+      }
+    }
+  },
+  "publish": {
+    "npm": {
+      "enabled": true,
+      "auth": "oidc",
+      "provenance": true,
+      "access": "public",
+      "copyFiles": [
+        "LICENSE"
+      ]
+    },
+    "cargo": {
+      "enabled": true,
+      "noVerify": true
+    },
+    "git": {
+      "push": true,
+      "pushMethod": "ssh"
+    },
+    "githubRelease": {
+      "enabled": true,
+      "draft": true,
+      "body": "auto",
+      "skipPackages": [
+        "@zubridge/types",
+        "@zubridge/utils"
+      ]
+    }
+  }
+}

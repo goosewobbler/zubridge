@@ -1,0 +1,266 @@
+name: Release (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      target_packages:
+        description: 'Comma-separated list of packages to release (derived from scope if not provided)'
+        required: false
+        type: string
+        default: ''
+      target_branch:
+        description: 'Branch to release from'
+        required: true
+        type: string
+      bump:
+        description: 'Version increment (patch, minor, major)'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type (stable or prerelease)'
+        required: false
+        type: string
+        default: 'prerelease'
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        type: boolean
+        default: false
+      scope:
+        description: 'Release scope (electron, tauri, core, utils, types, ui, all) — controls build and toolchain steps'
+        required: true
+        type: string
+      standing_pr_number:
+        description: 'When set, run the manifest-driven standing-pr publish for this PR number instead of the scoped release flow'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ssh_key:
+        description: 'SSH deploy key for pushing to the repository'
+        required: false
+      crates_io_token:
+        description: 'Crates.io token for publishing Rust crates (required for tauri and core scopes)'
+        required: false
+      ollama_api_key:
+        description: 'Ollama API key for LLM-enhanced release notes'
+        required: false
+
+# pull-requests: write is needed by the standing-pr publish path (manifest comment read +
+# completion comment). Called workflows can only downgrade caller permissions, so it must
+# be declared here too — callers that don't grant it (release-auto/manual) cap it to none.
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+env:
+  NPM_CONFIG_PROVENANCE: true
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+          ssh-key: ${{ secrets.ssh_key }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Rust
+        if: ${{ contains(inputs.scope, 'tauri') || contains(inputs.scope, 'core') || inputs.scope == 'all' }}
+        shell: bash
+        run: rustup update stable && rustup default stable
+
+      - name: Install GTK development libraries
+        if: ${{ contains(inputs.scope, 'tauri') || contains(inputs.scope, 'core') || inputs.scope == 'all' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libglib2.0-dev \
+            libsoup2.4-dev \
+            pkg-config
+          sudo apt-get install -y libwebkit2gtk-4.0-dev || true
+          sudo apt-get install -y libwebkit2gtk-4.1-dev || true
+          sudo apt-get install -y libappindicator3-dev || true
+          sudo apt-get install -y libayatana-appindicator3-dev || true
+          sudo apt-get install -y libsoup3-dev || true
+
+      - name: Compute target packages from scope
+        id: targets
+        run: |
+          scope="${{ inputs.scope }}"
+          scope="${scope#scope:}"
+          case "$scope" in
+            electron)
+              echo "packages=@zubridge/electron" >> "$GITHUB_OUTPUT"
+              ;;
+            tauri)
+              echo "packages=@zubridge/tauri,tauri-plugin-zubridge" >> "$GITHUB_OUTPUT"
+              ;;
+            core)
+              echo "packages=zubridge-core" >> "$GITHUB_OUTPUT"
+              ;;
+            utils)
+              echo "packages=@zubridge/utils" >> "$GITHUB_OUTPUT"
+              ;;
+            types)
+              echo "packages=@zubridge/types" >> "$GITHUB_OUTPUT"
+              ;;
+            ui)
+              echo "packages=@zubridge/ui" >> "$GITHUB_OUTPUT"
+              ;;
+            all)
+              # standing-pr publish resolves its package set from the merged PR's manifest
+              echo "packages=" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unknown scope: $scope"
+              exit 1
+              ;;
+          esac
+
+      - name: Compute releasekit parameters
+        id: params
+        run: |
+          bump="${{ inputs.bump }}"
+          release_type="${{ inputs.release_type }}"
+
+          # If bump already starts with 'pre', it's already in releasekit format (from auto gate)
+          if [[ "$bump" == pre* ]]; then
+            echo "bump=$bump" >> "$GITHUB_OUTPUT"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$release_type" in
+            stable)
+              # stable release - use bump value
+              echo "bump=$bump" >> "$GITHUB_OUTPUT"
+              echo "stable=true" >> "$GITHUB_OUTPUT"
+              ;;
+            prerelease)
+              # For prerelease increment, use 'prerelease'; otherwise prepend 'pre'
+              if [ "$bump" = "prerelease" ]; then
+                echo "bump=prerelease" >> "$GITHUB_OUTPUT"
+              else
+                echo "bump=pre$bump" >> "$GITHUB_OUTPUT"
+              fi
+              echo "stable=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "bump=$bump" >> "$GITHUB_OUTPUT"
+              echo "stable=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Build packages
+        run: |
+          scope="${{ inputs.scope }}"
+          scope="${scope#scope:}"
+          case "$scope" in
+            electron)
+              pnpm turbo run build --filter='@zubridge/electron...'
+              ;;
+            tauri)
+              pnpm turbo run build --filter='@zubridge/tauri...'
+              cargo check -p tauri-plugin-zubridge
+              ;;
+            core)
+              cargo check -p zubridge-core --features tauri
+              ;;
+            utils)
+              pnpm turbo run build --filter='@zubridge/utils...'
+              ;;
+            types)
+              pnpm turbo run build --filter='@zubridge/types...'
+              ;;
+            ui)
+              pnpm turbo run build --filter='@zubridge/ui...'
+              ;;
+            all)
+              # standing-pr publish path — the manifest can span every scope
+              pnpm run build:packages
+              cargo check --workspace
+              ;;
+            *)
+              echo "::error::Unknown scope: $scope"
+              exit 1
+              ;;
+          esac
+
+      - name: Configure Git
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global --add safe.directory "${{ github.workspace }}"
+          git config --local gc.auto 0
+          # Ensure we're on a branch with proper remote tracking
+          if ! git symbolic-ref HEAD > /dev/null 2>&1; then
+            echo "Currently in detached HEAD, checking out branch..."
+            git checkout -B ${{ inputs.target_branch || 'main' }} origin/${{ inputs.target_branch || 'main' }} 2>/dev/null || git checkout ${{ inputs.target_branch || 'main' }}
+          fi
+
+      - name: Run ReleaseKit
+        id: releasekit
+        if: ${{ inputs.standing_pr_number == '' }}
+        uses: goosewobbler/releasekit@v0.26.0
+        with:
+          mode: release
+          node-version: '24'
+          target: ${{ inputs.target_packages || steps.targets.outputs.packages }}
+          branch: ${{ inputs.target_branch }}
+          bump: ${{ steps.params.outputs.bump }}
+          stable: ${{ steps.params.outputs.stable }}
+          json: 'true'
+          dry-run: ${{ inputs.dry_run }}
+          project-dir: .
+          verbose: 'true'
+          summary: 'true'
+          skip-checkout: 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+          OLLAMA_API_KEY: ${{ secrets.ollama_api_key }}
+
+      # Manifest-driven publish from a merged standing release PR. Versions and notes come
+      # from the manifest comment on the PR, so bump/target/stable don't apply. The mode
+      # has no dry-run support — the dispatch in standing-pr.yml always sends dry_run=false.
+      - name: Run ReleaseKit (standing PR publish)
+        id: releasekit-standing
+        if: ${{ inputs.standing_pr_number != '' }}
+        uses: goosewobbler/releasekit@v0.26.0
+        with:
+          mode: standing-pr-publish
+          node-version: '24'
+          pr: ${{ inputs.standing_pr_number }}
+          json: 'true'
+          project-dir: .
+          verbose: 'true'
+          summary: 'true'
+          skip-checkout: 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+          OLLAMA_API_KEY: ${{ secrets.ollama_api_key }}
