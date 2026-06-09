@@ -204,6 +204,14 @@ describe(`Performance bench (${getMode()})`, () => {
       }
     }
 
+    if (propagationLatencies.length === 0) {
+      throw new Error(
+        `propagation bench: 0/${dispatches.length} dispatches matched a receipt — ` +
+          'state may not be propagating to window 1, or counter values did not match. ' +
+          'Check that window 1 subscribe is active and the counter starts from the expected value.',
+      );
+    }
+
     result.multiWindowPropagation = summarize(propagationLatencies);
     console.log(
       `multiWindowPropagation (matched ${propagationLatencies.length}/${dispatches.length}):`,
@@ -243,7 +251,7 @@ describe(`Performance bench (${getMode()})`, () => {
       await Promise.all(promises);
     }, MEMORY_LOAD_ACTIONS);
 
-    const heapAfterBytes = await browser.electron.execute((electron) => {
+    const heapAfterBytes = await browser.electron.execute((_electron) => {
       if (typeof global.gc === 'function') {
         global.gc();
       }
