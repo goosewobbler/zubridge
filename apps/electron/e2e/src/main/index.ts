@@ -1,4 +1,3 @@
-import path from 'node:path';
 import process from 'node:process';
 import {
   createDoubleCounterSlowThunk,
@@ -157,87 +156,8 @@ app
     await initStore();
     debug('store', 'Store initialized');
 
-    debug('core', 'Attempting to createRequire...');
-    const { createRequire } = await import('node:module');
-    const customRequire = createRequire(import.meta.url);
-    debug('core', 'customRequire created. Attempting to require "@zubridge/middleware"...');
-
-    const middlewareModule = customRequire('@zubridge/middleware');
-    debug(
-      'core',
-      '"@zubridge/middleware" required successfully. Module keys:',
-      Object.keys(middlewareModule),
-    );
-
-    // Get the initialization function
-    const { initZubridgeMiddleware } = middlewareModule;
-
-    if (typeof initZubridgeMiddleware !== 'function') {
-      debug('core', 'CRITICAL ERROR - initZubridgeMiddleware is NOT a function after require!');
-      throw new Error('initZubridgeMiddleware is not a function'); // Ensure it throws to be caught
-    }
-    debug('core', 'initZubridgeMiddleware is a function. Proceeding to initialize middleware.');
-
-    // Initialize file logging for debugging
-    const middlewareSetupFileLogging = middlewareModule.setupFileLogging;
-    if (typeof middlewareSetupFileLogging === 'function') {
-      debug('core', 'Setting up middleware file logging');
-      try {
-        const logPath = path.join(app.getPath('logs'), 'middleware_debug.log');
-        debug('core', `Using log path: ${logPath}`);
-        middlewareSetupFileLogging(logPath);
-        debug('core', 'Middleware file logging initialized successfully');
-      } catch (error) {
-        debug('core:error', 'Failed to initialize middleware file logging:', error);
-        // Continue execution even if logging setup fails
-      }
-    } else {
-      debug('core:warning', 'setupFileLogging is not available in middleware module');
-    }
-
-    // Create middleware configuration with detailed telemetry (camelCase required for NAPI-RS)
-    const middlewareConfig = {
-      telemetry: {
-        enabled: true,
-        websocketPort: 9000,
-        consoleOutput: true,
-        measurePerformance: true,
-        recordStateSize: true,
-        recordStateDelta: true,
-        verbose: true,
-        performance: {
-          enabled: true,
-          detail: 'high',
-          includeInLogs: true,
-          recordTimings: true,
-          verboseOutput: true,
-        },
-      },
-    };
-
-    // Log the configuration for debugging
-    debug(
-      'core:middleware',
-      'Initializing middleware with config:',
-      JSON.stringify(middlewareConfig, null, 2),
-    );
-    debug(
-      'core:middleware',
-      'Performance measurement enabled:',
-      middlewareConfig.telemetry.measurePerformance,
-    );
-    debug(
-      'core:middleware',
-      'Performance config:',
-      JSON.stringify(middlewareConfig.telemetry.performance, null, 2),
-    );
-
-    // Initialize the middleware using the provided init function
-    const middleware = await initZubridgeMiddleware(middlewareConfig);
-    debug('core', 'Middleware instance initialized successfully.');
-
     // Assign to the outer scope bridge
-    bridge = await createBridge(middleware);
+    bridge = await createBridge();
     debug('core', 'Bridge created successfully.');
 
     // Assign to the outer scope subscribe

@@ -1,4 +1,4 @@
-import type { ZubridgeMiddleware, ZustandBridge } from '@zubridge/electron/main';
+import type { ZustandBridge } from '@zubridge/electron/main';
 import { createZustandBridge } from '@zubridge/electron/main';
 import type { StoreApi } from 'zustand';
 import type { BaseState } from '../../types.js';
@@ -45,16 +45,13 @@ export const createHandlers = <S extends BaseState>(store: StoreApi<S>): ActionH
  */
 export const createHandlersBridge = <S extends BaseState, Store extends StoreApi<S>>(
   store: Store,
-  middleware?: ZubridgeMiddleware,
 ): ZustandBridge => {
   console.log('[Handlers Mode] Creating bridge with separate handlers');
 
   // Define action handlers
   const handlers = createHandlers(store);
 
-  // Create bridge with handlers and middleware if provided
   return createZustandBridge<S>(store, {
     handlers,
-    middleware,
   });
 };
