@@ -31,6 +31,12 @@ const MEMORY_LOAD_ACTIONS = 10000;
 
 // `window.zubridge` is already typed via @zubridge/types' internal augmentation
 // (ZubridgeInternalWindow). We add only the bench-scratch properties.
+//
+// `ts` here is `Date.now()` (wall-clock ms since epoch), NOT `performance.now()`.
+// The multi-window propagation test compares timestamps captured in different
+// renderer processes; each renderer has its own `performance.timeOrigin`, so
+// `performance.now()` values are not comparable across contexts. `Date.now()` is
+// the same absolute clock everywhere.
 interface BenchWindow {
   __benchUpdates: Array<{ ts: number; counter: number }>;
   __benchUnsub: () => void;
@@ -49,6 +55,18 @@ describe(`Performance bench (${getMode()})`, () => {
   });
 
   after(() => {
+    // Guard against writing a partial result if every `it` block aborted (timeout,
+    // crash). bench-aggregate.ts would otherwise silently accept the half-empty file
+    // and stamp a baseline that treats the missing metrics as 0.
+    const hasAnyMetric =
+      result.dispatchRoundTrip !== undefined ||
+      result.throughput !== undefined ||
+      result.multiWindowPropagation !== undefined ||
+      result.memory !== undefined;
+    if (!hasAnyMetric) {
+      console.log('\nSkipping bench result write — no metrics were captured.');
+      return;
+    }
     const file = writeModeResult(result);
     console.log(`\nWrote bench result to ${file}`);
     console.log(JSON.stringify(result, null, 2));
@@ -117,6 +135,7 @@ describe(`Performance bench (${getMode()})`, () => {
     }
 
     // Subscribe in window 1, recording timestamp + counter on every update.
+    // Use Date.now() (shared absolute clock) — performance.now() is per-context.
     await switchToWindow(1);
     await browser.execute(() => {
       const w = window as unknown as BenchWindow & typeof window;
@@ -125,7 +144,7 @@ describe(`Performance bench (${getMode()})`, () => {
       w.__benchUpdates = [];
       w.__benchUnsub = z.subscribe((state: { counter?: number }) => {
         if (typeof state.counter === 'number') {
-          w.__benchUpdates.push({ ts: performance.now(), counter: state.counter });
+          w.__benchUpdates.push({ ts: Date.now(), counter: state.counter });
         }
       });
     });
@@ -142,8 +161,10 @@ describe(`Performance bench (${getMode()})`, () => {
         : 0;
 
     // Dispatch one action at a time from window 0, recording the renderer-side
-    // dispatch timestamp. Small pause between dispatches keeps each one out of
-    // the batcher's 16ms window so we measure propagation per-action.
+    // dispatch timestamp. Date.now() (not performance.now()) so the timestamp is
+    // comparable to the window-1 receipt timestamps. Small pause between dispatches
+    // keeps each one out of the batcher's 16ms window so we measure propagation
+    // per-action.
     await switchToWindow(0);
     const dispatches = await browser.execute(
       async (samples: number, base: number) => {
@@ -152,7 +173,7 @@ describe(`Performance bench (${getMode()})`, () => {
         const out: Array<{ ts: number; target: number }> = [];
         for (let i = 0; i < samples; i++) {
           const target = base + i + 1;
-          const t0 = performance.now();
+          const t0 = Date.now();
           await z.dispatch('COUNTER:INCREMENT');
           out.push({ ts: t0, target });
           await new Promise((r) => setTimeout(r, 25));
@@ -198,12 +219,14 @@ describe(`Performance bench (${getMode()})`, () => {
     // Heap from the Electron main process — most representative for backend cost.
     // Note: this only captures the Node heap; native allocations (V8 internals,
     // C++ structures held by Electron, Rust core in 3.2+) are not measured.
-    const heapBeforeBytes = await browser.electron.execute((electron) => {
-      try {
-        electron.app.commandLine.appendSwitch('js-flags', '--expose-gc');
-      } catch {
-        // ignored — only matters when --expose-gc was passed at startup
-      }
+    //
+    // --expose-gc must be set at Electron startup to make global.gc available;
+    // app.commandLine.appendSwitch after app.ready is a silent no-op. The current
+    // bench builds do not pass it, so global.gc is undefined and we skip the GC —
+    // heap numbers will include allocations from prior tests in the same process.
+    // This is acceptable because we report the delta (after − before), not absolute,
+    // and the 10k-action load swamps any pre-existing residue.
+    const heapBeforeBytes = await browser.electron.execute(() => {
       if (typeof global.gc === 'function') {
         global.gc();
       }
