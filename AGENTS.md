@@ -36,6 +36,7 @@ Zubridge is a cross-platform state management library that brings Zustand-inspir
 
 ```
 packages/
+├── core/              # zubridge-core — Unified Rust crate (P1 refactor; platform-agnostic state primitives)
 ├── electron/          # @zubridge/electron — Electron adapter (main, renderer, preload)
 ├── tauri/             # @zubridge/tauri — Tauri adapter (v1 + v2)
 ├── tauri-plugin/      # tauri-plugin-zubridge — Rust-side Tauri plugin (being absorbed into core)
@@ -75,12 +76,18 @@ packages/electron/src/
 ├── main.ts            # Main process — bridge setup, IPC handlers, store subscription
 ├── preload.ts         # Preload — exposes typed API via contextBridge
 ├── renderer.ts        # Renderer — Zustand hooks for consuming state
-├── bridge/            # Core bridge logic
 ├── action/            # Action dispatch helpers
-├── batching/          # ActionBatcher — groups renderer actions into single IPC calls
 ├── adapters/          # Zustand + Redux store adapters
+├── batching/          # ActionBatcher — groups renderer actions into single IPC calls
+├── bridge/            # Core bridge logic
 ├── deltas/            # Delta state computation — sends only changed state
-└── registry/          # Window registry and lifecycle management
+├── errors/            # Error types
+├── main/              # Main-process internals (actionQueue, dispatch, mainThunkProcessor)
+├── registry/          # State manager registry and lifecycle management
+├── subscription/      # SubscriptionManager — state change subscriptions
+├── thunk/             # Thunk system (lifecycle, processing, registration, scheduling, tracking)
+├── types/             # Internal TypeScript types
+└── utils/             # Shared utilities
 ```
 
 **Important:** The `ActionBatcher` flush logic is complex and uses a dual-guard pattern — take care when modifying `packages/electron/src/batching/`.
