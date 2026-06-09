@@ -57,14 +57,16 @@ function verifyActionTagExists(version: string) {
 function updatePackageJson(version: string) {
   const path = join(ROOT, 'package.json');
   const content = readFileSync(path, 'utf8');
-  const pkg = JSON.parse(content) as { devDependencies?: Record<string, string> };
+  const updated = content.replace(
+    /"@releasekit\/release":\s*"\^?[\d.]+"/,
+    `"@releasekit/release": "^${version}"`,
+  );
 
-  if (!pkg.devDependencies?.['@releasekit/release']) {
+  if (content === updated) {
     throw new Error('@releasekit/release not found in root package.json devDependencies');
   }
 
-  pkg.devDependencies['@releasekit/release'] = `^${version}`;
-  writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+  writeFileSync(path, updated);
   console.log(`  ✓ package.json: @releasekit/release → ^${version}`);
 }
 

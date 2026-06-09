@@ -57,13 +57,16 @@ jobs:
         run: |
           set -euo pipefail
           # Prefer .jsonc when both exist (matches releasekit's own discovery
-          # precedence). Strip full-line // comments before piping to jq, which
-          # only parses strict JSON. The sed pattern is anchored to line-start
-          # so URLs inside string values (e.g. "https://...") are untouched —
-          # which means trailing inline `// ...` comments after JSON content
-          # are NOT supported. Put comments on their own line.
+          # precedence). Two sed passes strip comments before piping to jq:
+          #   1. Full-line comments:  ^<ws>//...  → empty line
+          #   2. Trailing inline comments: <content> // <text>  → <content>
+          # The inline pattern requires a space after // so that https:// URLs
+          # inside string values are left untouched.
           if [ -f releasekit.config.jsonc ]; then
-            CONFIG_JSON=$(sed -E 's:^[[:space:]]*//.*$::' releasekit.config.jsonc)
+            CONFIG_JSON=$(sed -E \
+              -e 's:^[[:space:]]*//.*$::' \
+              -e 's:[[:space:]]+//[[:space:]][^"]*$::' \
+              releasekit.config.jsonc)
           else
             CONFIG_JSON=$(cat releasekit.config.json)
           fi
