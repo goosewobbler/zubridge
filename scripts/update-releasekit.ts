@@ -23,12 +23,15 @@ const ROOT = join(__dirname, '..');
 
 const RELEASEKIT_REPO = 'goosewobbler/releasekit';
 
-const WORKFLOW_FILES = [
-  join(ROOT, '.github/workflows/_release.reusable.yml'),
-  join(ROOT, '.github/workflows/_standing-pr-update.reusable.yml'),
-  join(ROOT, '.github/workflows/release-preview.yml'),
-  join(ROOT, '.github/workflows/release.yml'),
-];
+function discoverWorkflowFiles(): string[] {
+  const output = execSync(
+    `grep -rl "goosewobbler/releasekit@" "${join(ROOT, '.github/workflows')}"`,
+    {
+      encoding: 'utf8',
+    },
+  );
+  return output.trim().split('\n').filter(Boolean);
+}
 
 function fetchLatestNpmVersion(): string {
   const output = execSync('npm view @releasekit/release version', { encoding: 'utf8' });
@@ -100,10 +103,11 @@ function main() {
   verifyActionTagExists(version);
   console.log('   Tag confirmed.\n');
 
+  const workflowFiles = discoverWorkflowFiles();
   console.log(`🔧 Updating releasekit to v${version}\n`);
 
   updatePackageJson(version);
-  for (const file of WORKFLOW_FILES) {
+  for (const file of workflowFiles) {
     updateWorkflowFile(file, version);
   }
 
@@ -114,7 +118,7 @@ function main() {
   const filesToStage = [
     'package.json',
     'pnpm-lock.yaml',
-    ...WORKFLOW_FILES.map((f) => f.replace(ROOT + '/', '')),
+    ...workflowFiles.map((f) => f.replace(ROOT + '/', '')),
   ];
   runCommand(`git add ${filesToStage.join(' ')}`, ROOT);
 

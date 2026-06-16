@@ -65,7 +65,7 @@
   ],
   "devDependencies": {
     "@biomejs/biome": "^2.4.7",
-    "@releasekit/release": "^0.26.0",
+    "@releasekit/release": "^0.29.1",
     "@types/shelljs": "^0.10.0",
     "@wdio/logger": "^9.4.4",
     "cross-env": "^10.1.0",
