@@ -47,8 +47,8 @@ on:
         required: false
 
 # pull-requests: write is needed by the standing-pr publish path (manifest comment read +
-# completion comment). Called workflows can only downgrade caller permissions, so it must
-# be declared here too — callers that don't grant it (release-auto/manual) cap it to none.
+# completion comment). All callers must explicitly grant it — GitHub validates the caller's
+# permission block against what the reusable workflow declares and errors if any are missing.
 permissions:
   id-token: write
   contents: write
