@@ -1,0 +1,167 @@
+name: Standing Release PR
+
+# Maintains the standing release PR (ci.releaseStrategy: standing-pr). On every push
+# to main, either the push is the merge of the standing PR itself — in which case the
+# publish is dispatched to release.yml — or it's a regular merge whose changes get
+# accumulated into the standing PR.
+#
+# The release:immediate bypass path does NOT live here: it's handled by release.yml's
+# CI-gated gate job (workflow_run after CI), so immediate releases only publish from
+# green commits. Release commits carry [skip ci], so they never trigger this workflow;
+# the standing-pr update CLI also skip-pattern-guards against them.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: standing-release-pr
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Runs first on every push to main so the downstream jobs can serialize on its output:
+  # if the push is the merge of the standing PR, only `trigger-publish` runs (which
+  # dispatches release.yml); otherwise only `update-release-pr` runs. Without this gate,
+  # both would run in parallel and `update-release-pr` could collect the just-released
+  # commits as "unreleased" before the dispatched release.yml run finishes tagging.
+  detect-release-merge:
+    name: Detect release merge
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.detect.outputs.pr_number }}
+    steps:
+      # Sparse checkout of just the config files — avoids cloning the whole repo while
+      # letting the branch name come from a single source of truth (ci.standingPr.branch).
+      # Both .json and .jsonc are eligible per releasekit's discovery order; we sparse
+      # in both and let the parse step pick whichever exists.
+      - name: Checkout config
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            releasekit.config.json
+            releasekit.config.jsonc
+          sparse-checkout-cone-mode: false
+
+      - name: Find PR for merge commit
+        id: detect
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Prefer .jsonc when both exist (matches releasekit's own discovery
+          # precedence). Two sed passes strip comments before piping to jq:
+          #   1. Full-line comments:  ^<ws>//...  → empty line
+          #   2. Trailing inline comments: <content> // <text>  → <content>
+          # The inline pattern requires a space after // so that https:// URLs
+          # inside string values are left untouched.
+          if [ -f releasekit.config.jsonc ]; then
+            CONFIG_JSON=$(sed -E \
+              -e 's:^[[:space:]]*//.*$::' \
+              -e 's:[[:space:]]+//[[:space:]][^"]*$::' \
+              releasekit.config.jsonc)
+          else
+            CONFIG_JSON=$(cat releasekit.config.json)
+          fi
+          STANDING_PR_BRANCH=$(printf '%s' "$CONFIG_JSON" | jq -r '.ci.standingPr.branch // "release/next"')
+
+          # Primary path: parse the PR number from the squash-merge subject `(#N)` suffix.
+          # GitHub's commits→PRs cross-reference index is eventually consistent and can
+          # return an empty list for ~30s after a merge. Looking up the PR object by number
+          # is immediately stable, so when we know the number from the subject we skip the
+          # racy endpoint entirely. Falls back to the API approach if the subject doesn't
+          # match (merge commit, rebase merge, direct push).
+          PR_NUM=""
+          SUBJECT=$(printf '%s\n' "$COMMIT_MSG" | head -1)
+          if [[ "$SUBJECT" =~ \(#([0-9]+)\)[[:space:]]*$ ]]; then
+            CANDIDATE="${BASH_REMATCH[1]}"
+            HEAD_REF=$(gh pr view "$CANDIDATE" --repo "$REPO" --json headRefName --jq '.headRefName' 2>/dev/null || echo "")
+            if [ "$HEAD_REF" = "$STANDING_PR_BRANCH" ]; then
+              PR_NUM="$CANDIDATE"
+            else
+              echo "Subject references PR #$CANDIDATE but its head ref ('$HEAD_REF') is not '$STANDING_PR_BRANCH' — not a standing-PR merge"
+            fi
+          fi
+
+          # Fallback path: ask the API for PRs cross-referencing this commit. Used when the
+          # subject doesn't carry a PR number (non-squash merges) or when the candidate's
+          # head ref didn't match. Retry on API errors (rate limits, 5xx, network blips); a
+          # successful empty result means there's no PR for this commit.
+          if [ -z "$PR_NUM" ]; then
+            PRS=""
+            for attempt in 1 2 3; do
+              if PRS=$(gh api "repos/$REPO/commits/$COMMIT_SHA/pulls" 2>&1); then
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::gh api failed (attempt $attempt/3): $PRS — retrying after ${attempt}s"
+                sleep "$attempt"
+                PRS=""
+              else
+                echo "::error::gh api failed after 3 attempts: $PRS"
+                exit 1
+              fi
+            done
+
+            PR_NUM=$(echo "$PRS" | jq --arg branch "$STANDING_PR_BRANCH" -r \
+              '[.[] | select(.head.ref == $branch)][0].number // empty')
+          fi
+
+          if [ -n "$PR_NUM" ]; then
+            echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+            echo "Detected standing PR merge: PR #$PR_NUM (head: $STANDING_PR_BRANCH)"
+          else
+            echo "No standing PR merge detected for this push (looking for head: $STANDING_PR_BRANCH)"
+          fi
+
+  update-release-pr:
+    name: Update Release PR
+    needs: detect-release-merge
+    if: needs.detect-release-merge.outputs.pr_number == ''
+    uses: ./.github/workflows/_standing-pr-update.reusable.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    secrets:
+      ssh_key: ${{ secrets.DEPLOY_KEY }}
+      ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+
+  # Trigger release.yml via workflow_dispatch instead of publishing here directly.
+  # npm trusted publishing matches the OIDC token's top-level `workflow_ref` claim
+  # (one trusted-publisher entry per package, currently `release.yml`), so any publish
+  # triggered from this workflow would be rejected with ENEEDAUTH. Routing through
+  # `gh workflow run release.yml` makes the dispatched run's `workflow_ref` resolve to
+  # `release.yml`, which matches the trusted-publisher config.
+  # Push events only: a manual workflow_dispatch fired while HEAD is still the standing-PR
+  # merge commit would re-detect it and dispatch a second publish against an already-released
+  # manifest. The push event has already handled the publish; a dispatch in that window
+  # deliberately does nothing (update-release-pr is also gated off by pr_number, since
+  # rebuilding the release branch would race the in-flight publish's tagging).
+  trigger-publish:
+    name: Trigger publish via release.yml
+    needs: detect-release-merge
+    if: github.event_name == 'push' && needs.detect-release-merge.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch release.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ needs.detect-release-merge.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml \
+            --repo "$REPO" \
+            --ref main \
+            --field "standing_pr_number=$PR_NUMBER"
+          echo "Dispatched release.yml with standing_pr_number=$PR_NUMBER"
+          echo "Watch publish progress: https://github.com/$REPO/actions/workflows/release.yml"

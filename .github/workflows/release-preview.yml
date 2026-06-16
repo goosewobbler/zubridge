@@ -1,0 +1,41 @@
+name: Release Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, labeled, unlabeled]
+
+concurrency:
+  group: release-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  preview:
+    name: Release Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Release Preview
+        uses: goosewobbler/releasekit@v0.29.1
+        with:
+          node-version: '24'
+          mode: preview
+          pr: ${{ github.event.pull_request.number }}
+          repo: ${{ github.repository }}
+          project-dir: .
+          verbose: true
+          skip-checkout: 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

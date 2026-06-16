@@ -1,0 +1,179 @@
+// Releasekit configuration. Standing-PR release strategy mirroring the pattern
+// from wdio-desktop-mobile (feat/standing-pr-releases). See UNIFFI_REFACTOR_PLAN.md
+// §3 P4 for the release flow this drives.
+//
+// Auto-discovered alongside releasekit.config.json (.jsonc is preferred so this
+// file can carry inline rationale for non-obvious choices).
+{
+  "$schema": "https://goosewobbler.github.io/releasekit/schema.json",
+  "git": {
+    "pushMethod": "ssh",
+    "skipHooks": true
+  },
+  "version": {
+    "preset": "angular",
+    "sync": false,
+    "versionPrefix": "v",
+    "tagTemplate": "${packageName}@v${version}",
+    "commitMessage": "chore: release ${packageName}@${version} [skip ci]",
+    "prereleaseIdentifier": "next",
+    "packageSpecificTags": true,
+    "mismatchStrategy": "prefer-package",
+    "cargo": {
+      "enabled": true
+    },
+    // Workspace members that are never published. Releasekit auto-discovers
+    // both pnpm-workspace packages and Cargo.toml crates; everything internal
+    // (apps, e2e harnesses, the Tauri test app crates) goes here so it's
+    // skipped during version bumps + publish. Add new internal packages here.
+    "skip": [
+      "zubridge-monorepo",
+      "zubridge-e2e",
+      "@zubridge/apps-shared",
+      "electron-e2e",
+      "electron-minimal-context-isolation-false",
+      "electron-minimal-custom",
+      "electron-minimal-redux",
+      "electron-minimal-sandbox-true",
+      "electron-minimal-zustand-basic",
+      "electron-minimal-zustand-handlers",
+      "electron-minimal-zustand-immer",
+      "electron-minimal-zustand-reducers",
+      "tauri-e2e",
+      "tauri-v1-e2e",
+      // Internal Tauri example app Cargo crates discovered by releasekit's
+      // recursive Cargo.toml scan despite being workspace-excluded in root
+      // Cargo.toml. Names come from their respective Cargo.toml `[package].name`.
+      "e2e-tauri",
+      "app"
+    ]
+  },
+  "ci": {
+    "releaseStrategy": "standing-pr",
+    "releaseTrigger": "label",
+    "labels": {
+      "stable": "release:stable",
+      "prerelease": "release:prerelease"
+    },
+    "standingPr": {
+      "branch": "release/next",
+      "mergeMethod": "squash"
+    },
+    // PR scope labels → comma-separated list of packages eligible to bump.
+    // Tauri ships `@zubridge/tauri` (npm) + `tauri-plugin-zubridge` (cargo)
+    // together because the wire protocol couples them; bumping just one of
+    // the pair would publish a release whose npm/cargo halves are out of sync.
+    "scopeLabels": {
+      "scope:electron": "@zubridge/electron",
+      "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge",
+      "scope:core": "zubridge-core",
+      "scope:utils": "@zubridge/utils",
+      "scope:types": "@zubridge/types",
+      "scope:ui": "@zubridge/ui"
+    }
+  },
+  "notes": {
+    "changelog": {
+      "file": "CHANGELOG.md"
+    },
+    "releaseNotes": {
+      // LLM-enhanced release notes via Ollama. Soft-fails if OLLAMA_API_KEY is
+      // absent — notes still generate from raw commits in that case, just
+      // without categorisation or prose polish.
+      "llm": {
+        "provider": "ollama",
+        "model": "minimax-m2.7:cloud",
+        "baseURL": "https://ollama.com/api",
+        "tasks": {
+          "enhance": true,
+          "categorize": true
+        },
+        "categories": [
+          {
+            "name": "New",
+            "description": "New features and additions"
+          },
+          {
+            "name": "Fixed",
+            "description": "Bug fixes including security and performance fixes"
+          },
+          {
+            "name": "Changed",
+            "description": "Changes to existing functionality"
+          },
+          {
+            "name": "Removed",
+            "description": "Features that were removed"
+          },
+          {
+            "name": "Documentation",
+            "description": "Documentation updates"
+          },
+          {
+            "name": "Developer",
+            "description": "Internal changes",
+            "scopes": [
+              "Dependencies",
+              "CI",
+              "Testing",
+              "Build System",
+              "Code Quality",
+              "Infrastructure",
+              "Tooling",
+              "Performance",
+              "Security"
+            ]
+          }
+        ],
+        "scopes": {
+          "mode": "restricted",
+          "rules": {
+            "caseSensitive": false,
+            "invalidScopeAction": "remove"
+          }
+        },
+        "style": "Use past tense descriptions. Be concise. Focus on what changed, not implementation details."
+      }
+    }
+  },
+  "publish": {
+    "npm": {
+      "enabled": true,
+      "auth": "oidc",
+      "provenance": true,
+      "access": "public",
+      "copyFiles": [
+        "LICENSE"
+      ]
+    },
+    "cargo": {
+      "enabled": true,
+      // --no-verify on cargo publish. Required for the topological multi-crate
+      // publish: `tauri-plugin-zubridge` depends on `zubridge-core`, and cargo's
+      // default verify step re-builds the packaged .crate against the published
+      // version requirement (no path fallback during verify). That requires the
+      // just-published `zubridge-core` to be in the crates.io index, which
+      // typically takes ~30s to propagate after publish — verification fails
+      // intermittently in that window. We rely on the workspace `cargo check`
+      // run earlier in _release.reusable.yml to catch build issues before
+      // publish; --no-verify only skips the post-package rebuild.
+      "noVerify": true
+    },
+    "git": {
+      "push": true,
+      "pushMethod": "ssh"
+    },
+    "githubRelease": {
+      "enabled": true,
+      "draft": true,
+      "body": "auto",
+      // Skip GitHub releases for packages whose changes rarely warrant a
+      // release page: shared types + utils are typically dependency bumps for
+      // the consumer packages, which carry their own release notes.
+      "skipPackages": [
+        "@zubridge/types",
+        "@zubridge/utils"
+      ]
+    }
+  }
+}

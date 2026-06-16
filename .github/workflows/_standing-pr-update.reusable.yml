@@ -1,0 +1,57 @@
+name: Standing PR Update (Reusable)
+
+# Wraps releasekit standing-pr-update for the routine push-triggered update
+# (standing-pr.yml) and the post-release reconcile jobs (release.yml). Pushes the
+# release branch over SSH (DEPLOY_KEY) so CI runs on the standing PR — pushes made
+# with GITHUB_TOKEN don't trigger workflows, which would leave the PR unmergeable
+# under required status checks.
+
+on:
+  workflow_call:
+    inputs:
+      reconcile:
+        description: 'Bypass the skip-pattern guard — required for post-release reconcile runs, where HEAD is a release commit'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      ssh_key:
+        description: 'SSH deploy key for pushing the release branch'
+        required: true
+      ollama_api_key:
+        description: 'Ollama API key for LLM-enhanced release notes'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Update standing PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.ssh_key }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update standing release PR
+        uses: goosewobbler/releasekit@v0.29.1
+        with:
+          mode: standing-pr-update
+          node-version: '24'
+          project-dir: .
+          reconcile: ${{ inputs.reconcile && 'true' || 'false' }}
+          verbose: 'true'
+          summary: 'true'
+          skip-checkout: 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OLLAMA_API_KEY: ${{ secrets.ollama_api_key }}
