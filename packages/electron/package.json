@@ -91,7 +91,7 @@
     "@zubridge/types": "workspace:*",
     "immer": "^11.1.8",
     "jsdom": "^29.1.1",
-    "react": "^19.2.4",
+    "react": "^19.2.7",
     "redux": "^5.0.1",
     "rollup": "^4.59.0",
     "shelljs": "^0.10.0",
@@ -102,7 +102,7 @@
     "unenv": "^2.0.0-rc.24",
     "unrun": "^0.3.0",
     "vitest": "^4.1.6",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.14"
   },
   "files": [
     "dist/**/*",
@@ -111,12 +111,12 @@
     "README.md"
   ],
   "dependencies": {
-    "@oxc-project/runtime": "^0.130.0",
+    "@oxc-project/runtime": "^0.136.0",
     "@types/debug": "^4.1.12",
     "@zubridge/utils": "workspace:*",
     "dequal": "^2.0.3",
     "uuid": "^14.0.0",
     "zod": "^4.3.6",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.14"
   }
 }

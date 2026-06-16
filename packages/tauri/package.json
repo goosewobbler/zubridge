@@ -54,10 +54,10 @@
     "@tauri-apps/api": "^2.8.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "@types/shelljs": "^0.10.0",
     "@vitest/coverage-v8": "^4.1.6",
-    "react": "^19.2.4",
+    "react": "^19.2.7",
     "rollup": "^4.59.0",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
@@ -78,6 +78,6 @@
   "dependencies": {
     "@zubridge/types": "workspace:*",
     "@zubridge/utils": "workspace:*",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.14"
   }
 }
