@@ -64,17 +64,17 @@
     "state-management"
   ],
   "devDependencies": {
-    "@biomejs/biome": "^2.4.7",
+    "@biomejs/biome": "^2.5.0",
     "@releasekit/release": "^0.29.1",
     "@types/shelljs": "^0.10.0",
     "@wdio/logger": "^9.4.4",
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.4",
+    "lint-staged": "^17.0.7",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "tsx": "^4.21.0",
-    "turbo": "^2.8.17",
+    "tsx": "^4.22.4",
+    "turbo": "^2.9.18",
     "weald": "^1.1.3"
   },
   "lint-staged": {
