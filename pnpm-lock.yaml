@@ -17,8 +17,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0
       '@releasekit/release':
-        specifier: ^0.29.1
-        version: 0.29.1(conventional-commits-parser@6.4.0)(ws@8.21.0)
+        specifier: ^0.30.1
+        version: 0.30.1(conventional-commits-parser@6.4.0)(ws@8.21.0)
       '@types/shelljs':
         specifier: ^0.10.0
         version: 0.10.0
@@ -2432,23 +2432,23 @@ packages:
       react-redux:
         optional: true
 
-  '@releasekit/notes@0.29.1':
-    resolution: {integrity: sha512-LOc9yD7YQnhdBN1NsovtR/iYix3+wWdhsjWERDnBAQM5FFYPo/5jzXtqk495FL2n8k3pXJXP2SV6qdoo4Z9UHg==}
+  '@releasekit/notes@0.30.1':
+    resolution: {integrity: sha512-JVrUNRIWjSrhRyF5pkYEOlGoZ151pUB+rknNtNA0G8GyXmmhBWj1Soi6qiHkUd/AOOSbGijMvtMeHTFAIFdqfw==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/publish@0.29.1':
-    resolution: {integrity: sha512-HJFbY+Zc2XQyXflTzlNyJoANWxP8BB1S4yvqUMr9QG0PfrsjsSRidICGwzWKPHoYHLslSaDdZMMBUpPNIoiN1Q==}
+  '@releasekit/publish@0.30.1':
+    resolution: {integrity: sha512-cBY0hJvcjIyuLueaFlbhyVdSC4nUZ5iqcOWL+6mh0mk5JiyIbPuO7xp/hm7O/p9w/XOdDJdL0ZRKkMCXgNmFBQ==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/release@0.29.1':
-    resolution: {integrity: sha512-wqRpt9YGBb2NXLRBHS+X6Tcr7afml6B5sh177Y+r+sWfmv81wqZWduViqp11i0u/gWdAdqr/EMDd4WjHbnmEbg==}
+  '@releasekit/release@0.30.1':
+    resolution: {integrity: sha512-IDz19iMuXVxqYP2RHZ3ntGhBDlEM95KYStN0b8nwhMZH8TOCaSm9R6i0Nvz7rWKmkJpgUvIZh68uVzNKddteRA==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/version@0.29.1':
-    resolution: {integrity: sha512-RcpJkVR5nAKCqr46xy49U73VNZ/KP8LFfe9xvbZIoXsWhivzACwGxBSYjXO4bY04tYBRbxxsRszVYyhwNfOQ4Q==}
+  '@releasekit/version@0.30.1':
+    resolution: {integrity: sha512-GFhGWw6+Hk8wRq7FoLrSjwtatTBletVtiq9R//3hWxdn++5JGSQdIf+Pzp7fUH68h2y9t53lurh3Z2ci+IW6+w==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -3705,9 +3705,6 @@ packages:
 
   brace-expansion@1.1.14:
     resolution: {integrity: sha512-MWPGfDxnyzKU7rNOW9SP/c50vi3xrmrua/+6hfPbCS2ABNWfx24vPidzvC7krjU/RTo235sV776ymlsMtGKj8g==}
-
-  brace-expansion@2.1.0:
-    resolution: {integrity: sha512-TN1kCZAgdgweJhWWpgKYrQaMNHcDULHkWwQIspdtjV4Y5aurRdZpjAqn6yX3FPqTA9ngHCc4hJxMAMgGfve85w==}
 
   brace-expansion@2.1.1:
     resolution: {integrity: sha512-WR1cURNjuvBLMZBMbqM0UoE+WAfdUcEV1ccD8PVBVOI+Z3ND4+SZbN8RsfT2bMuG1qwz5RFvPukSZm5fF2D5eA==}
@@ -7875,7 +7872,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.7
 
-  '@releasekit/notes@0.29.1(ws@8.21.0)':
+  '@releasekit/notes@0.30.1(ws@8.21.0)':
     dependencies:
       '@anthropic-ai/sdk': 0.104.2(zod@4.4.3)
       '@octokit/request-error': 7.1.0
@@ -7894,7 +7891,7 @@ snapshots:
     transitivePeerDependencies:
       - ws
 
-  '@releasekit/publish@0.29.1':
+  '@releasekit/publish@0.30.1':
     dependencies:
       chalk: 5.6.2
       commander: 14.0.3
@@ -7905,13 +7902,13 @@ snapshots:
       yaml: 2.9.0
       zod: 4.4.3
 
-  '@releasekit/release@0.29.1(conventional-commits-parser@6.4.0)(ws@8.21.0)':
+  '@releasekit/release@0.30.1(conventional-commits-parser@6.4.0)(ws@8.21.0)':
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@octokit/rest': 22.0.1
-      '@releasekit/notes': 0.29.1(ws@8.21.0)
-      '@releasekit/publish': 0.29.1
-      '@releasekit/version': 0.29.1(conventional-commits-parser@6.4.0)
+      '@releasekit/notes': 0.30.1(ws@8.21.0)
+      '@releasekit/publish': 0.30.1
+      '@releasekit/version': 0.30.1(conventional-commits-parser@6.4.0)
       chalk: 5.6.2
       commander: 14.0.3
       conventional-changelog-angular: 8.3.1
@@ -7926,7 +7923,7 @@ snapshots:
       - conventional-commits-parser
       - ws
 
-  '@releasekit/version@0.29.1(conventional-commits-parser@6.4.0)':
+  '@releasekit/version@0.30.1(conventional-commits-parser@6.4.0)':
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@types/minimatch': 5.1.2
@@ -9178,10 +9175,6 @@ snapshots:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
-
-  brace-expansion@2.1.0:
-    dependencies:
-      balanced-match: 1.0.2
 
   brace-expansion@2.1.1:
     dependencies:
@@ -10672,7 +10665,7 @@ snapshots:
 
   json-schema-to-ts@3.1.1:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       ts-algebra: 2.0.0
 
   json-schema-traverse@0.4.1: {}
@@ -10938,7 +10931,7 @@ snapshots:
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 2.1.1
 
   minimist@1.2.8: {}
 
