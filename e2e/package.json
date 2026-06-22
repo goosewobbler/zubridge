@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "cross-env": "^10.1.0",
-    "electron": "42.4.0"
+    "electron": "42.4.1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

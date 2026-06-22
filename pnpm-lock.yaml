@@ -111,8 +111,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -133,7 +133,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
 
   apps/electron/minimal-context-isolation-false:
     dependencies:
@@ -194,7 +194,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -202,8 +202,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -227,7 +227,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -291,7 +291,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -299,8 +299,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -324,7 +324,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -394,7 +394,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -402,8 +402,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -427,7 +427,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -491,7 +491,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -499,8 +499,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -524,7 +524,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -588,7 +588,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -596,8 +596,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -621,7 +621,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -685,7 +685,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -693,8 +693,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -718,7 +718,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -785,7 +785,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -793,8 +793,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -818,7 +818,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -882,7 +882,7 @@ importers:
         version: 9.28.0
       '@zubridge/types':
         specifier: ^2.0.1
-        version: 2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
+        version: 2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))
       autoprefixer:
         specifier: ^10.4.27
         version: 10.5.0(postcss@8.5.15)
@@ -890,8 +890,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
@@ -915,7 +915,7 @@ importers:
         version: 8.0.16(@types/node@24.3.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: 9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -1060,8 +1060,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       electron:
-        specifier: 42.4.0
-        version: 42.4.0
+        specifier: 42.4.1
+        version: 42.4.1
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10
@@ -1098,7 +1098,7 @@ importers:
         version: 5.9.3
       wdio-electron-service:
         specifier: ^9.2.0
-        version: 9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
+        version: 9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0))
       webdriverio:
         specifier: ^9.28.0
         version: 9.28.0(puppeteer-core@22.15.0)
@@ -1128,8 +1128,8 @@ importers:
   packages/electron:
     dependencies:
       '@oxc-project/runtime':
-        specifier: ^0.136.0
-        version: 0.136.0
+        specifier: ^0.137.0
+        version: 0.137.0
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.13
@@ -1143,8 +1143,8 @@ importers:
         specifier: '>=17'
         version: 38.3.0
       uuid:
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.0.1
+        version: 14.0.1
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -2309,8 +2309,8 @@ packages:
   '@octokit/types@16.0.0':
     resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
 
-  '@oxc-project/runtime@0.136.0':
-    resolution: {integrity: sha512-u0EutjK5y6NHJkl5jNJCs8zbup1z6A/UEWgajrYzqcEU3UX05HjqybhMQOLhSM0eKGISyM6WfSMMuklYSmH2wA==}
+  '@oxc-project/runtime@0.137.0':
+    resolution: {integrity: sha512-eg4nbD+t3awY/gxhcc5M5IX556O6q17mGJKvl/brL86uDZn41ZwrVO6MEAMJVNf3Q1mhhoIOzNxbNE70UUFK3Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
   '@oxc-project/types@0.133.0':
@@ -4230,8 +4230,8 @@ packages:
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
-  electron@42.4.0:
-    resolution: {integrity: sha512-OXXqh9LD9KxXPv2Fe25EfU9N9AvWTuV6V81sfhQaNvTAXCd9ONA+Q4OWvMe+CmYD6xIwjFxGGtG/ZphDYYC5OQ==}
+  electron@42.4.1:
+    resolution: {integrity: sha512-8CYHJP5O4wFO+ycoJR98yy907MmPeo+vWXrzjxmGGgRNKqv8pOjjm+wphO0CCgQJnBU7+QUPSJS4QXhbKrO50w==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -5998,6 +5998,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   serialize-error@12.0.0:
     resolution: {integrity: sha512-ZYkZLAvKTKQXWuh5XpBw7CdbSzagarX39WyZ2H07CDLC5/KfsRGlIXV8d4+tfqX1M7916mRqR1QfNHSij+c9Pw==}
     engines: {node: '>=18'}
@@ -6514,8 +6519,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@14.0.0:
-    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
+  uuid@14.0.1:
+    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
     hasBin: true
 
   validate-npm-package-license@3.0.4:
@@ -7089,7 +7094,7 @@ snapshots:
     dependencies:
       '@simple-libs/child-process-utils': 1.0.2
       '@simple-libs/stream-utils': 1.2.0
-      semver: 7.8.4
+      semver: 7.8.5
     optionalDependencies:
       conventional-commits-filter: 5.0.0
       conventional-commits-parser: 6.4.0
@@ -7173,7 +7178,7 @@ snapshots:
       env-paths: 3.0.0
       graceful-fs: 4.2.11
       progress: 2.0.3
-      semver: 7.8.4
+      semver: 7.8.5
       sumchecker: 3.0.1
     optionalDependencies:
       undici: 7.28.0
@@ -7220,7 +7225,7 @@ snapshots:
       prettier: 3.8.3
       resedit: 2.0.3
       resolve: 1.22.12
-      semver: 7.8.4
+      semver: 7.8.5
       yargs-parser: 21.1.1
     transitivePeerDependencies:
       - supports-color
@@ -7753,7 +7758,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 27.0.0
 
-  '@oxc-project/runtime@0.136.0': {}
+  '@oxc-project/runtime@0.137.0': {}
 
   '@oxc-project/types@0.133.0': {}
 
@@ -7832,7 +7837,7 @@ snapshots:
       extract-zip: 2.0.1
       progress: 2.0.3
       proxy-agent: 6.5.0
-      semver: 7.8.4
+      semver: 7.8.5
       tar-fs: 3.1.2
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -7847,7 +7852,7 @@ snapshots:
       extract-zip: 2.0.1
       progress: 2.0.3
       proxy-agent: 6.5.0
-      semver: 7.8.4
+      semver: 7.8.5
       tar-fs: 3.1.2
       unbzip2-stream: 1.4.3
       yargs: 17.7.2
@@ -8897,9 +8902,9 @@ snapshots:
 
   '@zip.js/zip.js@2.8.26': {}
 
-  '@zubridge/types@2.2.0(electron@42.4.0)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))':
+  '@zubridge/types@2.2.0(electron@42.4.1)(zustand@5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))':
     dependencies:
-      electron: 42.4.0
+      electron: 42.4.1
       zustand: 5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
 
   abbrev@4.0.0: {}
@@ -9784,7 +9789,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@42.4.0:
+  electron@42.4.1:
     dependencies:
       '@electron-internal/extract-zip': 1.0.3
       '@electron/get': 5.0.0
@@ -10307,7 +10312,7 @@ snapshots:
       es6-error: 4.1.1
       matcher: 3.0.0
       roarr: 2.15.4
-      semver: 7.8.4
+      semver: 7.8.5
       serialize-error: 7.0.1
     optional: true
 
@@ -10877,7 +10882,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.8.4
+      semver: 7.8.5
 
   matcher@3.0.0:
     dependencies:
@@ -10992,7 +10997,7 @@ snapshots:
 
   node-abi@4.31.0:
     dependencies:
-      semver: 7.8.4
+      semver: 7.8.5
 
   node-addon-api@1.7.2:
     optional: true
@@ -11001,7 +11006,7 @@ snapshots:
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.8.4
+      semver: 7.8.5
 
   node-gyp@12.3.0:
     dependencies:
@@ -11010,7 +11015,7 @@ snapshots:
       graceful-fs: 4.2.11
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.8.4
+      semver: 7.8.5
       tar: 7.5.15
       tinyglobby: 0.2.17
       undici: 6.27.0
@@ -11032,19 +11037,19 @@ snapshots:
   normalize-package-data@6.0.2:
     dependencies:
       hosted-git-info: 7.0.2
-      semver: 7.8.4
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   normalize-package-data@7.0.1:
     dependencies:
       hosted-git-info: 8.1.0
-      semver: 7.8.4
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   normalize-package-data@8.0.0:
     dependencies:
       hosted-git-info: 9.0.3
-      semver: 7.8.4
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}
@@ -11673,6 +11678,8 @@ snapshots:
 
   semver@7.8.4: {}
 
+  semver@7.8.5: {}
+
   serialize-error@12.0.0:
     dependencies:
       type-fest: 4.41.0
@@ -12161,7 +12168,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@14.0.0: {}
+  uuid@14.0.1: {}
 
   validate-npm-package-license@3.0.4:
     dependencies:
@@ -12236,7 +12243,7 @@ snapshots:
       defaults: 1.0.4
     optional: true
 
-  wdio-electron-service@9.2.1(electron@42.4.0)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0)):
+  wdio-electron-service@9.2.1(electron@42.4.1)(expect-webdriverio@5.6.8)(webdriverio@9.28.0(puppeteer-core@22.15.0)):
     dependencies:
       '@babel/parser': 7.29.3
       '@electron/fuses': 2.1.1
@@ -12257,7 +12264,7 @@ snapshots:
       tinyspy: 4.0.4
       webdriverio: 9.28.0(puppeteer-core@22.15.0)
     optionalDependencies:
-      electron: 42.4.0
+      electron: 42.4.1
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer
