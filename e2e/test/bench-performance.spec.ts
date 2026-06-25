@@ -21,13 +21,22 @@ import {
 
 const CORE_WINDOW_COUNT = 2;
 
-// Sample sizes — small enough to keep each WDIO run under a minute, large
-// enough to give stable percentiles. Adjust upward if variance is too high.
+// Sample sizes — large enough for stable percentiles / a steady-state
+// throughput rate, small enough to keep each WDIO run to a few minutes.
 const LATENCY_SAMPLES = 500;
 const LATENCY_WARMUP = 50;
-const THROUGHPUT_ACTIONS = 5000;
 const PROPAGATION_SAMPLES = 100;
-const MEMORY_LOAD_ACTIONS = 10000;
+
+// Throughput + memory feed actions through a bounded in-flight window rather
+// than firing them all at once. The ActionBatcher rejects a queue deeper than
+// its hard limit (max(maxBatchSize * 4, 100) = 200 by default) as a suspected
+// DoS, so an unbounded Promise.all overflows it. Capping concurrency keeps the
+// batcher within contract and measures *sustained* throughput against the
+// unmodified production path — the same path that runs against the 3.2 Rust
+// core, so the 3.1 → 3.2 comparison stays apples-to-apples.
+const THROUGHPUT_ACTIONS = 50000;
+const MEMORY_LOAD_ACTIONS = 50000;
+const MAX_IN_FLIGHT = 100;
 
 // `window.zubridge` is already typed via @zubridge/types' internal augmentation
 // (ZubridgeInternalWindow). We add only the bench-scratch properties.
@@ -101,22 +110,41 @@ describe(`Performance bench (${getMode()})`, () => {
   });
 
   it('measures sustained throughput', async function () {
-    this.timeout(120000);
+    this.timeout(180000);
     await setupTestEnvironment(CORE_WINDOW_COUNT);
     await switchToWindow(0);
 
-    const measurement = await browser.execute(async (count: number) => {
-      const z = window.zubridge;
-      if (!z) throw new Error('window.zubridge not available');
-      const t0 = performance.now();
-      const promises: Promise<unknown>[] = [];
-      for (let i = 0; i < count; i++) {
-        promises.push(z.dispatch('COUNTER:INCREMENT'));
-      }
-      await Promise.all(promises);
-      const elapsedMs = performance.now() - t0;
-      return { count, elapsedMs };
-    }, THROUGHPUT_ACTIONS);
+    const measurement = await browser.execute(
+      async (count: number, maxInFlight: number) => {
+        const z = window.zubridge;
+        if (!z) throw new Error('window.zubridge not available');
+        const t0 = performance.now();
+        let started = 0;
+        let completed = 0;
+        // Keep at most `maxInFlight` dispatches outstanding so the batcher queue
+        // never reaches its hard limit; refill the window as each one resolves.
+        await new Promise<void>((resolve, reject) => {
+          const pump = () => {
+            while (started < count && started - completed < maxInFlight) {
+              started += 1;
+              z.dispatch('COUNTER:INCREMENT').then(() => {
+                completed += 1;
+                if (completed === count) {
+                  resolve();
+                } else {
+                  pump();
+                }
+              }, reject);
+            }
+          };
+          pump();
+        });
+        const elapsedMs = performance.now() - t0;
+        return { count, elapsedMs };
+      },
+      THROUGHPUT_ACTIONS,
+      MAX_IN_FLIGHT,
+    );
 
     result.throughput = {
       actions: measurement.count,
@@ -220,7 +248,7 @@ describe(`Performance bench (${getMode()})`, () => {
   });
 
   it('measures heap growth under sustained load', async function () {
-    this.timeout(120000);
+    this.timeout(180000);
     await setupTestEnvironment(CORE_WINDOW_COUNT);
     await switchToWindow(0);
 
@@ -233,7 +261,7 @@ describe(`Performance bench (${getMode()})`, () => {
     // bench builds do not pass it, so global.gc is undefined and we skip the GC —
     // heap numbers will include allocations from prior tests in the same process.
     // This is acceptable because we report the delta (after − before), not absolute,
-    // and the 10k-action load swamps any pre-existing residue.
+    // and the 50k-action load swamps any pre-existing residue.
     const heapBeforeBytes = await browser.electron.execute(() => {
       if (typeof global.gc === 'function') {
         global.gc();
@@ -241,15 +269,32 @@ describe(`Performance bench (${getMode()})`, () => {
       return process.memoryUsage().heapUsed;
     });
 
-    await browser.execute(async (count: number) => {
-      const z = window.zubridge;
-      if (!z) throw new Error('window.zubridge not available');
-      const promises: Promise<unknown>[] = [];
-      for (let i = 0; i < count; i++) {
-        promises.push(z.dispatch('COUNTER:INCREMENT'));
-      }
-      await Promise.all(promises);
-    }, MEMORY_LOAD_ACTIONS);
+    await browser.execute(
+      async (count: number, maxInFlight: number) => {
+        const z = window.zubridge;
+        if (!z) throw new Error('window.zubridge not available');
+        let started = 0;
+        let completed = 0;
+        await new Promise<void>((resolve, reject) => {
+          const pump = () => {
+            while (started < count && started - completed < maxInFlight) {
+              started += 1;
+              z.dispatch('COUNTER:INCREMENT').then(() => {
+                completed += 1;
+                if (completed === count) {
+                  resolve();
+                } else {
+                  pump();
+                }
+              }, reject);
+            }
+          };
+          pump();
+        });
+      },
+      MEMORY_LOAD_ACTIONS,
+      MAX_IN_FLIGHT,
+    );
 
     const heapAfterBytes = await browser.electron.execute((_electron) => {
       if (typeof global.gc === 'function') {

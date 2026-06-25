@@ -1,0 +1,108 @@
+{
+  "capturedAt": "2026-06-25T10:38:21.887Z",
+  "platform": "darwin",
+  "node": "v24.14.0",
+  "electron": "42.4.0",
+  "zubridgeElectron": "3.0.0",
+  "modes": {
+    "custom": {
+      "capturedAt": "2026-06-25T10:37:30.252Z",
+      "platform": "darwin",
+      "dispatchRoundTrip": {
+        "samples": 500,
+        "mean": 18.028,
+        "p50": 18,
+        "p95": 19,
+        "p99": 19.2,
+        "min": 16.8,
+        "max": 21.7
+      },
+      "throughput": {
+        "actions": 50000,
+        "elapsedMs": 4560.3,
+        "actionsPerSec": 10964
+      },
+      "multiWindowPropagation": {
+        "samples": 100,
+        "mean": 17.21,
+        "p50": 17,
+        "p95": 18,
+        "p99": 19,
+        "min": 16,
+        "max": 19
+      },
+      "memory": {
+        "heapBeforeBytes": 25287952,
+        "heapAfterBytes": 23214524,
+        "heapDeltaBytes": -2073428,
+        "note": "Electron main-process Node heap only; native allocations not measured. Becomes more important at 3.2 when the Rust core lands — track delta direction, not absolute size."
+      }
+    },
+    "redux": {
+      "capturedAt": "2026-06-25T10:36:33.658Z",
+      "platform": "darwin",
+      "dispatchRoundTrip": {
+        "samples": 500,
+        "mean": 17.977,
+        "p50": 17.9,
+        "p95": 19,
+        "p99": 19.5,
+        "min": 16.6,
+        "max": 20.7
+      },
+      "throughput": {
+        "actions": 50000,
+        "elapsedMs": 4519.6,
+        "actionsPerSec": 11063
+      },
+      "multiWindowPropagation": {
+        "samples": 100,
+        "mean": 17.32,
+        "p50": 17,
+        "p95": 18,
+        "p99": 18,
+        "min": 16,
+        "max": 19
+      },
+      "memory": {
+        "heapBeforeBytes": 25119452,
+        "heapAfterBytes": 35463596,
+        "heapDeltaBytes": 10344144,
+        "note": "Electron main-process Node heap only; native allocations not measured. Becomes more important at 3.2 when the Rust core lands — track delta direction, not absolute size."
+      }
+    },
+    "zustand-basic": {
+      "capturedAt": "2026-06-25T10:35:42.910Z",
+      "platform": "darwin",
+      "dispatchRoundTrip": {
+        "samples": 500,
+        "mean": 17.909,
+        "p50": 17.9,
+        "p95": 19,
+        "p99": 19.3,
+        "min": 16.7,
+        "max": 22.2
+      },
+      "throughput": {
+        "actions": 50000,
+        "elapsedMs": 4654.7,
+        "actionsPerSec": 10742
+      },
+      "multiWindowPropagation": {
+        "samples": 100,
+        "mean": 17.29,
+        "p50": 17,
+        "p95": 18,
+        "p99": 18,
+        "min": 16,
+        "max": 18
+      },
+      "memory": {
+        "heapBeforeBytes": 24914148,
+        "heapAfterBytes": 20652984,
+        "heapDeltaBytes": -4261164,
+        "note": "Electron main-process Node heap only; native allocations not measured. Becomes more important at 3.2 when the Rust core lands — track delta direction, not absolute size."
+      }
+    }
+  }
+}
