@@ -1,6 +1,7 @@
 // Re-export from zubridge_core so existing code in desktop.rs and commands/
 // can continue using `crate::core::*` without modification.
 pub use zubridge_core::deltas::{DeltaCalculator, DeltaResult};
+pub use zubridge_core::orchestration::ActionQueueManager;
 pub use zubridge_core::state::StateManagerHandle;
 pub use zubridge_core::subscription::SubscriptionManager;
 pub use zubridge_core::thunk::{StateUpdateTracker, ThunkRegistry};
