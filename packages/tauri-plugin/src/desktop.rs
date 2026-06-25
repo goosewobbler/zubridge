@@ -5,8 +5,10 @@ use serde_json::json;
 use tauri::{plugin::PluginApi, AppHandle, Emitter, Manager, Runtime};
 use uuid::Uuid;
 
-use crate::core::{DeltaCalculator, DeltaResult, StateUpdateTracker, SubscriptionManager, ThunkRegistry};
 use crate::core::state_manager::{self, StateManagerHandle};
+use crate::core::{
+    ActionQueueManager, DeltaCalculator, DeltaResult, StateUpdateTracker, SubscriptionManager,
+};
 use crate::models::{
     BatchDispatchResult, BatchFailure, JsonValue, StateManager, StateUpdatePayload, UpdateSource,
     ZubridgeAction, ZubridgeOptions,
@@ -39,7 +41,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
         options: ZubridgeOptions::default(),
         subscriptions: Arc::new(RwLock::new(SubscriptionManager::new())),
         deltas: Arc::new(RwLock::new(DeltaCalculator::new())),
-        thunks: Arc::new(RwLock::new(ThunkRegistry::new())),
+        manager: Arc::new(Mutex::new(None)),
         update_tracker: Arc::new(RwLock::new(StateUpdateTracker::new())),
         sequences: Arc::new(RwLock::new(SequenceTracker::default())),
         broadcast_lock: Arc::new(Mutex::new(())),
@@ -52,12 +54,17 @@ pub struct Zubridge<R: Runtime> {
     options: ZubridgeOptions,
     subscriptions: Arc<RwLock<SubscriptionManager>>,
     deltas: Arc<RwLock<DeltaCalculator>>,
-    thunks: Arc<RwLock<ThunkRegistry>>,
+    /// Central orchestrator (priority scheduler + thunk lifecycle + state
+    /// handle). Lazily constructed on first use from the registered state
+    /// manager — `init` runs before a state manager may exist, so we defer
+    /// construction to the first dispatch/thunk call (see `locked_manager`).
+    manager: Arc<Mutex<Option<ActionQueueManager>>>,
     update_tracker: Arc<RwLock<StateUpdateTracker>>,
     sequences: Arc<RwLock<SequenceTracker>>,
     /// Serialises broadcast_state calls so concurrent dispatches can't interleave
     /// the (read prev → compute delta → emit → record new prev) sequence and
-    /// produce stale deltas computed against an outdated baseline.
+    /// produce stale deltas computed against an outdated baseline. Acquired
+    /// *before* `manager` wherever both are held, to keep a consistent lock order.
     broadcast_lock: Arc<Mutex<()>>,
 }
 
@@ -78,10 +85,6 @@ impl<R: Runtime> Zubridge<R> {
         &self.deltas
     }
 
-    pub fn thunks(&self) -> &Arc<RwLock<ThunkRegistry>> {
-        &self.thunks
-    }
-
     pub fn update_tracker(&self) -> &Arc<RwLock<StateUpdateTracker>> {
         &self.update_tracker
     }
@@ -92,6 +95,24 @@ impl<R: Runtime> Zubridge<R> {
             .try_state::<StateManagerHandle>()
             .map(|s| s.inner().clone())
             .ok_or(crate::Error::StateManagerMissing)
+    }
+
+    /// Lock the orchestrator, lazily constructing it on first use from the
+    /// registered state-manager handle (a clone of the same `Arc<Mutex<dyn
+    /// StateManager>>` that `state_handle` reads, so dispatches and reads see
+    /// the same canonical state). Errors if no state manager is registered.
+    fn locked_manager(
+        &self,
+    ) -> crate::Result<std::sync::MutexGuard<'_, Option<ActionQueueManager>>> {
+        let mut guard = self
+            .manager
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
+        if guard.is_none() {
+            let handle = self.state_handle()?;
+            *guard = Some(ActionQueueManager::with_state_handle(handle));
+        }
+        Ok(guard)
     }
 
     /// Read the current state from the state manager.
@@ -115,36 +136,55 @@ impl<R: Runtime> Zubridge<R> {
         }
     }
 
-    /// Dispatch a single action and broadcast the resulting state. The
-    /// broadcast lock is acquired *before* the state-manager dispatch so the
-    /// state we read is always the state we broadcast — without that, two
-    /// concurrent dispatches A → state_A and (A → A→B) → state_AB could
-    /// interleave (B's broadcast wins the lock first, records state_AB; A's
-    /// broadcast then emits state_A as a delta against state_AB and records
-    /// state_A as the new baseline, silently undoing B's changes).
+    /// Dispatch a single action through the scheduler and broadcast the
+    /// resulting state.
+    ///
+    /// The action is routed through [`ActionQueueManager`], which decides
+    /// whether it can execute immediately or must be queued behind an active
+    /// thunk (priority + concurrency control). On immediate execution the new
+    /// state is broadcast here; if the action is queued, `Ok(None)` comes back
+    /// and the state update is emitted later when the blocking thunk completes
+    /// and the queue drains (see [`complete_thunk`]). The renderer tolerates
+    /// this — its dispatch resolves on the `invoke` returning, not on a
+    /// state-update arriving.
+    ///
+    /// `broadcast_lock` is acquired *before* dispatch so the (compute delta →
+    /// emit → record baseline) sequence can't interleave across concurrent
+    /// dispatches and stale-base a delta. The `manager` lock is acquired after
+    /// it (consistent order) and held across the broadcast so no other dispatch
+    /// can reorder its broadcast ahead of ours.
     pub fn dispatch_action(&self, action: ZubridgeAction) -> crate::Result<String> {
         let action_id = action
             .id
             .clone()
             .unwrap_or_else(|| Uuid::new_v4().to_string());
+        let thunk_id = action.thunk_parent_id.clone();
+        let source_label = action.source_label.clone().unwrap_or_default();
+
+        // Stamp the id we'll report so the broadcast source and return value agree.
+        let mut action = action;
+        if action.id.is_none() {
+            action.id = Some(action_id.clone());
+        }
 
         let _broadcast_guard = self
             .broadcast_lock
             .lock()
             .map_err(|e| crate::Error::StateError(e.to_string()))?;
+        let mut guard = self.locked_manager()?;
+        let dispatched = guard
+            .as_mut()
+            .expect("locked_manager initialises the manager")
+            .dispatch(action, source_label)?;
 
-        let new_state = state_manager::dispatch(&self.state_handle()?, action.to_legacy_json())
-            .map_err(|e| crate::Error::ActionProcessing {
+        if let Some(new_state) = dispatched {
+            let source = UpdateSource {
                 action_id: Some(action_id.clone()),
-                message: e.to_string(),
-            })?;
+                thunk_id,
+            };
+            self.broadcast_state_locked(new_state, Some(source))?;
+        }
 
-        let source = UpdateSource {
-            action_id: Some(action_id.clone()),
-            thunk_id: action.thunk_parent_id.clone(),
-        };
-
-        self.broadcast_state_locked(new_state, Some(source))?;
         Ok(action_id)
     }
 
@@ -183,11 +223,14 @@ impl<R: Runtime> Zubridge<R> {
             .broadcast_lock
             .lock()
             .map_err(|e| crate::Error::StateError(e.to_string()))?;
+        let mut guard = self.locked_manager()?;
+        let manager = guard
+            .as_mut()
+            .expect("locked_manager initialises the manager");
 
         let mut acked = Vec::with_capacity(actions.len());
-        let handle = self.state_handle()?;
-        let mut last_action_id: Option<String> = None;
-        let mut last_thunk_id: Option<String> = None;
+        let mut last_state: Option<JsonValue> = None;
+        let mut last_source: Option<UpdateSource> = None;
         let mut failed: Option<BatchFailure> = None;
 
         for action in actions {
@@ -195,12 +238,24 @@ impl<R: Runtime> Zubridge<R> {
                 .id
                 .clone()
                 .unwrap_or_else(|| Uuid::new_v4().to_string());
-            match state_manager::dispatch(&handle, action.to_legacy_json()) {
-                Ok(_) => {
-                    last_action_id = Some(action_id.clone());
-                    last_thunk_id = action.thunk_parent_id.clone();
+            let thunk_id = action.thunk_parent_id.clone();
+            let source_label = action.source_label.clone().unwrap_or_default();
+            let mut action = action;
+            if action.id.is_none() {
+                action.id = Some(action_id.clone());
+            }
+            match manager.dispatch(action, source_label) {
+                Ok(Some(state)) => {
+                    last_state = Some(state);
+                    last_source = Some(UpdateSource {
+                        action_id: Some(action_id.clone()),
+                        thunk_id,
+                    });
                     acked.push(action_id);
                 }
+                // Queued behind an active thunk: still acked (it's accepted into
+                // the queue); its state update is emitted on queue drain.
+                Ok(None) => acked.push(action_id),
                 Err(e) => {
                     failed = Some(BatchFailure {
                         action_id,
@@ -211,16 +266,11 @@ impl<R: Runtime> Zubridge<R> {
             }
         }
 
-        // Broadcast even when the loop bailed early so the renderer's replica
-        // catches up to whatever actions did commit before the error. Skipped
-        // only when nothing committed (acked is empty).
-        if !acked.is_empty() {
-            let new_state = state_manager::read_state(&handle)?;
-            let source = UpdateSource {
-                action_id: last_action_id,
-                thunk_id: last_thunk_id,
-            };
-            self.broadcast_state_locked(new_state, Some(source))?;
+        // Emit one coalesced broadcast of the last immediately-executed state.
+        // (Queued actions broadcast individually when the thunk drains.) Skipped
+        // when nothing executed immediately.
+        if let Some(new_state) = last_state {
+            self.broadcast_state_locked(new_state, last_source)?;
         }
 
         Ok(BatchDispatchResult {
@@ -454,27 +504,22 @@ impl<R: Runtime> Zubridge<R> {
         bypass_access_control: bool,
         immediate: bool,
     ) -> crate::Result<()> {
-        let mut registry = self
-            .thunks
-            .write()
-            .map_err(|e| crate::Error::ThunkRegistration {
-                thunk_id: thunk_id.clone(),
-                message: e.to_string(),
-            })?;
-        registry
-            .register(
-                thunk_id.clone(),
-                parent_id,
-                source_label,
-                keys,
-                bypass_access_control,
-                immediate,
-            )
-            .map_err(|message| crate::Error::ThunkRegistration {
-                thunk_id: thunk_id.clone(),
-                message,
-            })?;
-        let _ = registry.execute_thunk(&thunk_id);
+        let mut guard = self.locked_manager()?;
+        let manager = guard
+            .as_mut()
+            .expect("locked_manager initialises the manager");
+        manager.register_thunk(
+            thunk_id.clone(),
+            parent_id,
+            source_label,
+            keys,
+            bypass_access_control,
+            immediate,
+        )?;
+        // Transition straight to Executing/root, preserving the prior behaviour
+        // where registration also activates the thunk (so subsequent non-thunk
+        // actions queue behind it until completion).
+        let _ = manager.execute_thunk(&thunk_id);
         Ok(())
     }
 
@@ -484,14 +529,22 @@ impl<R: Runtime> Zubridge<R> {
         source_label: &str,
         error: Option<String>,
     ) -> crate::Result<()> {
-        let mut registry = self.thunks.write().map_err(|e| crate::Error::ThunkRegistration {
-            thunk_id: thunk_id.to_string(),
-            message: e.to_string(),
-        })?;
+        // Completing a thunk drains any actions queued behind it; each drained
+        // state must be broadcast, so acquire `broadcast_lock` first (consistent
+        // order: broadcast_lock → manager).
+        let _broadcast_guard = self
+            .broadcast_lock
+            .lock()
+            .map_err(|e| crate::Error::StateError(e.to_string()))?;
+        let mut guard = self.locked_manager()?;
+        let manager = guard
+            .as_mut()
+            .expect("locked_manager initialises the manager");
 
         // Verify the caller owns this thunk. Without this, any webview could
         // complete another window's in-flight thunk by id.
-        let owner_label = registry
+        let owner_label = manager
+            .thunk_manager()
             .get(thunk_id)
             .ok_or_else(|| crate::Error::ThunkNotFound {
                 thunk_id: thunk_id.to_string(),
@@ -501,26 +554,23 @@ impl<R: Runtime> Zubridge<R> {
         if owner_label != source_label {
             return Err(crate::Error::ThunkRegistration {
                 thunk_id: thunk_id.to_string(),
-                message: format!(
-                    "thunk {thunk_id} is owned by {owner_label}, not {source_label}"
-                ),
+                message: format!("thunk {thunk_id} is owned by {owner_label}, not {source_label}"),
             });
         }
 
-        registry
-            .complete(thunk_id, error)
-            .map_err(|_| crate::Error::ThunkNotFound {
-                thunk_id: thunk_id.to_string(),
-            })?;
+        // Complete + drain. Without broadcasting the drained states the queued
+        // actions mutate canonical state but never reach renderers (desync +
+        // renderer thunk safety-timeout).
+        let (_events, drained_states) = manager.on_thunk_complete(thunk_id, error)?;
+        for state in drained_states {
+            self.broadcast_state_locked(state, None)?;
+        }
         Ok(())
     }
 
     /// Register a state manager at runtime (used when the plugin is initialised
     /// without one).
-    pub fn register_state_manager<S: StateManager>(
-        &self,
-        state_manager: S,
-    ) -> crate::Result<()> {
+    pub fn register_state_manager<S: StateManager>(&self, state_manager: S) -> crate::Result<()> {
         let handle = state_manager::new_handle(state_manager);
         self.app.manage(handle);
         Ok(())
@@ -547,8 +597,10 @@ impl<R: Runtime> Zubridge<R> {
         if let Ok(mut sequences) = self.sequences.write() {
             sequences.forget(label);
         }
-        if let Ok(mut thunks) = self.thunks.write() {
-            thunks.drop_label(label);
+        if let Ok(mut guard) = self.manager.lock() {
+            if let Some(manager) = guard.as_mut() {
+                manager.thunk_manager_mut().drop_label(label);
+            }
         }
     }
 
