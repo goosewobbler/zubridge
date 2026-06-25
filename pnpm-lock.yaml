@@ -17,8 +17,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0
       '@releasekit/release':
-        specifier: ^0.30.1
-        version: 0.30.1(conventional-commits-parser@6.4.0)(ws@8.21.0)
+        specifier: ^0.33.0
+        version: 0.33.0(conventional-commits-parser@6.4.0)(ws@8.21.0)
       '@types/shelljs':
         specifier: ^0.10.0
         version: 0.10.0
@@ -1370,8 +1370,8 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@anthropic-ai/sdk@0.104.2':
-    resolution: {integrity: sha512-s1wEVDAtEwkS7Ajgep6PZKJLFqybRkmD3Byz+iVVsSpbDY0gjROXE9aOft6V3PMqynn3NTcycV5whga9tCzmKA==}
+  '@anthropic-ai/sdk@0.105.0':
+    resolution: {integrity: sha512-sDyu+aM9cE6uZE+HgRjjHRb+qqb87GHZOx+8bE0YlWetdL1YcVLxn8h9ltxGOflyChTe6PMEo50kMQV4cw0hfg==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -2432,23 +2432,23 @@ packages:
       react-redux:
         optional: true
 
-  '@releasekit/notes@0.30.1':
-    resolution: {integrity: sha512-JVrUNRIWjSrhRyF5pkYEOlGoZ151pUB+rknNtNA0G8GyXmmhBWj1Soi6qiHkUd/AOOSbGijMvtMeHTFAIFdqfw==}
+  '@releasekit/notes@0.33.0':
+    resolution: {integrity: sha512-hfYzcz/iLtQqWwbAGGFkEv9Ya7VXpl+C2gUlPelDVtn76FRgblDuAW6Xo70MrQCifUaGVAihRkQeNs3SMQq3/g==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/publish@0.30.1':
-    resolution: {integrity: sha512-cBY0hJvcjIyuLueaFlbhyVdSC4nUZ5iqcOWL+6mh0mk5JiyIbPuO7xp/hm7O/p9w/XOdDJdL0ZRKkMCXgNmFBQ==}
+  '@releasekit/publish@0.33.0':
+    resolution: {integrity: sha512-+BI81NleiLVX2RpLIPqYcSKMJ3i+ZgOtJ6hLSlJHSYzjFQQnaj3LW/u3t1nYMmtL42nI+uSoHRiyZ84vT06+LA==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/release@0.30.1':
-    resolution: {integrity: sha512-IDz19iMuXVxqYP2RHZ3ntGhBDlEM95KYStN0b8nwhMZH8TOCaSm9R6i0Nvz7rWKmkJpgUvIZh68uVzNKddteRA==}
+  '@releasekit/release@0.33.0':
+    resolution: {integrity: sha512-xxztDWijbhGy5+pQlEEym0+F3ualZWL5UIfVIjHuNRlZF8K0RiUeb+CEdarDuya2ut7phy1IWgSuvppZQe2jNQ==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/version@0.30.1':
-    resolution: {integrity: sha512-GFhGWw6+Hk8wRq7FoLrSjwtatTBletVtiq9R//3hWxdn++5JGSQdIf+Pzp7fUH68h2y9t53lurh3Z2ci+IW6+w==}
+  '@releasekit/version@0.33.0':
+    resolution: {integrity: sha512-icjNW+hCF+Rh0nG6HmtP6Kbd45J0tDXM7R5Epp2h6K3m8J7lEjMRWhqFsIS18aaoUW1RhPITlxIAD8oLX2SO8Q==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5461,12 +5461,21 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
-  openai@6.42.0:
-    resolution: {integrity: sha512-1WFEt/uXMXOLhYRNkgJWo08Y2YNvNwpVU72K7ibrWgWpNOXd4VojXLbe6SQ4bLiUQ3Y8jz4IiyVkylJCL1DtZg==}
+  openai@6.45.0:
+    resolution: {integrity: sha512-5DQVNErssk0afNpTTHUm/qZPU4iKR9OYdNid8Ib4puq4gHNNvGWZht2zY4h9a8JMF949Ik6m8gQutllVPbjdnw==}
     peerDependencies:
+      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
+      '@smithy/hash-node': '>=4.3.0 <5'
+      '@smithy/signature-v4': '>=5.4.0 <6'
       ws: ^8.18.0
       zod: ^3.25 || ^4.0
     peerDependenciesMeta:
+      '@aws-sdk/credential-provider-node':
+        optional: true
+      '@smithy/hash-node':
+        optional: true
+      '@smithy/signature-v4':
+        optional: true
       ws:
         optional: true
       zod:
@@ -5998,6 +6007,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   serialize-error@12.0.0:
     resolution: {integrity: sha512-ZYkZLAvKTKQXWuh5XpBw7CdbSzagarX39WyZ2H07CDLC5/KfsRGlIXV8d4+tfqX1M7916mRqR1QfNHSij+c9Pw==}
     engines: {node: '>=18'}
@@ -6078,6 +6092,10 @@ packages:
 
   smol-toml@1.6.1:
     resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
+    engines: {node: '>= 18'}
+
+  smol-toml@1.7.0:
+    resolution: {integrity: sha512-aqVvWoyO21L23mb+drl4RmMXbf6N7FdHjAhTRA9ZBL7apWBgfWC16KjrASI+1p9GAroljyMHj6fK67i0UiTNvQ==}
     engines: {node: '>= 18'}
 
   socks-proxy-agent@8.0.5:
@@ -6865,7 +6883,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic-ai/sdk@0.104.2(zod@4.4.3)':
+  '@anthropic-ai/sdk@0.105.0(zod@4.4.3)':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.0.0
@@ -7089,7 +7107,7 @@ snapshots:
     dependencies:
       '@simple-libs/child-process-utils': 1.0.2
       '@simple-libs/stream-utils': 1.2.0
-      semver: 7.8.4
+      semver: 7.8.5
     optionalDependencies:
       conventional-commits-filter: 5.0.0
       conventional-commits-parser: 6.4.0
@@ -7872,10 +7890,9 @@ snapshots:
     optionalDependencies:
       react: 19.2.7
 
-  '@releasekit/notes@0.30.1(ws@8.21.0)':
+  '@releasekit/notes@0.33.0(ws@8.21.0)':
     dependencies:
-      '@anthropic-ai/sdk': 0.104.2(zod@4.4.3)
-      '@octokit/request-error': 7.1.0
+      '@anthropic-ai/sdk': 0.105.0(zod@4.4.3)
       '@octokit/rest': 22.0.1
       chalk: 5.6.2
       commander: 14.0.3
@@ -7884,46 +7901,52 @@ snapshots:
       jsonc-parser: 3.3.1
       liquidjs: 10.27.0
       minimatch: 10.2.5
-      openai: 6.42.0(ws@8.21.0)(zod@4.4.3)
-      smol-toml: 1.6.1
+      openai: 6.45.0(ws@8.21.0)(zod@4.4.3)
+      smol-toml: 1.7.0
       yaml: 2.9.0
       zod: 4.4.3
     transitivePeerDependencies:
+      - '@aws-sdk/credential-provider-node'
+      - '@smithy/hash-node'
+      - '@smithy/signature-v4'
       - ws
 
-  '@releasekit/publish@0.30.1':
+  '@releasekit/publish@0.33.0':
     dependencies:
       chalk: 5.6.2
       commander: 14.0.3
       jsonc-parser: 3.3.1
       minimatch: 10.2.5
-      semver: 7.8.4
-      smol-toml: 1.6.1
+      semver: 7.8.5
+      smol-toml: 1.7.0
       yaml: 2.9.0
       zod: 4.4.3
 
-  '@releasekit/release@0.30.1(conventional-commits-parser@6.4.0)(ws@8.21.0)':
+  '@releasekit/release@0.33.0(conventional-commits-parser@6.4.0)(ws@8.21.0)':
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@octokit/rest': 22.0.1
-      '@releasekit/notes': 0.30.1(ws@8.21.0)
-      '@releasekit/publish': 0.30.1
-      '@releasekit/version': 0.30.1(conventional-commits-parser@6.4.0)
+      '@releasekit/notes': 0.33.0(ws@8.21.0)
+      '@releasekit/publish': 0.33.0
+      '@releasekit/version': 0.33.0(conventional-commits-parser@6.4.0)
       chalk: 5.6.2
       commander: 14.0.3
       conventional-changelog-angular: 8.3.1
       conventional-changelog-conventionalcommits: 9.3.1
       jsonc-parser: 3.3.1
       minimatch: 10.2.5
-      semver: 7.8.4
-      smol-toml: 1.6.1
+      semver: 7.8.5
+      smol-toml: 1.7.0
       yaml: 2.9.0
       zod: 4.4.3
     transitivePeerDependencies:
+      - '@aws-sdk/credential-provider-node'
+      - '@smithy/hash-node'
+      - '@smithy/signature-v4'
       - conventional-commits-parser
       - ws
 
-  '@releasekit/version@0.30.1(conventional-commits-parser@6.4.0)':
+  '@releasekit/version@0.33.0(conventional-commits-parser@6.4.0)':
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@types/minimatch': 5.1.2
@@ -7938,8 +7961,8 @@ snapshots:
       git-semver-tags: 8.0.1(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.4.0)
       jsonc-parser: 3.3.1
       minimatch: 10.2.5
-      semver: 7.8.4
-      smol-toml: 1.6.1
+      semver: 7.8.5
+      smol-toml: 1.7.0
       yaml: 2.9.0
       zod: 4.4.3
     transitivePeerDependencies:
@@ -11087,7 +11110,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@6.42.0(ws@8.21.0)(zod@4.4.3):
+  openai@6.45.0(ws@8.21.0)(zod@4.4.3):
     optionalDependencies:
       ws: 8.21.0
       zod: 4.4.3
@@ -11673,6 +11696,8 @@ snapshots:
 
   semver@7.8.4: {}
 
+  semver@7.8.5: {}
+
   serialize-error@12.0.0:
     dependencies:
       type-fest: 4.41.0
@@ -11749,6 +11774,8 @@ snapshots:
   smart-buffer@4.2.0: {}
 
   smol-toml@1.6.1: {}
+
+  smol-toml@1.7.0: {}
 
   socks-proxy-agent@8.0.5:
     dependencies:
