@@ -37,28 +37,41 @@ sync-handler modes — they take different code paths.
 
 ---
 
-## P0 — Highest value (scheduler / thunk / concurrency; untested via E2E)
+## P0 — Highest value (scheduler / thunk / concurrency)
+
+> **Prerequisites:** merge **#187** (scheduler wiring) and **#188** (backend thunks), then rebuild
+> (`pnpm build:tauri`, or `cd apps/tauri/e2e && pnpm dev:<mode>`). The action scheduler is now wired
+> into the plugin, so thunks genuinely **block** concurrent actions (before this they did not). The
+> "Main Thunk" buttons now appear and work on Tauri. Some paths below are E2E-covered
+> (`renderer-thunk.spec.ts`, `backend-thunk.spec.ts`) — the manual pass focuses on the variants and
+> modes those don't reach.
 
 **Thunk correctness**
 
-- [ ] **Main-process thunk** ("Double counter using main process thunk"): from a known value,
-      counter doubles; value propagates to all open windows.
-- [ ] **Renderer thunk** ("…using renderer thunk"): doubles correctly.
+- [ ] **Backend ("main process") thunk** ("Double counter using main process thunk"): a thunk
+      authored in **Rust** (Tauri has no JS main process — see #185). Counter doubles and propagates
+      to all windows. *E2E-covered (`backend-thunk.spec.ts`)*; spot-check across modes.
+- [ ] **Renderer thunk** ("…using renderer thunk"): doubles correctly. *E2E-covered
+      (`renderer-thunk.spec.ts`)*; spot-check across modes.
 - [ ] **getState-override thunk** ("…with getState override"): result reflects the *overridden*
-      state, not the live counter (verifies the override path).
+      state, not the live counter (verifies the override path). **Not E2E-covered — test here.**
 - [ ] **Distinctive pattern** (×3, +2, −1): from value N, final == `3N+1` (e.g. 5 → 16). With
-      DEBUG on, the three steps apply as one clean sequence.
+      DEBUG on, the three steps apply as one clean sequence. **Not E2E-covered — test here.**
 
-**Thunk atomicity under concurrency (the key test)**
+**Thunk atomicity under concurrency (the behaviour PR #187 unlocks)**
 
-- [ ] Start a **slow** thunk (e.g. "slow main process thunk" or "distinctive pattern slowly").
-      *While it runs*, rapidly click **Increment** in the **same** window. Expected (Electron
-      parity): non-immediate actions queue and apply *after* the thunk; final value is
-      consistent and steps don't interleave mid-pattern.
-- [ ] Same, but fire the increments from a **second window** while the slow thunk runs in the
-      first. Final state must be identical in both windows.
-- [ ] Fire **two slow thunks** back-to-back. Verify they don't corrupt each other (sequential,
-      correct final value) — parent/child + root-thunk handling.
+With the scheduler wired, non-thunk actions dispatched while a thunk runs **queue and apply only
+after it completes** — they no longer interleave with the thunk's steps. The slow backend thunk is
+~3s, giving you time to interleave.
+
+- [ ] Start a **slow backend thunk** ("slow main process thunk"). *While it runs*, click
+      **Increment** a few times in the **same** window → the increments do **not** take effect until
+      the thunk completes, then they all apply at once.
+- [ ] Same, but fire the increments from a **second window** while the slow thunk runs in the first
+      → both windows converge to the same final value. *(E2E-covered for the backend slow thunk;
+      verify the **renderer** slow thunk + the non-default modes here.)*
+- [ ] Repeat with the **slow renderer thunk** and **distinctive pattern slowly** — same blocking.
+- [ ] Fire **two slow thunks** back-to-back → sequential, correct final value (root-thunk handling).
 
 **Action scheduling / batching**
 
