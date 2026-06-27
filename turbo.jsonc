@@ -81,15 +81,16 @@
       "cache": false
     },
     "test:e2e": {
+      // Electron-only by design during the P4 refactor. Tauri v2 E2E runs via its
+      // dedicated command (`pnpm test:e2e:tauri-basic`) and in CI (per-app); Tauri v1
+      // is maintenance-only with no E2E suite. See AGENTS.md "Running Tests".
       "dependsOn": [
         "build:electron-examples",
         "test:e2e:electron-zustand-basic",
         "test:e2e:electron-zustand-reducers",
         "test:e2e:electron-zustand-handlers",
         "test:e2e:electron-redux",
-        "test:e2e:electron-custom",
-        "test:e2e:tauri",
-        "test:e2e:tauri-v1"
+        "test:e2e:electron-custom"
       ],
       "cache": false
     },
@@ -151,19 +152,7 @@
       ],
       "cache": false
     },
-    "test:e2e:tauri-v1": {
-      "dependsOn": [
-        "tauri-v1-e2e#build",
-        // NOTE: Tauri tests wait for Electron E2E tests to ensure Electron stability
-        // During Tauri development, remove these AND uncomment inverse dependencies in electron tasks
-        "test:e2e:electron-zustand-basic",
-        "test:e2e:electron-zustand-reducers",
-        "test:e2e:electron-zustand-handlers",
-        "test:e2e:electron-redux",
-        "test:e2e:electron-custom"
-      ],
-      "cache": false
-    },
+    // No `test:e2e:tauri-v1` task — Tauri v1 is maintenance-only with no E2E suite.
     "@zubridge/middleware#build": {
       "cache": false
     },
