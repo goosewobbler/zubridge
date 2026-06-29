@@ -58,7 +58,7 @@
     "@types/shelljs": "^0.10.0",
     "@vitest/coverage-v8": "^4.1.9",
     "react": "^19.2.7",
-    "rollup": "^4.62.0",
+    "rollup": "^4.62.2",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
     "typescript": "^5.9.3",
