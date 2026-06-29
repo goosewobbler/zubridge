@@ -67,7 +67,7 @@
     "@biomejs/biome": "^2.5.0",
     "@releasekit/release": "^0.33.0",
     "@types/shelljs": "^0.10.0",
-    "@wdio/logger": "^9.4.4",
+    "@wdio/logger": "^9.29.1",
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",

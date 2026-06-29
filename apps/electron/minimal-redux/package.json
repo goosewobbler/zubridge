@@ -44,7 +44,7 @@
     "@zubridge/types": "^2.0.1",
     "autoprefixer": "^10.4.27",
     "cross-env": "^10.1.0",
-    "electron": "42.4.0",
+    "electron": "42.5.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "6.0.0-beta.1",
     "is-ci": "^4.1.0",
