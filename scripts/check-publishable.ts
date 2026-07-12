@@ -1,28 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Publishability guard for the workspace's public packages.
+ * Fails the build if a public package would not install cleanly from npm for an
+ * end user. The package E2E harness can't catch this: it installs local tarballs
+ * with pnpm behind `pnpm.overrides`, so neither registry resolution nor the npm
+ * client is ever exercised — which is how issue #194 shipped (a `workspace:`
+ * spec that npm rejects with EUNSUPPORTEDPROTOCOL but pnpm tolerates).
  *
- * Reproduces the two failure modes behind issue #194, neither of which the
- * package E2E harness (run-package-e2e.ts) can catch: it installs from local
- * tarballs, uses pnpm (which tolerates the `workspace:` protocol), and
- * overrides every @zubridge/* dependency to a local file.
- *
- *   1. Protocol lint — packs each publishable package with `pnpm pack` (the
- *      same workspace-protocol rewrite path `pnpm publish` uses) and fails if
- *      any dependency field in the packed manifest still carries a
- *      `workspace:`, `link:`, or `file:` protocol. A correctly published
- *      tarball has none; a `workspace:*` that survives is exactly what npm
- *      rejects with EUNSUPPORTEDPROTOCOL.
- *
- *   2. Clean-room install — installs the packed tarball into a throwaway
- *      project with the *npm* client (no workspace, no overrides), exactly as
- *      an end user would. Catches EUNSUPPORTEDPROTOCOL and unresolvable (e.g.
- *      unpublished) @zubridge/* runtime deps.
- *
- * Requires the packages to be built first (dist must exist). Wired into CI's
- * Code Quality job.
- *
+ * Packages must be built first (dist must exist).
  * Usage: tsx scripts/check-publishable.ts
  */
 
@@ -106,9 +91,9 @@ function installSmoke(tarball: string): void {
       path.join(smokeDir, 'package.json'),
       JSON.stringify({ name: 'install-smoke', version: '0.0.0', private: true }, null, 2),
     );
-    // npm is the client end users use and the one that rejects `workspace:`.
-    // --omit=peer skips the heavy electron/redux peer frameworks; the
-    // dependency-tree resolution where #194 failed still runs.
+    // npm (not pnpm) is what rejects `workspace:`, so it must be the client here.
+    // --omit=peer skips the heavy electron/redux peer frameworks; the dependency
+    // resolution that fails on a bad spec still runs.
     run(
       'npm',
       [
