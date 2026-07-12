@@ -89,6 +89,7 @@
     "@types/shelljs": "^0.10.0",
     "@vitest/coverage-v8": "^4.1.9",
     "@zubridge/types": "workspace:*",
+    "@zubridge/utils": "workspace:*",
     "immer": "^11.1.8",
     "jsdom": "^29.1.1",
     "react": "^19.2.7",
@@ -112,8 +113,6 @@
   ],
   "dependencies": {
     "@oxc-project/runtime": "^0.136.0",
-    "@types/debug": "^4.1.12",
-    "@zubridge/utils": "workspace:*",
     "dequal": "^2.0.3",
     "uuid": "^14.0.0",
     "zod": "^4.3.6",

@@ -1130,12 +1130,6 @@ importers:
       '@oxc-project/runtime':
         specifier: ^0.136.0
         version: 0.136.0
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.13
-      '@zubridge/utils':
-        specifier: workspace:*
-        version: link:../utils
       dequal:
         specifier: ^2.0.3
         version: 2.0.3
@@ -1176,6 +1170,9 @@ importers:
       '@zubridge/types':
         specifier: workspace:*
         version: link:../types
+      '@zubridge/utils':
+        specifier: workspace:*
+        version: link:../utils
       immer:
         specifier: ^11.1.8
         version: 11.1.8

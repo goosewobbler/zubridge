@@ -74,6 +74,9 @@ jobs:
       - name: ✅ Run Typecheck
         run: pnpm run typecheck
 
+      - name: 📦 Check Publishability
+        run: pnpm run check:publishable
+
       - name: 🧪 Run Unit Tests
         run: pnpm test:unit
 
