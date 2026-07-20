@@ -17,8 +17,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0
       '@releasekit/release':
-        specifier: ^0.33.0
-        version: 0.33.0(conventional-commits-parser@6.4.0)(ws@8.21.0)
+        specifier: ^0.41.1
+        version: 0.41.1(conventional-commits-parser@6.4.0)(ws@8.21.0)
       '@types/shelljs':
         specifier: ^0.10.0
         version: 0.10.0
@@ -1370,8 +1370,8 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@anthropic-ai/sdk@0.105.0':
-    resolution: {integrity: sha512-sDyu+aM9cE6uZE+HgRjjHRb+qqb87GHZOx+8bE0YlWetdL1YcVLxn8h9ltxGOflyChTe6PMEo50kMQV4cw0hfg==}
+  '@anthropic-ai/sdk@0.112.3':
+    resolution: {integrity: sha512-wjcozJlitVIuBEw9cj/xBuRznwkhcLmXmNzlFoeHbh4AvrDG3HGZrdvEOTTmobcbhjGkfOpKbmDTCQ4s9LQvCg==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -2432,23 +2432,23 @@ packages:
       react-redux:
         optional: true
 
-  '@releasekit/notes@0.33.0':
-    resolution: {integrity: sha512-hfYzcz/iLtQqWwbAGGFkEv9Ya7VXpl+C2gUlPelDVtn76FRgblDuAW6Xo70MrQCifUaGVAihRkQeNs3SMQq3/g==}
+  '@releasekit/notes@0.41.1':
+    resolution: {integrity: sha512-htIjD4+mIVw+j5IONsPqT505V0osDmtiu5JL1Q8aV2s8jq0PPpxr3KaoLJ0F1TJjqxpOCg9aI2xzOXiX3nRiAw==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/publish@0.33.0':
-    resolution: {integrity: sha512-+BI81NleiLVX2RpLIPqYcSKMJ3i+ZgOtJ6hLSlJHSYzjFQQnaj3LW/u3t1nYMmtL42nI+uSoHRiyZ84vT06+LA==}
+  '@releasekit/publish@0.41.1':
+    resolution: {integrity: sha512-jI8XplquoFGmE0rj5aTCOkqgIy+R6f2KDfTs74f0QpD6/fNR5gdVyWR9OQmlVhbqTpZvOESuT18wmmY7WQCA+A==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/release@0.33.0':
-    resolution: {integrity: sha512-xxztDWijbhGy5+pQlEEym0+F3ualZWL5UIfVIjHuNRlZF8K0RiUeb+CEdarDuya2ut7phy1IWgSuvppZQe2jNQ==}
+  '@releasekit/release@0.41.1':
+    resolution: {integrity: sha512-7VW7Wu5MM07KFXIBnwQTSn0bPoWbjZs2l6iPKnWdRafemSf4R8IHmcTlry2aW+LchUuk+Icp1eai4ng28zg6cA==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@releasekit/version@0.33.0':
-    resolution: {integrity: sha512-icjNW+hCF+Rh0nG6HmtP6Kbd45J0tDXM7R5Epp2h6K3m8J7lEjMRWhqFsIS18aaoUW1RhPITlxIAD8oLX2SO8Q==}
+  '@releasekit/version@0.41.1':
+    resolution: {integrity: sha512-8egPSQMqg1LjO3STvEqii1NQ6CoWf7PG6eXY7rk+agipCwib5mzvTVJqPKxIU4NLW+CPv+gPM1e32PFu/EdzsA==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -4466,8 +4466,8 @@ packages:
       picomatch:
         optional: true
 
-  figlet@1.11.0:
-    resolution: {integrity: sha512-EEx3OS/l2bFqcUNN2NM9FPJp8vAMrgbCxsbl2hbcJNNxOEwVe3mEzrhan7TbJQViZa8mMqhihlbCaqD+LyYKTQ==}
+  figlet@1.11.2:
+    resolution: {integrity: sha512-VXzWZSFTauu1f4CJbj/EnlpDVaTjO33cp/xgH0CLtPS/aP59i3ElwyR2bquCEsAv2Apv9E29PX5Zy39ipeUqSw==}
     engines: {node: '>= 17.0.0'}
     hasBin: true
 
@@ -4628,6 +4628,7 @@ packages:
   git-semver-tags@8.0.1:
     resolution: {integrity: sha512-zMbamckSNdlT4U48IMFa2Cn6FTzM+2yF6/gEmStPJI8PiLxd/bT6dw10+mc6u5Qe4fhrc/y9nU290FWjQhAV7g==}
     engines: {node: '>=18'}
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   glob-parent@5.1.2:
@@ -5135,8 +5136,8 @@ packages:
     engines: {node: '>=22.22.1'}
     hasBin: true
 
-  liquidjs@10.27.0:
-    resolution: {integrity: sha512-tw/OA59K7aIBlMKIrKlumr37fiZUheShVHXY8cVctWisgY1p9mc5hreOvlreoS0wTiwlWk14Ya7305c2a/Cg5w==}
+  liquidjs@10.27.2:
+    resolution: {integrity: sha512-kvknfAEtOHjHkAAv7GxLEJh8ghpMQm3Fc4uWVyF7hERSTsSRsdC7saWs0p5aDG7GDcWsu5o+T4232O+8KZO55w==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -5461,8 +5462,8 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
-  openai@6.45.0:
-    resolution: {integrity: sha512-5DQVNErssk0afNpTTHUm/qZPU4iKR9OYdNid8Ib4puq4gHNNvGWZht2zY4h9a8JMF949Ik6m8gQutllVPbjdnw==}
+  openai@6.48.0:
+    resolution: {integrity: sha512-KhVp+FyV50QrXNextvL9hIU5l6ox5HYuKQjGVk7lIqprgJol90+dQXWONV6S1lRWsKA1bXjrow8RsUT14M1hNA==}
     peerDependencies:
       '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
       '@smithy/hash-node': '>=4.3.0 <5'
@@ -6883,7 +6884,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic-ai/sdk@0.105.0(zod@4.4.3)':
+  '@anthropic-ai/sdk@0.112.3(zod@4.4.3)':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.0.0
@@ -7890,18 +7891,18 @@ snapshots:
     optionalDependencies:
       react: 19.2.7
 
-  '@releasekit/notes@0.33.0(ws@8.21.0)':
+  '@releasekit/notes@0.41.1(ws@8.21.0)':
     dependencies:
-      '@anthropic-ai/sdk': 0.105.0(zod@4.4.3)
+      '@anthropic-ai/sdk': 0.112.3(zod@4.4.3)
       '@octokit/rest': 22.0.1
       chalk: 5.6.2
       commander: 14.0.3
       ejs: 4.0.1
       handlebars: 4.7.9
       jsonc-parser: 3.3.1
-      liquidjs: 10.27.0
+      liquidjs: 10.27.2
       minimatch: 10.2.5
-      openai: 6.45.0(ws@8.21.0)(zod@4.4.3)
+      openai: 6.48.0(ws@8.21.0)(zod@4.4.3)
       smol-toml: 1.7.0
       yaml: 2.9.0
       zod: 4.4.3
@@ -7911,7 +7912,7 @@ snapshots:
       - '@smithy/signature-v4'
       - ws
 
-  '@releasekit/publish@0.33.0':
+  '@releasekit/publish@0.41.1':
     dependencies:
       chalk: 5.6.2
       commander: 14.0.3
@@ -7922,13 +7923,13 @@ snapshots:
       yaml: 2.9.0
       zod: 4.4.3
 
-  '@releasekit/release@0.33.0(conventional-commits-parser@6.4.0)(ws@8.21.0)':
+  '@releasekit/release@0.41.1(conventional-commits-parser@6.4.0)(ws@8.21.0)':
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@octokit/rest': 22.0.1
-      '@releasekit/notes': 0.33.0(ws@8.21.0)
-      '@releasekit/publish': 0.33.0
-      '@releasekit/version': 0.33.0(conventional-commits-parser@6.4.0)
+      '@releasekit/notes': 0.41.1(ws@8.21.0)
+      '@releasekit/publish': 0.41.1
+      '@releasekit/version': 0.41.1(conventional-commits-parser@6.4.0)
       chalk: 5.6.2
       commander: 14.0.3
       conventional-changelog-angular: 8.3.1
@@ -7946,7 +7947,7 @@ snapshots:
       - conventional-commits-parser
       - ws
 
-  '@releasekit/version@0.33.0(conventional-commits-parser@6.4.0)':
+  '@releasekit/version@0.41.1(conventional-commits-parser@6.4.0)':
     dependencies:
       '@manypkg/get-packages': 3.1.0
       '@types/minimatch': 5.1.2
@@ -7957,7 +7958,7 @@ snapshots:
       conventional-changelog-conventionalcommits: 9.3.1
       conventional-commits-filter: 5.0.0
       conventional-recommended-bump: 11.2.0
-      figlet: 1.11.0
+      figlet: 1.11.2
       git-semver-tags: 8.0.1(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.4.0)
       jsonc-parser: 3.3.1
       minimatch: 10.2.5
@@ -10096,7 +10097,7 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.4
 
-  figlet@1.11.0:
+  figlet@1.11.2:
     dependencies:
       commander: 14.0.3
 
@@ -10795,7 +10796,7 @@ snapshots:
     optionalDependencies:
       yaml: 2.9.0
 
-  liquidjs@10.27.0:
+  liquidjs@10.27.2:
     dependencies:
       commander: 10.0.1
 
@@ -11110,7 +11111,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@6.45.0(ws@8.21.0)(zod@4.4.3):
+  openai@6.48.0(ws@8.21.0)(zod@4.4.3):
     optionalDependencies:
       ws: 8.21.0
       zod: 4.4.3
