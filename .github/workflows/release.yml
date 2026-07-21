@@ -120,6 +120,10 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      # _release.reusable.yml declares pull-requests: write at its top level, so
+      # every caller must grant at least that or the workflow fails validation.
+      # Unused on this path (only the standing-pr publish path touches PRs).
+      pull-requests: write
     with:
       target_branch: main
       bump: ${{ needs.gate.outputs.bump }}
@@ -157,6 +161,10 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      # _release.reusable.yml declares pull-requests: write at its top level, so
+      # every caller must grant at least that or the workflow fails validation.
+      # Unused on this path (only the standing-pr publish path touches PRs).
+      pull-requests: write
     with:
       target_branch: ${{ inputs.target_branch }}
       bump: ${{ inputs.bump }}
