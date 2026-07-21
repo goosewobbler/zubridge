@@ -60,11 +60,6 @@ on:
         required: false
         type: string
         default: ''
-      reconcile_after:
-        description: 'Rebuild the standing release PR after this release completes. Manual callers may enable it so the standing PR drops the just-released changes.'
-        required: false
-        type: boolean
-        default: false
 
 concurrency:
   group: release
@@ -176,10 +171,14 @@ jobs:
       crates_io_token: ${{ secrets.CRATES_IO_TOKEN }}
       ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
 
+  # Always reconcile after a real manual release: releasekit does not auto-rebuild
+  # the standing PR, and the `chore: release` commit suppresses the push-triggered
+  # update, so skipping this leaves the standing PR listing already-published
+  # versions. Mirrors reconcile-after-auto. Skipped only on dry runs.
   reconcile-after-manual:
     name: Reconcile standing PR
     needs: [release-manual]
-    if: github.event_name == 'workflow_dispatch' && inputs.reconcile_after && !inputs.dry_run && needs.release-manual.result == 'success'
+    if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && needs.release-manual.result == 'success'
     uses: ./.github/workflows/_standing-pr-update.reusable.yml
     permissions:
       contents: write
