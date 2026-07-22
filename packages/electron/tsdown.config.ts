@@ -55,8 +55,12 @@ export default defineConfig([
     entry: ['src/main.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'],
-    noExternal: ['@zubridge/utils'],
+    external: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'],
+    // weald is bundled (not external): it's the production debug backend and is not a
+    // declared runtime dependency, so leaving it external makes the import fail in a
+    // consumer's app and debug silently falls back to console. @wdio/logger stays external
+    // — it's only loaded in WDIO E2E, where it's installed.
+    noExternal: ['@zubridge/utils', 'weald'],
     outDir: 'dist',
     clean: false,
     sourcemap: false,
@@ -80,9 +84,9 @@ export default defineConfig([
     dts: true,
     external: (id) => {
       if (externalizeUnenvRuntime(id)) return true;
-      return ['electron', 'zustand', 'zustand/vanilla', 'weald', '@wdio/logger'].includes(id);
+      return ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'].includes(id);
     },
-    noExternal: ['@zubridge/utils'],
+    noExternal: ['@zubridge/utils', 'weald'],
     outDir: 'dist',
     clean: false,
     sourcemap: false,
