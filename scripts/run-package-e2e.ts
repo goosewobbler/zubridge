@@ -53,7 +53,8 @@ const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const TEMP_DIR = path.join(os.tmpdir(), `zubridge-e2e-${Date.now()}`);
 // @zubridge/utils is intentionally absent: it is bundled into @zubridge/electron's
 // dist at build time (noExternal in tsdown.config.ts), so it is not a runtime
-// dependency and must not be installed/resolved separately. See issue #194.
+// dependency and must not be installed/resolved separately.
+// See https://github.com/goosewobbler/zubridge/issues/194
 const ZUBRIDGE_PACKAGES = {
   dependencies: ['@zubridge/electron'],
   devDependencies: ['@zubridge/types'],
