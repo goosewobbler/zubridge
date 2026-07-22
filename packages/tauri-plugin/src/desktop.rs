@@ -151,8 +151,9 @@ impl<R: Runtime> Zubridge<R> {
     /// `broadcast_lock` is acquired *before* dispatch so the (compute delta →
     /// emit → record baseline) sequence can't interleave across concurrent
     /// dispatches and stale-base a delta. The `manager` lock is acquired after
-    /// it (consistent order) and held across the broadcast so no other dispatch
-    /// can reorder its broadcast ahead of ours.
+    /// it (consistent order) and dropped *before* the broadcast — `broadcast_lock`
+    /// alone serialises the broadcast sequence, so holding `manager` across the
+    /// per-webview emit loop would only block unrelated `register_thunk` calls.
     pub fn dispatch_action(&self, action: ZubridgeAction) -> crate::Result<String> {
         let action_id = action
             .id
@@ -171,11 +172,13 @@ impl<R: Runtime> Zubridge<R> {
             .broadcast_lock
             .lock()
             .map_err(|e| crate::Error::StateError(e.to_string()))?;
-        let mut guard = self.locked_manager()?;
-        let dispatched = guard
-            .as_mut()
-            .expect("locked_manager initialises the manager")
-            .dispatch(action, source_label)?;
+        let dispatched = {
+            let mut guard = self.locked_manager()?;
+            guard
+                .as_mut()
+                .expect("locked_manager initialises the manager")
+                .dispatch(action, source_label)?
+        };
 
         if let Some(new_state) = dispatched {
             let source = UpdateSource {
@@ -223,45 +226,51 @@ impl<R: Runtime> Zubridge<R> {
             .broadcast_lock
             .lock()
             .map_err(|e| crate::Error::StateError(e.to_string()))?;
-        let mut guard = self.locked_manager()?;
-        let manager = guard
-            .as_mut()
-            .expect("locked_manager initialises the manager");
 
         let mut acked = Vec::with_capacity(actions.len());
         let mut last_state: Option<JsonValue> = None;
         let mut last_source: Option<UpdateSource> = None;
         let mut failed: Option<BatchFailure> = None;
 
-        for action in actions {
-            let action_id = action
-                .id
-                .clone()
-                .unwrap_or_else(|| Uuid::new_v4().to_string());
-            let thunk_id = action.thunk_parent_id.clone();
-            let source_label = action.source_label.clone().unwrap_or_default();
-            let mut action = action;
-            if action.id.is_none() {
-                action.id = Some(action_id.clone());
-            }
-            match manager.dispatch(action, source_label) {
-                Ok(Some(state)) => {
-                    last_state = Some(state);
-                    last_source = Some(UpdateSource {
-                        action_id: Some(action_id.clone()),
-                        thunk_id,
-                    });
-                    acked.push(action_id);
+        // Scope the manager guard to the dispatch loop so it is released before
+        // the broadcast below — `broadcast_lock` already serialises the emit,
+        // and holding `manager` across it would needlessly block `register_thunk`.
+        {
+            let mut guard = self.locked_manager()?;
+            let manager = guard
+                .as_mut()
+                .expect("locked_manager initialises the manager");
+
+            for action in actions {
+                let action_id = action
+                    .id
+                    .clone()
+                    .unwrap_or_else(|| Uuid::new_v4().to_string());
+                let thunk_id = action.thunk_parent_id.clone();
+                let source_label = action.source_label.clone().unwrap_or_default();
+                let mut action = action;
+                if action.id.is_none() {
+                    action.id = Some(action_id.clone());
                 }
-                // Queued behind an active thunk: still acked (it's accepted into
-                // the queue); its state update is emitted on queue drain.
-                Ok(None) => acked.push(action_id),
-                Err(e) => {
-                    failed = Some(BatchFailure {
-                        action_id,
-                        message: e.to_string(),
-                    });
-                    break;
+                match manager.dispatch(action, source_label) {
+                    Ok(Some(state)) => {
+                        last_state = Some(state);
+                        last_source = Some(UpdateSource {
+                            action_id: Some(action_id.clone()),
+                            thunk_id,
+                        });
+                        acked.push(action_id);
+                    }
+                    // Queued behind an active thunk: still acked (it's accepted into
+                    // the queue); its state update is emitted on queue drain.
+                    Ok(None) => acked.push(action_id),
+                    Err(e) => {
+                        failed = Some(BatchFailure {
+                            action_id,
+                            message: e.to_string(),
+                        });
+                        break;
+                    }
                 }
             }
         }
@@ -536,34 +545,48 @@ impl<R: Runtime> Zubridge<R> {
             .broadcast_lock
             .lock()
             .map_err(|e| crate::Error::StateError(e.to_string()))?;
-        let mut guard = self.locked_manager()?;
-        let manager = guard
-            .as_mut()
-            .expect("locked_manager initialises the manager");
 
-        // Verify the caller owns this thunk. Without this, any webview could
-        // complete another window's in-flight thunk by id.
-        let owner_label = manager
-            .thunk_manager()
-            .get(thunk_id)
-            .ok_or_else(|| crate::Error::ThunkNotFound {
-                thunk_id: thunk_id.to_string(),
-            })?
-            .source_label
-            .clone();
-        if owner_label != source_label {
-            return Err(crate::Error::ThunkRegistration {
-                thunk_id: thunk_id.to_string(),
-                message: format!("thunk {thunk_id} is owned by {owner_label}, not {source_label}"),
-            });
-        }
+        // Complete + drain under the manager guard, then release it before the
+        // broadcast loop: `broadcast_lock` already serialises the emit, so
+        // holding `manager` across it would only block unrelated `register_thunk`.
+        let drained_states = {
+            let mut guard = self.locked_manager()?;
+            let manager = guard
+                .as_mut()
+                .expect("locked_manager initialises the manager");
 
-        // Complete + drain. Without broadcasting the drained states the queued
-        // actions mutate canonical state but never reach renderers (desync +
-        // renderer thunk safety-timeout).
-        let (_events, drained_states) = manager.on_thunk_complete(thunk_id, error)?;
-        for state in drained_states {
-            self.broadcast_state_locked(state, None)?;
+            // Verify the caller owns this thunk. Without this, any webview could
+            // complete another window's in-flight thunk by id.
+            let owner_label = manager
+                .thunk_manager()
+                .get(thunk_id)
+                .ok_or_else(|| crate::Error::ThunkNotFound {
+                    thunk_id: thunk_id.to_string(),
+                })?
+                .source_label
+                .clone();
+            if owner_label != source_label {
+                return Err(crate::Error::ThunkRegistration {
+                    thunk_id: thunk_id.to_string(),
+                    message: format!(
+                        "thunk {thunk_id} is owned by {owner_label}, not {source_label}"
+                    ),
+                });
+            }
+
+            // Without broadcasting the drained states the queued actions mutate
+            // canonical state but never reach renderers (desync + renderer thunk
+            // safety-timeout).
+            let (_events, drained_states) = manager.on_thunk_complete(thunk_id, error)?;
+            drained_states
+        };
+
+        for drained in drained_states {
+            let source = UpdateSource {
+                action_id: drained.action_id,
+                thunk_id: drained.thunk_id,
+            };
+            self.broadcast_state_locked(drained.state, Some(source))?;
         }
         Ok(())
     }
@@ -585,6 +608,14 @@ impl<R: Runtime> Zubridge<R> {
     /// manage webviews outside the standard close flow (e.g. embedded webview
     /// pools) can release per-label state explicitly.
     pub fn forget_label(&self, label: &str) {
+        // Dropping this label's thunk can unblock actions that were queued
+        // behind it; those must be drained and broadcast to the surviving
+        // windows, else they stay stuck in the scheduler forever (mirrors
+        // `complete_thunk`). Hold `broadcast_lock` across the drain + broadcast
+        // (consistent order: broadcast_lock → manager). Best-effort throughout:
+        // a poisoned lock simply skips the affected step.
+        let _broadcast_guard = self.broadcast_lock.lock().ok();
+
         if let Ok(mut subs) = self.subscriptions.write() {
             subs.drop_label(label);
         }
@@ -597,9 +628,33 @@ impl<R: Runtime> Zubridge<R> {
         if let Ok(mut sequences) = self.sequences.write() {
             sequences.forget(label);
         }
-        if let Ok(mut guard) = self.manager.lock() {
-            if let Some(manager) = guard.as_mut() {
-                manager.thunk_manager_mut().drop_label(label);
+
+        // Drop the label's thunks and drain behind it under the manager guard,
+        // then release it before broadcasting (same reasoning as complete_thunk).
+        let drained_states = {
+            let Ok(mut guard) = self.manager.lock() else {
+                return;
+            };
+            // Manager never built (no dispatch/thunk yet) → nothing was queued.
+            let Some(manager) = guard.as_mut() else {
+                return;
+            };
+            match manager.on_label_forgotten(label) {
+                Ok(states) => states,
+                Err(err) => {
+                    log::warn!("zubridge: draining queue after forget failed: {err}");
+                    return;
+                }
+            }
+        };
+
+        for drained in drained_states {
+            let source = UpdateSource {
+                action_id: drained.action_id,
+                thunk_id: drained.thunk_id,
+            };
+            if let Err(err) = self.broadcast_state_locked(drained.state, Some(source)) {
+                log::warn!("zubridge: post-forget broadcast failed: {err}");
             }
         }
     }
