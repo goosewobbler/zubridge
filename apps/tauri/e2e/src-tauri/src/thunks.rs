@@ -108,10 +108,12 @@ async fn run_double_thunk<R: Runtime>(
     })
 }
 
-/// read -> DOUBLE -> sleep -> DOUBLE -> sleep -> HALVE -> sleep -> read.
+/// DOUBLE -> sleep -> DOUBLE -> sleep -> HALVE -> read.
 /// Each dispatch is a separate `dispatch_action` (which takes + releases the
 /// plugin's broadcast lock internally); the `sleep` happens *between*
-/// dispatches with no lock held.
+/// dispatches with no lock held. `dispatch_action` commits state synchronously,
+/// so the closing `read_counter` sees the post-HALVE value with no trailing
+/// delay.
 async fn drive_sequence<R: Runtime>(
     app: &AppHandle<R>,
     thunk_id: &str,
@@ -119,7 +121,9 @@ async fn drive_sequence<R: Runtime>(
     halve: &str,
     delay: Duration,
 ) -> Result<i32, String> {
-    let _start = read_counter(app)?; // parity with Electron's getState() at the top
+    // Electron's main thunk reads getState() here; the net effect is
+    // deterministic, so the backend thunk skips the live read (and its extra
+    // lock cycle + failure path) and just returns the post-sequence value below.
 
     app.zubridge()
         .dispatch_action(backend_action(double, thunk_id))
@@ -134,7 +138,6 @@ async fn drive_sequence<R: Runtime>(
     app.zubridge()
         .dispatch_action(backend_action(halve, thunk_id))
         .map_err(|e| e.to_string())?;
-    tokio::time::sleep(delay).await;
 
     read_counter(app)
 }

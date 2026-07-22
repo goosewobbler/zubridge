@@ -1,6 +1,11 @@
 import { browser } from '@wdio/globals';
 import { beforeEach, describe, it } from 'mocha';
-import { getCounterValue, resetCounter, waitForCounterValue } from '../utils/counter.js';
+import {
+  getCounterValue,
+  resetCounter,
+  waitForCounterValue,
+  waitForStableCounterValue,
+} from '../utils/counter.js';
 import { setupTestEnvironment, switchToWindow } from '../utils/window.js';
 
 // Exercises the Rust *backend* thunk (execute_main_thunk / _slow): a thunk
@@ -26,15 +31,12 @@ describe('Tauri Backend (Main) Thunk', () => {
 
     const btn = await browser.$('[aria-label="Double counter using main process thunk"]');
     await btn.click();
-    // 5 -> 10 -> 20 -> 10. The final value (10) also appears after the first
-    // DOUBLE, so wait for it then let the thunk settle (it must not still be
-    // running when the next test's resetCounter runs).
-    await waitForCounterValue(10);
-    await browser.pause(600);
-    const settled = await getCounterValue();
-    if (settled !== 10) {
-      throw new Error(`expected backend thunk to settle the counter at 10, got ${settled}`);
-    }
+    // 5 -> 10 -> 20 -> 10. A net DOUBLE/DOUBLE/HALVE always passes through its
+    // final value (2N) after the first DOUBLE, so no seed makes the final unique
+    // and a plain equality wait can resolve on that intermediate. Wait for the
+    // counter to *settle* at 10 instead (it must not still be running when the
+    // next test's resetCounter runs).
+    await waitForStableCounterValue(10);
 
     await switchToWindow('secondary');
     await waitForCounterValue(10);
