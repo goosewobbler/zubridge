@@ -10,7 +10,7 @@
 ```bash
 # From repo root. First run compiles the Rust plugin (slow); subsequent runs are fast.
 cd apps/tauri/e2e
-cross-env DEBUG=zubridge:* pnpm dev:zustand-basic   # swap mode per the matrix below
+DEBUG=zubridge:* pnpm dev:zustand-basic   # swap mode per the matrix below
 ```
 
 - Open the **webview devtools console** (renderer logs) *and* watch the **terminal** (Rust
@@ -27,13 +27,13 @@ cross-env DEBUG=zubridge:* pnpm dev:zustand-basic   # swap mode per the matrix b
 Run the **P0 + P1** sections in each mode; P2 once is enough. Prioritise `custom` and the
 sync-handler modes — they take different code paths.
 
-| Mode | Why it matters |
-|---|---|
-| `zustand-basic` | Baseline happy path |
-| `zustand-handlers` | Handler-based dispatch |
-| `zustand-reducers` | **Sync handlers** (different thunk variant) |
-| `redux` | **Sync handlers** + Redux semantics |
-| `custom` | Custom state manager — highest parity risk |
+| Mode | Command | Why it matters |
+|---|---|---|
+| `zustand-basic` | `pnpm dev:zustand-basic` | Baseline happy path |
+| `zustand-handlers` | `pnpm dev:zustand-handlers` | Handler-based dispatch |
+| `zustand-reducers` | `pnpm dev:zustand-reducers` | **Sync handlers** (different thunk variant) |
+| `redux` | `pnpm dev:redux` | **Sync handlers** + Redux semantics |
+| `custom` | `pnpm dev:custom` | Custom state manager — highest parity risk |
 
 ---
 
