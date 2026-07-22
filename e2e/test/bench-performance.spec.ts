@@ -259,16 +259,18 @@ describe(`Performance bench (${getMode()})`, () => {
     // Note: this only captures the Node heap; native allocations (V8 internals,
     // C++ structures held by Electron, Rust core in 3.2+) are not measured.
     //
-    // --expose-gc must be set at Electron startup to make global.gc available;
-    // app.commandLine.appendSwitch after app.ready is a silent no-op. The current
-    // bench builds do not pass it, so global.gc is undefined and we skip the GC —
-    // heap numbers will include allocations from prior tests in the same process.
-    // This is acceptable because we report the delta (after − before), not absolute,
-    // and the 50k-action load swamps any pre-existing residue.
+    // The bench launches Electron with --js-flags=--expose-gc (wdio.conf.ts), so
+    // global.gc is available and we force a collection before each measurement to
+    // strip GC-timing noise from the delta. We assert it's present rather than
+    // silently skipping the GC, so a missing flag fails the bench loudly (#180).
     const heapBeforeBytes = await browser.electron.execute(() => {
-      if (typeof global.gc === 'function') {
-        global.gc();
+      if (typeof global.gc !== 'function') {
+        throw new Error(
+          'global.gc is undefined — the memory bench requires Electron to launch with ' +
+            '--js-flags=--expose-gc (set in wdio.conf.ts for SPEC_FILE=bench-*).',
+        );
       }
+      global.gc();
       return process.memoryUsage().heapUsed;
     });
 
@@ -301,10 +303,13 @@ describe(`Performance bench (${getMode()})`, () => {
       MAX_IN_FLIGHT,
     );
 
-    const heapAfterBytes = await browser.electron.execute((_electron) => {
-      if (typeof global.gc === 'function') {
-        global.gc();
+    const heapAfterBytes = await browser.electron.execute(() => {
+      if (typeof global.gc !== 'function') {
+        throw new Error(
+          'global.gc is undefined — Electron must launch with --js-flags=--expose-gc.',
+        );
       }
+      global.gc();
       return process.memoryUsage().heapUsed;
     });
 
