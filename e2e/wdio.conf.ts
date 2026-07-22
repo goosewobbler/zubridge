@@ -223,7 +223,8 @@ if (currentPlatform === 'linux') {
 
 // The memory bench needs global.gc, which Electron exposes only when launched with
 // --js-flags=--expose-gc (calling appendSwitch after app.ready is a silent no-op).
-// Bench-only — keyed off the SPEC_FILE the test:bench:* scripts set. See #180.
+// Bench-only — keyed off the SPEC_FILE the test:bench:* scripts set.
+// See https://github.com/goosewobbler/zubridge/issues/180
 const benchArgs = process.env.SPEC_FILE?.startsWith('bench-') ? ['--js-flags=--expose-gc'] : [];
 
 const appArgs = process.env.ELECTRON_APP_PATH

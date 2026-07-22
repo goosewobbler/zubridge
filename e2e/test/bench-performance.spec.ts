@@ -262,7 +262,8 @@ describe(`Performance bench (${getMode()})`, () => {
     // The bench launches Electron with --js-flags=--expose-gc (wdio.conf.ts), so
     // global.gc is available and we force a collection before each measurement to
     // strip GC-timing noise from the delta. We assert it's present rather than
-    // silently skipping the GC, so a missing flag fails the bench loudly (#180).
+    // silently skipping the GC, so a missing flag fails the bench loudly.
+    // See https://github.com/goosewobbler/zubridge/issues/180
     const heapBeforeBytes = await browser.electron.execute(() => {
       if (typeof global.gc !== 'function') {
         throw new Error(
