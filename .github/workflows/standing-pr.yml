@@ -26,8 +26,12 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: standing-release-pr
-  cancel-in-progress: false
+  # Maintainer edits (ticking checkboxes) route to a per-PR cancelling group so a flurry of
+  # rapid edits collapses to a single rebuild; push/schedule/merge and the bot's own body
+  # rewrites stay on the shared non-cancelling group so an in-flight publish dispatch is
+  # never cancelled. The `sender.type != 'Bot'` guard is what keeps the two apart.
+  group: ${{ (github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.sender.type != 'Bot') && format('standing-release-pr-edit-{0}', github.event.pull_request.number) || 'standing-release-pr' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.sender.type != 'Bot' }}
 
 permissions:
   contents: write
