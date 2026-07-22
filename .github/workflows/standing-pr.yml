@@ -26,12 +26,14 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  # Maintainer edits (ticking checkboxes) route to a per-PR cancelling group so a flurry of
-  # rapid edits collapses to a single rebuild; push/schedule/merge and the bot's own body
-  # rewrites stay on the shared non-cancelling group so an in-flight publish dispatch is
-  # never cancelled. The `sender.type != 'Bot'` guard is what keeps the two apart.
-  group: ${{ (github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.sender.type != 'Bot') && format('standing-release-pr-edit-{0}', github.event.pull_request.number) || 'standing-release-pr' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.sender.type != 'Bot' }}
+  # One shared group with cancelling OFF so every rebuild — push, schedule, label, edit,
+  # and merge dispatch — serialises. A per-PR group for maintainer edits (as in releasekit's
+  # template) would run those in a *separate* group, letting an edit-triggered rebuild race a
+  # concurrent push/merge rebuild: both force-push release/next, and the loser can overwrite
+  # the maintainer's just-changed package selection. Serialising trades collapsing a flurry of
+  # rapid edits for correctness — the tradeoff a release branch wants.
+  group: standing-release-pr
+  cancel-in-progress: false
 
 permissions:
   contents: write
