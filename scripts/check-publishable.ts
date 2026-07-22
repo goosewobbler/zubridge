@@ -4,8 +4,10 @@
  * Fails the build if a public package would not install cleanly from npm for an
  * end user. The package E2E harness can't catch this: it installs local tarballs
  * with pnpm behind `pnpm.overrides`, so neither registry resolution nor the npm
- * client is ever exercised — which is how issue #194 shipped (a `workspace:`
- * spec that npm rejects with EUNSUPPORTEDPROTOCOL but pnpm tolerates).
+ * client is ever exercised — which is how the bug shipped: a `workspace:` spec
+ * that npm rejects with EUNSUPPORTEDPROTOCOL but pnpm tolerates.
+ *
+ * See https://github.com/goosewobbler/zubridge/issues/194
  *
  * Packages must be built first (dist must exist).
  * Usage: tsx scripts/check-publishable.ts
@@ -162,7 +164,8 @@ function main(): void {
       }
       console.error(
         '\nA packed manifest must not contain workspace:/link:/file: protocols, and public\n' +
-          'packages must install cleanly with npm. See issue #194.',
+          'packages must install cleanly with npm.\n' +
+          'See https://github.com/goosewobbler/zubridge/issues/194',
       );
       process.exit(1);
     }
