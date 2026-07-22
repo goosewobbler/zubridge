@@ -123,6 +123,9 @@ describe(`Performance bench (${getMode()})`, () => {
         let completed = 0;
         // Keep at most `maxInFlight` dispatches outstanding so the batcher queue
         // never reaches its hard limit; refill the window as each one resolves.
+        // NOTE: this pump loop is duplicated in the memory-growth test below. It can't be
+        // extracted to a shared helper — browser.execute serialises the callback into the
+        // renderer, severing Node-side imports — so keep the two copies in sync.
         await new Promise<void>((resolve, reject) => {
           const pump = () => {
             while (started < count && started - completed < maxInFlight) {
@@ -275,6 +278,8 @@ describe(`Performance bench (${getMode()})`, () => {
         if (!z) throw new Error('window.zubridge not available');
         let started = 0;
         let completed = 0;
+        // Same bounded-in-flight pump as the throughput test above (see the note there);
+        // duplicated because browser.execute can't reference a shared Node-side helper.
         await new Promise<void>((resolve, reject) => {
           const pump = () => {
             while (started < count && started - completed < maxInFlight) {
