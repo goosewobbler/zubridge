@@ -22,12 +22,6 @@
     "cargo": {
       "enabled": true
     },
-    // No Dart/pub packages here. releasekit 0.41 flipped pub versioning to
-    // enabled-by-default, so an absent block would now silently enable it — disable
-    // explicitly. Mirrors publish.pub below.
-    "pub": {
-      "enabled": false
-    },
     // Workspace members that are never published. Releasekit auto-discovers
     // both pnpm-workspace packages and Cargo.toml crates; everything internal
     // (apps, e2e harnesses, the Tauri test app crates) goes here so it's
@@ -163,12 +157,6 @@
       // run earlier in _release.reusable.yml to catch build issues before
       // publish; --no-verify only skips the post-package rebuild.
       "noVerify": true
-    },
-    // No Dart/pub packages. releasekit 0.41 flipped publish.pub.enabled to
-    // true by default, so leaving it unset would now attempt pub publishing —
-    // disable explicitly (mirrors version.pub above).
-    "pub": {
-      "enabled": false
     },
     "git": {
       "push": true,
