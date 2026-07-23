@@ -19,6 +19,21 @@
     "prereleaseIdentifier": "next",
     "packageSpecificTags": true,
     "mismatchStrategy": "prefer-package",
+    // @zubridge/tauri (npm) + tauri-plugin-zubridge (cargo) share a wire protocol and must
+    // ship together. `independent` keeps them on separate commit-driven version lines but
+    // releases the set atomically — targeting either pulls in the other, so a Tauri-TS-only
+    // change can't publish an npm release whose crate half is stale. This enforces the
+    // coupling on the standing-PR accumulation path; scopeLabels below only couples them
+    // when a scope:tauri feeder PR is the trigger.
+    "groups": {
+      "tauri": {
+        "packages": [
+          "@zubridge/tauri",
+          "tauri-plugin-zubridge"
+        ],
+        "sync": "independent"
+      }
+    },
     "cargo": {
       "enabled": true
     },
