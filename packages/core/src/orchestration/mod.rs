@@ -81,8 +81,17 @@ impl ActionQueueManager {
         match self.scheduler.enqueue(action, source_label, &ctx) {
             EnqueueResult::ExecuteNow(queued) => {
                 let new_state = self.execute_action(queued)?;
-                // After any execution, drain any newly unblocked queue items.
-                self.drain_queue()?;
+                // Draining here is a no-op: executing an immediate action doesn't change
+                // thunk state, so it can't unblock a queued action. Queued actions are
+                // drained — with their states returned for the platform to broadcast — by
+                // on_thunk_complete / on_label_forgotten. Assert the invariant so a future
+                // change that breaks it fails loudly instead of silently dropping states.
+                let drained = self.drain_queue()?;
+                debug_assert!(
+                    drained.is_empty(),
+                    "immediate execution unexpectedly unblocked {} queued action(s)",
+                    drained.len()
+                );
                 Ok(Some(new_state))
             }
             EnqueueResult::Queued => Ok(None),
