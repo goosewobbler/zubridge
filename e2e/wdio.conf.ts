@@ -221,9 +221,15 @@ if (currentPlatform === 'linux') {
   console.log('[DEBUG] Added Linux-specific flags for CI stability');
 }
 
+// The memory bench needs global.gc, which Electron exposes only when launched with
+// --js-flags=--expose-gc (calling appendSwitch after app.ready is a silent no-op).
+// Bench-only — keyed off the SPEC_FILE the test:bench:* scripts set.
+// See https://github.com/goosewobbler/zubridge/issues/180
+const benchArgs = process.env.SPEC_FILE?.startsWith('bench-') ? ['--js-flags=--expose-gc'] : [];
+
 const appArgs = process.env.ELECTRON_APP_PATH
-  ? [process.env.ELECTRON_APP_PATH, ...baseArgs]
-  : baseArgs;
+  ? [process.env.ELECTRON_APP_PATH, ...baseArgs, ...benchArgs]
+  : [...baseArgs, ...benchArgs];
 
 // Determine which spec files to run based on the mode
 let specPattern: string | string[];
