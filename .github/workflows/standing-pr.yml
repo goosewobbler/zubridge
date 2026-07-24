@@ -13,9 +13,25 @@ name: Standing Release PR
 on:
   push:
     branches: [main]
+  pull_request:
+    # labeled/unlabeled: apply bump/scope/channel override labels to the OPEN standing PR
+    # immediately (removing bump:major, ticking a package, etc.). edited: a maintainer
+    # changed the selection region. Without these, overrides only take effect on the next
+    # push or manual dispatch. `closed` is deliberately absent — merges are detected via the
+    # push event so the OIDC publish dispatch fires exactly once (see trigger-publish).
+    types: [labeled, unlabeled, edited]
+    branches: [main]
+  schedule:
+    - cron: '0 * * * *' # Hourly rebuild so the standing PR never drifts stale.
   workflow_dispatch: {}
 
 concurrency:
+  # One shared group with cancelling OFF so every rebuild — push, schedule, label, edit,
+  # and merge dispatch — serialises. A per-PR group for maintainer edits (as in releasekit's
+  # template) would run those in a *separate* group, letting an edit-triggered rebuild race a
+  # concurrent push/merge rebuild: both force-push release/next, and the loser can overwrite
+  # the maintainer's just-changed package selection. Serialising trades collapsing a flurry of
+  # rapid edits for correctness — the tradeoff a release branch wants.
   group: standing-release-pr
   cancel-in-progress: false
 
@@ -31,6 +47,20 @@ jobs:
   # commits as "unreleased" before the dispatched release.yml run finishes tagging.
   detect-release-merge:
     name: Detect release merge
+    # pull_request events are label/selection changes on the OPEN standing PR, never a
+    # merge. Restrict to those actions on a `release/` branch, and exclude the bot's own
+    # body rewrites (`sender.type == 'Bot'`) — the update step re-edits the PR body, which
+    # would otherwise re-trigger this workflow forever. When this `if` is false the whole
+    # chain (update-release-pr, trigger-publish) is skipped via `needs`. `release/` is
+    # hardcoded (a job `if` can't read config); the in-step branch lookup stays authoritative.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (
+        (github.event.action == 'labeled' || github.event.action == 'unlabeled' || github.event.action == 'edited') &&
+        github.event.pull_request.state == 'open' &&
+        startsWith(github.event.pull_request.head.ref, 'release/') &&
+        github.event.sender.type != 'Bot'
+      )
     runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.detect.outputs.pr_number }}
@@ -56,6 +86,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # pull_request events are label/selection changes on the open standing PR, never a
+          # merge. Leave pr_number empty so update-release-pr rebuilds, and return before the
+          # merge-detection logic below (which reads push-only fields like head_commit).
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "pull_request event on the standing PR — update only, no merge to detect"
+            exit 0
+          fi
           # Prefer .jsonc when both exist (matches releasekit's own discovery
           # precedence). Two sed passes strip comments before piping to jq:
           #   1. Full-line comments:  ^<ws>//...  → empty line
