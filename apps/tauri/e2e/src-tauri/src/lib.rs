@@ -8,6 +8,7 @@ pub mod commands;
 pub mod features;
 pub mod modes;
 pub mod store;
+pub mod thunks;
 pub mod tray;
 pub mod window;
 
@@ -101,6 +102,8 @@ pub fn run() {
             commands::create_runtime_window,
             commands::close_current_window,
             commands::is_main_window,
+            thunks::execute_main_thunk,
+            thunks::execute_main_thunk_slow,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -67,6 +67,13 @@ function AppBootstrap() {
             handler: (event: E) => void,
           ) => Promise<UnlistenFn>,
         });
+        // Expose the backend-thunk hooks the shared UI's "Main Thunk" buttons
+        // call. On Tauri these invoke Rust commands that drive a backend thunk;
+        // Electron exposes the equivalent from its Node main process via preload.
+        window.counter = {
+          executeMainThunk: () => invoke('execute_main_thunk'),
+          executeMainThunkSlow: () => invoke('execute_main_thunk_slow'),
+        };
         if (!cancelled) setBridgeReady(true);
       } catch (error) {
         debug('ui:error', `Bridge initialization failed: ${error}`);
