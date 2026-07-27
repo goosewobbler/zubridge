@@ -90,9 +90,9 @@
     "@vitest/coverage-v8": "^4.1.9",
     "@zubridge/types": "workspace:*",
     "@zubridge/utils": "workspace:*",
-    "immer": "^11.1.8",
+    "immer": "^11.1.15",
     "jsdom": "^29.1.1",
-    "react": "^19.2.7",
+    "react": "^19.2.8",
     "redux": "^5.0.1",
     "rollup": "^4.62.0",
     "shelljs": "^0.10.0",
@@ -112,9 +112,9 @@
     "README.md"
   ],
   "dependencies": {
-    "@oxc-project/runtime": "^0.136.0",
+    "@oxc-project/runtime": "^0.141.0",
     "dequal": "^2.0.3",
-    "uuid": "^14.0.0",
+    "uuid": "^14.0.1",
     "zod": "^4.3.6",
     "zustand": "^5.0.14"
   }
