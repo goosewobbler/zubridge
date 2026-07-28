@@ -138,10 +138,11 @@ pnpm test:e2e                             # All E2E tests (Electron only — see
 pnpm test:e2e:electron-zustand-basic      # Single Electron variant
 ```
 
-> **Note:** `pnpm test:e2e:tauri-basic` and `pnpm test:e2e:tauri-v1-basic` are currently stubbed
-> with a silent `exit 0` in `e2e/package.json` — they print a disabled message and succeed without
-> running any tests. Do not rely on these commands as a signal of Tauri adapter health during the
-> P4 refactor period.
+> **Note:** `pnpm test:e2e:tauri-basic` runs the real Tauri v2 E2E suite in `apps/tauri/e2e`
+> (via `pnpm --filter tauri-e2e test:e2e:tauri`) — the same command CI uses. Build the app first
+> (`pnpm build:tauri`). The default `pnpm test:e2e` aggregate is Electron-only by design during the
+> P4 refactor; Tauri E2E is run through its dedicated command and in CI. `pnpm test:e2e:tauri-v1-basic`
+> is an honest no-op — Tauri v1 is maintenance-only and has no E2E suite.
 
 ### E2E Test Notes
 - E2E tests require built apps — run `pnpm build:electron-<variant>` / `pnpm build:tauri` first
