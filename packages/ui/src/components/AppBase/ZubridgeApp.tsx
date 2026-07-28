@@ -392,6 +392,7 @@ export function ZubridgeApp({
                     });
                   }}
                   isLoading={bridgeStatus === 'initializing'}
+                  supportsMainThunk={!!window.counter?.executeMainThunk}
                 />
               </div>
 
