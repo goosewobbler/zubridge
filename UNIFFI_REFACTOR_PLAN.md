@@ -25,7 +25,7 @@ Notable state at the time this plan was written:
 | # | Decision |
 |---|----------|
 | 1 | Tauri v2 ships **on** the unified core — `packages/tauri-plugin/src/core/` is extracted into a new `packages/core/` Rust crate before the v2 release. |
-| 2 | Full action + thunk scheduler logic (Electron's `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`) is ported into core during the extraction phase. Tauri v2 ships with full scheduler parity to Electron v3. |
+| 2 | Full action + thunk scheduler logic (Electron's `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`) is ported into core during the extraction phase. Tauri v2 ships with full scheduler parity to Electron v3. (Ported to `core` in P2; **wired into the Tauri plugin's dispatch path** in P4 — PRs #187/#188. See P4.) |
 | 3 | A user-extensible middleware system is **deferred** until a concrete first consumer (Sentry exporter, devtools UI, time-travel debugger — all in ROADMAP §8) drives the API shape. `packages/middleware/` is removed during P3 (broken, unused, three-layer transaction/metrics/telemetry design had documented issues). Observability hooks are exposed through the existing `EventEmitter` trait in `core::emit`, sufficient for observe-only use cases. A small sync `Middleware` trait with modify/cancel semantics can be added later when a real consumer pulls at the API. |
 | 4 | This document is authoritative for Phases 1–7 (the refactor itself). Long-term direction including post-refactor framework integrations lives in [ROADMAP.md](./ROADMAP.md). |
 | 5 | NAPI binary package name: **`@zubridge/node-native`** (not `@zubridge/electron-native`) — reused by Path A consumers (Electrobun, Neutralino-shim, future Node-API runtimes). **Public** npm package using the standard napi-rs platform-optionalDependencies pattern. |
@@ -34,6 +34,8 @@ Notable state at the time this plan was written:
 | 8 | `EventEmitter` trait surface designed in P1 to support the three immediate integration paths (Tauri / NAPI / Direct Rust) — sync signature, generic string target, no async-runtime dependency in core. The sync-signature choice independently preserves future WASM compatibility (single-threaded; no `Send` requirement for WASM impls). |
 | 9 | NAPI binding (P5) exposes **runtime-neutral primitives** — not Electron-shaped. IPC channel naming (`BATCH_DISPATCH`, etc.) lives in the runtime-specific TS wrapper, not in the binding. |
 | 10 | Logging adapter exposes a **generic JS callback** — `(level, target, message, fields)`. Runtime-specific wrappers route to their preferred backend (`@zubridge/utils.debug()`, `tauri::log`, Bun's `console.log`, etc.). |
+| 11 | **Three-seam platform model (the refactor's target shape).** The core is a *coordinator*, not an executor: it owns scheduling, thunk lifecycle, delta computation and the broadcast loop, and never runs a thunk body or a reducer. Each platform supplies three seams — a **Driver** that calls `register → dispatch → complete` (a JS renderer, a JS Node-main process, or a Rust backend); a **`StateManager`** holding canonical state + applying actions (**Rust reducer** for Tauri — the backend owns state; **JS-proxy** over the existing TS adapter `{getState, processAction}` for Electron — the JS store stays canonical); and an **`EventEmitter`** delivering updates to a target string. Consequences: a "main process thunk" is just a Driver with `source_label = main` (Electron keeps JS main thunks; Tauri uses Rust backend thunks — the JS *authoring symmetry* does **not** carry to a Rust backend, see issue #185); and the core stays **synchronous** — async handlers resolve in the wrapper or are modelled as thunks (the async primitive), never inside core. |
+| 12 | **Broadcast orchestration lives in `core`, behind `EventEmitter`.** The per-target loop (subscription filter → delta → sequence → emit → ack-tracking) is platform-neutral; only the target identities and the `EventEmitter` impl differ per platform. The Tauri plugin currently owns this loop (it landed there when the scheduler was wired in — P4/PRs #187-#188); it is **lifted into `core` at the start of P5** so Electron-via-NAPI reuses it instead of re-implementing it in TS (the chief duplication footgun). The `EventEmitter` envelope is **kind-tagged** (state-update / thunk-lifecycle / log) from the outset so adding event kinds later isn't a breaking change, and updates carry `UpdateSource` provenance so multi-driver attribution survives. |
 
 ### Current state on `main` (verified)
 
@@ -57,8 +59,8 @@ Notable state at the time this plan was written:
 | **P3.5** | Tauri E2E test suite | `@wdio/tauri-service` (embedded provider) standing up counter + window-sync specs; CI enabled on macOS + Linux |
 | **P4** | Tauri v2.0 release | `tauri-plugin-zubridge@0.2.0` + `@zubridge/tauri@2.0.0` published on unified core |
 | **P4.5** | Electron 3.1 release | `@zubridge/electron@3.1.0` released with the P3 benchmark suite and `benches/baseline.json` captured — same TS architecture as 3.0, gain measurement infrastructure |
-| **P5** | NAPI-RS bindings + Electron 3.2 prep | Core exposes `napi` facade; `@zubridge/node-native` ships platform `.node` artifacts |
-| **P6** | Electron 3.2 migration | `packages/electron/src/{action,thunk,main,subscription,deltas,batching}` replaced with NAPI calls; renderer/preload TS unchanged |
+| **P5** | NAPI-RS bindings + Electron 3.2 prep | Broadcast orchestration lifted into `core` (decision #12); core exposes `napi` facade with `completeThunk` returning drained states across the boundary; `@zubridge/node-native` ships platform `.node` artifacts; JS-proxy `StateManager` seam prototyped in the smoke test |
+| **P6** | Electron 3.2 migration | `packages/electron/src/{action,thunk,main,subscription,deltas,batching}` replaced with NAPI calls; the three Electron seams wired (JS-proxy `StateManager`, async handlers resolved in TS, external `setState` → core broadcast, events via `EventEmitter` — decision #11); renderer/preload TS unchanged |
 | **P7** | Synchronized release | Concurrent Electron 3.2.0 + Tauri 2.x + core 0.2.0 release with migration guides; benchmark suite re-run against 3.2 produces the published 3.1→3.2 comparison |
 
 P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** as a TS-with-perf-baseline release. P5–P7 are the critical path to **Electron 3.2** on the Rust core. The refactor ends at P7. Additional framework integrations (Electrobun, Dioxus, Flutter, React Native, Ionic / Capacitor, Neutralino, and the deferred Blazor / Dioxus Web targets) are sequenced in [ROADMAP.md](./ROADMAP.md).
@@ -343,6 +345,16 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0, `zubridge-core` → 0.1.0 first publish) come from the conventional-commit history releasekit reads off main; no manual version edits in `package.json` / `Cargo.toml` are required.
 
+**Scheduler wiring + backend thunks (landed in P4 — PRs #187/#188):**
+
+P2 ported the scheduler into `core`, but the Tauri plugin's `dispatch_action` initially bypassed it (direct read → apply → broadcast), so no thunk actually coordinated concurrent actions. P4 routes the plugin dispatch through `core::orchestration::ActionQueueManager` (unified scheduler + thunk manager + state handle): renderer **and** backend thunks now block/queue concurrent actions and drain on completion. **Backend ("main process") thunks** are added to the Tauri e2e app, authored in **Rust** (Tauri has no JS main process; the JS authoring symmetry of Electron main thunks doesn't carry over — issue #185). This is what makes decision #2's "full scheduler parity" actually true on Tauri.
+
+**Forward-looking design to settle during P4** (cheap now; prevents breaking changes / duplication in P5–P6 — decisions #11/#12):
+
+- **`EventEmitter` envelope taxonomy** — define the kind-tagged event envelope (state-update / thunk-lifecycle / log) now, even though only state-update flows today, so observability + Electron parity don't later force a breaking envelope change. *(Do in P4 — design only; cheap.)*
+- **`UpdateSource` provenance** — finish threading it through the plugin's drained-state broadcasts; PR #187 deferred this with `source: None`. *(Do in P4 — small, Tauri-local.)*
+- **Broadcast-orchestration location** — the broadcast loop currently lives in the Tauri plugin; it lifts into `core` at the start of P5 (decision #12). *(Default early-P5; pull into P4 only if you'd rather refactor while the plugin internals are fresh — the trade-off is re-touching the just-stabilised v2 dispatch path before release.)*
+
 **Critical files:**
 
 - `releasekit.config.jsonc` (new)
@@ -375,6 +387,7 @@ Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0,
    - `completeThunk(args)`
    - `batchDispatch(actions) -> Promise<BatchResult>`
    - `setEventEmitter(callback)` (registers the JS callback used by the `EventEmitter` trait impl for NAPI — this is also the v0 observability extension point per §1 decision 3)
+   - `notifyStateChanged(state)` — injects an **externally-computed** state update (a zustand `store.setState` fired outside `dispatch`) into core's broadcast loop so external mutations still propagate (decisions #11/#12; P6 step 6). Listed here so this entry-point is designed alongside the other primitives rather than surfacing as an API gap mid-P5.
 
    IPC channel naming (`BATCH_DISPATCH`, `BATCH_ACK`, state-update event payload, etc.) is **not** part of the NAPI surface — that's wiring done in the runtime-specific wrapper (`packages/electron/` for Electron, `@zubridge/electrobun` post-P7 for Electrobun, `@zubridge/neutralino` post-P7 for the Neutralino-shim). The same binding must remain consumable from any Node-API-compatible runtime by writing a different wrapper, never modifying the binding. Generated `.d.ts` from napi-rs documents the surface.
 
@@ -398,6 +411,12 @@ Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0,
    - Survey of other browser-resident frameworks (Solid, Svelte, etc.) — do any have cross-tab state needs Zubridge addresses?
 
    Output: [`docs/decisions/wasm-value-research.md`](./docs/decisions/wasm-value-research.md) with **go/no-go** recommendation for Path D and rationale. Influences ROADMAP "Deferred pending research" section: a "go" outcome promotes Blazor + Dioxus Web back into the post-refactor framework integration plan; "no-go" deprecates them.
+
+**Cross-platform seam work (decisions #11/#12) — sequence these around the NAPI surface so Electron (P6) reuses core instead of duplicating it:**
+
+1. **Lift broadcast orchestration into `core` first.** Move the per-target subscription → delta → sequence → emit → ack loop out of the Tauri plugin into a `core` broadcast coordinator parameterised by an `EventEmitter` + target list; re-point the plugin at it and re-verify the Tauri E2E. Doing this *before* the NAPI broadcast path means Electron reuses it rather than re-implementing the loop in TS (the chief duplication footgun).
+2. **Make the NAPI surface return what the wrapper must broadcast.** `dispatch` returns the executed state (or "queued"), and `completeThunk` returns the **drained states** — the Tauri plugin gets these in-process from `on_thunk_complete`, but across the NAPI boundary they must be returned so the Electron TS glue can broadcast them (miss this and queued actions mutate state invisibly → desync + renderer-thunk timeout).
+3. **Prototype the Electron `StateManager` seam in the smoke test.** Extend `apps/standalone-node/` to drive the core through a **JS-proxy `StateManager`** — a JS reducer callback, an **async** handler, and an **external** `store.setState` not routed through dispatch — so the sync-core / async-handler / external-mutation seams (decision #11) surface in a P5 spike, not mid-P6.
 
 **Critical files:**
 
@@ -458,6 +477,12 @@ Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0,
    - `minimal-sandbox-true`
 
 5. Watch for behavioural drift around: thunk priority ordering across windows, batch timing windows, delta consistency under high frequency.
+
+6. **Wire the three Electron seams (decision #11)** — this is what differs from Tauri, where the seams are all Rust:
+   - **`StateManager` = JS proxy.** The core applies actions via `StateManager::dispatch_action`; for Electron this proxies to the existing TS adapter's `processAction` (and `getState` → `get_initial_state`) over a **synchronous** NAPI callback. The adapter stays TS (the JS store remains canonical); the reducer callback must be **pure** — no reentrant `dispatch` into the locked core.
+   - **Async handlers resolve in TS.** zustand handlers can be async, the core is sync; resolve async in the wrapper (or model it as a thunk) before the core applies the sync mutation.
+   - **External mutations.** zustand allows `store.setState` outside dispatch; bridge the adapter's `subscribe` listener to a core broadcast so those changes still propagate (Tauri doesn't need this — its state only moves via dispatch).
+   - **Events.** Thunk-lifecycle + state-update both flow through the `EventEmitter` callback, routed to `webContents.send` with the existing channel names (decision #9).
 
 **Critical files:**
 
