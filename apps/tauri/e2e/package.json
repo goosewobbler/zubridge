@@ -27,15 +27,15 @@
     "@zubridge/tauri": "workspace:*",
     "@zubridge/ui": "workspace:*",
     "@zubridge/utils": "workspace:*",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.13.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.2",
     "@wdio/cli": "9.28.0",
     "@wdio/globals": "9.28.0",
