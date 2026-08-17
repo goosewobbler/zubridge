@@ -60,7 +60,7 @@
     "shx": "^0.4.0",
     "tsdown": "^0.22.3",
     "typescript": "^5.9.3",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.15"
   },
   "repository": {
     "type": "git",
