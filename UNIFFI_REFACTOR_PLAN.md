@@ -63,6 +63,18 @@ Notable state at the time this plan was written:
 
 P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** as a TS-with-perf-baseline release. P5–P7 are the critical path to **Electron 3.2** on the Rust core. The refactor ends at P7. Additional framework integrations (Electrobun, Dioxus, Flutter, React Native, Ionic / Capacitor, Neutralino, and the deferred Blazor / Dioxus Web targets) are sequenced in [ROADMAP.md](./ROADMAP.md).
 
+### Progress (as of 2026-10-09)
+
+| Phase | Status | Landed in | Outstanding |
+|-------|--------|-----------|-------------|
+| **P1** | Done | #153 | `wrappers/napi.rs` and `wrappers/uniffi.rs` are placeholders until P5. The §5 P1 docs (`docs/architecture/*`, `CONTRIBUTING.md`) are not written yet. |
+| **P2** | Done | #158 | The Tauri plugin's dispatch only goes through the scheduler once #187 (P4) merges. |
+| **P3** | Done | #168, #183 | The >10% regression gate in `benchmark-nightly.yml` is still a TODO. `benches/baseline.json` was captured locally and should be re-captured on the pinned CI runner. |
+| **P3.5** | Done | #159 | — |
+| **P4** | In progress | #169, #199–#204 (releasekit) | Open: scheduler wiring (#187), Rust backend thunks (#188), manual test checklist (#184). Release-tooling blockers are listed under §3 P4. Tauri v2 README, `docs/migration/tauri-v1-to-v2.md` and `docs/release-process.md` are not written yet. |
+| **P4.5** | Queued | Standing PR #174 | `@zubridge/electron` 3.1.0. The changelog must say the never-functional middleware API (`ZubridgeMiddleware`, `createMiddlewareOptions`, the `middleware` option) was removed. |
+| **P5–P7** | Not started | — | — |
+
 ---
 
 ## 3. Phase Details
@@ -335,13 +347,20 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 **Release flow (used for P4 and every release thereafter):**
 
-1. Label feature PRs with the relevant `scope:*` label (e.g. `scope:tauri`) plus `release:stable` (or `release:prerelease`). Merge them to main.
+1. Label feature PRs with the relevant `scope:*` label (e.g. `scope:tauri`) and merge them to main. In standing-PR mode, labels on feeder PRs are advisory: bumps come from conventional commits, and overrides (`bump:*`, `graduate:<package>`, the per-row channel toggle) are set on the standing PR itself.
 2. `standing-pr.yml` accumulates the changes onto `release/next`; the standing PR shows the next versions + draft changelog.
 3. When ready to ship, merge the standing PR. `standing-pr.yml` detects the merge and dispatches `release.yml` in manifest mode.
 4. `release.yml` publishes via releasekit: `zubridge-core` (Cargo) → `tauri-plugin-zubridge` (Cargo) → `@zubridge/tauri` (npm with provenance). Tags, GitHub Release drafts, and per-package `CHANGELOG.md` updates land automatically.
 5. Post-publish reconcile rebuilds the standing PR against the new HEAD.
 
-Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0, `zubridge-core` → 0.1.0 first publish) come from the conventional-commit history releasekit reads off main; no manual version edits in `package.json` / `Cargo.toml` are required.
+Target versions for P4 are `@zubridge/tauri` → 2.0.0, `tauri-plugin-zubridge` → 0.2.0, and the first crates.io publish of `zubridge-core`. The three form the `independent` `tauri` version group in `releasekit.config.jsonc`, so they release as one unit while each keeps its own version line. Versions come from conventional commits, with no manual edits to `package.json` / `Cargo.toml`. Breaking changes must be marked with a `type(scope)!:` header or a `BREAKING CHANGE:` footer on a commit that touches the package. As of releasekit 0.41.2, a dry run still can't reach these targets:
+
+- **Breaking changes leak across packages.** Breaking-change detection isn't scoped to package paths: a breaking commit anywhere in the repo also majors every other package with releasable changes (e.g. `@zubridge/electron` → 4.0.0, `@zubridge/types` → 3.0.0). This needs fixing in releasekit before the Tauri breaking commits land.
+- **Prerelease lines ignore the bump size.** A breaking change on `1.1.1-next.1` only advances the counter to `1.1.1-next.2`, instead of starting `2.0.0-next.0` (or `0.2.0-next.0` for the 0.x crates).
+- **Cargo dependency requirements aren't kept in sync.** releasekit bumps `package.version` in `Cargo.toml` but not the version requirement in dependent crates. `tauri-plugin-zubridge`'s path dependency on `zubridge-core` has no `version`, which `cargo publish` rejects. The dependency needs a version requirement, and releasekit needs to rewrite it whenever core bumps.
+- **`zubridge-core`'s first publish will be 0.2.0.** It has a seeded `zubridge-core@v0.1.0` baseline tag but nothing on crates.io, so its first publish is computed from the seed. Move or delete the seed tag if 0.1.0 matters.
+
+Every release is dry-run first (`releasekit version --dry-run --json`), and the standing PR's version summary is checked before merging.
 
 **Critical files:**
 
