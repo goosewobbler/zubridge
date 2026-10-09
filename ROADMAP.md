@@ -1,6 +1,6 @@
 # Zubridge Roadmap
 
-> Last updated: 2026-05-11
+> Last updated: 2026-10-09
 > What's coming next and roughly in what order. For policies (support, EOL, compatibility) see [SUPPORT.md](./SUPPORT.md). For the in-flight Rust core refactor see [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md). Detailed per-framework feasibility lives in [docs/evaluations/](./docs/evaluations/); detailed decision gates live in [docs/decisions/](./docs/decisions/).
 
 ---
@@ -31,13 +31,13 @@ Path letters describe the **technical integration mechanism**, not priority — 
 
 | Package | Status |
 |---------|--------|
-| `@zubridge/electron` | Shipped 3.0; 3.1 ships P3 perf baseline against TS core; 3.2 migrates to Rust core via NAPI |
+| `@zubridge/electron` | Shipped 3.0; 3.1 (P3 perf baseline, middleware API removed) queued in the standing release PR; 3.2 migrates to Rust core via NAPI (P6) |
 | `@zubridge/node-native` (new) | Planned P5 — platform `.node` artifacts |
-| `@zubridge/tauri` | Unreleased 1.1.x-next; v2 in refactor |
-| `tauri-plugin-zubridge` | Unreleased 0.1.x-next; v0.2 in refactor |
-| `zubridge-core` (new Rust crate) | Planned P1 |
-| `@zubridge/utils` (rename of `@zubridge/core`) | Rename in P1 |
-| `@zubridge/types` | Shipped 2.2 |
+| `@zubridge/tauri` | 1.1.0 on npm; v2.0 in progress (P4) |
+| `tauri-plugin-zubridge` | 0.1.0 on crates.io; 0.2 in progress on `zubridge-core` (P4) |
+| `zubridge-core` (new Rust crate) | Created in P1, scheduler ported in P2; first crates.io publish ships with Tauri v2 (P4) |
+| `@zubridge/utils` (rename of `@zubridge/core`) | Renamed in P1 (2.0.0) |
+| `@zubridge/types` | Shipped 2.2; 2.3 queued |
 
 ---
 
@@ -45,10 +45,10 @@ Path letters describe the **technical integration mechanism**, not priority — 
 
 | Package | Latest | Lifecycle |
 |---------|--------|-----------|
-| `@zubridge/electron` | 3.0.0 (2026-Q1) | Active; 3.1 in refactor |
+| `@zubridge/electron` | 3.0.0 (2026-Q1) | Active; 3.1 queued |
 | `@zubridge/types` | 2.2.0 | Active |
-| `@zubridge/tauri` | 1.1.1-next.1 (unreleased) | Superseded by v2; v1 archived at P4 |
-| `tauri-plugin-zubridge` | 0.1.1-next.1 (unreleased) | Superseded by v0.2 at P4 |
+| `@zubridge/tauri` | 1.1.0 | Superseded by v2; v1 archived at P4 |
+| `tauri-plugin-zubridge` | 0.1.0 | Superseded by v0.2 at P4 |
 
 Per-package release history lives in each package's `CHANGELOG.md`.
 
@@ -56,17 +56,19 @@ Per-package release history lives in each package's `CHANGELOG.md`.
 
 ## 3. In progress: Unified Rust core refactor
 
-Unifies platform implementations onto a single Rust crate (`zubridge-core`) compiled with conditional features. End-state: Electron 3.1 + Tauri v2 both on the shared core. Full detail in [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md).
+Unifies platform implementations onto a single Rust crate (`zubridge-core`) compiled with conditional features. End-state: Electron 3.2 + Tauri v2 both on the shared core. Full detail, including a per-phase progress table, in [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md).
 
-| Phase | Outputs |
-|-------|---------|
-| P1 | Carve out `zubridge-core` (extract from `tauri-plugin`) |
-| P2 | Port full action/thunk scheduler from Electron TS to Rust core |
-| P3 | Absorb `packages/middleware/` into `core::middleware` |
-| P4 | Release Tauri v2.0 on unified core |
-| P5 | NAPI-RS bindings + `@zubridge/node-native` |
-| P6 | Electron 3.1 main process migrates to NAPI core |
-| P7 | Synchronized Electron 3.1 + Tauri 2.x stable release |
+| Phase | Outputs | Status |
+|-------|---------|--------|
+| P1 | Carve out `zubridge-core` (extract from `tauri-plugin`) | Done |
+| P2 | Port full action/thunk scheduler from Electron TS to Rust core | Done |
+| P3 | Perf comparison harness + remove the unused `packages/middleware/` | Done |
+| P3.5 | Tauri E2E test suite | Done |
+| P4 | Release Tauri v2.0 on unified core | In progress |
+| P4.5 | Release Electron 3.1 (TS core + perf baseline) | Queued |
+| P5 | NAPI-RS bindings + `@zubridge/node-native` | Planned |
+| P6 | Electron 3.2 main process migrates to NAPI core | Planned |
+| P7 | Synchronized Electron 3.2 + Tauri 2.x stable release | Planned |
 
 P7 unlocks the framework integrations below.
 

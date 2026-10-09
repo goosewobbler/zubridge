@@ -167,7 +167,7 @@ const config: Configuration = {
     mirror: 'https://github.com/electron/electron/releases/download/',
   },
   asar: true,
-  asarUnpack: ['**/*.node', '**/node_modules/@zubridge/middleware/*.node'],
+  asarUnpack: ['**/*.node'],
   extraMetadata: {
     main: 'main/index.js',
   },
