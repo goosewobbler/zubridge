@@ -11,7 +11,13 @@
     "skipHooks": true
   },
   "version": {
-    "preset": "angular",
+    // conventionalcommits, not angular: the angular parser doesn't match `type(scope)!:` headers,
+    // so a `feat(tauri)!:` commit would be silently dropped instead of counted as breaking.
+    "preset": "conventionalcommits",
+    // Breaking changes in the 0.x crates (zubridge-core, tauri-plugin-zubridge) bump the minor
+    // (0.1 → 0.2), matching the roadmap's 0.x release lines. An explicit `bump:major` label still
+    // graduates them to 1.0.0, so don't put one on a standing PR that carries the Tauri set.
+    "zeroMajor": "spec",
     "sync": false,
     "versionPrefix": "v",
     "tagTemplate": "${packageName}@v${version}",
@@ -25,11 +31,20 @@
     // change can't publish an npm release whose crate half is stale. This enforces the
     // coupling on the standing-PR accumulation path; scopeLabels below only couples them
     // when a scope:tauri feeder PR is the trigger.
+    //
+    // `fixed`/`linked` would force one shared version, but the roadmap ships these on
+    // different lines (@zubridge/tauri 2.x, tauri-plugin-zubridge 0.2.x, zubridge-core 0.x).
+    //
+    // zubridge-core is in the set because the plugin can't publish without its matching core
+    // on crates.io, and until P5 the plugin is core's only consumer. Revisit at P5, when
+    // @zubridge/node-native also builds on core and core needs to release without dragging
+    // the Tauri set along (see UNIFFI_REFACTOR_PLAN.md §3 P4).
     "groups": {
       "tauri": {
         "packages": [
           "@zubridge/tauri",
-          "tauri-plugin-zubridge"
+          "tauri-plugin-zubridge",
+          "zubridge-core"
         ],
         "sync": "independent"
       }
@@ -71,7 +86,17 @@
     },
     "standingPr": {
       "branch": "release/next",
-      "mergeMethod": "squash"
+      "mergeMethod": "squash",
+      // One checkbox per release unit: Electron on its own, Tauri with its group mates nested
+      // read-only beneath it, so holding back Tauri can't strand a plugin or core release.
+      "primaryPackages": [
+        "@zubridge/electron",
+        "@zubridge/tauri"
+      ],
+      // Per-row prerelease/stable toggle: lets the Tauri v2 set ship on `next` for the manual
+      // test pass and then graduate, without moving Electron off `latest`.
+      "channelToggle": true,
+      "summaryTable": true
     },
     // PR scope labels → comma-separated list of packages eligible to bump.
     // Tauri ships `@zubridge/tauri` (npm) + `tauri-plugin-zubridge` (cargo)
