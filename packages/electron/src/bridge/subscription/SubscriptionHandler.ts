@@ -30,8 +30,9 @@ export class SubscriptionHandler<State extends AnyState> {
     private windowTracker: WebContentsTracker,
     private serializationMaxDepth?: number,
     deltaOptions?: { enabled?: boolean },
+    isEqual?: (a: unknown, b: unknown) => boolean,
   ) {
-    this.deltaCalculator = new DeltaCalculator<State>();
+    this.deltaCalculator = new DeltaCalculator<State>(isEqual);
     this.deltaConfig = getDeltaConfig(deltaOptions);
   }
 

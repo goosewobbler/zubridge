@@ -5,6 +5,8 @@ import type { Delta } from './types.js';
 export type NormalizedKeys = string[] | '*';
 
 export class DeltaCalculator<S> {
+  constructor(private readonly isEqual: (a: unknown, b: unknown) => boolean = dequal) {}
+
   normalizeKeys(keys?: string[]): NormalizedKeys {
     if (!keys) {
       return '*';
@@ -62,7 +64,7 @@ export class DeltaCalculator<S> {
       const prevValue = deepGet(prev as Record<string, unknown>, key);
       const nextValue = deepGet(next as Record<string, unknown>, key);
 
-      if (!dequal(prevValue, nextValue)) {
+      if (!this.isEqual(prevValue, nextValue)) {
         if (nextValue === undefined && prevValue !== undefined) {
           removed.push(key);
         } else {
@@ -119,7 +121,7 @@ export class DeltaCalculator<S> {
     const removed: string[] = [];
 
     for (const key of allKeys) {
-      if (!dequal(prevObj[key], nextObj[key])) {
+      if (!this.isEqual(prevObj[key], nextObj[key])) {
         if (!(key in nextObj)) {
           removed.push(key);
         } else {
