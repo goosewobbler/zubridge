@@ -1,5 +1,6 @@
 import type { AnyState, BackendBridge, StateManager, WrapperOrWebContents } from '@zubridge/types';
 import { debug } from '@zubridge/utils';
+import { createMemoizedDequal } from '../deltas/memoizedDequal.js';
 import { initActionQueue } from '../main/actionQueue.js';
 import { actionScheduler, thunkManager } from '../thunk/init.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
@@ -53,6 +54,9 @@ export function createCoreBridge<State extends AnyState>(
   // Create IPC handler
   const ipcHandler = new IpcHandler(stateManager, resourceManager, serializationMaxDepth);
 
+  // Every window compares the same sanitized snapshots, which nothing mutates.
+  const isEqual = createMemoizedDequal();
+
   // Create subscription handler
   const subscriptionHandler = new SubscriptionHandler(
     stateManager,
@@ -60,6 +64,7 @@ export function createCoreBridge<State extends AnyState>(
     windowTracker,
     serializationMaxDepth,
     options?.deltas,
+    isEqual,
   );
 
   // Subscribe to state manager changes and selectively notify windows
@@ -88,7 +93,7 @@ export function createCoreBridge<State extends AnyState>(
         // Only notify if relevant keys changed
         if (prevState !== undefined) {
           debug('core', `Notifying window ${windowId} of state change`);
-          subManager.notify(prevState, sanitizedState);
+          subManager.notify(prevState, sanitizedState, isEqual);
         } else {
           // First run: pass undefined as prev so hasRelevantChange returns true
           // for all subscription types (not just '*'). This ensures specific-key
