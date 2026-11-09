@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/utils';
+import { debug, isDebugEnabled } from '@zubridge/utils';
 import { dequal } from 'dequal';
 import { deepGet } from '../utils/deepGet.js';
 
@@ -90,11 +90,13 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
  * Checks if any of the subscribed keys have changed between prev and next state.
  */
 function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): boolean {
-  debug('subscription', '[hasRelevantChange] Comparing states:', {
-    prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
-    next: JSON.stringify(next),
-    keys,
-  });
+  if (isDebugEnabled()) {
+    debug('subscription', '[hasRelevantChange] Comparing states:', {
+      prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
+      next: JSON.stringify(next),
+      keys,
+    });
+  }
 
   // If prev is undefined, this is initial state
   if (prev === undefined) return true;
@@ -286,10 +288,12 @@ export class SubscriptionManager<S> {
       'subscription',
       `[notify] Starting notification with ${this.subscriptions.size} subscribers`,
     );
-    debug('subscription', '[notify] States:', {
-      prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
-      next: JSON.stringify(next),
-    });
+    if (isDebugEnabled()) {
+      debug('subscription', '[notify] States:', {
+        prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
+        next: JSON.stringify(next),
+      });
+    }
 
     for (const { keys, callback, windowId } of this.subscriptions.values()) {
       debug('subscription', `[notify] Checking window ${windowId} with keys:`, keys);

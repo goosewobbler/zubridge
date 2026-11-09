@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getPartialState,
   SubscriptionManager,
@@ -357,5 +357,26 @@ describe('getPartialState', () => {
     // Mutating the result must not affect the source
     ((result as typeof state).user as Record<string, unknown>).age = 99;
     expect(state.user.age).toBe(30);
+  });
+});
+
+describe('SubscriptionManager debug serialization', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('serializes state for debug logs only when they are on', () => {
+    const manager = new SubscriptionManager<Record<string, unknown>>();
+    manager.subscribe(undefined, vi.fn(), 1);
+    const stringify = vi.spyOn(JSON, 'stringify');
+
+    vi.stubEnv('DEBUG', '');
+    manager.notify({ counter: 1 }, { counter: 2 });
+    expect(stringify).not.toHaveBeenCalled();
+
+    vi.stubEnv('DEBUG', 'zubridge:*');
+    manager.notify({ counter: 2 }, { counter: 3 });
+    expect(stringify).toHaveBeenCalled();
   });
 });
