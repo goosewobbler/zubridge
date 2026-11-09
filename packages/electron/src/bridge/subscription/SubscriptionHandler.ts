@@ -4,6 +4,7 @@ import { debug } from '@zubridge/utils';
 import type { WebContents } from 'electron';
 import { IpcChannel } from '../../constants.js';
 import { DeltaCalculator } from '../../deltas/DeltaCalculator.js';
+import { createMemoizedDequal } from '../../deltas/memoizedDequal.js';
 import type { Delta } from '../../deltas/types.js';
 import { getDeltaConfig } from '../../deltas/types.js';
 import { getPartialState, SubscriptionManager } from '../../subscription/SubscriptionManager.js';
@@ -31,7 +32,8 @@ export class SubscriptionHandler<State extends AnyState> {
     private serializationMaxDepth?: number,
     deltaOptions?: { enabled?: boolean },
   ) {
-    this.deltaCalculator = new DeltaCalculator<State>();
+    // Every window compares the same sanitized snapshots, which nothing mutates.
+    this.deltaCalculator = new DeltaCalculator<State>(createMemoizedDequal());
     this.deltaConfig = getDeltaConfig(deltaOptions);
   }
 
