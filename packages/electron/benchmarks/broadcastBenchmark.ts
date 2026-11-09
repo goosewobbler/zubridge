@@ -28,15 +28,16 @@ const fakeWindow = (id: number) =>
     send: () => {},
   }) as unknown as WebContents;
 
-for (const windowCount of [1, 6]) {
-  describe(`setState with ${windowCount} subscribed window(s)`, () => {
-    const store = createStore(createState);
-    createZustandBridge(store).subscribe(
-      Array.from({ length: windowCount }, (_, i) => fakeWindow(i + 1)),
-    );
+for (const keys of [undefined, ['prefs']]) {
+  for (const windowCount of [1, 6]) {
+    describe(`setState, ${windowCount} window(s) subscribed to ${keys ?? 'all keys'}`, () => {
+      const store = createStore(createState);
+      const windows = Array.from({ length: windowCount }, (_, i) => fakeWindow(i + 1));
+      createZustandBridge(store).subscribe(windows, keys);
 
-    bench('update one top-level key', () => {
-      store.setState({ tick: store.getState().tick + 1 });
+      bench('update one top-level key', () => {
+        store.setState({ tick: store.getState().tick + 1 });
+      });
     });
-  });
+  }
 }

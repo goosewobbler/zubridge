@@ -89,7 +89,12 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
 /**
  * Checks if any of the subscribed keys have changed between prev and next state.
  */
-function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): boolean {
+function hasRelevantChange<S>(
+  prev: S | undefined,
+  next: S,
+  keys: string[] | undefined,
+  isEqual: (a: unknown, b: unknown) => boolean,
+): boolean {
   if (isDebugEnabled()) {
     debug('subscription', '[hasRelevantChange] Comparing states:', {
       prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
@@ -123,7 +128,7 @@ function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): bo
   return normalized.some((key) => {
     const prevValue = deepGet(prev as Record<string, unknown> & ({} | null), key);
     const nextValue = deepGet(next as Record<string, unknown>, key);
-    const changed = !dequal(prevValue, nextValue);
+    const changed = !isEqual(prevValue, nextValue);
     debug('subscription', `[hasRelevantChange] Comparing key ${key}:`, {
       prevValue,
       nextValue,
@@ -283,7 +288,11 @@ export class SubscriptionManager<S> {
   /**
    * Notify all subscribers whose keys have changed, passing the relevant partial state.
    */
-  notify(prev: S | undefined, next: S): void {
+  notify(
+    prev: S | undefined,
+    next: S,
+    isEqual: (a: unknown, b: unknown) => boolean = dequal,
+  ): void {
     debug(
       'subscription',
       `[notify] Starting notification with ${this.subscriptions.size} subscribers`,
@@ -298,7 +307,7 @@ export class SubscriptionManager<S> {
     for (const { keys, callback, windowId } of this.subscriptions.values()) {
       debug('subscription', `[notify] Checking window ${windowId} with keys:`, keys);
 
-      if (hasRelevantChange(prev, next, keys)) {
+      if (hasRelevantChange(prev, next, keys, isEqual)) {
         const partialState = getPartialState(next, keys);
         debug('subscription', `[notify] Notifying window ${windowId} with state:`, partialState);
         // Always invoke the callback when a relevant change was detected —
