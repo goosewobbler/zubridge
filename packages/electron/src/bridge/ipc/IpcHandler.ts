@@ -1,5 +1,5 @@
 import type { Action, AnyState, StateManager } from '@zubridge/types';
-import { debug } from '@zubridge/utils';
+import { debug, isDebugEnabled } from '@zubridge/utils';
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
 import type { BatchAckPayload, BatchPayload } from '../../batching/types.js';
@@ -389,10 +389,12 @@ export class IpcHandler<State extends AnyState> {
         `[BRIDGE DEBUG] Filtering state for renderer ${windowId} with subscriptions: ${subscriptions}`,
       );
       const filteredState = getPartialState(state, subscriptions);
-      debug(
-        'ipc',
-        `[BRIDGE DEBUG] Returning filtered state to renderer ${windowId}: ${JSON.stringify(filteredState)}`,
-      );
+      if (isDebugEnabled()) {
+        debug(
+          'ipc',
+          `[BRIDGE DEBUG] Returning filtered state to renderer ${windowId}: ${JSON.stringify(filteredState)}`,
+        );
+      }
       return filteredState as Partial<State>;
     } catch (error) {
       const ipcError = new IpcCommunicationError('Error handling getState request', {
