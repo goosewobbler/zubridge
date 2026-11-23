@@ -63,10 +63,10 @@ describe('Preload Bridge', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     } as unknown as Window & typeof globalThis;
-    (global as typeof globalThis).document = {
+    vi.stubGlobal('document', {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-    } as unknown as Document;
+    });
     (global as typeof globalThis).process = { platform: 'darwin' } as NodeJS.Process;
 
     const result = preloadBridge();
@@ -85,10 +85,10 @@ describe('Preload Bridge', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       } as unknown as Window & typeof globalThis;
-      (global as typeof globalThis).document = {
+      vi.stubGlobal('document', {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as unknown as Document;
+      });
       (global as typeof globalThis).process = { platform: 'darwin' } as NodeJS.Process;
     });
 
@@ -130,10 +130,10 @@ describe('Preload Bridge', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       } as unknown as Window & typeof globalThis;
-      (global as typeof globalThis).document = {
+      vi.stubGlobal('document', {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as unknown as Document;
+      });
       (global as typeof globalThis).process = { platform: 'darwin' } as NodeJS.Process;
     });
 
@@ -263,10 +263,10 @@ describe('Preload Bridge', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       } as unknown as Window & typeof globalThis;
-      (global as typeof globalThis).document = {
+      vi.stubGlobal('document', {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as unknown as Document;
+      });
     });
 
     /**
