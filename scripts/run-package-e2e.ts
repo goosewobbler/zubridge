@@ -194,7 +194,13 @@ function prepareApp(appPath: string): string {
   const workspaceConfig = {
     hoist: false,
     nodeLinker: 'isolated',
-    allowBuilds: { electron: true, 'electron-winstaller': true, esbuild: true },
+    allowBuilds: {
+      electron: true,
+      'electron-winstaller': true,
+      esbuild: true,
+      edgedriver: false,
+      geckodriver: false,
+    },
     ...(Object.keys(pnpmOverrides).length > 0 ? { overrides: pnpmOverrides } : {}),
   };
   fs.writeFileSync(
