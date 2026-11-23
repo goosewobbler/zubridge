@@ -209,6 +209,13 @@ function prepareApp(appPath: string): string {
   );
   console.log('[DEBUG] Created pnpm-workspace.yaml');
 
+  const rootPackageJson = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'),
+  );
+  if (rootPackageJson.packageManager) {
+    packageJson.packageManager = rootPackageJson.packageManager;
+  }
+
   // Write cleaned package.json
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
