@@ -1,20 +1,40 @@
 packages:
-  - 'apps/electron/e2e'
-  - 'apps/electron/minimal-context-isolation-false'
-  - 'apps/electron/minimal-sandbox-true'
-  - 'apps/electron/minimal-custom'
-  - 'apps/electron/minimal-redux'
-  - 'apps/electron/minimal-zustand-basic'
-  - 'apps/electron/minimal-zustand-handlers'
-  - 'apps/electron/minimal-zustand-immer'
-  - 'apps/electron/minimal-zustand-reducers'
-  - 'apps/tauri/e2e'
-  - 'apps/tauri-v1/e2e'
-  - 'e2e'
-  - 'packages/apps-shared'
-  - 'packages/core'
-  - 'packages/electron'
-  - 'packages/tauri'
-  - 'packages/types'
-  - 'packages/ui'
-  - 'packages/utils'
+  - "apps/electron/e2e"
+  - "apps/electron/minimal-context-isolation-false"
+  - "apps/electron/minimal-sandbox-true"
+  - "apps/electron/minimal-custom"
+  - "apps/electron/minimal-redux"
+  - "apps/electron/minimal-zustand-basic"
+  - "apps/electron/minimal-zustand-handlers"
+  - "apps/electron/minimal-zustand-immer"
+  - "apps/electron/minimal-zustand-reducers"
+  - "apps/tauri/e2e"
+  - "apps/tauri-v1/e2e"
+  - "e2e"
+  - "packages/apps-shared"
+  - "packages/core"
+  - "packages/electron"
+  - "packages/tauri"
+  - "packages/types"
+  - "packages/ui"
+  - "packages/utils"
+allowBuilds:
+  "@parcel/watcher": false
+  edgedriver: false
+  electron: true
+  electron-winstaller: false
+  esbuild: true
+  geckodriver: false
+minimumReleaseAgeExclude:
+  - "@releasekit/notes@0.47.1"
+  - "@releasekit/publish@0.47.1"
+  - "@releasekit/release@0.47.1"
+  - "@releasekit/version@0.47.1"
+  - brace-expansion@5.1.0
+permissions:
+  "@reduxjs/toolkit":
+    build: false
+    skills: false
+  tsdown:
+    build: false
+    skills: false
