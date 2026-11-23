@@ -42,7 +42,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "^5.9.3",
     "vite": "^8.3.8",
-    "wdio-electron-service": "^9.2.0",
+    "@wdio/electron-service": "next",
     "webdriverio": "10.2.0"
   }
 }

@@ -1,7 +1,7 @@
+import { browser } from '@wdio/electron-service';
 import { expect } from '@wdio/globals';
 import type {} from '@zubridge/types/app';
 import { before, beforeEach, describe, it } from 'mocha';
-import { browser } from 'wdio-electron-service';
 import { TIMING } from '../constants.js';
 import {
   getCounterValue,
