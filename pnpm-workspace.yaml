@@ -25,6 +25,8 @@ allowBuilds:
   electron-winstaller: false
   esbuild: true
   geckodriver: false
+overrides:
+  "@types/node": 24.19.2
 minimumReleaseAgeExclude:
   - "@releasekit/notes@0.47.1"
   - "@releasekit/publish@0.47.1"
