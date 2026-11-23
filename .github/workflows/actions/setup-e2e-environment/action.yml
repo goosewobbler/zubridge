@@ -192,7 +192,7 @@ runs:
           libnss3-dev \
           libatk-bridge2.0-0 \
           libgtk-3-0 \
-          libgdk-pixbuf2.0-0 \
+          libgdk-pixbuf-2.0-0 \
           libxss1 \
           libxtst6 \
           libxrandr2 \
