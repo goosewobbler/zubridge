@@ -391,9 +391,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -488,9 +494,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -591,9 +603,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -688,9 +706,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -785,9 +809,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -882,9 +912,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -982,9 +1018,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -1079,9 +1121,15 @@ importers:
       is-ci:
         specifier: ^4.1.0
         version: 4.1.0
+      mocha:
+        specifier: ^12.0.3
+        version: 12.0.3
       postcss:
         specifier: ^8.5.33
         version: 8.5.33
+      puppeteer-core:
+        specifier: ^25.16.0
+        version: 25.18.1(yauzl@2.10.0)
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
