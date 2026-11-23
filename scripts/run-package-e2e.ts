@@ -104,6 +104,17 @@ function findMinimalApps(): string[] {
   return allApps;
 }
 
+// Packages dirs can hold stale tarballs from earlier versions; match the current one.
+function findTarball(pkg: string): string | undefined {
+  const pkgDir = path.join(process.cwd(), 'packages', pkg.replace('@zubridge/', ''));
+  const { name, version } = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
+  const tarballPath = path.join(
+    pkgDir,
+    `${name.replace('@', '').replace('/', '-')}-${version}.tgz`,
+  );
+  return fs.existsSync(tarballPath) ? tarballPath : undefined;
+}
+
 // Build packages using turborepo
 function buildPackages(): void {
   console.log('\nBuilding packages...');
@@ -120,10 +131,7 @@ function buildPackages(): void {
 
   // Verify the packages were built by checking for their tarballs
   for (const pkg of allPackages) {
-    const pkgName = pkg.replace('@zubridge/', '');
-    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
-    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
-    if (tarballs.length === 0) {
+    if (!findTarball(pkg)) {
       throw new Error(`No tarball found for ${pkg} after build`);
     }
   }
@@ -182,11 +190,9 @@ function prepareApp(appPath: string): string {
   // @zubridge/utils) from npm registry when they aren't published there.
   const pnpmOverrides: Record<string, string> = {};
   for (const pkg of allZubridgePackages) {
-    const pkgName = pkg.replace('@zubridge/', '');
-    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
-    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
-    if (tarballs.length > 0) {
-      pnpmOverrides[pkg] = `file:${path.join(pkgDir, tarballs[0])}`;
+    const tarballPath = findTarball(pkg);
+    if (tarballPath) {
+      pnpmOverrides[pkg] = `file:${tarballPath}`;
       console.log(`[DEBUG] Adding pnpm override: ${pkg} → ${pnpmOverrides[pkg]}`);
     }
   }
@@ -231,29 +237,21 @@ function prepareApp(appPath: string): string {
   // Step 2: Add local packages separately
   console.log('[DEBUG] Adding local Zubridge packages...');
   for (const pkg of ZUBRIDGE_PACKAGES.dependencies) {
-    const pkgName = pkg.replace('@zubridge/', '');
-    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
-    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
-
-    if (tarballs.length === 0) {
+    const tarballPath = findTarball(pkg);
+    if (!tarballPath) {
       throw new Error(`No tarball found for ${pkg}`);
     }
 
-    const tarballPath = path.join(pkgDir, tarballs[0]);
     console.log(`[DEBUG] Adding ${pkg} from ${tarballPath}`);
     runCommand(`pnpm add ${tarballPath}`, { cwd: tempAppPath, stdio: 'inherit' });
   }
 
   for (const pkg of ZUBRIDGE_PACKAGES.devDependencies) {
-    const pkgName = pkg.replace('@zubridge/', '');
-    const pkgDir = path.join(process.cwd(), 'packages', pkgName);
-    const tarballs = fs.readdirSync(pkgDir).filter((f) => f.endsWith('.tgz'));
-
-    if (tarballs.length === 0) {
+    const tarballPath = findTarball(pkg);
+    if (!tarballPath) {
       throw new Error(`No tarball found for ${pkg}`);
     }
 
-    const tarballPath = path.join(pkgDir, tarballs[0]);
     console.log(`[DEBUG] Adding ${pkg} from ${tarballPath} as dev dependency`);
     runCommand(`pnpm add ${tarballPath} --save-dev`, { cwd: tempAppPath, stdio: 'inherit' });
   }
