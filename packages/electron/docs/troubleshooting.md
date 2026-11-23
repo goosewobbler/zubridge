@@ -21,14 +21,19 @@ The [Electron documentation on ESM preload scripts](https://www.electronjs.org/d
 4. **Context Isolation Requirement for Dynamic Imports**: ESM preload scripts must be context isolated to use dynamic Node.js ESM imports.
 
 5. **Module Resolution Conflicts**: When using ESM in the renderer process, you may encounter errors related to Node.js modules not being available, such as:
+
    ```
    Uncaught Error: Electron failed to install correctly
    ```
+
    or
+
    ```
    path.join is not a function
    ```
+
    or
+
    ```
    The requested module does not provide an export named 'X'
    ```
@@ -59,6 +64,7 @@ If you still want to use ESM preload scripts with Zubridge:
 
 1. Use the `.mjs` extension for your preload script
 2. Ensure your webPreferences include:
+
    ```js
    webPreferences: {
      contextIsolation: true,  // Required for dynamic imports
@@ -69,6 +75,7 @@ If you still want to use ESM preload scripts with Zubridge:
 3. Use a proper URL format for the preload path (either absolute path or file:// URL)
 4. Ensure your HTML pages always have some content (never empty)
 5. Import from electron using the default import syntax:
+
    ```js
    import electron from 'electron';
    const { contextBridge, ipcRenderer } = electron;
@@ -82,6 +89,7 @@ If you still want to use ESM preload scripts with Zubridge:
 If you encounter errors related to Node.js modules not being available in sandbox mode:
 
 1. **Verify Vite Configuration**: Ensure `@oxc-project/runtime` is externalized in your renderer build:
+
    ```js
    // `electron.vite.config.ts`
    renderer: {
@@ -94,6 +102,7 @@ If you encounter errors related to Node.js modules not being available in sandbo
    ```
 
 2. **Check Sandbox Configuration**: Ensure `sandbox: true` is set in your window's `webPreferences`:
+
    ```ts
    webPreferences: {
      sandbox: true,

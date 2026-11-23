@@ -237,7 +237,9 @@ Subscribes to state changes:
 ```typescript
 import { useZubridgeStore } from '@zubridge/tauri';
 
-const unsubscribe = useZubridgeStore.subscribe((state, prevState) => console.log('State changed:', state, prevState));
+const unsubscribe = useZubridgeStore.subscribe((state, prevState) =>
+  console.log('State changed:', state, prevState),
+);
 
 // Later, to unsubscribe:
 unsubscribe();

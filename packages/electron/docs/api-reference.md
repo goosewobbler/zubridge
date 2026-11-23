@@ -543,10 +543,10 @@ Options that can be passed to dispatch functions to control execution behavior.
 
 ```ts
 type DispatchOptions = {
-  keys?: string[];                  // Selective subscription keys
-  bypassAccessControl?: boolean;    // Skip access control checks
-  immediate?: boolean;              // Execute immediately, bypassing all queues
-  batch?: boolean;                  // Enable batching for thunk actions
+  keys?: string[]; // Selective subscription keys
+  bypassAccessControl?: boolean; // Skip access control checks
+  immediate?: boolean; // Execute immediately, bypassing all queues
+  batch?: boolean; // Enable batching for thunk actions
 };
 ```
 
@@ -566,10 +566,10 @@ interface ThunkDispatch<S = AnyState> {
   // Standard dispatch
   (action: Action): Promise<void>;
   (action: Action, options: DispatchOptions): Promise<void>;
-  
+
   // Dispatch with batching enabled (shorthand for dispatch(action, { batch: true }))
   batch(action: Action, options?: Omit<DispatchOptions, 'batch'>): Promise<void>;
-  
+
   // Flush pending batched actions immediately
   flush(): Promise<FlushResult>;
 }
@@ -581,10 +581,10 @@ interface ThunkDispatch<S = AnyState> {
 const myThunk = async (getState, dispatch) => {
   // Direct dispatch (default)
   await dispatch({ type: 'A' });
-  
+
   // Batched dispatch
   void dispatch.batch({ type: 'B' });
-  
+
   // Flush and wait for completion
   const result = await dispatch.flush();
 };
@@ -665,14 +665,14 @@ interface CoreBridgeOptions {
 
   // Resource management
   resourceManagement?: {
-    enablePeriodicCleanup?: boolean;    // Enable periodic cleanup (default: true)
-    cleanupIntervalMs?: number;         // Cleanup interval in ms (default: 600000 = 10 minutes)
-    maxSubscriptionManagers?: number;   // Max managers before forcing cleanup (default: 1000)
+    enablePeriodicCleanup?: boolean; // Enable periodic cleanup (default: true)
+    cleanupIntervalMs?: number; // Cleanup interval in ms (default: 600000 = 10 minutes)
+    maxSubscriptionManagers?: number; // Max managers before forcing cleanup (default: 1000)
   };
 
   // Serialization
   serialization?: {
-    maxDepth?: number;                  // Maximum depth for state serialization (default: 10)
+    maxDepth?: number; // Maximum depth for state serialization (default: 10)
   };
 }
 ```

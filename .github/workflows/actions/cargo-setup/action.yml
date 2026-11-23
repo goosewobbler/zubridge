@@ -1,5 +1,5 @@
-name: 'Setup Cargo Configuration'
-description: 'Configures Rust/Cargo for better performance in CI environments'
+name: "Setup Cargo Configuration"
+description: "Configures Rust/Cargo for better performance in CI environments"
 
 runs:
   using: "composite"

@@ -4,7 +4,7 @@ on:
   schedule:
     # 03:00 UTC daily. Off-peak for both US/EU contributors so noise from
     # parallel CI activity is minimised.
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 env:
@@ -31,7 +31,7 @@ jobs:
 
       - uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: '24.x'
+          node-version: "24.x"
 
       - name: Build shared packages
         run: pnpm run build:packages
@@ -59,7 +59,7 @@ jobs:
 
       - uses: ./.github/workflows/actions/setup-workspace
         with:
-          node-version: '24.x'
+          node-version: "24.x"
 
       - name: Download all raw results
         uses: actions/download-artifact@v7

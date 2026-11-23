@@ -13,22 +13,22 @@ Each spike has a corresponding decision document in [`docs/decisions/`](../docs/
 
 ## Active spikes
 
-| Framework | Spike doc | When | Status |
-|-----------|-----------|------|--------|
-| Electrobun | [electrobun-spike.md](../docs/decisions/electrobun-spike.md) | During P5 (with Bun audit) | Not started |
-| Dioxus (Desktop + Mobile) | [dioxus-spike.md](../docs/decisions/dioxus-spike.md) | Early post-P7 | Not started |
-| Flutter | [flutter-spike.md](../docs/decisions/flutter-spike.md) | Pre-Flutter integration | Not started |
-| React Native | [react-native-spike.md](../docs/decisions/react-native-spike.md) | After Flutter spike | Not started |
-| Ionic / Capacitor | [capacitor-spike.md](../docs/decisions/capacitor-spike.md) | After Flutter spike | Not started |
-| Neutralino | [neutralino-spike.md](../docs/decisions/neutralino-spike.md) | Only if prioritized | Not scheduled |
+| Framework                 | Spike doc                                                        | When                       | Status        |
+| ------------------------- | ---------------------------------------------------------------- | -------------------------- | ------------- |
+| Electrobun                | [electrobun-spike.md](../docs/decisions/electrobun-spike.md)     | During P5 (with Bun audit) | Not started   |
+| Dioxus (Desktop + Mobile) | [dioxus-spike.md](../docs/decisions/dioxus-spike.md)             | Early post-P7              | Not started   |
+| Flutter                   | [flutter-spike.md](../docs/decisions/flutter-spike.md)           | Pre-Flutter integration    | Not started   |
+| React Native              | [react-native-spike.md](../docs/decisions/react-native-spike.md) | After Flutter spike        | Not started   |
+| Ionic / Capacitor         | [capacitor-spike.md](../docs/decisions/capacitor-spike.md)       | After Flutter spike        | Not started   |
+| Neutralino                | [neutralino-spike.md](../docs/decisions/neutralino-spike.md)     | Only if prioritized        | Not scheduled |
 
 ## Conditional spikes — blocked on WASM value research
 
 These spikes are only scheduled if [`wasm-value-research.md`](../docs/decisions/wasm-value-research.md) returns "go." If "no-go," they are archived.
 
-| Framework | Spike doc | Trigger |
-|-----------|-----------|---------|
-| Blazor | [blazor-spike.md](../docs/decisions/blazor-spike.md) | WASM research = "go" + Path D scaffolding landed |
+| Framework                            | Spike doc                                                                   | Trigger                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Blazor                               | [blazor-spike.md](../docs/decisions/blazor-spike.md)                        | WASM research = "go" + Path D scaffolding landed                               |
 | Dioxus Web (Phase 2 of Dioxus spike) | [dioxus-spike.md §"Conditional Phase 2"](../docs/decisions/dioxus-spike.md) | WASM research = "go" + Path D scaffolding landed + Dioxus spike Phase 1 passed |
 
 ## Spike code conventions

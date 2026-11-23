@@ -1,5 +1,5 @@
-name: 'Process Build Result'
-description: 'Process the outcome of a build step and provide standardized output'
+name: "Process Build Result"
+description: "Process the outcome of a build step and provide standardized output"
 
 inputs:
   build_step_id:

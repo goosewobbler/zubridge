@@ -10,10 +10,10 @@ _Cross-platform state without boundaries: Zustand-inspired simplicity_
 
 <a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM"><img src="https://img.shields.io/badge/@zubridge/electron-9feaf9" /></a>
 <a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM"><img src="https://img.shields.io/npm/v/@zubridge/electron" /></a>
-<a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM"><img src="https://img.shields.io/npm/dw/@zubridge/electron" /></a> \
+<a href="https://www.npmjs.com/package/@zubridge/electron" alt="@zubridge/electron on NPM"><img src="https://img.shields.io/npm/dw/@zubridge/electron" /></a>\
 <a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM"><img src="https://img.shields.io/badge/@zubridge/tauri-ffc131" /></a>
 <a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM"><img src="https://img.shields.io/npm/v/@zubridge/tauri" /></a>
-<a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM"><img src="https://img.shields.io/npm/dw/@zubridge/tauri" /></a> \
+<a href="https://www.npmjs.com/package/@zubridge/tauri" alt="@zubridge/tauri on NPM"><img src="https://img.shields.io/npm/dw/@zubridge/tauri" /></a>\
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Tauri-Plugin-Zubridge on Crates.io"><img src="https://img.shields.io/badge/tauri-plugin-ffc131" /></a>
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Tauri-Plugin-Zubridge on Crates.io"><img src="https://img.shields.io/crates/v/tauri-plugin-zubridge" /></a>
 <a href="https://crates.io/crates/tauri-plugin-zubridge" alt="Tauri-Plugin-Zubridge on Crates.io"><img src="https://img.shields.io/crates/dr/tauri-plugin-zubridge" /></a>
@@ -82,12 +82,10 @@ Uses Tauri's event system and commands, respecting its security model where main
 ### Inspiration / Prior Art
 
 - [goosewobbler/zutron](https://github.com/goosewobbler/zutron) (Electron + Zustand)
-
   - Zustand store in the main process, synced to Zustand in the renderer
   - `@zubridge/electron` started as a rebrand of Zutron and evolved from there
 
 - [vitordino/reduxtron](https://github.com/vitordino/reduxtron) (Electron + Redux + Zustand)
-
   - Redux store in the main process, optionally synced to Zustand in the renderer
   - Reduxtron is the original inspiration for Zutron (and hence `@zubridge/electron`)
 

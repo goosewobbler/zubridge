@@ -36,6 +36,7 @@ apps/
 ### Development Workflow
 
 The project uses:
+
 - **Turborepo** for monorepo management with remote caching enabled
 - **Biome** for linting and formatting
 - **Vitest** for testing across all packages
@@ -45,14 +46,18 @@ The project uses:
 ### Shared Packages
 
 #### `apps-shared` Package
+
 Contains common logic shared between example applications:
+
 - State management utilities
 - Common action creators and reducers
 - Testing helpers
 - Configuration utilities
 
 #### `ui` Package
+
 Provides reusable UI components for example applications:
+
 - Common React components
 - Shared styling and theming
 - Form components and validators
@@ -97,6 +102,7 @@ The Thunk Manager system coordinates thunk execution across processes:
 #### Key Components
 
 **ThunkManager**
+
 - Thunk registration and lifecycle management
 - State transitions (pending → executing → completed/failed)
 - Thunk hierarchy tracking (parent-child relationships)
@@ -104,6 +110,7 @@ The Thunk Manager system coordinates thunk execution across processes:
 - Event emission for thunk state changes
 
 **Thunk Class**
+
 - Unique ID and optional parent ID
 - Current state (pending, executing, completed, failed)
 - Source window ID and process information
@@ -111,12 +118,14 @@ The Thunk Manager system coordinates thunk execution across processes:
 - Timestamps for performance monitoring
 
 **ActionQueueManager**
+
 - Manages queue of actions from all renderer processes
 - Consults ThunkManager to determine action processing eligibility
 - Ensures actions from same thunk tree are processed sequentially
 - Prevents concurrent execution of actions from different thunk trees
 
 **MainThunkProcessor**
+
 - Executes thunks dispatched from the main process
 - Manages thunk execution state and error handling
 - Coordinates with ThunkManager for registration and state updates
@@ -239,18 +248,21 @@ pnpm --filter minimal-zustand dev
 The project uses comprehensive testing across multiple levels:
 
 **Unit Tests**
+
 - Individual component and utility testing
 - Mock-based testing for IPC interactions
 - State management logic verification
 - Error handling and edge case coverage
 
 **Integration Tests**
+
 - Bridge creation and configuration testing
 - Multi-window communication testing
 - Thunk execution and coordination testing
 - Error propagation testing
 
 **End-to-End Tests**
+
 - Full application workflow testing
 - Cross-process communication validation
 - Performance and memory leak testing
@@ -271,6 +283,7 @@ Key metrics tracked in development:
 ### Code Style
 
 The project enforces consistent code style through:
+
 - **Biome** for linting and formatting
 - **TypeScript** strict mode enabled
 - **ESLint** rules for React and Node.js
@@ -287,6 +300,7 @@ The project enforces consistent code style through:
 ### Release Process
 
 The project uses semantic versioning with automated releases:
+
 - `feat:` commits trigger minor version bumps
 - `fix:` commits trigger patch version bumps
 - `BREAKING CHANGE:` triggers major version bumps
@@ -297,6 +311,7 @@ The project uses semantic versioning with automated releases:
 ### Why Separate Thunk and Action Processing?
 
 Thunks and actions have different execution patterns:
+
 - **Actions**: Immediate state updates, synchronous processing
 - **Thunks**: Asynchronous execution, can dispatch multiple actions
 - **Separation**: Allows different optimization strategies for each
@@ -304,6 +319,7 @@ Thunks and actions have different execution patterns:
 ### Why Deferred Action Processing?
 
 Action deferral during thunk execution provides:
+
 - **Consistency**: Prevents race conditions in state updates
 - **Predictability**: Ensures deterministic execution order
 - **Debugging**: Easier to reason about state changes
@@ -311,6 +327,7 @@ Action deferral during thunk execution provides:
 ### Why Rust Middleware?
 
 Optional Rust middleware provides:
+
 - **Performance**: 10-100x faster action processing
 - **Memory Safety**: Prevents memory leaks in long-running applications
 - **Concurrency**: Better handling of concurrent operations
@@ -319,18 +336,21 @@ Optional Rust middleware provides:
 ## Future Roadmap
 
 ### Short Term (Next 6 months)
+
 - Enhanced TypeScript integration
 - Improved debugging tools
 - Performance optimizations
 - Additional example applications
 
 ### Medium Term (6-12 months)
+
 - Rust middleware as default option
 - Advanced caching strategies
 - Plugin architecture for extensibility
 - Cross-platform testing improvements
 
 ### Long Term (12+ months)
+
 - WebAssembly integration for performance
 - Advanced state diffing algorithms
 - Distributed state management

@@ -1,10 +1,10 @@
-name: 'Setup Workspace'
-description: 'Sets up Node.js environment with PNPM for CI/CD workflows'
+name: "Setup Workspace"
+description: "Sets up Node.js environment with PNPM for CI/CD workflows"
 inputs:
   node-version:
     description: 'Node.js version to use (e.g., "24")'
     required: false
-    default: '24'
+    default: "24"
 
 runs:
   using: composite
@@ -18,7 +18,7 @@ runs:
       uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
+        cache: "pnpm"
 
     - name: ⚙️ Install Dependencies
       shell: bash

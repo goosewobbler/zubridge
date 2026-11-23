@@ -275,17 +275,23 @@ Use the `immediate` flag to override the default queueing behavior:
 ```typescript
 // Immediate dispatch - allows actions to skip the queue
 // and be processed immediately, even during thunk execution
-bridge.dispatch({ type: 'URGENT_ACTION', payload }, {
-  immediate: true
-});
+bridge.dispatch(
+  { type: 'URGENT_ACTION', payload },
+  {
+    immediate: true,
+  },
+);
 
 // This also works for thunks - they will execute immediately
 // instead of being queued
-bridge.dispatch(async (getState, dispatch) => {
-  dispatch('IMMEDIATE_UPDATE', 'urgent');
-}, {
-  immediate: true
-});
+bridge.dispatch(
+  async (getState, dispatch) => {
+    dispatch('IMMEDIATE_UPDATE', 'urgent');
+  },
+  {
+    immediate: true,
+  },
+);
 ```
 
 ## Error Handling in Thunks
@@ -388,7 +394,6 @@ const fetchData =
   };
 ```
 
-
 ## Thunk Completion Acknowledgement
 
 Thunks are marked as complete only after all renderer processes have acknowledged the final state update. This ensures complete state synchronization before the thunk is considered finished:
@@ -430,8 +435,8 @@ const batchThunk = async (getState, dispatch) => {
   await dispatch({ type: 'FIRST_ACTION' });
 
   // Batched dispatch - actions are grouped together
-  void dispatch.batch({ type: 'SECOND_ACTION' });  // Fire-and-forget
-  void dispatch.batch({ type: 'THIRD_ACTION' });   // Fire-and-forget
+  void dispatch.batch({ type: 'SECOND_ACTION' }); // Fire-and-forget
+  void dispatch.batch({ type: 'THIRD_ACTION' }); // Fire-and-forget
 
   // Manually flush the batch
   const result = await dispatch.flush();
@@ -443,12 +448,12 @@ const batchThunk = async (getState, dispatch) => {
 
 The `await` keyword controls when the promise resolves:
 
-| Pattern | Waits For |
-|---------|-----------|
+| Pattern                        | Waits For                         |
+| ------------------------------ | --------------------------------- |
 | `await dispatch.batch(action)` | Action completion in main process |
-| `void dispatch.batch(action)` | Batch ACK only (fire-and-forget) |
-| `await dispatch.flush()` | All pending actions to complete |
-| `void dispatch.flush()` | Batch ACK only |
+| `void dispatch.batch(action)`  | Batch ACK only (fire-and-forget)  |
+| `await dispatch.flush()`       | All pending actions to complete   |
+| `void dispatch.flush()`        | Batch ACK only                    |
 
 ```typescript
 const exampleThunk = async (getState, dispatch) => {
@@ -498,11 +503,13 @@ const flushThunk = async (getState, dispatch) => {
 ### When to Use Batched Dispatch
 
 **Good use cases:**
+
 - Dispatching many actions in rapid succession (e.g., syncing a large dataset)
 - Bulk updates where individual action timing doesn't matter
 - Background operations where fire-and-forget is acceptable
 
 **Avoid when:**
+
 - You need precise timing between actions
 - Actions have dependencies on each other's state updates
 - Error handling for individual actions is critical
@@ -513,13 +520,13 @@ Error handling behavior differs based on whether you await the dispatch and whet
 
 #### Error Scenarios
 
-| Scenario | Batched (`await dispatch.batch()`) | Fire-and-forget (`void dispatch.batch()`) | Direct (`await dispatch()`) |
-|----------|-----------------------------------|------------------------------------------|----------------------------|
-| **IPC send fails** | Promise rejects with send error | Error logged, promise resolves after ACK | Promise rejects with send error |
-| **Action fails in main process** | Promise rejects with action error | Promise resolves after ACK, error lost | Promise rejects with action error |
-| **Batch send timeout** | Promise rejects with timeout error | Promise resolves after ACK, timeout ignored | Promise rejects with timeout error |
-| **Per-action result indicates failure** | Promise rejects with result error message | Promise resolves after ACK, failure lost | Promise rejects with action error |
-| **Network/IPC interrupted** | Promise rejects with communication error | Error logged, may resolve or reject depending on timing | Promise rejects with communication error |
+| Scenario                                | Batched (`await dispatch.batch()`)        | Fire-and-forget (`void dispatch.batch()`)               | Direct (`await dispatch()`)              |
+| --------------------------------------- | ----------------------------------------- | ------------------------------------------------------- | ---------------------------------------- |
+| **IPC send fails**                      | Promise rejects with send error           | Error logged, promise resolves after ACK                | Promise rejects with send error          |
+| **Action fails in main process**        | Promise rejects with action error         | Promise resolves after ACK, error lost                  | Promise rejects with action error        |
+| **Batch send timeout**                  | Promise rejects with timeout error        | Promise resolves after ACK, timeout ignored             | Promise rejects with timeout error       |
+| **Per-action result indicates failure** | Promise rejects with result error message | Promise resolves after ACK, failure lost                | Promise rejects with action error        |
+| **Network/IPC interrupted**             | Promise rejects with communication error  | Error logged, may resolve or reject depending on timing | Promise rejects with communication error |
 
 #### Detailed Scenarios
 

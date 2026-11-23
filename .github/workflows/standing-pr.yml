@@ -22,7 +22,7 @@ on:
     types: [labeled, unlabeled, edited]
     branches: [main]
   schedule:
-    - cron: '0 * * * *' # Hourly rebuild so the standing PR never drifts stale.
+    - cron: "0 * * * *" # Hourly rebuild so the standing PR never drifts stale.
   workflow_dispatch: {}
 
 concurrency:

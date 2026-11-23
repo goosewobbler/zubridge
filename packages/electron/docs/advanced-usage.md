@@ -217,8 +217,6 @@ test('Counter component increments when button is clicked', () => {
 });
 ```
 
-
-
 ## Selective Subscriptions
 
 Zubridge supports selective subscriptions using keys. The primary benefit is **separation of concerns** — restricting the state access of a given renderer process to only the section of state that it needs to function.
@@ -232,9 +230,9 @@ Subscribe windows to specific state keys:
 const subscription = bridge.subscribe([mainWindow], ['user', 'settings']);
 
 // Only state changes to 'user' or 'settings' will be sent to this window
-dispatch('UPDATE_USER', newUser);        // ✅ Sent to window
-dispatch('UPDATE_THEME', newTheme);      // ❌ Not sent (theme not in keys)
-dispatch('UPDATE_SETTINGS', settings);  // ✅ Sent to window
+dispatch('UPDATE_USER', newUser); // ✅ Sent to window
+dispatch('UPDATE_THEME', newTheme); // ❌ Not sent (theme not in keys)
+dispatch('UPDATE_SETTINGS', settings); // ✅ Sent to window
 ```
 
 ### Dispatch with Key Targeting
@@ -256,7 +254,6 @@ Selective subscriptions reduce the amount of data processed by `sanitizeState` (
 For detailed benchmark results, see the [Performance](./performance.md) documentation.
 
 **Recommendation**: Use selective subscriptions when you need to restrict renderer access to specific state keys (separation of concerns, security). For most applications, full state updates work equally well.
-
 
 ## Delta Updates
 
@@ -391,6 +388,7 @@ const { handlers } = preloadBridge({ debug: true });
 ```
 
 With debug enabled, the console logs:
+
 - Each state update received (update ID, associated thunk ID)
 - Delta merges (`Merging delta for update ...`)
 - Full state updates (`Received full state update ...`)
@@ -437,10 +435,10 @@ import { preloadBridge } from '@zubridge/electron/preload';
 const bridge = preloadBridge({
   enableBatching: true, // Default: true
   batching: {
-    windowMs: 16,               // Batch window in ms (default: 16ms)
-    maxBatchSize: 50,            // Max actions per batch (default: 50)
-    priorityFlushThreshold: 80,  // Priority threshold for immediate flush (default: 80)
-    ackTimeoutMs: 30000,         // Batch ack timeout in ms (default: 30000, Linux: 60000)
+    windowMs: 16, // Batch window in ms (default: 16ms)
+    maxBatchSize: 50, // Max actions per batch (default: 50)
+    priorityFlushThreshold: 80, // Priority threshold for immediate flush (default: 80)
+    ackTimeoutMs: 30000, // Batch ack timeout in ms (default: 30000, Linux: 60000)
   },
 });
 ```
@@ -464,6 +462,7 @@ dispatch({ type: 'URGENT_ACTION', payload }, { immediate: true });
 ```
 
 The priority levels are:
+
 - **100** — `immediate` actions (immediate flush)
 - **70** — thunk child actions (`__thunkParentId` set)
 - **50** — normal actions (batched within the window)

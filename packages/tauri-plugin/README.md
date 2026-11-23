@@ -109,11 +109,11 @@ The plugin calls `dispatch_action` with the legacy `{ type, payload }` shape (th
 
 ## Plugin entry points
 
-| Function | When to use |
-| --- | --- |
-| `plugin_default(state_manager)` | One-shot setup with a state manager and the default `ZubridgeOptions`. |
-| `plugin(state_manager, options)` | Same as above, but with custom `ZubridgeOptions` (e.g. a different state-update event name). |
-| `init()` | Builds the plugin without a state manager — register one later with `app.zubridge().register_state_manager(...)`. |
+| Function                         | When to use                                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `plugin_default(state_manager)`  | One-shot setup with a state manager and the default `ZubridgeOptions`.                                            |
+| `plugin(state_manager, options)` | Same as above, but with custom `ZubridgeOptions` (e.g. a different state-update event name).                      |
+| `init()`                         | Builds the plugin without a state manager — register one later with `app.zubridge().register_state_manager(...)`. |
 
 All variants register the same set of commands. The extension trait `ZubridgeExt<R>` gives `App`, `AppHandle`, and `Window` access to the live `Zubridge<R>` instance.
 
@@ -121,18 +121,18 @@ All variants register the same set of commands. The extension trait `ZubridgeExt
 
 All commands are registered both at the plugin path (`plugin:zubridge|<command>`) and via `tauri::generate_handler!`, so direct invocation by short name also works for hosts that prefer to wire commands manually.
 
-| Command | Args | Result |
-| --- | --- | --- |
-| `get_initial_state` | — | `JsonValue` |
-| `get_state` | `{ keys?: Vec<String> }` | `{ value: JsonValue }` (filtered by subscription, then narrowed by `keys`) |
-| `dispatch_action` | `{ action: ZubridgeAction }` | `{ action_id: String }` |
-| `batch_dispatch` | `{ batch_id: String, actions: Vec<ZubridgeAction> }` | `{ batch_id: String, acked_action_ids: Vec<String> }` |
-| `register_thunk` | `{ thunk_id, parent_id?, keys?, bypass_access_control?, immediate? }` | `{ thunk_id: String }` |
-| `complete_thunk` | `{ thunk_id, error? }` | `{ thunk_id: String }` |
-| `state_update_ack` | `{ update_id: String }` | — |
-| `subscribe` | `{ keys: Vec<String> }` | `{ keys: Vec<String> }` (resolved set after applying) |
-| `unsubscribe` | `{ keys: Vec<String> }` | `{ keys: Vec<String> }` (resolved set after applying) |
-| `get_window_subscriptions` | — | `{ keys: Vec<String> }` |
+| Command                    | Args                                                                  | Result                                                                     |
+| -------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `get_initial_state`        | —                                                                     | `JsonValue`                                                                |
+| `get_state`                | `{ keys?: Vec<String> }`                                              | `{ value: JsonValue }` (filtered by subscription, then narrowed by `keys`) |
+| `dispatch_action`          | `{ action: ZubridgeAction }`                                          | `{ action_id: String }`                                                    |
+| `batch_dispatch`           | `{ batch_id: String, actions: Vec<ZubridgeAction> }`                  | `{ batch_id: String, acked_action_ids: Vec<String> }`                      |
+| `register_thunk`           | `{ thunk_id, parent_id?, keys?, bypass_access_control?, immediate? }` | `{ thunk_id: String }`                                                     |
+| `complete_thunk`           | `{ thunk_id, error? }`                                                | `{ thunk_id: String }`                                                     |
+| `state_update_ack`         | `{ update_id: String }`                                               | —                                                                          |
+| `subscribe`                | `{ keys: Vec<String> }`                                               | `{ keys: Vec<String> }` (resolved set after applying)                      |
+| `unsubscribe`              | `{ keys: Vec<String> }`                                               | `{ keys: Vec<String> }` (resolved set after applying)                      |
+| `get_window_subscriptions` | —                                                                     | `{ keys: Vec<String> }`                                                    |
 
 The `default` permission set in `permissions/default.toml` exposes all ten commands — opt out by overriding the permission set in your app's capability file.
 
@@ -184,18 +184,18 @@ The default event name is `zubridge://state-update` (overridable via `ZubridgeOp
 
 Commands return `Result<T, Error>` where `Error` serialises to a string. The variants are:
 
-| Variant | Raised when |
-| --- | --- |
-| `Io` | std::io errors bubbled up by the runtime |
-| `StateError` | lock poisoning / internal state inconsistency |
-| `EmitError` | the runtime fails to emit a state-update event |
-| `SerializationError` | serde JSON conversion failure |
-| `ActionProcessing { action_id, message }` | the state manager rejected the action |
-| `QueueOverflow { queue_size, max_size }` | the action queue is full |
-| `Subscription { source_label, message }` | subscription / unsubscription failed |
-| `ThunkRegistration { thunk_id, message }` | thunk could not be registered |
-| `ThunkNotFound { thunk_id }` | complete / ack referenced an unknown thunk |
-| `StateManagerMissing` | a command was invoked before any `StateManager` was registered |
+| Variant                                   | Raised when                                                    |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `Io`                                      | std::io errors bubbled up by the runtime                       |
+| `StateError`                              | lock poisoning / internal state inconsistency                  |
+| `EmitError`                               | the runtime fails to emit a state-update event                 |
+| `SerializationError`                      | serde JSON conversion failure                                  |
+| `ActionProcessing { action_id, message }` | the state manager rejected the action                          |
+| `QueueOverflow { queue_size, max_size }`  | the action queue is full                                       |
+| `Subscription { source_label, message }`  | subscription / unsubscription failed                           |
+| `ThunkRegistration { thunk_id, message }` | thunk could not be registered                                  |
+| `ThunkNotFound { thunk_id }`              | complete / ack referenced an unknown thunk                     |
+| `StateManagerMissing`                     | a command was invoked before any `StateManager` was registered |
 
 ## Architecture
 

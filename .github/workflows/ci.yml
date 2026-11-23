@@ -42,7 +42,6 @@ jobs:
             packages/tauri-plugin
           retention-days: 1
 
-
   # Code quality checks - Ubuntu only (fast feedback)
   code-quality:
     name: Code Quality Checks
@@ -200,13 +199,12 @@ jobs:
   # Final status job
   ci-status:
     name: CI Status
-    needs: [
-      build-shared-packages,
-      code-quality,
-      zubridge-core-rust-tests,
-      e2e-and-package-tests,
-      package-only-tests
-    ]
+    needs:
+      - build-shared-packages
+      - code-quality
+      - zubridge-core-rust-tests
+      - e2e-and-package-tests
+      - package-only-tests
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -30,12 +30,12 @@ jobs:
       - name: Release Preview
         uses: goosewobbler/releasekit@v0.47.1
         with:
-          node-version: '24'
+          node-version: "24"
           mode: preview
           pr: ${{ github.event.pull_request.number }}
           repo: ${{ github.repository }}
           project-dir: .
           verbose: true
-          skip-checkout: 'true'
+          skip-checkout: "true"
         env:
           GITHUB_TOKEN: ${{ github.token }}

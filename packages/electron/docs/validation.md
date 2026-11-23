@@ -22,11 +22,11 @@ The schema uses `.strict()` — unknown properties are rejected.
 
 ### Batch Limits
 
-| Field | Limit |
-|-------|-------|
-| `type` | 1-200 chars |
+| Field                         | Limit         |
+| ----------------------------- | ------------- |
+| `type`                        | 1-200 chars   |
 | `__id`, `parentId`, `batchId` | Max 100 chars |
-| Actions per batch | 1-200 |
+| Actions per batch             | 1-200         |
 
 ### Examples
 
@@ -38,10 +38,10 @@ dispatch({ type: 'FETCH_DATA', __id: 'fetch-123' });
 dispatch({ type: 'URGENT_ACTION', payload }, { immediate: true });
 
 // Invalid — will be rejected
-dispatch({ type: 'x'.repeat(300) });          // type too long
-dispatch({ payload: { data: 123 } });          // missing type
+dispatch({ type: 'x'.repeat(300) }); // type too long
+dispatch({ payload: { data: 123 } }); // missing type
 dispatch({ type: 'ACTION', unknownField: true }); // unknown property
-dispatch({ type: 123 });                       // wrong type for type
+dispatch({ type: 123 }); // wrong type for type
 ```
 
 ## Renderer Validation
@@ -66,14 +66,14 @@ In `warn` mode, invalid actions log to the console but don't break the app. In `
 
 ## Common Errors
 
-| Error | Fix |
-|-------|-----|
-| `type: Required` | Add `type` property to action |
-| `type: String must contain at most 200 character(s)` | Shorten action type name |
-| `type: Expected string, received number` | Use string for action type |
-| `parentId: String must contain at most 100 character(s)` | Use shorter thunk identifiers |
-| `actions: Array must contain at most 200 element(s)` | Split into smaller batches |
-| `Unrecognized key(s) in object` | Remove extra properties — use `payload` for custom data |
+| Error                                                    | Fix                                                     |
+| -------------------------------------------------------- | ------------------------------------------------------- |
+| `type: Required`                                         | Add `type` property to action                           |
+| `type: String must contain at most 200 character(s)`     | Shorten action type name                                |
+| `type: Expected string, received number`                 | Use string for action type                              |
+| `parentId: String must contain at most 100 character(s)` | Use shorter thunk identifiers                           |
+| `actions: Array must contain at most 200 element(s)`     | Split into smaller batches                              |
+| `Unrecognized key(s) in object`                          | Remove extra properties — use `payload` for custom data |
 
 ## Troubleshooting
 

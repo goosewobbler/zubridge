@@ -56,8 +56,8 @@ In the **Basic** mode:
 
 ```typescript
 interface State {
-  'counter': number;
-  'theme': 'light' | 'dark';
+  counter: number;
+  theme: 'light' | 'dark';
 
   // Action handlers (Basic mode specific)
   'COUNTER:INCREMENT': () => void;

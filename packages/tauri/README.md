@@ -100,10 +100,10 @@ await initializeBridge({
 
 `BatchingOptions` controls the renderer-side `ActionBatcher`:
 
-| Field          | Default | Description                                                         |
-| -------------- | ------- | ------------------------------------------------------------------- |
-| `windowMs`     | `16`    | Flush window in milliseconds (one animation frame).                 |
-| `maxBatchSize` | `50`    | Hard upper bound on actions per flush; reaching it forces a flush.  |
+| Field          | Default | Description                                                        |
+| -------------- | ------- | ------------------------------------------------------------------ |
+| `windowMs`     | `16`    | Flush window in milliseconds (one animation frame).                |
+| `maxBatchSize` | `50`    | Hard upper bound on actions per flush; reaching it forces a flush. |
 
 Pass `batching: false` to opt out entirely and send every action as its own `dispatch_action` invoke.
 
@@ -127,6 +127,7 @@ const profile = useZubridgeStore((s: AppState) => s.user.profile);
 ### `useZubridgeDispatch<S>(): DispatchFunc<S>`
 
 Returns a dispatch function that accepts:
+
 - a string action: `dispatch('INCREMENT')`
 - an action object: `dispatch({ type: 'SET_COUNTER', payload: 5 })`
 - a thunk: `dispatch(async (getState, dispatchInner) => { ... })`
@@ -155,7 +156,7 @@ The Rust runtime injects the calling webview's label authoritatively, so a webvi
 ```ts
 import { getState } from '@zubridge/tauri';
 
-const all = await getState();             // full filtered state for this webview
+const all = await getState(); // full filtered state for this webview
 const slice = await getState(['counter']); // narrows the filtered view
 ```
 
@@ -197,18 +198,18 @@ try {
 
 ## Wire protocol
 
-| Command (plugin)                    | Direct fallback                | Args                                                    | Result                                       |
-|-------------------------------------|--------------------------------|---------------------------------------------------------|----------------------------------------------|
-| `plugin:zubridge\|get_initial_state`        | `get_initial_state`            | —                                                       | `JsonValue` (full state)                     |
-| `plugin:zubridge\|get_state`                | `get_state`                    | `{ args: { keys?: string[] } }`                         | `{ value: JsonValue }`                       |
-| `plugin:zubridge\|dispatch_action`          | `dispatch_action`              | `{ args: { action: ZubridgeAction } }`                  | `{ action_id: string }`                      |
-| `plugin:zubridge\|batch_dispatch`           | `batch_dispatch`               | `{ args: { batch_id, actions: ZubridgeAction[] } }`     | `{ batch_id, acked_action_ids }`             |
-| `plugin:zubridge\|register_thunk`           | `register_thunk`               | `{ args: { thunk_id, parent_id?, immediate?, ... } }`   | `{ thunk_id }`                               |
-| `plugin:zubridge\|complete_thunk`           | `complete_thunk`               | `{ args: { thunk_id, error? } }`                        | `{ thunk_id }`                               |
-| `plugin:zubridge\|state_update_ack`         | `state_update_ack`             | `{ args: { update_id } }`                               | —                                            |
-| `plugin:zubridge\|subscribe`                | `subscribe`                    | `{ args: { keys } }`                                    | `{ keys }`                                   |
-| `plugin:zubridge\|unsubscribe`              | `unsubscribe`                  | `{ args: { keys } }`                                    | `{ keys }`                                   |
-| `plugin:zubridge\|get_window_subscriptions` | `get_window_subscriptions`     | —                                                       | `{ keys }`                                   |
+| Command (plugin)                            | Direct fallback            | Args                                                  | Result                           |
+| ------------------------------------------- | -------------------------- | ----------------------------------------------------- | -------------------------------- |
+| `plugin:zubridge\|get_initial_state`        | `get_initial_state`        | —                                                     | `JsonValue` (full state)         |
+| `plugin:zubridge\|get_state`                | `get_state`                | `{ args: { keys?: string[] } }`                       | `{ value: JsonValue }`           |
+| `plugin:zubridge\|dispatch_action`          | `dispatch_action`          | `{ args: { action: ZubridgeAction } }`                | `{ action_id: string }`          |
+| `plugin:zubridge\|batch_dispatch`           | `batch_dispatch`           | `{ args: { batch_id, actions: ZubridgeAction[] } }`   | `{ batch_id, acked_action_ids }` |
+| `plugin:zubridge\|register_thunk`           | `register_thunk`           | `{ args: { thunk_id, parent_id?, immediate?, ... } }` | `{ thunk_id }`                   |
+| `plugin:zubridge\|complete_thunk`           | `complete_thunk`           | `{ args: { thunk_id, error? } }`                      | `{ thunk_id }`                   |
+| `plugin:zubridge\|state_update_ack`         | `state_update_ack`         | `{ args: { update_id } }`                             | —                                |
+| `plugin:zubridge\|subscribe`                | `subscribe`                | `{ args: { keys } }`                                  | `{ keys }`                       |
+| `plugin:zubridge\|unsubscribe`              | `unsubscribe`              | `{ args: { keys } }`                                  | `{ keys }`                       |
+| `plugin:zubridge\|get_window_subscriptions` | `get_window_subscriptions` | —                                                     | `{ keys }`                       |
 
 State updates arrive on the event `zubridge://state-update` with payload:
 

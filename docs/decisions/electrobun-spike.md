@@ -5,7 +5,7 @@
 This spike combines two activities into a single deliverable:
 
 1. **Bun NAPI compatibility audit** — does Bun support the N-API surface `@zubridge/node-native` uses?
-2. **Electrobun ergonomics spike** — does the integration *feel* like a good fit for a Bun/Electrobun developer?
+2. **Electrobun ergonomics spike** — does the integration _feel_ like a good fit for a Bun/Electrobun developer?
 
 The audit (1) runs first. If it fails, the spike (2) is dropped and the document captures the audit-failure rationale alone.
 

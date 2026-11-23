@@ -63,7 +63,7 @@ function main(): void {
   const modes: Baseline['modes'] = {};
   for (const file of files) {
     const result = readJsonOrNull<ModeBenchResult>(file);
-    if (!result || !result.mode) {
+    if (!result?.mode) {
       console.warn(`Skipping ${file}: not a valid ModeBenchResult`);
       continue;
     }

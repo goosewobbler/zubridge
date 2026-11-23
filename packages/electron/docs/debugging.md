@@ -49,19 +49,19 @@ const isIpcDebugEnabled = debug.isEnabled('ipc');
 
 Zubridge's debug utility organizes logs into several namespaces:
 
-| Namespace                | Description                                             |
-| ------------------------ | ------------------------------------------------------- |
-| `zubridge:core`          | Core bridge functionality, initialization and lifecycle |
-| `zubridge:ipc`           | IPC communication between renderer and main processes   |
-| `zubridge:middleware`    | Middleware execution and tracking                        |
-| `zubridge:thunk`         | Thunk processing, sequencing, and lifecycle management |
-| `zubridge:windows`       | Window tracking and management                          |
-| `zubridge:adapters`      | Zustand and Redux adapter-specific operations           |
-| `zubridge:subscription`  | State subscription management                           |
-| `zubridge:queue`         | Action queue processing and management                  |
-| `zubridge:store`         | Handler resolution and store operations                 |
-| `zubridge:scheduler`     | Action scheduling and priority management               |
-| `zubridge:renderer`      | Renderer process operations                             |
+| Namespace               | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `zubridge:core`         | Core bridge functionality, initialization and lifecycle |
+| `zubridge:ipc`          | IPC communication between renderer and main processes   |
+| `zubridge:middleware`   | Middleware execution and tracking                       |
+| `zubridge:thunk`        | Thunk processing, sequencing, and lifecycle management  |
+| `zubridge:windows`      | Window tracking and management                          |
+| `zubridge:adapters`     | Zustand and Redux adapter-specific operations           |
+| `zubridge:subscription` | State subscription management                           |
+| `zubridge:queue`        | Action queue processing and management                  |
+| `zubridge:store`        | Handler resolution and store operations                 |
+| `zubridge:scheduler`    | Action scheduling and priority management               |
+| `zubridge:renderer`     | Renderer process operations                             |
 
 ## Direct Debugging
 
@@ -145,6 +145,7 @@ DEBUG=zubridge:core,zubridge:ipc electron .
 ```
 
 Look for log messages about:
+
 - Action deferral when thunks are running
 - Thunk registration and completion
 - Action queue processing
@@ -157,6 +158,7 @@ DEBUG=zubridge:ipc,zubridge:middleware electron .
 ```
 
 Monitor:
+
 - Action acknowledgments and completions
 - Error propagation from main to renderer
 - Timeout handling
@@ -169,6 +171,7 @@ DEBUG=zubridge:core electron .
 ```
 
 Watch for:
+
 - Immediate dispatch actions (bypassing queues)
 - Access control overrides
 - Security-related warnings

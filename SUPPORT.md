@@ -8,13 +8,13 @@ This document defines how Zubridge packages are supported, who maintains what, a
 
 Every Zubridge package and integration is published under one of three commitment levels.
 
-| Level | Meaning |
-|-------|---------|
-| **Core** | The core team maintains the package. It ships in this monorepo. Versioned with the rest of Zubridge. Compatibility tests run in CI. Bugs are triaged by the core team. |
-| **Blessed** | A community contributor maintains the package, usually in a separate repository. It follows the documented core API. The core team supplies compatibility test fixtures and triages bugs that turn out to originate in `zubridge-core`. |
-| **External** | Built by the community without coordination. Not tracked by the core team. Not listed in ROADMAP.md. |
+| Level        | Meaning                                                                                                                                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core**     | The core team maintains the package. It ships in this monorepo. Versioned with the rest of Zubridge. Compatibility tests run in CI. Bugs are triaged by the core team.                                                                  |
+| **Blessed**  | A community contributor maintains the package, usually in a separate repository. It follows the documented core API. The core team supplies compatibility test fixtures and triages bugs that turn out to originate in `zubridge-core`. |
+| **External** | Built by the community without coordination. Not tracked by the core team. Not listed in ROADMAP.md.                                                                                                                                    |
 
-Roadmap entries marked "(proposed)" indicate the *intended* commitment level at completion. Capacity may force re-tiering before ship.
+Roadmap entries marked "(proposed)" indicate the _intended_ commitment level at completion. Capacity may force re-tiering before ship.
 
 ---
 
@@ -24,12 +24,12 @@ Zubridge follows a **minimal-support** policy. The goal is to keep maintenance s
 
 ### 2.1 Rule
 
-| Version | Status |
-|---------|--------|
-| Latest minor of the latest major | **Active** — feature work, bug fixes, security fixes |
-| Previous minors of the latest major | Bug fixes only on best-effort; no guarantee |
-| Previous major | **Archived** on the day the new major ships. Security CVEs only, for 30 days after the new-major release. After 30 days: no further releases. |
-| Older majors | Unsupported. No fixes. |
+| Version                             | Status                                                                                                                                        |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Latest minor of the latest major    | **Active** — feature work, bug fixes, security fixes                                                                                          |
+| Previous minors of the latest major | Bug fixes only on best-effort; no guarantee                                                                                                   |
+| Previous major                      | **Archived** on the day the new major ships. Security CVEs only, for 30 days after the new-major release. After 30 days: no further releases. |
+| Older majors                        | Unsupported. No fixes.                                                                                                                        |
 
 This applies to every package independently: `@zubridge/electron`, `@zubridge/tauri`, `tauri-plugin-zubridge`, `zubridge-core`, `@zubridge/node-native`, etc.
 
@@ -53,13 +53,13 @@ Criteria for `zubridge-core` to reach 1.0 are in [UNIFFI_REFACTOR_PLAN.md §7](.
 
 `@zubridge/node-native` (and downstream Path A consumers) is built against a specific N-API version. The matrix below applies from the first 3.1 release onward.
 
-| Surface | Constraint |
-|---------|------------|
-| N-API version | **8** (matches napi-rs default for the build chain at 3.1 release) |
-| Electron | Last three LTS lines covered, plus the current latest. Initial commitment at 3.1 release: **Electron 22 LTS through latest**. |
-| Node.js (for `apps/standalone-node/` and tooling) | **≥ 20 LTS** |
-| Bun | Minimum version determined by the Bun NAPI compatibility audit (part of the Electrobun spike); see [docs/decisions/electrobun-spike.md](./docs/decisions/electrobun-spike.md). |
-| Neutralino runtime | No version constraint; the Node-extension shim runs under Node ≥ 20 inside the Neutralino app process. |
+| Surface                                           | Constraint                                                                                                                                                                     |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| N-API version                                     | **8** (matches napi-rs default for the build chain at 3.1 release)                                                                                                             |
+| Electron                                          | Last three LTS lines covered, plus the current latest. Initial commitment at 3.1 release: **Electron 22 LTS through latest**.                                                  |
+| Node.js (for `apps/standalone-node/` and tooling) | **≥ 20 LTS**                                                                                                                                                                   |
+| Bun                                               | Minimum version determined by the Bun NAPI compatibility audit (part of the Electrobun spike); see [docs/decisions/electrobun-spike.md](./docs/decisions/electrobun-spike.md). |
+| Neutralino runtime                                | No version constraint; the Node-extension shim runs under Node ≥ 20 inside the Neutralino app process.                                                                         |
 
 Per-platform triple availability matches what `napi-rs` produces in the standard release pipeline: `darwin-x64`, `darwin-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, `win32-x64-msvc`, `win32-arm64-msvc`.
 
@@ -67,18 +67,18 @@ The live compatibility matrix is maintained alongside the released binary at `pa
 
 ### 3.2 Tauri
 
-| Surface | Constraint |
-|---------|------------|
-| Tauri | `tauri@2.x` stable (specific minor pinned at each `@zubridge/tauri` minor release) |
-| Rust MSRV | 1.75 (matches `zubridge-core` MSRV — see refactor plan §7) |
+| Surface   | Constraint                                                                         |
+| --------- | ---------------------------------------------------------------------------------- |
+| Tauri     | `tauri@2.x` stable (specific minor pinned at each `@zubridge/tauri` minor release) |
+| Rust MSRV | 1.75 (matches `zubridge-core` MSRV — see refactor plan §7)                         |
 
 ### 3.3 UniFFI (Path C consumers)
 
-| Surface | Constraint |
-|---------|------------|
-| UniFFI | 0.28 or later |
+| Surface               | Constraint                    |
+| --------------------- | ----------------------------- |
+| UniFFI                | 0.28 or later                 |
 | iOS deployment target | Latest two iOS major versions |
-| Android API level | API 24 (Android 7.0) or later |
+| Android API level     | API 24 (Android 7.0) or later |
 
 ---
 

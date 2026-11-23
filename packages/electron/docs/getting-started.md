@@ -129,7 +129,9 @@ export function App() {
       <button onClick={() => dispatch('DECREMENT')}>Decrement</button>
       <button onClick={() => dispatch({ type: 'SET_COUNTER', payload: 0 })}>Reset</button>
       {/* Type-checked action dispatch */}
-      <button onClick={() => typedDispatch({ type: 'SET_COUNTER', payload: 42 })}>Set to 42 (Type-checked)</button>
+      <button onClick={() => typedDispatch({ type: 'SET_COUNTER', payload: 42 })}>
+        Set to 42 (Type-checked)
+      </button>
     </div>
   );
 }
@@ -433,9 +435,9 @@ const mainWindow = new BrowserWindow({
   // ... other options
   webPreferences: {
     preload: path.join(__dirname, 'path/to/preload/index.cjs'),
-    contextIsolation: true,  // Required for security
-    nodeIntegration: false,  // Required for security
-    sandbox: true,          // Enable sandbox mode
+    contextIsolation: true, // Required for security
+    nodeIntegration: false, // Required for security
+    sandbox: true, // Enable sandbox mode
   },
 });
 ```
@@ -525,6 +527,7 @@ To properly secure your application, plan to migrate to `contextIsolation: true`
 1. **Audit your renderer code** - Remove any direct Node.js API usage
 2. **Use contextBridge** - Expose only necessary APIs through the preload script
 3. **Update webPreferences**:
+
    ```javascript
    webPreferences: {
      contextIsolation: true,  // Enable context isolation

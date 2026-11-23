@@ -17,7 +17,6 @@ When you dispatch an action from the renderer process, Zubridge handles the comm
 2. **IPC Communication**: Zubridge sends the action to the main process via Electron's IPC channel.
 
 3. **Action Processing**: In the main process, Zubridge processes the action based on the state management approach:
-
    - **Zustand Store**: If using a Zustand store with handlers, Zubridge checks if the action type matches a handler function in your store. If found, it calls that handler with the payload.
    - **Redux Store**: For Redux, the action is dispatched to the Redux store's reducer, which processes it according to your reducer logic.
    - **Custom State Manager**: With a custom implementation, the action is passed to your `processAction` method, where you define how each action type is handled.

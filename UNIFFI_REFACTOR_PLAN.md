@@ -22,44 +22,44 @@ Notable state at the time this plan was written:
 
 ### Architectural decisions (resolved)
 
-| # | Decision |
-|---|----------|
-| 1 | Tauri v2 ships **on** the unified core — `packages/tauri-plugin/src/core/` is extracted into a new `packages/core/` Rust crate before the v2 release. |
-| 2 | Full action + thunk scheduler logic (Electron's `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`) is ported into core during the extraction phase. Tauri v2 ships with full scheduler parity to Electron v3. |
-| 3 | A user-extensible middleware system is **deferred** until a concrete first consumer (Sentry exporter, devtools UI, time-travel debugger — all in ROADMAP §8) drives the API shape. `packages/middleware/` is removed during P3 (broken, unused, three-layer transaction/metrics/telemetry design had documented issues). Observability hooks are exposed through the existing `EventEmitter` trait in `core::emit`, sufficient for observe-only use cases. A small sync `Middleware` trait with modify/cancel semantics can be added later when a real consumer pulls at the API. |
-| 4 | This document is authoritative for Phases 1–7 (the refactor itself). Long-term direction including post-refactor framework integrations lives in [ROADMAP.md](./ROADMAP.md). |
-| 5 | NAPI binary package name: **`@zubridge/node-native`** (not `@zubridge/electron-native`) — reused by Path A consumers (Electrobun, Neutralino-shim, future Node-API runtimes). **Public** npm package using the standard napi-rs platform-optionalDependencies pattern. |
-| 6 | UniFFI flow: **proc-macro** (`#[uniffi::export]` attributes), not UDL. Single source of truth in Rust; less drift during P2's interface churn. |
-| 7 | WASM scaffolding **deferred pending research**. P1 does not add a `wasm` feature or wasm32 CI target. Code-hygiene practices (use `instant::Instant`, avoid hard tokio dependency outside feature-gated modules, keep `EventEmitter` sync) preserve future compatibility without enforcement. A WASM value-proposition research deliverable is scheduled during P5 — see [`docs/decisions/wasm-value-research.md`](./docs/decisions/wasm-value-research.md). Outcome of the research informs whether Path D (Blazor + Dioxus Web in ROADMAP.md) is pursued. |
-| 8 | `EventEmitter` trait surface designed in P1 to support the three immediate integration paths (Tauri / NAPI / Direct Rust) — sync signature, generic string target, no async-runtime dependency in core. The sync-signature choice independently preserves future WASM compatibility (single-threaded; no `Send` requirement for WASM impls). |
-| 9 | NAPI binding (P5) exposes **runtime-neutral primitives** — not Electron-shaped. IPC channel naming (`BATCH_DISPATCH`, etc.) lives in the runtime-specific TS wrapper, not in the binding. |
-| 10 | Logging adapter exposes a **generic JS callback** — `(level, target, message, fields)`. Runtime-specific wrappers route to their preferred backend (`@zubridge/utils.debug()`, `tauri::log`, Bun's `console.log`, etc.). |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Tauri v2 ships **on** the unified core — `packages/tauri-plugin/src/core/` is extracted into a new `packages/core/` Rust crate before the v2 release.                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 2   | Full action + thunk scheduler logic (Electron's `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`) is ported into core during the extraction phase. Tauri v2 ships with full scheduler parity to Electron v3.                                                                                                                                                                                                                                                                                                                                                |
+| 3   | A user-extensible middleware system is **deferred** until a concrete first consumer (Sentry exporter, devtools UI, time-travel debugger — all in ROADMAP §8) drives the API shape. `packages/middleware/` is removed during P3 (broken, unused, three-layer transaction/metrics/telemetry design had documented issues). Observability hooks are exposed through the existing `EventEmitter` trait in `core::emit`, sufficient for observe-only use cases. A small sync `Middleware` trait with modify/cancel semantics can be added later when a real consumer pulls at the API. |
+| 4   | This document is authoritative for Phases 1–7 (the refactor itself). Long-term direction including post-refactor framework integrations lives in [ROADMAP.md](./ROADMAP.md).                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 5   | NAPI binary package name: **`@zubridge/node-native`** (not `@zubridge/electron-native`) — reused by Path A consumers (Electrobun, Neutralino-shim, future Node-API runtimes). **Public** npm package using the standard napi-rs platform-optionalDependencies pattern.                                                                                                                                                                                                                                                                                                            |
+| 6   | UniFFI flow: **proc-macro** (`#[uniffi::export]` attributes), not UDL. Single source of truth in Rust; less drift during P2's interface churn.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 7   | WASM scaffolding **deferred pending research**. P1 does not add a `wasm` feature or wasm32 CI target. Code-hygiene practices (use `instant::Instant`, avoid hard tokio dependency outside feature-gated modules, keep `EventEmitter` sync) preserve future compatibility without enforcement. A WASM value-proposition research deliverable is scheduled during P5 — see [`docs/decisions/wasm-value-research.md`](./docs/decisions/wasm-value-research.md). Outcome of the research informs whether Path D (Blazor + Dioxus Web in ROADMAP.md) is pursued.                       |
+| 8   | `EventEmitter` trait surface designed in P1 to support the three immediate integration paths (Tauri / NAPI / Direct Rust) — sync signature, generic string target, no async-runtime dependency in core. The sync-signature choice independently preserves future WASM compatibility (single-threaded; no `Send` requirement for WASM impls).                                                                                                                                                                                                                                      |
+| 9   | NAPI binding (P5) exposes **runtime-neutral primitives** — not Electron-shaped. IPC channel naming (`BATCH_DISPATCH`, etc.) lives in the runtime-specific TS wrapper, not in the binding.                                                                                                                                                                                                                                                                                                                                                                                         |
+| 10  | Logging adapter exposes a **generic JS callback** — `(level, target, message, fields)`. Runtime-specific wrappers route to their preferred backend (`@zubridge/utils.debug()`, `tauri::log`, Bun's `console.log`, etc.).                                                                                                                                                                                                                                                                                                                                                          |
 
 ### Current state on `main` (verified)
 
-| Package | Version | Language | Status |
-|---------|---------|----------|--------|
-| `packages/electron/` | 3.0.0 | TypeScript | Released. ~3,338 LOC across `action/` (642+79), `thunk/` (154+423 + sub-dirs), `main/` (198+154+469), `subscription/` (359), `deltas/` (178+144+20), `batching/` (407+84). Full priority scheduler, batching, deltas. |
-| `packages/tauri-plugin/` | 0.1.1-next.1 | Rust | Unreleased. ~748 LOC: `core/{delta,subscription,thunk_manager,state_manager}.rs` + `commands/{dispatch,state,subscription,thunk}.rs`. **Registry-only thunk model, no scheduler.** Coupled to Tauri (uses `Emitter`, `AppHandle`). |
-| `packages/tauri/` | 1.1.1-next.1 | TypeScript | Unreleased. Renderer architecture mirrors `packages/electron/`: `batching/`, `deltas/`, `renderer/{bridgeClient,actionValidator,subscriptionValidator,rendererThunkProcessor,invokeListeners}`, `thunk/`. |
-| `packages/core/` | 1.x | TypeScript | Still the legacy debug-utility package. No Cargo.toml. Will be renamed to `packages/utils/`. |
-| `packages/types/` | 2.2.0 | TypeScript | Shared types: `Action`, `Thunk<S>`, `Dispatch<S>`, `StateManager<State>`, `BridgeStatus`. |
+| Package                  | Version      | Language   | Status                                                                                                                                                                                                                             |
+| ------------------------ | ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/electron/`     | 3.0.0        | TypeScript | Released. ~3,338 LOC across `action/` (642+79), `thunk/` (154+423 + sub-dirs), `main/` (198+154+469), `subscription/` (359), `deltas/` (178+144+20), `batching/` (407+84). Full priority scheduler, batching, deltas.              |
+| `packages/tauri-plugin/` | 0.1.1-next.1 | Rust       | Unreleased. ~748 LOC: `core/{delta,subscription,thunk_manager,state_manager}.rs` + `commands/{dispatch,state,subscription,thunk}.rs`. **Registry-only thunk model, no scheduler.** Coupled to Tauri (uses `Emitter`, `AppHandle`). |
+| `packages/tauri/`        | 1.1.1-next.1 | TypeScript | Unreleased. Renderer architecture mirrors `packages/electron/`: `batching/`, `deltas/`, `renderer/{bridgeClient,actionValidator,subscriptionValidator,rendererThunkProcessor,invokeListeners}`, `thunk/`.                          |
+| `packages/core/`         | 1.x          | TypeScript | Still the legacy debug-utility package. No Cargo.toml. Will be renamed to `packages/utils/`.                                                                                                                                       |
+| `packages/types/`        | 2.2.0        | TypeScript | Shared types: `Action`, `Thunk<S>`, `Dispatch<S>`, `StateManager<State>`, `BridgeStatus`.                                                                                                                                          |
 
 ---
 
 ## 2. Phase Overview
 
-| Phase | Title | Outputs |
-|-------|-------|---------|
-| **P1** | Carve out `zubridge-core` crate | New `packages/core/` Rust crate with `uniffi`/`napi`/`tauri` features; `packages/tauri-plugin/` re-consumes it; existing Tauri E2E green |
-| **P2** | Port full action + thunk scheduler | Core gains `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`; Tauri renderer exercises the new APIs |
-| **P3** | Perf comparison harness + middleware removal | `packages/middleware/` (Rust + Node bindings) deleted; TS `ZubridgeMiddleware` interface deleted; renderer-side benchmark suite measuring dispatch latency, throughput, multi-window propagation, memory growth against current Electron core; baseline captured for 3.1→3.2 comparison |
-| **P3.5** | Tauri E2E test suite | `@wdio/tauri-service` (embedded provider) standing up counter + window-sync specs; CI enabled on macOS + Linux |
-| **P4** | Tauri v2.0 release | `tauri-plugin-zubridge@0.2.0` + `@zubridge/tauri@2.0.0` published on unified core |
-| **P4.5** | Electron 3.1 release | `@zubridge/electron@3.1.0` released with the P3 benchmark suite and `benches/baseline.json` captured — same TS architecture as 3.0, gain measurement infrastructure |
-| **P5** | NAPI-RS bindings + Electron 3.2 prep | Core exposes `napi` facade; `@zubridge/node-native` ships platform `.node` artifacts |
-| **P6** | Electron 3.2 migration | `packages/electron/src/{action,thunk,main,subscription,deltas,batching}` replaced with NAPI calls; renderer/preload TS unchanged |
-| **P7** | Synchronized release | Concurrent Electron 3.2.0 + Tauri 2.x + core 0.2.0 release with migration guides; benchmark suite re-run against 3.2 produces the published 3.1→3.2 comparison |
+| Phase    | Title                                        | Outputs                                                                                                                                                                                                                                                                                 |
+| -------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P1**   | Carve out `zubridge-core` crate              | New `packages/core/` Rust crate with `uniffi`/`napi`/`tauri` features; `packages/tauri-plugin/` re-consumes it; existing Tauri E2E green                                                                                                                                                |
+| **P2**   | Port full action + thunk scheduler           | Core gains `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`; Tauri renderer exercises the new APIs                                                                                                                                                                |
+| **P3**   | Perf comparison harness + middleware removal | `packages/middleware/` (Rust + Node bindings) deleted; TS `ZubridgeMiddleware` interface deleted; renderer-side benchmark suite measuring dispatch latency, throughput, multi-window propagation, memory growth against current Electron core; baseline captured for 3.1→3.2 comparison |
+| **P3.5** | Tauri E2E test suite                         | `@wdio/tauri-service` (embedded provider) standing up counter + window-sync specs; CI enabled on macOS + Linux                                                                                                                                                                          |
+| **P4**   | Tauri v2.0 release                           | `tauri-plugin-zubridge@0.2.0` + `@zubridge/tauri@2.0.0` published on unified core                                                                                                                                                                                                       |
+| **P4.5** | Electron 3.1 release                         | `@zubridge/electron@3.1.0` released with the P3 benchmark suite and `benches/baseline.json` captured — same TS architecture as 3.0, gain measurement infrastructure                                                                                                                     |
+| **P5**   | NAPI-RS bindings + Electron 3.2 prep         | Core exposes `napi` facade; `@zubridge/node-native` ships platform `.node` artifacts                                                                                                                                                                                                    |
+| **P6**   | Electron 3.2 migration                       | `packages/electron/src/{action,thunk,main,subscription,deltas,batching}` replaced with NAPI calls; renderer/preload TS unchanged                                                                                                                                                        |
+| **P7**   | Synchronized release                         | Concurrent Electron 3.2.0 + Tauri 2.x + core 0.2.0 release with migration guides; benchmark suite re-run against 3.2 produces the published 3.1→3.2 comparison                                                                                                                          |
 
 P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** as a TS-with-perf-baseline release. P5–P7 are the critical path to **Electron 3.2** on the Rust core. The refactor ends at P7. Additional framework integrations (Electrobun, Dioxus, Flutter, React Native, Ionic / Capacitor, Neutralino, and the deferred Blazor / Dioxus Web targets) are sequenced in [ROADMAP.md](./ROADMAP.md).
 
@@ -87,6 +87,7 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
      - Keep `EventEmitter` trait sync (step 4) — no `async fn` in the trait
      - These choices independently improve Path A consumer builds (Electrobun running on Bun shouldn't need to compile `tokio-tungstenite` either). WASM-readiness is a side benefit, not the primary motivation.
    - Module layout:
+
      ```
      packages/core/
      ├── Cargo.toml
@@ -110,12 +111,12 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
      ```
 
 3. **Move logic from `packages/tauri-plugin/src/core/`** → `packages/core/src/`:
-   | Source | Destination |
-   |--------|-------------|
-   | `tauri-plugin/src/core/delta.rs` | `core/src/deltas/calculator.rs` |
-   | `tauri-plugin/src/core/subscription.rs` | `core/src/subscription/manager.rs` |
+   | Source                                   | Destination                                                                   |
+   | ---------------------------------------- | ----------------------------------------------------------------------------- |
+   | `tauri-plugin/src/core/delta.rs`         | `core/src/deltas/calculator.rs`                                               |
+   | `tauri-plugin/src/core/subscription.rs`  | `core/src/subscription/manager.rs`                                            |
    | `tauri-plugin/src/core/thunk_manager.rs` | `core/src/thunk/registry.rs` (lifecycle registry only — full scheduler in P2) |
-   | `tauri-plugin/src/core/state_manager.rs` | `core/src/state/handle.rs` |
+   | `tauri-plugin/src/core/state_manager.rs` | `core/src/state/handle.rs`                                                    |
 
 4. **Abstract platform coupling — design `EventEmitter` for all three immediate integration paths.** Introduce `core::emit::EventEmitter` trait. The trait surface is spec'd in the P1 design doc and verified against the planned consumers (Tauri immediately; NAPI via P5; Direct Rust post-refactor):
 
@@ -223,7 +224,7 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 **Context:** Investigation at P3 kickoff revealed that `packages/middleware/` did not compile on `main` and had no consumers. The TS `ZubridgeMiddleware` interface (`packages/electron/src/middleware.ts`) was defined but no app wired it. TS-side perf timing did not exist. The original middleware design — three overlapping layers (transactions / metrics / telemetry) requiring callers to manually populate `Context.metadata` with magic string keys — had known reliability issues and was over-built for an unshipped devtools UI. Renderer-side measurement on the existing dispatch path gives a more honest "what users feel" number and works against 3.0 today without any internal instrumentation.
 
-**Note on user-extensible middleware.** A user-facing middleware API is deferred until a concrete first consumer drives the API shape. ROADMAP §8 lists the likely consumers — Sentry exporter, devtools UI, time-travel debugger, Redux DevTools bridge — as long-term post-multi-integration work. In the meantime, the `EventEmitter` trait in `core::emit` is the supported observability extension point: the scheduler, batcher, and orchestrator already publish action and thunk lifecycle events through it, and the platform wrappers (`wrappers/tauri.rs`, future `wrappers/napi.rs`) expose subscription hooks. This covers observe-only use cases (logging, metrics export, devtools streaming) without committing to a middleware trait that would have been designed without a real consumer in the room. When the first real consumer surfaces a need for *modify* or *cancel* semantics on top of observation, a small sync `Middleware` trait will be designed against that consumer's concrete requirements.
+**Note on user-extensible middleware.** A user-facing middleware API is deferred until a concrete first consumer drives the API shape. ROADMAP §8 lists the likely consumers — Sentry exporter, devtools UI, time-travel debugger, Redux DevTools bridge — as long-term post-multi-integration work. In the meantime, the `EventEmitter` trait in `core::emit` is the supported observability extension point: the scheduler, batcher, and orchestrator already publish action and thunk lifecycle events through it, and the platform wrappers (`wrappers/tauri.rs`, future `wrappers/napi.rs`) expose subscription hooks. This covers observe-only use cases (logging, metrics export, devtools streaming) without committing to a middleware trait that would have been designed without a real consumer in the room. When the first real consumer surfaces a need for _modify_ or _cancel_ semantics on top of observation, a small sync `Middleware` trait will be designed against that consumer's concrete requirements.
 
 **Steps:**
 
@@ -424,21 +425,21 @@ Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0,
 
 **Inventory:**
 
-| Module | Migrates to NAPI? |
-|--------|-------------------|
-| `packages/electron/src/action/*` | **Yes** — calls into `@zubridge/node-native` |
-| `packages/electron/src/thunk/*` | **Yes** — into native |
-| `packages/electron/src/main/*` | **Thin TS glue** wrapping NAPI for `ipcMain.handle` |
-| `packages/electron/src/subscription/*` | **Yes** — into native |
-| `packages/electron/src/deltas/*` | **Yes** — except renderer-side `DeltaMerger.ts` stays TS (same approach as Tauri) |
-| `packages/electron/src/batching/*` | **Yes** — into native |
-| `packages/electron/src/renderer/*` | **No** — stays TS (user-facing) |
-| `packages/electron/src/preload/*` | **No** — stays TS (security boundary, sandbox-aware) |
-| `packages/electron/src/adapters/*` | **No** — stays TS (Redux/Zustand patterns at user-API edge) |
-| `packages/electron/src/registry/stateManagerRegistry.ts` | **No** — singleton at user API edge; could move later |
-| `packages/electron/src/types/*` | **No** — TS types stay TS |
-| `packages/electron/src/runtime-helpers/*` | **No** — Electron-specific lifecycle helpers |
-| `packages/electron/src/index.ts`, `main.ts`, `renderer.ts`, `preload.ts` | **No** — public entry points |
+| Module                                                                   | Migrates to NAPI?                                                                 |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `packages/electron/src/action/*`                                         | **Yes** — calls into `@zubridge/node-native`                                      |
+| `packages/electron/src/thunk/*`                                          | **Yes** — into native                                                             |
+| `packages/electron/src/main/*`                                           | **Thin TS glue** wrapping NAPI for `ipcMain.handle`                               |
+| `packages/electron/src/subscription/*`                                   | **Yes** — into native                                                             |
+| `packages/electron/src/deltas/*`                                         | **Yes** — except renderer-side `DeltaMerger.ts` stays TS (same approach as Tauri) |
+| `packages/electron/src/batching/*`                                       | **Yes** — into native                                                             |
+| `packages/electron/src/renderer/*`                                       | **No** — stays TS (user-facing)                                                   |
+| `packages/electron/src/preload/*`                                        | **No** — stays TS (security boundary, sandbox-aware)                              |
+| `packages/electron/src/adapters/*`                                       | **No** — stays TS (Redux/Zustand patterns at user-API edge)                       |
+| `packages/electron/src/registry/stateManagerRegistry.ts`                 | **No** — singleton at user API edge; could move later                             |
+| `packages/electron/src/types/*`                                          | **No** — TS types stay TS                                                         |
+| `packages/electron/src/runtime-helpers/*`                                | **No** — Electron-specific lifecycle helpers                                      |
+| `packages/electron/src/index.ts`, `main.ts`, `renderer.ts`, `preload.ts` | **No** — public entry points                                                      |
 
 **Steps:**
 
@@ -582,14 +583,14 @@ Documentation is treated as a phase output, not a follow-up. Each phase that shi
 
 ### Per-package READMEs
 
-| Package | Update trigger | What changes |
-|---------|----------------|--------------|
-| `packages/core/README.md` (new) | P1 | Architecture overview, conditional compilation explanation, build instructions per feature, module map, testing instructions |
-| `packages/tauri-plugin/README.md` | P1 (dep on core), P4 (release) | Updated install + usage for 0.2 API; reference to `zubridge-core` as backend |
-| `packages/tauri/README.md` | P4 | v2 API (current README is for v1); migration callout from v1 |
-| `packages/electron/README.md` | P6 | Notes on native binary install, troubleshooting, what's new in 3.2 |
-| `packages/node-native/README.md` (new) | P5 | Platform package list, install/troubleshooting, supported triples, build-from-source instructions |
-| Top-level `README.md` | P4 (after first unified release) | Updated architecture diagram showing core + platform wrappers; package list |
+| Package                                | Update trigger                   | What changes                                                                                                                 |
+| -------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core/README.md` (new)        | P1                               | Architecture overview, conditional compilation explanation, build instructions per feature, module map, testing instructions |
+| `packages/tauri-plugin/README.md`      | P1 (dep on core), P4 (release)   | Updated install + usage for 0.2 API; reference to `zubridge-core` as backend                                                 |
+| `packages/tauri/README.md`             | P4                               | v2 API (current README is for v1); migration callout from v1                                                                 |
+| `packages/electron/README.md`          | P6                               | Notes on native binary install, troubleshooting, what's new in 3.2                                                           |
+| `packages/node-native/README.md` (new) | P5                               | Platform package list, install/troubleshooting, supported triples, build-from-source instructions                            |
+| Top-level `README.md`                  | P4 (after first unified release) | Updated architecture diagram showing core + platform wrappers; package list                                                  |
 
 ### Architecture documentation
 
@@ -620,11 +621,11 @@ Documentation is treated as a phase output, not a follow-up. Each phase that shi
 
 ### Migration guides
 
-| Guide | Phase | Audience |
-|-------|-------|----------|
-| `docs/migration/tauri-v1-to-v2.md` | P4 | Tauri users upgrading from v1 |
-| `docs/migration/electron-v3.1-to-v3.2.md` | P7 | Electron users (zero public-API break; native binary install notes; perf comparison numbers) |
-| `docs/migration/custom-bridge-users.md` | P6 | Users of low-level `createBridge` API who may need IPC channel awareness |
+| Guide                                     | Phase | Audience                                                                                     |
+| ----------------------------------------- | ----- | -------------------------------------------------------------------------------------------- |
+| `docs/migration/tauri-v1-to-v2.md`        | P4    | Tauri users upgrading from v1                                                                |
+| `docs/migration/electron-v3.1-to-v3.2.md` | P7    | Electron users (zero public-API break; native binary install notes; perf comparison numbers) |
+| `docs/migration/custom-bridge-users.md`   | P6    | Users of low-level `createBridge` API who may need IPC channel awareness                     |
 
 ### Contributing & dev workflow
 
@@ -701,16 +702,16 @@ Rust core uses `log` + `tracing` crates. JS-side wrappers route records to their
 
 ### Dependency version pinning
 
-| Dependency | Pinned to | Rationale |
-|------------|-----------|-----------|
-| `tauri` | `2.x` stable (specific version chosen at P4 cut) | Move off `2.0.0-beta` for v2 release |
-| `napi`, `napi-derive` | `2.x` | Current stable major; revisit at P5 |
-| `napi-build` | `2.x` | Matches above |
-| `uniffi` | `0.28+` | Per 2025-10-05 spec |
-| `serde`, `serde_json` | `1.x` | Stable; minor updates auto-allowed |
-| `tokio` | `1.x` (only with `telemetry`/`websocket` features) | Avoid forcing tokio into Tauri builds that don't need it |
-| `tokio-tungstenite` | `0.20+` | From middleware crate |
-| `rmp-serde` | `1.x` (only with `messagepack` feature) | Optional |
+| Dependency            | Pinned to                                          | Rationale                                                |
+| --------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| `tauri`               | `2.x` stable (specific version chosen at P4 cut)   | Move off `2.0.0-beta` for v2 release                     |
+| `napi`, `napi-derive` | `2.x`                                              | Current stable major; revisit at P5                      |
+| `napi-build`          | `2.x`                                              | Matches above                                            |
+| `uniffi`              | `0.28+`                                            | Per 2025-10-05 spec                                      |
+| `serde`, `serde_json` | `1.x`                                              | Stable; minor updates auto-allowed                       |
+| `tokio`               | `1.x` (only with `telemetry`/`websocket` features) | Avoid forcing tokio into Tauri builds that don't need it |
+| `tokio-tungstenite`   | `0.20+`                                            | From middleware crate                                    |
+| `rmp-serde`           | `1.x` (only with `messagepack` feature)            | Optional                                                 |
 
 ### Zubridge-core 1.0 milestone
 
@@ -728,17 +729,17 @@ Rationale: validating the API against a second runtime model (beyond Electron + 
 
 CI runs `cargo test --features "<combo>"` for each row:
 
-| Combo | Reason |
-|-------|--------|
-| `""` (default, no features) | Pure core compiles cleanly |
-| `uniffi` | Single-target compile |
-| `napi` | Single-target compile |
-| `tauri` | Single-target compile |
-| `uniffi,napi` | Multi-target: mobile + Electron |
-| `uniffi,tauri` | Multi-target: mobile + Tauri |
-| `napi,tauri` | Multi-target: Electron + Tauri |
-| `uniffi,napi,tauri` | All current targets |
-| `tauri,telemetry,websocket` | Tauri with observability |
+| Combo                                  | Reason                           |
+| -------------------------------------- | -------------------------------- |
+| `""` (default, no features)            | Pure core compiles cleanly       |
+| `uniffi`                               | Single-target compile            |
+| `napi`                                 | Single-target compile            |
+| `tauri`                                | Single-target compile            |
+| `uniffi,napi`                          | Multi-target: mobile + Electron  |
+| `uniffi,tauri`                         | Multi-target: mobile + Tauri     |
+| `napi,tauri`                           | Multi-target: Electron + Tauri   |
+| `uniffi,napi,tauri`                    | All current targets              |
+| `tauri,telemetry,websocket`            | Tauri with observability         |
 | `napi,telemetry,websocket,messagepack` | Electron with full observability |
 
 No `wasm` feature or target — deferred pending P5 research (see §1 decision 7).

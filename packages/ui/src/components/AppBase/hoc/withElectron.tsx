@@ -64,6 +64,7 @@ export function withElectron() {
   // Create a store hook for this component
   const useStore = createUseStore();
 
+  // biome-ignore lint/correctness/noComponentHookFactories: this is a HOC, it returns a component by design
   return function ElectronApp({
     children,
     windowInfo = { id: 'main', type: 'main', platform: 'electron' },

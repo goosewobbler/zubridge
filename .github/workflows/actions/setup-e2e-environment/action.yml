@@ -1,5 +1,5 @@
-name: 'Setup E2E Environment'
-description: 'Downloads artifacts and sets up environment for E2E tests'
+name: "Setup E2E Environment"
+description: "Downloads artifacts and sets up environment for E2E tests"
 
 inputs:
   os:
@@ -183,7 +183,7 @@ runs:
       run: |
         # Apply kernel workaround
         sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
-        
+
         # Install essential Linux dependencies for Electron/Chromium
         echo "Installing Linux dependencies for Electron..."
         sudo apt-get update -qq
@@ -214,6 +214,6 @@ runs:
           libxshmfence1 \
           xvfb \
           x11-utils
-        
+
         echo "Linux dependencies installed successfully"
       shell: bash

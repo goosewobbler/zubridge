@@ -24,9 +24,9 @@ dispatch({ type: 'URGENT_ACTION' }, { immediate: true });
 
 If you reference internal action flags directly (uncommon):
 
-| v2 | v3 |
-|----|-----|
-| `action.__bypassThunkLock` | `action.__immediate` |
+| v2                                  | v3                          |
+| ----------------------------------- | --------------------------- |
+| `action.__bypassThunkLock`          | `action.__immediate`        |
 | `PRIORITY_LEVELS.BYPASS_THUNK_LOCK` | `PRIORITY_LEVELS.IMMEDIATE` |
 
 ## Renamed Window Property: `bypassFlags` → `dispatchFlags`
@@ -102,11 +102,11 @@ See [Validation](../validation.md) for full details on validation rules and conf
 
 The following deprecated aliases have been removed in v3:
 
-| Removed Export | Replacement |
-|---|---|
-| `mainZustandBridge` (from `@zubridge/electron`) | `createZustandBridge` |
-| `preloadZustandBridge` (from `@zubridge/electron/preload`) | `preloadBridge` |
-| `PreloadZustandBridge` type (from `@zubridge/electron/preload`) | `PreloadBridge` |
+| Removed Export                                                  | Replacement           |
+| --------------------------------------------------------------- | --------------------- |
+| `mainZustandBridge` (from `@zubridge/electron`)                 | `createZustandBridge` |
+| `preloadZustandBridge` (from `@zubridge/electron/preload`)      | `preloadBridge`       |
+| `PreloadZustandBridge` type (from `@zubridge/electron/preload`) | `PreloadBridge`       |
 
 **Before (v2):**
 
@@ -148,15 +148,15 @@ dispatch(action: string, payload: unknown, options: DispatchOptions): Promise<un
 **Before (v2) — options as second arg (duck-typed):**
 
 ```typescript
-dispatch('URGENT_ACTION', { immediate: true });           // options duck-typed from payload
-dispatch('ADMIN_UPDATE', data, { keys: ['admin'] });      // 3-arg also worked
+dispatch('URGENT_ACTION', { immediate: true }); // options duck-typed from payload
+dispatch('ADMIN_UPDATE', data, { keys: ['admin'] }); // 3-arg also worked
 ```
 
 **After (v3) — explicit positional args:**
 
 ```typescript
 dispatch('URGENT_ACTION', undefined, { immediate: true }); // payload=undefined, options
-dispatch('ADMIN_UPDATE', data, { keys: ['admin'] });       // payload=data, options — unchanged
+dispatch('ADMIN_UPDATE', data, { keys: ['admin'] }); // payload=data, options — unchanged
 ```
 
 You can also use the action object form:

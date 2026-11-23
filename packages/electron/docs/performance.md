@@ -10,10 +10,10 @@ The `ActionBatcher` groups renderer-side actions dispatched within a configurabl
 
 Batching is deterministic: N actions enqueued within one batch window produce 1 `sendBatch` call instead of N individual calls. The benchmark confirms this with 50 actions:
 
-| Scenario | Throughput |
-|----------|------------|
+| Scenario                           | Throughput    |
+| ---------------------------------- | ------------- |
 | 50 individual IPC calls (baseline) | ~238K ops/sec |
-| 50 actions via ActionBatcher | ~16K ops/sec |
+| 50 actions via ActionBatcher       | ~16K ops/sec  |
 
 The batcher is slower in raw JS throughput because of its queue/flush machinery, but the value is reducing 50 IPC round-trips to 1 — Electron's `webContents.send()` structured clone cost dwarfs the JS-level difference.
 
@@ -21,9 +21,9 @@ The batcher is slower in raw JS throughput because of its queue/flush machinery,
 
 The enqueue-and-flush cycle adds minimal overhead per action. Typical results:
 
-| Scenario | Throughput |
-|----------|------------|
-| 10 actions enqueue + flush | ~63K ops/sec |
+| Scenario                    | Throughput                |
+| --------------------------- | ------------------------- |
+| 10 actions enqueue + flush  | ~63K ops/sec              |
 | 100 actions enqueue + flush | ~59 ops/sec (timer-bound) |
 
 Note: the 100-action benchmark is bottlenecked by the 16ms batch window timer — each iteration creates a batcher, enqueues, flushes, and destroys it, so the timer dominates. In a real app the batcher is long-lived and the timer fires once per window, so throughput scales linearly with batch size.
@@ -51,19 +51,19 @@ When state changes, the notification pipeline executes these stages in order:
 
 **`sanitizeState`**: This is where selective subscriptions have the largest impact, because it recursively walks the entire object tree:
 
-| State Size | Full State | Partial State | Speedup |
-|-----------|-----------|--------------|---------|
-| Small (3 keys) | ~1.8M ops/sec | ~4.2M ops/sec | ~2x |
-| Medium (~100 items) | ~15K ops/sec | ~1.3M ops/sec | ~87x |
-| Large (1000 nested objects) | ~1K ops/sec | ~1.8M ops/sec | ~1,600x |
+| State Size                  | Full State    | Partial State | Speedup |
+| --------------------------- | ------------- | ------------- | ------- |
+| Small (3 keys)              | ~1.8M ops/sec | ~4.2M ops/sec | ~2x     |
+| Medium (~100 items)         | ~15K ops/sec  | ~1.3M ops/sec | ~87x    |
+| Large (1000 nested objects) | ~1K ops/sec   | ~1.8M ops/sec | ~1,600x |
 
 **Full notify + sanitize pipeline** (realistic end-to-end within JS, excluding Electron IPC):
 
-| Scenario | Full State | Selective (1 key) | Speedup |
-|----------|-----------|-------------------|---------|
-| Medium state, 1 subscriber | ~7.4K ops/sec | ~14K ops/sec | ~1.9x |
-| Large state, 1 subscriber | ~560 ops/sec | ~1.2K ops/sec | ~2.2x |
-| Large state, 5 subscribers | ~137 ops/sec | ~417 ops/sec | ~3x |
+| Scenario                   | Full State    | Selective (1 key) | Speedup |
+| -------------------------- | ------------- | ----------------- | ------- |
+| Medium state, 1 subscriber | ~7.4K ops/sec | ~14K ops/sec      | ~1.9x   |
+| Large state, 1 subscriber  | ~560 ops/sec  | ~1.2K ops/sec     | ~2.2x   |
+| Large state, 5 subscribers | ~137 ops/sec  | ~417 ops/sec      | ~3x     |
 
 ### Real-World Impact
 
@@ -73,13 +73,14 @@ The vitest benchmarks measure JS-level overhead in isolation. In a real Electron
 
 **Where the savings go**: The `sanitizeState` speedup (up to 1,600x for large state) translates to reduced main-process CPU time per notify cycle. For a concrete example with large state and 5 subscriber windows:
 
-| Subscription | JS time per notify | At 60 dispatches/sec |
-|-------------|-------------------|---------------------|
-| Full state (all windows) | ~7.3ms | ~438ms/sec of main-thread time |
-| Selective (1 key per window) | ~2.7ms | ~162ms/sec of main-thread time |
-| Mixed (3 full + 2 selective) | ~6.0ms | ~360ms/sec of main-thread time |
+| Subscription                 | JS time per notify | At 60 dispatches/sec           |
+| ---------------------------- | ------------------ | ------------------------------ |
+| Full state (all windows)     | ~7.3ms             | ~438ms/sec of main-thread time |
+| Selective (1 key per window) | ~2.7ms             | ~162ms/sec of main-thread time |
+| Mixed (3 full + 2 selective) | ~6.0ms             | ~360ms/sec of main-thread time |
 
 This matters when:
+
 - State is large (hundreds of nested objects or more)
 - Dispatch frequency is high (e.g., real-time data, animations, frequent user input)
 - Multiple windows are subscribed simultaneously
@@ -99,12 +100,12 @@ Delta updates send only the changed portions of state over IPC instead of the fu
 
 The primary benefit of deltas is smaller IPC payloads. Computing a delta and serializing it is significantly faster than serializing the full state:
 
-| Scenario | Full State | Delta | Speedup |
-|----------|-----------|-------|---------|
-| Medium state (~100 items) — single key change | ~349K ops/sec | ~744K ops/sec | ~2.1x |
-| Medium state — deep key change | ~349K ops/sec | ~778K ops/sec | ~2.2x |
-| Large state (20 collections, 1000+ items) — single key | ~17K ops/sec | ~87K ops/sec | ~5.1x |
-| Large state — multi key change | ~17K ops/sec | ~82K ops/sec | ~4.8x |
+| Scenario                                               | Full State    | Delta         | Speedup |
+| ------------------------------------------------------ | ------------- | ------------- | ------- |
+| Medium state (~100 items) — single key change          | ~349K ops/sec | ~744K ops/sec | ~2.1x   |
+| Medium state — deep key change                         | ~349K ops/sec | ~778K ops/sec | ~2.2x   |
+| Large state (20 collections, 1000+ items) — single key | ~17K ops/sec  | ~87K ops/sec  | ~5.1x   |
+| Large state — multi key change                         | ~17K ops/sec  | ~82K ops/sec  | ~4.8x   |
 
 ### Overhead
 
@@ -112,21 +113,21 @@ Delta updates add two steps that full-state updates don't have: computing the di
 
 **Diff computation (main process):**
 
-| State Size | Throughput |
-|-----------|------------|
-| Small (3 keys) | ~2.0M–3.8M ops/sec |
-| Medium (~100 items) | ~775K–877K ops/sec |
-| Large (20 collections, 1000+ items) | ~84K–87K ops/sec |
+| State Size                          | Throughput         |
+| ----------------------------------- | ------------------ |
+| Small (3 keys)                      | ~2.0M–3.8M ops/sec |
+| Medium (~100 items)                 | ~775K–877K ops/sec |
+| Large (20 collections, 1000+ items) | ~84K–87K ops/sec   |
 
 **Merge (renderer):**
 
-| Scenario | Throughput |
-|----------|------------|
-| Small state — single key change | ~9.4M ops/sec |
-| Medium state — single key change | ~1.1M ops/sec |
-| Large state — single key change | ~91K ops/sec |
-| Large state — 5 key changes | ~82K ops/sec |
-| Large state — 20 deep path changes | ~47.8K ops/sec |
+| Scenario                                | Throughput     |
+| --------------------------------------- | -------------- |
+| Small state — single key change         | ~9.4M ops/sec  |
+| Medium state — single key change        | ~1.1M ops/sec  |
+| Large state — single key change         | ~91K ops/sec   |
+| Large state — 5 key changes             | ~82K ops/sec   |
+| Large state — 20 deep path changes      | ~47.8K ops/sec |
 | Large state — 20 top-level replacements | ~23.5K ops/sec |
 
 Deep path changes are ~2x faster than top-level replacements because only the objects along the changed path are cloned; unchanged subtrees keep their original references (structural sharing).
@@ -136,10 +137,12 @@ Deep path changes are ~2x faster than top-level replacements because only the ob
 For a large state tree, a single merge takes ~11μs. Even at 60 state updates per second, this consumes less than 1ms/sec of renderer main-thread time.
 
 The concrete saving is in serialization and IPC transfer:
+
 - Without deltas: ~58μs per state update (full serialize + transfer)
 - With deltas: ~12μs per state update (delta serialize + transfer) + ~11μs merge
 
 This matters most when:
+
 - State is large (hundreds of nested objects)
 - Updates are frequent (real-time data, animations)
 - Multiple windows receive updates simultaneously
@@ -167,12 +170,12 @@ Zubridge uses a unified priority system across both the renderer process (Action
 
 The system defines four priority levels in `PRIORITY_LEVELS` (from `@zubridge/electron/batching/types`):
 
-| Priority | Value | Description | Example |
-|----------|-------|-------------|---------|
-| `IMMEDIATE` | 100 | Actions with `__immediate` flag that skip all queuing | Critical system actions, UI updates during long operations |
-| `ROOT_THUNK_ACTION` | 70 | Actions dispatched by the currently active root thunk | Actions within a running thunk's execution context |
-| `NORMAL_THUNK_ACTION` | 50 | Actions dispatched by thunks (general case) | Most thunk-dispatched actions |
-| `NORMAL_ACTION` | 0 | Regular actions without special flags | Standard user actions, simple state updates |
+| Priority              | Value | Description                                           | Example                                                    |
+| --------------------- | ----- | ----------------------------------------------------- | ---------------------------------------------------------- |
+| `IMMEDIATE`           | 100   | Actions with `__immediate` flag that skip all queuing | Critical system actions, UI updates during long operations |
+| `ROOT_THUNK_ACTION`   | 70    | Actions dispatched by the currently active root thunk | Actions within a running thunk's execution context         |
+| `NORMAL_THUNK_ACTION` | 50    | Actions dispatched by thunks (general case)           | Most thunk-dispatched actions                              |
+| `NORMAL_ACTION`       | 0     | Regular actions without special flags                 | Standard user actions, simple state updates                |
 
 ### How Priority Works in ActionBatcher (Renderer)
 
@@ -211,6 +214,7 @@ if (rootThunkId && action.__thunkParentId === rootThunkId) {
 ```
 
 This means:
+
 - Actions from the **active** root thunk get priority 70
 - Actions from **other** thunks (queued for later) get priority 50
 - The renderer's `calculatePriority` returns 70 for **all** thunk actions since it doesn't know which thunk is active
@@ -236,6 +240,7 @@ dispatch({ type: 'URGENT' }, { immediate: true });
 ```
 
 **Execution order:**
+
 1. Window A: `STEP_1` (70) - executes immediately (belongs to active thunk)
 2. Window B: `URGENT` (100) - executes immediately (bypass flag)
 3. Window A: `STEP_2` (70) - executes when thunk resumes
@@ -257,6 +262,7 @@ dispatch({ type: 'THUNK_ACTION', __thunkParentId: 'x' }); // Priority 50+ - prot
 ### When to Use Priority Flags
 
 **Use `immediate: true` when:**
+
 - An action must execute immediately regardless of running thunks
 - Example: Critical UI updates, cancellation signals, error recovery
 
@@ -265,6 +271,7 @@ dispatch({ type: 'CANCEL_OPERATION' }, { immediate: true });
 ```
 
 **Avoid using bypass flags for:**
+
 - Regular state updates that can wait
 - Actions that depend on thunk completion
 - Bulk operations that should be queued
@@ -310,4 +317,3 @@ This runs all benchmark files in `benchmarks/` using vitest's built-in bench run
 - [Advanced Usage](./advanced-usage.md#delta-updates) - Delta updates configuration, structural sharing, and sequence detection
 - [Validation](./validation.md) - Action validation rules, limits, and security
 - [Thunks](./thunks.md) - Async action handling and priority
-
