@@ -26,7 +26,11 @@ export default defineConfig([
     outDir: 'dist',
     clean: true,
     sourcemap: false,
-    treeshake: true,
+    // Drop unused @oxc-project/runtime helper imports: left as bare side-effect imports they
+    // reach the consumer's renderer unresolved and break module loading.
+    treeshake: {
+      moduleSideEffects: (id: string) => !id.includes('@oxc-project/runtime'),
+    },
     platform: 'neutral',
     target: 'es2020',
     define: {
