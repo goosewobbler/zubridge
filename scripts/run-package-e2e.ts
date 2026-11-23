@@ -152,11 +152,6 @@ function prepareApp(appPath: string): string {
   // Copy app to temp directory
   fs.cpSync(appPath, tempAppPath, { recursive: true });
 
-  // Create .pnpmrc to prevent hoisting and ensure proper resolution
-  const pnpmrcPath = path.join(tempAppPath, '.pnpmrc');
-  fs.writeFileSync(pnpmrcPath, 'hoist=false\nnode-linker=isolated\n');
-  console.log('[DEBUG] Created .pnpmrc with isolation settings');
-
   // Read package.json
   const packageJsonPath = path.join(tempAppPath, 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
@@ -195,9 +190,18 @@ function prepareApp(appPath: string): string {
       console.log(`[DEBUG] Adding pnpm override: ${pkg} → ${pnpmOverrides[pkg]}`);
     }
   }
-  if (Object.keys(pnpmOverrides).length > 0) {
-    packageJson.pnpm = { ...packageJson.pnpm, overrides: pnpmOverrides };
-  }
+
+  const workspaceConfig = {
+    hoist: false,
+    nodeLinker: 'isolated',
+    allowBuilds: { electron: true, 'electron-winstaller': true, esbuild: true },
+    ...(Object.keys(pnpmOverrides).length > 0 ? { overrides: pnpmOverrides } : {}),
+  };
+  fs.writeFileSync(
+    path.join(tempAppPath, 'pnpm-workspace.yaml'),
+    JSON.stringify(workspaceConfig, null, 2),
+  );
+  console.log('[DEBUG] Created pnpm-workspace.yaml');
 
   // Write cleaned package.json
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
@@ -279,11 +283,7 @@ function prepareApp(appPath: string): string {
 
     // Approach 1: Force rebuild with explicit configuration
     try {
-      console.log('[DEBUG] Approach 1: Rebuilding electron with explicit config...');
-      runCommand('pnpm config set onlyBuiltDependencies "electron,esbuild"', {
-        cwd: tempAppPath,
-        stdio: 'inherit',
-      });
+      console.log('[DEBUG] Approach 1: Rebuilding electron...');
       runCommand('pnpm rebuild electron', { cwd: tempAppPath, stdio: 'inherit' });
       console.log('[DEBUG] Electron rebuild completed');
     } catch (error) {
