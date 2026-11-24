@@ -27,7 +27,7 @@ on:
         type: boolean
         default: false
       scope:
-        description: "Release scope (electron, tauri, core, utils, types, ui, all) — controls build and toolchain steps"
+        description: "Release scope (electron, tauri, core, utils, types, all) — controls build and toolchain steps"
         required: true
         type: string
       standing_pr_number:
@@ -127,9 +127,6 @@ jobs:
             types)
               echo "packages=@zubridge/types" >> "$GITHUB_OUTPUT"
               ;;
-            ui)
-              echo "packages=@zubridge/ui" >> "$GITHUB_OUTPUT"
-              ;;
             all)
               # standing-pr publish resolves its package set from the merged PR's manifest
               echo "packages=" >> "$GITHUB_OUTPUT"
@@ -194,9 +191,6 @@ jobs:
               ;;
             types)
               pnpm turbo run build --filter='@zubridge/types...'
-              ;;
-            ui)
-              pnpm turbo run build --filter='@zubridge/ui...'
               ;;
             all)
               # standing-pr publish path — the manifest can span every scope

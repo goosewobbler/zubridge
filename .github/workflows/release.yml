@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "Release scope (electron, tauri, core, utils, types, ui)"
+        description: "Release scope (electron, tauri, core, utils, types)"
         required: true
         type: choice
         options:
@@ -25,7 +25,6 @@ on:
           - core
           - utils
           - types
-          - ui
         default: electron
       bump:
         description: "Version increment"
