@@ -28,8 +28,8 @@
     // pre-1.0 line plus, from P5, a second consumer (@zubridge/node-native). The plugin's
     // versioned path dependency on core keeps them in step instead: releasekit raises the
     // plugin's requirement whenever core releases. releasekit doesn't stop the plugin releasing
-    // on the standing PR without core, so scripts/check-cargo-prerequisites.ts fails the publish
-    // up front if the core version the plugin needs isn't on crates.io or in the release.
+    // without core, so scripts/check-cargo-prerequisites.ts fails the publish up front if the
+    // core version the plugin needs isn't on crates.io or in the release.
     // https://github.com/goosewobbler/releasekit/issues/1100
     "groups": {
       "tauri": {
@@ -91,13 +91,13 @@
       "summaryTable": true
     },
     // PR scope labels → comma-separated list of packages eligible to bump.
-    // scope:tauri covers the whole Tauri stack: the fixed pair plus zubridge-core, so a targeted
-    // release can't publish the plugin against an unpublished core. Keep it in step with the
-    // scope → packages mapping in _release.reusable.yml. A targeted release applies its bump to
-    // every target, so core releases with the pair even without commits of its own.
+    // Keep these in step with the scope → packages mapping in _release.reusable.yml. scope:tauri
+    // leaves zubridge-core out on purpose: a targeted release applies its bump to every target,
+    // so a major for Tauri 2.0 would take core to 1.0. Release core with scope:core first when
+    // the plugin needs a new core; the prerequisite check fails a Tauri release until then.
     "scopeLabels": {
       "scope:electron": "@zubridge/electron",
-      "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge,zubridge-core",
+      "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge",
       "scope:core": "zubridge-core",
       "scope:utils": "@zubridge/utils",
       "scope:types": "@zubridge/types"

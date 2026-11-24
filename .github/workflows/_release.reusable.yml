@@ -116,10 +116,7 @@ jobs:
               echo "packages=@zubridge/electron" >> "$GITHUB_OUTPUT"
               ;;
             tauri)
-              # Core rides along so the plugin is never published against an unpublished core:
-              # the explicit bump applies to every target, and releasekit raises the plugin's
-              # requirement to the new core version.
-              echo "packages=@zubridge/tauri,tauri-plugin-zubridge,zubridge-core" >> "$GITHUB_OUTPUT"
+              echo "packages=@zubridge/tauri,tauri-plugin-zubridge" >> "$GITHUB_OUTPUT"
               ;;
             core)
               echo "packages=zubridge-core" >> "$GITHUB_OUTPUT"
@@ -219,6 +216,22 @@ jobs:
             git checkout -B ${{ inputs.target_branch || 'main' }} origin/${{ inputs.target_branch || 'main' }} 2>/dev/null || git checkout ${{ inputs.target_branch || 'main' }}
           fi
 
+      # releasekit doesn't stop a crate publishing against a workspace crate that isn't on
+      # crates.io (core unticked on the standing PR, or left out of a targeted release), and
+      # crates.io only rejects it after the npm packages are out. Fail before anything publishes.
+      - name: Check Cargo prerequisites
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STANDING_PR: ${{ inputs.standing_pr_number }}
+          TARGETS: ${{ inputs.target_packages || steps.targets.outputs.packages }}
+        run: |
+          if [ -n "$STANDING_PR" ]; then
+            pnpm exec tsx scripts/check-cargo-prerequisites.ts --pr "$STANDING_PR"
+          else
+            pnpm exec tsx scripts/check-cargo-prerequisites.ts --targets "$TARGETS"
+          fi
+
       - name: Run ReleaseKit
         id: releasekit
         if: ${{ inputs.standing_pr_number == '' }}
@@ -240,15 +253,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
           OLLAMA_API_KEY: ${{ secrets.ollama_api_key }}
-
-      # The standing PR lets core be unticked while the plugin releases, which would publish the
-      # plugin against a core version crates.io doesn't have. Fail before anything is published.
-      - name: Check Cargo prerequisites
-        if: ${{ inputs.standing_pr_number != '' }}
-        run: pnpm exec tsx scripts/check-cargo-prerequisites.ts --pr "${{ inputs.standing_pr_number }}"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
 
       # Manifest-driven publish from a merged standing release PR. Versions and notes come
       # from the manifest comment on the PR, so bump/target/stable don't apply. The mode
