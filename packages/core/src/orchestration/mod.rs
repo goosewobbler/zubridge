@@ -13,6 +13,19 @@ use crate::models::{JsonValue, StateManager, ZubridgeAction};
 use crate::state::StateManagerHandle;
 use crate::thunk::{ThunkEvent, ThunkManager};
 
+// ── DrainedState ──────────────────────────────────────────────────────────────
+
+/// A state update produced by draining a queued action, tagged with the
+/// originating action's provenance so the platform layer can attribute the
+/// broadcast (matching the `source` metadata carried by an immediately
+/// dispatched action's broadcast) instead of emitting it anonymously.
+#[derive(Debug, Clone)]
+pub struct DrainedState {
+    pub state: JsonValue,
+    pub action_id: Option<String>,
+    pub thunk_id: Option<String>,
+}
+
 // ── ActionQueueManager ────────────────────────────────────────────────────────
 
 /// Central orchestrator for action dispatch and thunk lifecycle.
@@ -68,8 +81,17 @@ impl ActionQueueManager {
         match self.scheduler.enqueue(action, source_label, &ctx) {
             EnqueueResult::ExecuteNow(queued) => {
                 let new_state = self.execute_action(queued)?;
-                // After any execution, drain any newly unblocked queue items.
-                self.drain_queue()?;
+                // Draining here is a no-op: executing an immediate action doesn't change
+                // thunk state, so it can't unblock a queued action. Queued actions are
+                // drained — with their states returned for the platform to broadcast — by
+                // on_thunk_complete / on_label_forgotten. Assert the invariant so a future
+                // change that breaks it fails loudly instead of silently dropping states.
+                let drained = self.drain_queue()?;
+                debug_assert!(
+                    drained.is_empty(),
+                    "immediate execution unexpectedly unblocked {} queued action(s)",
+                    drained.len()
+                );
                 Ok(Some(new_state))
             }
             EnqueueResult::Queued => Ok(None),
@@ -88,7 +110,7 @@ impl ActionQueueManager {
         &mut self,
         thunk_id: &str,
         error: Option<String>,
-    ) -> Result<(Vec<ThunkEvent>, Vec<JsonValue>)> {
+    ) -> Result<(Vec<ThunkEvent>, Vec<DrainedState>)> {
         let (_, events) = match self.thunk_manager.complete(thunk_id, error) {
             Ok(result) => result,
             Err(_) => return Ok((Vec::new(), Vec::new())), // Thunk not found — ignore.
@@ -99,6 +121,18 @@ impl ActionQueueManager {
         let states = self.drain_queue()?;
 
         Ok((events, states))
+    }
+
+    /// Called by the platform layer when a webview is destroyed.
+    ///
+    /// Drops every thunk owned by `source_label` and drains any actions that
+    /// were queued behind them, returning their states for the platform layer
+    /// to broadcast. Without this drain a destroyed window's blocking thunk
+    /// would leave its dependent actions stuck in the scheduler indefinitely —
+    /// the same escape valve as [`on_thunk_complete`], for the teardown path.
+    pub fn on_label_forgotten(&mut self, source_label: &str) -> Result<Vec<DrainedState>> {
+        self.thunk_manager.drop_label(source_label);
+        self.drain_queue()
     }
 
     /// Register a thunk.
@@ -167,8 +201,9 @@ impl ActionQueueManager {
 
     /// Drain all immediately-eligible actions from the queue and execute them.
     ///
-    /// Returns the new state produced by each executed action in order.
-    fn drain_queue(&mut self) -> Result<Vec<JsonValue>> {
+    /// Returns the new state produced by each executed action in order, tagged
+    /// with that action's provenance (captured before the action is consumed).
+    fn drain_queue(&mut self) -> Result<Vec<DrainedState>> {
         let mut states = Vec::new();
         loop {
             let ctx = self.thunk_manager.scheduler_context();
@@ -177,7 +212,14 @@ impl ActionQueueManager {
                 break;
             }
             for queued in ready {
-                states.push(self.execute_action(queued)?);
+                let action_id = queued.action.id.clone();
+                let thunk_id = queued.action.thunk_parent_id.clone();
+                let state = self.execute_action(queued)?;
+                states.push(DrainedState {
+                    state,
+                    action_id,
+                    thunk_id,
+                });
             }
         }
         Ok(states)
@@ -330,8 +372,35 @@ mod tests {
         let (_events, states) = mgr.on_thunk_complete("t1", None).unwrap();
         assert_eq!(mgr.queue_len(), 0);
         assert_eq!(states.len(), 2, "one state per drained action");
-        assert_eq!(states[0], serde_json::json!({ "count": 1 }));
-        assert_eq!(states[1], serde_json::json!({ "count": 2 }));
+        assert_eq!(states[0].state, serde_json::json!({ "count": 1 }));
+        assert_eq!(states[1].state, serde_json::json!({ "count": 2 }));
+        // Provenance is threaded through so drained broadcasts can be attributed.
+        assert!(
+            states[0].action_id.is_some(),
+            "drained state carries the originating action id"
+        );
+    }
+
+    #[test]
+    fn queue_drained_when_label_forgotten() {
+        let (mut mgr, counter) = manager();
+
+        mgr.register_thunk("t1".into(), None, "main".into(), None, false, false)
+            .unwrap();
+        mgr.execute_thunk("t1");
+
+        // Queue two normal actions behind the active thunk.
+        mgr.dispatch(action("INC"), "main".into()).unwrap();
+        mgr.dispatch(action("INC"), "main".into()).unwrap();
+        assert_eq!(mgr.queue_len(), 2);
+        assert_eq!(*counter.lock().unwrap(), 0);
+
+        // The window owning t1 is destroyed — dropping its thunk must drain the
+        // actions queued behind it instead of leaving them stuck forever.
+        let drained = mgr.on_label_forgotten("main").unwrap();
+        assert_eq!(mgr.queue_len(), 0);
+        assert_eq!(*counter.lock().unwrap(), 2);
+        assert_eq!(drained.len(), 2, "both queued actions drained");
     }
 
     #[test]
