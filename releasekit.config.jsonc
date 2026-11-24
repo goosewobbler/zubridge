@@ -45,8 +45,11 @@
         "sync": "fixed"
       }
     },
+    // One standing-PR checkbox per release unit: Electron on its own, Tauri with its group mates
+    // nested read-only beneath it, so holding back Tauri can't strand a plugin or core release.
     "primaryPackages": [
-      "@zubridge/*"
+      "@zubridge/electron",
+      "@zubridge/tauri"
     ],
     "cargo": {
       "enabled": true
@@ -87,12 +90,6 @@
     "standingPr": {
       "branch": "release/next",
       "mergeMethod": "squash",
-      // One checkbox per release unit: Electron on its own, Tauri with its group mates nested
-      // read-only beneath it, so holding back Tauri can't strand a plugin or core release.
-      "primaryPackages": [
-        "@zubridge/electron",
-        "@zubridge/tauri"
-      ],
       // Per-row prerelease/stable toggle: lets the Tauri v2 set ship on `next` for the manual
       // test pass and then graduate, without moving Electron off `latest`.
       "channelToggle": true,
