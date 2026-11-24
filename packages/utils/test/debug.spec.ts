@@ -149,12 +149,23 @@ describe('debug', () => {
     });
 
     it('holds logs made before @wdio/logger loads and sends them to it', async () => {
-      vi.doMock('@wdio/logger', () => ({ default: () => wdioLogger }));
+      let releaseImport: () => void = () => undefined;
+      const importGate = new Promise<void>((resolve) => {
+        releaseImport = resolve;
+      });
+      vi.doMock('@wdio/logger', async () => {
+        await importGate;
+        return { default: () => wdioLogger };
+      });
       const { debugLog } = await loadModule();
 
       debugLog('core', 'early');
-      expect(wdioLogger.debug).not.toHaveBeenCalled();
+      await flushPromises();
 
+      expect(wdioLogger.debug).not.toHaveBeenCalled();
+      expect(wealdFactory).not.toHaveBeenCalled();
+
+      releaseImport();
       await flushPromises();
 
       expect(wdioLogger.debug).toHaveBeenCalledWith('zubridge:core', 'early');
