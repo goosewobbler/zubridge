@@ -8,7 +8,7 @@ import type { ThunkProcessorOptions } from '../../types/thunk.js';
  * Base class for thunk processors that handles common functionality
  * like action completion tracking, timeouts, and queue management
  */
-// Node and browsers fire timers set above 2^31-1 ms after 1ms instead of the requested delay
+// Timers set above 2^31-1 ms fire after 1ms instead of the requested delay
 const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 
 export abstract class BaseThunkProcessor {

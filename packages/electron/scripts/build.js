@@ -3,8 +3,7 @@ import { spawn } from 'node:child_process';
 
 function runTsdown(args = []) {
   return new Promise((resolve, reject) => {
-    // A single command string with `shell: true`: passing an args array alongside the shell
-    // option is deprecated (DEP0190) because the arguments aren't escaped.
+    // One command string: an args array combined with `shell: true` is deprecated (DEP0190).
     const tsdown = spawn(['tsdown', ...args].join(' '), {
       stdio: 'inherit',
       shell: true,

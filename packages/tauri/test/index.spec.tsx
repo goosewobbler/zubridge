@@ -599,8 +599,7 @@ describe('@zubridge/tauri', () => {
       // bridgeClient is non-null here (assigned synchronously inside the IIFE)
       // but BridgeClient.initialize() hasn't completed. Dispatch a thunk now.
       const { result } = renderHook(() => useZubridgeDispatch());
-      // Dispatch, release init and settle both inside a single act scope. Awaiting
-      // them outside would interleave act scopes, which React warns about.
+      // One act scope: awaiting outside it would interleave scopes, which React warns about.
       await act(async () => {
         const thunkDone = result.current(async (_getStateFn, dispatchFn) => {
           await dispatchFn('STARTED_BEFORE_READY');
