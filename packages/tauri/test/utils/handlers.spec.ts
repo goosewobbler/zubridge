@@ -1,12 +1,13 @@
 import type { Handler } from '@zubridge/types';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   findCaseInsensitiveMatch,
   findNestedHandler,
   resolveHandler,
 } from '../../src/utils/handlers.js';
 
-vi.mock('@zubridge/utils', () => ({ debug: vi.fn() }));
+const { debug } = vi.hoisted(() => ({ debug: vi.fn() }));
+vi.mock('@zubridge/utils', () => ({ debug }));
 
 describe('findCaseInsensitiveMatch', () => {
   const obj = { Increment: 1, other: 2 };
@@ -99,14 +100,59 @@ describe('resolveHandler', () => {
     }
   });
 
-  it('should keep resolving correctly when the cache exceeds its size limit', () => {
-    const handlers: Record<string, unknown> = {};
-    for (let i = 0; i < 1100; i++) {
-      handlers[`action${i}`] = vi.fn();
-    }
+  describe('cache maintenance', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+      debug.mockClear();
+    });
 
-    for (let i = 0; i < 1100; i++) {
-      expect(resolveHandler(handlers, `action${i}`)).toBe(handlers[`action${i}`]);
-    }
+    it('should evict the oldest entries once the cache reaches its size limit', () => {
+      const handlers: Record<string, unknown> = {};
+      for (let i = 0; i <= 1000; i++) {
+        handlers[`action${i}`] = vi.fn();
+      }
+      const original = { oldest: handlers.action0, recent: handlers.action500 };
+
+      for (let i = 0; i <= 1000; i++) {
+        resolveHandler(handlers, `action${i}`);
+      }
+      handlers.action0 = vi.fn();
+      handlers.action500 = vi.fn();
+
+      expect(resolveHandler(handlers, 'action0')).toBe(handlers.action0);
+      expect(resolveHandler(handlers, 'action500')).toBe(original.recent);
+      expect(debug).toHaveBeenCalledWith(
+        'handlers:cache',
+        'Removed 200 handler cache entries to manage size',
+      );
+    });
+
+    it('should remove expired entries when the periodic cleanup runs', () => {
+      vi.useFakeTimers();
+      const handlers = { a: vi.fn(), b: vi.fn(), c: vi.fn() };
+      resolveHandler(handlers, 'a');
+      resolveHandler(handlers, 'b');
+
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      resolveHandler(handlers, 'c');
+
+      expect(debug).toHaveBeenCalledWith(
+        'handlers:cache',
+        'Cleaned up 2 expired handler cache entries',
+      );
+    });
+
+    it('should not run the periodic cleanup on most resolutions', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      resolveHandler({ a: vi.fn() }, 'a');
+
+      expect(debug).not.toHaveBeenCalledWith(
+        'handlers:cache',
+        expect.stringContaining('Cleaned up'),
+      );
+    });
   });
 });

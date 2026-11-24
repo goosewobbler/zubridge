@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BATCHING_DEFAULTS } from '../../src/batching/types.js';
 import {
   getBatchingConfig,
@@ -26,10 +26,29 @@ describe('getThunkProcessorOptions', () => {
     expect(getThunkProcessorOptions({ maxQueueSize: 0 }).maxQueueSize).toBe(0);
   });
 
-  it('should use a longer completion timeout on Linux', () => {
-    const expected = process.platform === 'linux' ? 60000 : 30000;
+  describe('platform default timeout', () => {
+    const originalPlatform = process.platform;
 
-    expect(THUNK_PROCESSOR_DEFAULTS.actionCompletionTimeoutMs).toBe(expected);
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+      vi.resetModules();
+    });
+
+    const loadDefaultTimeout = async (platform: NodeJS.Platform): Promise<number> => {
+      Object.defineProperty(process, 'platform', { value: platform });
+      vi.resetModules();
+      const mod = await import('../../src/utils/thunkProcessor.js');
+      return mod.THUNK_PROCESSOR_DEFAULTS.actionCompletionTimeoutMs;
+    };
+
+    it('should use a longer completion timeout on Linux', async () => {
+      await expect(loadDefaultTimeout('linux')).resolves.toBe(60000);
+    });
+
+    it('should use the standard completion timeout on other platforms', async () => {
+      await expect(loadDefaultTimeout('darwin')).resolves.toBe(30000);
+      await expect(loadDefaultTimeout('win32')).resolves.toBe(30000);
+    });
   });
 });
 
