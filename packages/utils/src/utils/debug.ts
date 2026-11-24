@@ -60,14 +60,13 @@ export const isDebugEnabled = (): boolean => {
 // Optional logger instances
 let wdioLogger: WDIOLogger | null = null;
 
+// Settles once the WDIO logger import resolves; cleared after so later calls skip the queue.
+let wdioLoad: Promise<void> | undefined;
+
 /**
  * Load the WDIO logger when running in a WDIO test environment
  */
 async function initializeWDIOLogger(): Promise<void> {
-  if (!isWDIOTest()) {
-    return;
-  }
-
   try {
     const wdioModule = await import('@wdio/logger');
     const loggerFactory = wdioModule.default || wdioModule;
@@ -75,9 +74,12 @@ async function initializeWDIOLogger(): Promise<void> {
   } catch {
     // Not available - weald is used instead
   }
+  wdioLoad = undefined;
 }
 
-initializeWDIOLogger();
+if (isWDIOTest()) {
+  wdioLoad = initializeWDIOLogger();
+}
 
 /**
  * Create a debug function for a specific namespace
@@ -85,12 +87,7 @@ initializeWDIOLogger();
 function createDebugger(namespace: string): DebugFunction {
   let wealdInstance: ReturnType<typeof weald> | undefined;
 
-  return (...args: unknown[]) => {
-    if (!isDebugEnabled()) {
-      return;
-    }
-
-    // Use WDIO logger if available
+  const emit = (args: unknown[]): void => {
     if (wdioLogger) {
       if (namespace.endsWith(':error')) {
         wdioLogger.error(namespace, ...args);
@@ -107,6 +104,20 @@ function createDebugger(namespace: string): DebugFunction {
     wealdInstance ??= weald(namespace);
     const [format, ...rest] = args;
     wealdInstance(format, ...rest);
+  };
+
+  return (...args: unknown[]) => {
+    if (!isDebugEnabled()) {
+      return;
+    }
+
+    // Hold early WDIO-environment logs until the logger has loaded so they aren't routed to weald
+    if (wdioLoad) {
+      wdioLoad.then(() => emit(args));
+      return;
+    }
+
+    emit(args);
   };
 }
 
