@@ -160,19 +160,19 @@ describe('preloadBridge handlers', () => {
   });
 
   describe('initialisation', () => {
-    it('installs the renderer error handlers', async () => {
+    it('should install the renderer error handlers', async () => {
       await setup();
 
       expect(setupErrorHandlers).toHaveBeenCalledTimes(1);
     });
 
-    it('initialises the thunk processor with the window id from the main process', async () => {
+    it('should initialise the thunk processor with the window id from the main process', async () => {
       const { initOptions } = await setup();
 
       expect(initOptions.windowId).toBe(7);
     });
 
-    it('wires the state provider to getState', async () => {
+    it('should wire the state provider to getState', async () => {
       const { ipc } = await setup();
       const provider = processor.setStateProvider.mock.calls[0][0] as (
         options?: unknown,
@@ -182,7 +182,7 @@ describe('preloadBridge handlers', () => {
       expect(ipc.invoke).toHaveBeenCalledWith('zubridge:get-state', { bypassAccessControl: true });
     });
 
-    it('does not throw when the window id lookup fails', async () => {
+    it('should not throw when the window id lookup fails', async () => {
       const { result } = await setup(undefined, {
         'zubridge:get-window-id': new Error('no window'),
       });
@@ -193,7 +193,7 @@ describe('preloadBridge handlers', () => {
   });
 
   describe('getState', () => {
-    it('forwards options to the main process', async () => {
+    it('should forward options to the main process', async () => {
       const { result, ipc } = await setup();
 
       await expect(result.handlers.getState({ bypassAccessControl: true })).resolves.toEqual({
@@ -204,7 +204,7 @@ describe('preloadBridge handlers', () => {
   });
 
   describe('subscribe', () => {
-    it('registers the state update listener once for multiple subscribers', async () => {
+    it('should register the state update listener once for multiple subscribers', async () => {
       const { result, listenersFor } = await setup();
 
       result.handlers.subscribe(vi.fn());
@@ -213,7 +213,7 @@ describe('preloadBridge handlers', () => {
       expect(listenersFor('zubridge:state-update')).toHaveLength(1);
     });
 
-    it('removes the state update listener when the last subscriber leaves', async () => {
+    it('should remove the state update listener when the last subscriber leaves', async () => {
       const { result, ipc } = await setup();
       const unsubscribeA = result.handlers.subscribe(vi.fn());
       const unsubscribeB = result.handlers.subscribe(vi.fn());
@@ -228,7 +228,7 @@ describe('preloadBridge handlers', () => {
       expect(ipc.removeListener).toHaveBeenCalledWith('zubridge:state-update', expect.anything());
     });
 
-    it('resyncs from the main process when the sequence jumps backwards', async () => {
+    it('should resync from the main process when the sequence jumps backwards', async () => {
       const { result, lastListener, ipc } = await setup();
       const callback = vi.fn();
       result.handlers.subscribe(callback);
@@ -253,7 +253,7 @@ describe('preloadBridge handlers', () => {
       expect(callback).toHaveBeenCalledWith({ counter: 1 });
     });
 
-    it('merges deltas into cached state and notifies subscribers', async () => {
+    it('should merge deltas into cached state and notify subscribers', async () => {
       const { result, lastListener } = await setup();
       const callback = vi.fn();
       result.handlers.subscribe(callback);
@@ -274,7 +274,7 @@ describe('preloadBridge handlers', () => {
       expect(callback).toHaveBeenNthCalledWith(3, { counter: 2 });
     });
 
-    it('falls back to getState when an update carries no delta', async () => {
+    it('should fall back to getState when an update carries no delta', async () => {
       const { result, lastListener, ipc } = await setup();
       const callback = vi.fn();
       result.handlers.subscribe(callback);
@@ -289,7 +289,7 @@ describe('preloadBridge handlers', () => {
       });
     });
 
-    it('includes the thunk id in the acknowledgement', async () => {
+    it('should include the thunk id in the acknowledgement', async () => {
       const { result, lastListener, sentOn } = await setup();
       result.handlers.subscribe(vi.fn());
 
@@ -308,7 +308,7 @@ describe('preloadBridge handlers', () => {
       ]);
     });
 
-    it('does not throw when sending the acknowledgement fails', async () => {
+    it('should not throw when sending the acknowledgement fails', async () => {
       const { result, lastListener } = await setup(undefined, {
         'zubridge:get-window-id': new Error('gone'),
       });
@@ -326,7 +326,7 @@ describe('preloadBridge handlers', () => {
   describe('dispatch without batching', () => {
     const options: PreloadOptions = { enableBatching: false };
 
-    it('sends a string action and resolves on a matching acknowledgement', async () => {
+    it('should send a string action and resolve on a matching acknowledgement', async () => {
       const { result, lastListener, sentOn } = await setup(options);
 
       const promise = result.handlers.dispatch('INCREMENT', 5);
@@ -341,7 +341,7 @@ describe('preloadBridge handlers', () => {
       await expect(promise).resolves.toEqual(action);
     });
 
-    it('keeps an existing action id and applies dispatch options from a string action', async () => {
+    it('should keep an existing action id and apply dispatch options from a string action', async () => {
       const { result, lastListener, sentOn } = await setup(options);
 
       const promise = result.handlers.dispatch('GO', undefined, {
@@ -356,7 +356,7 @@ describe('preloadBridge handlers', () => {
       expect(resolved.__immediate).toBe(true);
     });
 
-    it('preserves the id of an action object and reads options from the second argument', async () => {
+    it('should preserve the id of an action object and read options from the second argument', async () => {
       const { result, lastListener, sentOn } = await setup(options);
 
       const promise = result.handlers.dispatch(
@@ -371,7 +371,7 @@ describe('preloadBridge handlers', () => {
       await expect(promise).resolves.toMatchObject({ type: 'SET', __id: 'fixed' });
     });
 
-    it('rejects when the acknowledgement carries an error', async () => {
+    it('should reject when the acknowledgement carries an error', async () => {
       const { result, lastListener, sentOn } = await setup(options);
 
       const promise = result.handlers.dispatch('FAIL');
@@ -381,7 +381,7 @@ describe('preloadBridge handlers', () => {
       await expect(promise).rejects.toThrow('nope');
     });
 
-    it('rejects and removes its listener when no acknowledgement arrives', async () => {
+    it('should reject and remove its listener when no acknowledgement arrives', async () => {
       const { result, ipc, sentOn } = await setup(options);
 
       const promise = result.handlers.dispatch('SLOW');
@@ -397,7 +397,7 @@ describe('preloadBridge handlers', () => {
       expect(action.type).toBe('SLOW');
     });
 
-    it('throws without sending when validation fails', async () => {
+    it('should throw without sending when validation fails', async () => {
       validateAction.mockImplementationOnce(() => {
         throw new Error('invalid action');
       });
@@ -407,7 +407,7 @@ describe('preloadBridge handlers', () => {
       expect(sentOn('zubridge:dispatch')).toHaveLength(0);
     });
 
-    it('notifies the thunk processor when a dispatch acknowledgement arrives', async () => {
+    it('should notify the thunk processor when a dispatch acknowledgement arrives', async () => {
       const { lastListener } = await setup(options);
       const payload = { actionId: 'a1', thunkState: { activeThunks: [1, 2] } };
 
@@ -418,7 +418,7 @@ describe('preloadBridge handlers', () => {
   });
 
   describe('dispatch with batching', () => {
-    it('sends queued actions as a batch and resolves from the batch acknowledgement', async () => {
+    it('should send queued actions as a batch and resolve from the batch acknowledgement', async () => {
       const { result, lastListener, sentOn } = await setup({ batching: { windowMs: 10 } });
 
       const promise = result.handlers.dispatch('INCREMENT');
@@ -443,7 +443,7 @@ describe('preloadBridge handlers', () => {
       await expect(promise).resolves.toMatchObject({ type: 'INCREMENT' });
     });
 
-    it('rejects queued actions when the batch acknowledgement reports an error', async () => {
+    it('should reject queued actions when the batch acknowledgement reports an error', async () => {
       const { result, lastListener, sentOn } = await setup({ batching: { windowMs: 10 } });
 
       const promise = result.handlers.dispatch('INCREMENT');
@@ -459,7 +459,7 @@ describe('preloadBridge handlers', () => {
       await rejection;
     });
 
-    it('ignores acknowledgements for unknown batches', async () => {
+    it('should ignore acknowledgements for unknown batches', async () => {
       const { lastListener } = await setup();
       const listener = lastListener('zubridge:batch-ack');
 
@@ -467,7 +467,7 @@ describe('preloadBridge handlers', () => {
       expect(() => listener({}, { batchId: 'unknown', results: [] })).not.toThrow();
     });
 
-    it('rejects when the batch acknowledgement never arrives', async () => {
+    it('should reject when the batch acknowledgement never arrives', async () => {
       const { result } = await setup({ batching: { windowMs: 10 } });
 
       const promise = result.handlers.dispatch('INCREMENT');
@@ -477,7 +477,7 @@ describe('preloadBridge handlers', () => {
       await rejection;
     });
 
-    it('exposes batch stats', async () => {
+    it('should expose batch stats', async () => {
       const { result } = await setup({ batching: { windowMs: 10 } });
 
       void result.handlers.dispatch('INCREMENT').catch(() => undefined);
@@ -485,7 +485,7 @@ describe('preloadBridge handlers', () => {
       expect(result.getBatchStats()?.currentQueueSize).toBe(1);
     });
 
-    it('returns null stats when batching is disabled', async () => {
+    it('should return null stats when batching is disabled', async () => {
       const { result } = await setup({ enableBatching: false });
 
       expect(result.getBatchStats()).toBeNull();
@@ -493,7 +493,7 @@ describe('preloadBridge handlers', () => {
   });
 
   describe('thunk dispatch', () => {
-    it('forwards the thunk and bypass flags to the processor', async () => {
+    it('should forward the thunk and bypass flags to the processor', async () => {
       const { result } = await setup();
       const thunk = vi.fn();
 
@@ -505,7 +505,7 @@ describe('preloadBridge handlers', () => {
       });
     });
 
-    it('returns an action result with an id', async () => {
+    it('should return an action result with an id', async () => {
       processor.executeThunk.mockResolvedValue({ type: 'DONE', payload: 1 });
       const { result } = await setup();
 
@@ -515,7 +515,7 @@ describe('preloadBridge handlers', () => {
       expect(typeof action.__id).toBe('string');
     });
 
-    it('keeps the id of a returned action', async () => {
+    it('should keep the id of a returned action', async () => {
       processor.executeThunk.mockResolvedValue({ type: 'DONE', __id: 'keep' });
       const { result } = await setup();
 
@@ -524,7 +524,7 @@ describe('preloadBridge handlers', () => {
       });
     });
 
-    it('converts a string result into an action', async () => {
+    it('should convert a string result into an action', async () => {
       processor.executeThunk.mockResolvedValue('FINISHED');
       const { result } = await setup();
 
@@ -533,7 +533,7 @@ describe('preloadBridge handlers', () => {
       });
     });
 
-    it('wraps any other result in a THUNK_RESULT action', async () => {
+    it('should wrap any other result in a THUNK_RESULT action', async () => {
       processor.executeThunk.mockResolvedValue(undefined);
       const { result } = await setup();
 
@@ -543,7 +543,7 @@ describe('preloadBridge handlers', () => {
       });
     });
 
-    it('rethrows thunk execution errors', async () => {
+    it('should rethrow thunk execution errors', async () => {
       processor.executeThunk.mockRejectedValue(new Error('thunk failed'));
       const { result } = await setup();
 
@@ -554,7 +554,7 @@ describe('preloadBridge handlers', () => {
   describe('thunk processor wiring', () => {
     const action: Action = { type: 'A', __id: 'a1' };
 
-    it('sends a top-level action through the batcher and completes it on acknowledgement', async () => {
+    it('should send a top-level action through the batcher and complete it on acknowledgement', async () => {
       const { initOptions, lastListener, sentOn } = await setup({ batching: { windowMs: 10 } });
 
       const promise = initOptions.actionSender(action);
@@ -573,7 +573,7 @@ describe('preloadBridge handlers', () => {
       expect(processor.completeAction).toHaveBeenCalledWith('a1', action);
     });
 
-    it('sends thunk child actions directly unless batching is requested', async () => {
+    it('should send thunk child actions directly unless batching is requested', async () => {
       const { initOptions, sentOn } = await setup();
 
       await initOptions.actionSender(action, 'parent');
@@ -582,7 +582,7 @@ describe('preloadBridge handlers', () => {
       expect(sentOn('zubridge:batch-dispatch')).toHaveLength(0);
     });
 
-    it('batches thunk child actions when explicitly requested', async () => {
+    it('should batch thunk child actions when explicitly requested', async () => {
       const { initOptions, sentOn } = await setup({ batching: { windowMs: 10 } });
 
       void initOptions.actionSender(action, 'parent', { batch: true }).catch(() => undefined);
@@ -592,7 +592,7 @@ describe('preloadBridge handlers', () => {
       expect(sentOn('zubridge:dispatch')).toHaveLength(0);
     });
 
-    it('sends directly when batching is disabled', async () => {
+    it('should send directly when batching is disabled', async () => {
       const { initOptions, sentOn } = await setup({ enableBatching: false });
 
       await initOptions.actionSender(action);
@@ -600,7 +600,7 @@ describe('preloadBridge handlers', () => {
       expect(sentOn('zubridge:dispatch')).toEqual([{ action, parentId: undefined }]);
     });
 
-    it('flushes nothing when batching is disabled', async () => {
+    it('should flush nothing when batching is disabled', async () => {
       const { initOptions } = await setup({ enableBatching: false });
 
       await expect(initOptions.batchFlusher()).resolves.toEqual({
@@ -610,7 +610,7 @@ describe('preloadBridge handlers', () => {
       });
     });
 
-    it('flushes queued actions through the batcher', async () => {
+    it('should flush queued actions through the batcher', async () => {
       const { result, initOptions, lastListener, sentOn } = await setup({
         batching: { windowMs: 1000 },
       });
@@ -630,7 +630,7 @@ describe('preloadBridge handlers', () => {
       await expect(flushing).resolves.toMatchObject({ actionsSent: 1 });
     });
 
-    it('registers a thunk and resolves on a successful acknowledgement', async () => {
+    it('should register a thunk and resolve on a successful acknowledgement', async () => {
       const { initOptions, lastListener, sentOn } = await setup();
 
       const promise = initOptions.thunkRegistrar('t1', 'parent', true, false);
@@ -642,7 +642,7 @@ describe('preloadBridge handlers', () => {
       ]);
     });
 
-    it('rejects thunk registration on a failed acknowledgement', async () => {
+    it('should reject thunk registration on a failed acknowledgement', async () => {
       const { initOptions, lastListener } = await setup();
 
       const promise = initOptions.thunkRegistrar('t1');
@@ -654,7 +654,7 @@ describe('preloadBridge handlers', () => {
       await expect(promise).rejects.toBe('denied');
     });
 
-    it('rejects thunk registration with a default error when none is given', async () => {
+    it('should reject thunk registration with a default error when none is given', async () => {
       const { initOptions, lastListener } = await setup();
 
       const promise = initOptions.thunkRegistrar('t1');
@@ -663,7 +663,7 @@ describe('preloadBridge handlers', () => {
       await expect(promise).rejects.toThrow('Thunk registration failed');
     });
 
-    it('ignores registration acknowledgements it is not waiting for', async () => {
+    it('should ignore registration acknowledgements it is not waiting for', async () => {
       const { lastListener } = await setup();
       const listener = lastListener('zubridge:register-thunk-ack');
 
@@ -671,7 +671,7 @@ describe('preloadBridge handlers', () => {
       expect(() => listener({}, { thunkId: 'unknown', success: true })).not.toThrow();
     });
 
-    it('rejects thunk registration on timeout', async () => {
+    it('should reject thunk registration on timeout', async () => {
       const { initOptions } = await setup();
 
       const promise = initOptions.thunkRegistrar('t1');
@@ -683,7 +683,7 @@ describe('preloadBridge handlers', () => {
       await rejection;
     });
 
-    it('notifies the main process when a thunk completes', async () => {
+    it('should notify the main process when a thunk completes', async () => {
       const { initOptions, sentOn } = await setup();
 
       await initOptions.thunkCompleter('t1');
@@ -696,13 +696,13 @@ describe('preloadBridge handlers', () => {
     const withSubscriptions = (subscriptions: unknown) =>
       setup(undefined, { 'zubridge:get-window-subscriptions': subscriptions });
 
-    it('is exposed through the context bridge', async () => {
+    it('should be exposed through the context bridge', async () => {
       const { validatorApi } = await setup();
 
       expect(validatorApi).toBeDefined();
     });
 
-    it('falls back to attaching to window when the context bridge throws', async () => {
+    it('should fall back to attaching to window when the context bridge throws', async () => {
       vi.resetModules();
       const { contextBridge } = await import('electron');
       vi.mocked(contextBridge.exposeInMainWorld).mockImplementationOnce(() => {
@@ -724,20 +724,20 @@ describe('preloadBridge handlers', () => {
       expect(windowStub.__zubridge_subscriptionValidator).toBeDefined();
     });
 
-    it('returns the subscriptions for the current window', async () => {
+    it('should return the subscriptions for the current window', async () => {
       const { validatorApi, ipc } = await withSubscriptions(['a', 'b']);
 
       await expect(validatorApi?.getWindowSubscriptions()).resolves.toEqual(['a', 'b']);
       expect(ipc.invoke).toHaveBeenCalledWith('zubridge:get-window-subscriptions', 7);
     });
 
-    it('returns an empty list for a non-array response', async () => {
+    it('should return an empty list for a non-array response', async () => {
       const { validatorApi } = await withSubscriptions('nope');
 
       await expect(validatorApi?.getWindowSubscriptions()).resolves.toEqual([]);
     });
 
-    it('returns an empty list when the lookup fails', async () => {
+    it('should return an empty list when the lookup fails', async () => {
       const { validatorApi } = await withSubscriptions(new Error('ipc down'));
 
       await expect(validatorApi?.getWindowSubscriptions()).resolves.toEqual([]);
@@ -753,13 +753,16 @@ describe('preloadBridge handlers', () => {
       [['user'], 'users', false],
       [['other'], 'user.profile', false],
       [[], 'user', false],
-    ])('isSubscribedToKey with %j for %s is %s', async (subscriptions, key, expected) => {
-      const { validatorApi } = await withSubscriptions(subscriptions);
+    ])(
+      'should evaluate isSubscribedToKey with %j for %s as %s',
+      async (subscriptions, key, expected) => {
+        const { validatorApi } = await withSubscriptions(subscriptions);
 
-      await expect(validatorApi?.isSubscribedToKey(key)).resolves.toBe(expected);
-    });
+        await expect(validatorApi?.isSubscribedToKey(key)).resolves.toBe(expected);
+      },
+    );
 
-    it('validates state access against subscriptions', async () => {
+    it('should validate state access against subscriptions', async () => {
       const { validatorApi } = await withSubscriptions(['allowed']);
 
       await expect(validatorApi?.validateStateAccess('allowed')).resolves.toBe(true);
@@ -774,7 +777,7 @@ describe('preloadBridge handlers', () => {
       [{}, '', false],
       [null, 'a', false],
       ['string', 'a', false],
-    ])('stateKeyExists(%j, %s) is %s', async (state, key, expected) => {
+    ])('should evaluate stateKeyExists(%j, %s) as %s', async (state, key, expected) => {
       const { validatorApi } = await setup();
 
       expect(validatorApi?.stateKeyExists(state, key)).toBe(expected);
@@ -782,14 +785,14 @@ describe('preloadBridge handlers', () => {
   });
 
   describe('page lifecycle cleanup', () => {
-    it('registers lifecycle listeners', async () => {
+    it('should register lifecycle listeners', async () => {
       const { windowHandlers, documentHandlers } = await setup();
 
       expect([...windowHandlers.keys()]).toEqual(['beforeunload', 'pagehide']);
       expect([...documentHandlers.keys()]).toEqual(['visibilitychange']);
     });
 
-    it('rejects pending thunk registrations on beforeunload and clears subscribers', async () => {
+    it('should reject pending thunk registrations on beforeunload and clear subscribers', async () => {
       const { result, initOptions, windowHandlers } = await setup();
       const callback = vi.fn();
       result.handlers.subscribe(callback);
@@ -801,7 +804,7 @@ describe('preloadBridge handlers', () => {
       await rejection;
     });
 
-    it('destroys the batcher and thunk processor on a full pagehide', async () => {
+    it('should destroy the batcher and thunk processor on a full pagehide', async () => {
       const { result, windowHandlers, initOptions, ipc } = await setup();
       const registration = initOptions.thunkRegistrar('t1');
       const rejection = expect(registration).rejects.toThrow('Complete cleanup');
@@ -817,7 +820,7 @@ describe('preloadBridge handlers', () => {
       expect(result.getBatchStats()).toBeNull();
     });
 
-    it('only cleans up expired actions when the page is cached', async () => {
+    it('should only clean up expired actions when the page is cached', async () => {
       const { windowHandlers } = await setup();
 
       await windowHandlers.get('pagehide')?.({ persisted: true });
@@ -826,7 +829,7 @@ describe('preloadBridge handlers', () => {
       expect(processor.destroy).not.toHaveBeenCalled();
     });
 
-    it('cleans up expired actions when the page becomes hidden', async () => {
+    it('should clean up expired actions when the page becomes hidden', async () => {
       const { doc, documentHandlers } = await setup();
 
       doc.visibilityState = 'hidden';
@@ -836,7 +839,7 @@ describe('preloadBridge handlers', () => {
       expect(processor.forceCleanupExpiredActions).toHaveBeenCalledTimes(1);
     });
 
-    it('does nothing when the page becomes visible', async () => {
+    it('should do nothing when the page becomes visible', async () => {
       const { documentHandlers } = await setup();
 
       documentHandlers.get('visibilitychange')?.();
