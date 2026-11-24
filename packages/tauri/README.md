@@ -290,7 +290,7 @@ Errors raised from the bridge transport are now `TauriCommandError` (extends `Zu
 
 ### Plugin version
 
-The matching `tauri-plugin-zubridge` version is `0.2.x`. Older `0.1.x` plugins do not understand the new commands (`batch_dispatch`, `register_thunk`, `subscribe`, etc.) and will fail the plugin probe — the client falls back to the direct command names, but you still need a backend that registers them.
+Use the `tauri-plugin-zubridge` release with the same version as `@zubridge/tauri` (they release in lockstep). The older `0.1.x` plugin doesn't understand the new commands (`batch_dispatch`, `register_thunk`, `subscribe`, etc.) and fails the plugin probe — the client falls back to the direct command names, but you still need a backend that registers them.
 
 ## Architecture diagrams
 

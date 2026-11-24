@@ -55,7 +55,7 @@ Notable state at the time this plan was written:
 | **P2**   | Port full action + thunk scheduler           | Core gains `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher`; Tauri renderer exercises the new APIs                                                                                                                                                                |
 | **P3**   | Perf comparison harness + middleware removal | `packages/middleware/` (Rust + Node bindings) deleted; TS `ZubridgeMiddleware` interface deleted; renderer-side benchmark suite measuring dispatch latency, throughput, multi-window propagation, memory growth against current Electron core; baseline captured for 3.1→3.2 comparison |
 | **P3.5** | Tauri E2E test suite                         | `@wdio/tauri-service` (embedded provider) standing up counter + window-sync specs; CI enabled on macOS + Linux                                                                                                                                                                          |
-| **P4**   | Tauri v2.0 release                           | `tauri-plugin-zubridge@0.2.0` + `@zubridge/tauri@2.0.0` published on unified core                                                                                                                                                                                                       |
+| **P4**   | Tauri v2.0 release                           | `@zubridge/tauri@2.0.0` + `tauri-plugin-zubridge@2.0.0` (fixed pair) published on unified core                                                                                                                                                                                          |
 | **P4.5** | Electron 3.1 release                         | `@zubridge/electron@3.1.0` released with the P3 benchmark suite and `benches/baseline.json` captured — same TS architecture as 3.0, gain measurement infrastructure                                                                                                                     |
 | **P5**   | NAPI-RS bindings + Electron 3.2 prep         | Core exposes `napi` facade; `@zubridge/node-native` ships platform `.node` artifacts                                                                                                                                                                                                    |
 | **P6**   | Electron 3.2 migration                       | `packages/electron/src/{action,thunk,main,subscription,deltas,batching}` replaced with NAPI calls; renderer/preload TS unchanged                                                                                                                                                        |
@@ -354,12 +354,12 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 4. `release.yml` publishes via releasekit: `zubridge-core` (Cargo) → `tauri-plugin-zubridge` (Cargo) → `@zubridge/tauri` (npm with provenance). Tags, GitHub Release drafts, and per-package `CHANGELOG.md` updates land automatically.
 5. Post-publish reconcile rebuilds the standing PR against the new HEAD.
 
-Target versions for P4 are `@zubridge/tauri` → 2.0.0, `tauri-plugin-zubridge` → 0.2.0, and the first crates.io publish of `zubridge-core`. The three form the `independent` `tauri` version group in `releasekit.config.jsonc`, so they release as one unit while each keeps its own version line. Versions come from conventional commits, with no manual edits to `package.json` / `Cargo.toml`. Breaking changes must be marked with a `type(scope)!:` header or a `BREAKING CHANGE:` footer on a commit that touches the package. As of releasekit 0.41.2, a dry run still can't reach these targets:
+Target versions for P4 are `@zubridge/tauri` + `tauri-plugin-zubridge` → 2.0.0, and the first crates.io publish of `zubridge-core`. The JS package and the plugin form the `fixed` `tauri` version group in `releasekit.config.jsonc`: they are the two halves of one wire protocol, so they always release together at one shared version and users pair them by version alone (the plugin jumps from 0.1.0 on crates.io straight to 2.0.0). `zubridge-core` keeps its own pre-1.0 line outside the group; the plugin's versioned path dependency on it (`zubridge-core = { version, path }`) is raised by releasekit whenever core releases. Breaking changes must be marked with a `type(scope)!:` header or a `BREAKING CHANGE:` footer on a commit that touches the package; releasekit scopes each package's bump to its own commits, so a Tauri breaking change doesn't major Electron or types. Reaching the targets needs two deliberate steps, both verified by dry run:
 
-- **Breaking changes leak across packages.** Breaking-change detection isn't scoped to package paths: a breaking commit anywhere in the repo also majors every other package with releasable changes (e.g. `@zubridge/electron` → 4.0.0, `@zubridge/types` → 3.0.0). This needs fixing in releasekit before the Tauri breaking commits land.
-- **Prerelease lines ignore the bump size.** A breaking change on `1.1.1-next.1` only advances the counter to `1.1.1-next.2`, instead of starting `2.0.0-next.0` (or `0.2.0-next.0` for the 0.x crates).
-- **Cargo dependency requirements aren't kept in sync.** releasekit bumps `package.version` in `Cargo.toml` but not the version requirement in dependent crates. `tauri-plugin-zubridge`'s path dependency on `zubridge-core` has no `version`, which `cargo publish` rejects. The dependency needs a version requirement, and releasekit needs to rewrite it whenever core bumps.
-- **`zubridge-core`'s first publish will be 0.2.0.** It has a seeded `zubridge-core@v0.1.0` baseline tag but nothing on crates.io, so its first publish is computed from the seed. Move or delete the seed tag if 0.1.0 matters.
+- **Stage the 2.0 prerelease line.** On a prerelease, an inferred bump only advances the counter (a breaking change on `1.1.1-next.1` gives `1.1.1-next.2`); that's releasekit's design, since the base is a fixed target until graduation. A `bump:major` label on the standing PR isn't the way out: it applies to every releasing package, so it would also major Electron. Instead, commit both manifests (`packages/tauri/package.json`, `packages/tauri-plugin/Cargo.toml`) at `2.0.0-next.0` when the v2 work is ready to go out on `next`. The pair then releases as `2.0.0-next.N` and graduates to `2.0.0` via the per-row channel toggle or a `graduate:@zubridge/tauri` label.
+- **Don't untick `zubridge-core` while the plugin releases.** Core has its own row on the standing PR, and releasekit only warns about a held-back prerequisite for targeted releases. Unticking it would publish the plugin against a core that isn't on crates.io.
+
+`zubridge-core`'s first publish will be 0.2.0 if it has a breaking change (or any `feat`): it has a seeded `zubridge-core@v0.1.0` baseline tag but nothing on crates.io, so its first publish is computed from the seed. Move or delete the seed tag if 0.1.0 matters.
 
 Every release is dry-run first (`releasekit version --dry-run --json`), and the standing PR's version summary is checked before merging.
 
@@ -375,7 +375,7 @@ Every release is dry-run first (`releasekit version --dry-run --json`), and the 
 - `pnpm exec releasekit version --dry-run --json` discovers all expected publishable packages (npm + Cargo) and reports the next versions releasekit would compute, confirming the config + workspace layout is sound.
 - The standing PR opens on the first push to main after the workflow lands.
 - A `scope:tauri` + `release:stable` test PR (a no-op doc tweak) round-trips: merges, lands in standing PR, publishes the Tauri v2 trio on standing-PR merge.
-- All `apps/tauri/**` E2E specs pass on the released `@zubridge/tauri@2.0.0` / `tauri-plugin-zubridge@0.2.0` artifacts.
+- All `apps/tauri/**` E2E specs pass on the released `@zubridge/tauri@2.0.0` / `tauri-plugin-zubridge@2.0.0` artifacts.
 
 ---
 
@@ -501,11 +501,11 @@ Every release is dry-run first (`releasekit version --dry-run --json`), and the 
 **Steps:**
 
 1. **Versioning:**
-   - `zubridge-core` → 0.2.0 (post-NAPI maturation)
+   - `zubridge-core` → next 0.x minor (post-NAPI maturation)
    - `@zubridge/node-native` → 0.1.0 (first release) + platform packages
    - `@zubridge/electron` → 3.2.0
    - `@zubridge/tauri` → 2.1.0 (if changed since v2) or stays at 2.0
-   - `tauri-plugin-zubridge` → 0.3.0 (if API changed) or stays at 0.2
+   - `tauri-plugin-zubridge` → same version as `@zubridge/tauri` (fixed group)
 
 2. **Release stage plan** (sequential to avoid resolution races):
    1. `zubridge-core` (`cargo publish`)
@@ -605,7 +605,7 @@ Documentation is treated as a phase output, not a follow-up. Each phase that shi
 | Package                                | Update trigger                   | What changes                                                                                                                 |
 | -------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core/README.md` (new)        | P1                               | Architecture overview, conditional compilation explanation, build instructions per feature, module map, testing instructions |
-| `packages/tauri-plugin/README.md`      | P1 (dep on core), P4 (release)   | Updated install + usage for 0.2 API; reference to `zubridge-core` as backend                                                 |
+| `packages/tauri-plugin/README.md`      | P1 (dep on core), P4 (release)   | Updated install + usage for the 2.0 API; reference to `zubridge-core` as backend                                             |
 | `packages/tauri/README.md`             | P4                               | v2 API (current README is for v1); migration callout from v1                                                                 |
 | `packages/electron/README.md`          | P6                               | Notes on native binary install, troubleshooting, what's new in 3.2                                                           |
 | `packages/node-native/README.md` (new) | P5                               | Platform package list, install/troubleshooting, supported triples, build-from-source instructions                            |

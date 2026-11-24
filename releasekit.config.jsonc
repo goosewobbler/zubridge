@@ -8,12 +8,10 @@
     "skipHooks": true
   },
   "version": {
-    // conventionalcommits, not angular: the angular parser doesn't match `type(scope)!:` headers,
-    // so a `feat(tauri)!:` commit would be silently dropped instead of counted as breaking.
     "preset": "conventionalcommits",
-    // Breaking changes in the 0.x crates (zubridge-core, tauri-plugin-zubridge) bump the minor
-    // (0.1 → 0.2), matching the roadmap's 0.x release lines. An explicit `bump:major` label still
-    // graduates them to 1.0.0, so don't put one on a standing PR that carries the Tauri set.
+    // zubridge-core is pre-1.0: an inferred breaking change bumps its minor, not its major. An
+    // explicit `bump:major` label still graduates it to 1.0, so keep one off a standing PR that
+    // carries core.
     "zeroMajor": "spec",
     "sync": false,
     "versionPrefix": "v",
@@ -22,31 +20,27 @@
     "prereleaseIdentifier": "next",
     "packageSpecificTags": true,
     "mismatchStrategy": "prefer-package",
-    // @zubridge/tauri (npm) + tauri-plugin-zubridge (cargo) share a wire protocol and must
-    // ship together. `fixed` releases both at one shared version whenever either changes, so a
-    // Tauri-TS-only change can't publish an npm release whose crate half is stale. This enforces
-    // the coupling on the standing-PR accumulation path; scopeLabels below only couples them
-    // when a scope:tauri feeder PR is the trigger.
+    // @zubridge/tauri (npm) + tauri-plugin-zubridge (cargo) are the two halves of one wire
+    // protocol. `fixed` releases both at one shared version whenever either changes, so users
+    // pair them by version alone and a TS-only change can't ship against a stale crate.
     //
-    // `fixed`/`linked` would force one shared version, but the roadmap ships these on
-    // different lines (@zubridge/tauri 2.x, tauri-plugin-zubridge 0.2.x, zubridge-core 0.x).
-    //
-    // zubridge-core is in the set because the plugin can't publish without its matching core
-    // on crates.io, and until P5 the plugin is core's only consumer. Revisit at P5, when
-    // @zubridge/node-native also builds on core and core needs to release without dragging
-    // the Tauri set along (see UNIFFI_REFACTOR_PLAN.md §3 P4).
+    // zubridge-core stays out of the group: a group shares one version, and core has its own
+    // pre-1.0 line plus, from P5, a second consumer (@zubridge/node-native). The plugin's
+    // versioned path dependency on core keeps them in step instead: releasekit raises the
+    // plugin's requirement whenever core releases. Nothing stops core being unticked on the
+    // standing PR while the plugin still releases (the prerequisite warning only fires for
+    // targeted releases), and that would publish the plugin against an unreleased core.
     "groups": {
       "tauri": {
         "packages": [
           "@zubridge/tauri",
-          "tauri-plugin-zubridge",
-          "zubridge-core"
+          "tauri-plugin-zubridge"
         ],
         "sync": "fixed"
       }
     },
-    // One standing-PR checkbox per release unit: Electron on its own, Tauri with its group mates
-    // nested read-only beneath it, so holding back Tauri can't strand a plugin or core release.
+    // One standing-PR checkbox per release unit: Electron on its own, Tauri with the plugin nested
+    // read-only beneath it. Ungrouped packages (core, types, utils) keep their own rows.
     "primaryPackages": [
       "@zubridge/electron",
       "@zubridge/tauri"
@@ -96,12 +90,12 @@
       "summaryTable": true
     },
     // PR scope labels → comma-separated list of packages eligible to bump.
-    // Tauri ships `@zubridge/tauri` (npm) + `tauri-plugin-zubridge` (cargo)
-    // together because the wire protocol couples them; bumping just one of
-    // the pair would publish a release whose npm/cargo halves are out of sync.
+    // scope:tauri covers the whole Tauri stack: the fixed pair plus zubridge-core, so a feeder
+    // PR that also changed core can't release the plugin against an unpublished core. Core only
+    // bumps if it has commits of its own.
     "scopeLabels": {
       "scope:electron": "@zubridge/electron",
-      "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge",
+      "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge,zubridge-core",
       "scope:core": "zubridge-core",
       "scope:utils": "@zubridge/utils",
       "scope:types": "@zubridge/types"

@@ -34,7 +34,7 @@ Path letters describe the **technical integration mechanism**, not priority — 
 | `@zubridge/electron`                           | Shipped 3.0; 3.1 (P3 perf baseline, middleware API removed) queued in the standing release PR; 3.2 migrates to Rust core via NAPI (P6) |
 | `@zubridge/node-native` (new)                  | Planned P5 — platform `.node` artifacts                                                                                                |
 | `@zubridge/tauri`                              | 1.1.0 on npm; v2.0 in progress (P4)                                                                                                    |
-| `tauri-plugin-zubridge`                        | 0.1.0 on crates.io; 0.2 in progress on `zubridge-core` (P4)                                                                            |
+| `tauri-plugin-zubridge`                        | 0.1.0 on crates.io; 2.0 (lockstep with `@zubridge/tauri`) in progress on `zubridge-core` (P4)                                          |
 | `zubridge-core` (new Rust crate)               | Created in P1, scheduler ported in P2; first crates.io publish ships with Tauri v2 (P4)                                                |
 | `@zubridge/utils` (rename of `@zubridge/core`) | Renamed in P1 (2.0.0)                                                                                                                  |
 | `@zubridge/types`                              | Shipped 2.2; 2.3 queued                                                                                                                |
@@ -48,7 +48,7 @@ Path letters describe the **technical integration mechanism**, not priority — 
 | `@zubridge/electron`    | 3.0.0 (2026-Q1) | Active; 3.1 queued                  |
 | `@zubridge/types`       | 2.2.0           | Active                              |
 | `@zubridge/tauri`       | 1.1.0           | Superseded by v2; v1 archived at P4 |
-| `tauri-plugin-zubridge` | 0.1.0           | Superseded by v0.2 at P4            |
+| `tauri-plugin-zubridge` | 0.1.0           | Superseded by v2.0 at P4            |
 
 Per-package release history lives in each package's `CHANGELOG.md`.
 

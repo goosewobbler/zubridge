@@ -29,7 +29,7 @@ _Cross-platform state without boundaries: the official Tauri plugin for Zubridge
 ```toml
 # Cargo.toml
 [dependencies]
-tauri-plugin-zubridge = "0.2"
+tauri-plugin-zubridge = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ```
