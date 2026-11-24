@@ -12,6 +12,7 @@
  * Usage:
  *   tsx scripts/check-cargo-prerequisites.ts --pr <standing PR number>  (reads the manifest; needs gh)
  *   tsx scripts/check-cargo-prerequisites.ts --targets <a,b,c>          (targeted release: every target releases)
+ *   tsx scripts/check-cargo-prerequisites.ts --all                      (untargeted release: everything releases)
  *   tsx scripts/check-cargo-prerequisites.ts --json <file>              (`releasekit version --json` output)
  */
 
@@ -22,33 +23,46 @@ import semver from 'semver';
 import { parse as parseToml } from 'smol-toml';
 
 const ROOT = process.cwd();
-const PACKAGES_DIR = path.join(ROOT, 'packages');
 const MANIFEST_MARKER = '<!-- releasekit-manifest -->';
 const DEP_TABLES = ['dependencies', 'build-dependencies', 'dev-dependencies'] as const;
 
 type Update = { packageName: string; newVersion: string };
-type ReleaseSet = Set<string>;
 type TomlTable = Record<string, unknown>;
-type Crate = { name: string; manifestPath: string; toml: TomlTable };
+type Crate = { name: string; toml: TomlTable };
 type WorkspaceDep = { name: string; requirement?: string; kind: (typeof DEP_TABLES)[number] };
+type GhComment = { login: string; type: string; body: string };
 
-function parseArgs(): { pr?: string; json?: string; targets?: string } {
+/**
+ * Package name → the version it releases at, when known. `bumped` says whether the checked-out
+ * manifests already carry the release's versions (a merged standing PR does; a targeted release
+ * bumps inside releasekit, after this check), and so whether requirements can be checked against
+ * the new versions.
+ */
+type Release = { packages: Map<string, string | undefined>; bumped: boolean };
+
+function parseArgs(): { pr?: string; json?: string; targets?: string; all: boolean } {
   const args = process.argv.slice(2);
   const value = (flag: string) => {
     const index = args.indexOf(flag);
     return index === -1 ? undefined : args[index + 1];
   };
-  return { pr: value('--pr'), json: value('--json'), targets: value('--targets') };
+  return {
+    pr: value('--pr'),
+    json: value('--json'),
+    targets: value('--targets'),
+    all: args.includes('--all'),
+  };
 }
 
 function gh(args: string[]): string {
   return execFileSync('gh', args, { encoding: 'utf-8' });
 }
 
-// Mirrors releasekit's own trust rule: only a bot comment by the account that opened the PR.
+// Mirrors releasekit's findTrustedComment: the first bot comment that starts with the marker,
+// refused unless that bot also opened the PR.
 function readManifest(pr: string): unknown {
   const opener = gh(['api', `repos/{owner}/{repo}/pulls/${pr}`, '--jq', '.user.login']).trim();
-  const comments = gh([
+  const manifest = gh([
     'api',
     '--paginate',
     `repos/{owner}/{repo}/issues/${pr}/comments`,
@@ -57,12 +71,17 @@ function readManifest(pr: string): unknown {
   ])
     .split('\n')
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as { login: string; type: string; body: string });
-  const manifest = comments
-    .filter((comment) => comment.type === 'Bot' && comment.login === opener)
-    .findLast((comment) => comment.body.includes(MANIFEST_MARKER));
+    .map((line) => JSON.parse(line) as GhComment)
+    .find(
+      (comment) =>
+        comment.body.startsWith(MANIFEST_MARKER) &&
+        (comment.type === 'Bot' || comment.login.endsWith('[bot]')),
+    );
   if (!manifest) {
-    throw new Error(`No releasekit manifest comment from ${opener} on #${pr}`);
+    throw new Error(`No releasekit manifest comment on #${pr}`);
+  }
+  if (manifest.login !== opener) {
+    throw new Error(`The manifest on #${pr} was posted by ${manifest.login}, not by ${opener}`);
   }
   const encoded = manifest.body.match(/<!-- base64 (\S+) -->/)?.[1];
   if (!encoded) {
@@ -71,7 +90,7 @@ function readManifest(pr: string): unknown {
   return JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8'));
 }
 
-function toReleaseSet(input: unknown): ReleaseSet {
+function fromUpdates(input: unknown): Map<string, string | undefined> {
   const doc = input as {
     data?: { updates?: Update[] };
     versionOutput?: { updates?: Update[] };
@@ -82,27 +101,35 @@ function toReleaseSet(input: unknown): ReleaseSet {
     throw new Error('Input has no `updates` list');
   }
   const deselected = new Set(doc.deselected ?? []);
-  return new Set(
-    updates.map((update) => update.packageName).filter((name) => !deselected.has(name)),
+  return new Map(
+    updates
+      .filter((update) => !deselected.has(update.packageName))
+      .map((update) => [update.packageName, update.newVersion]),
   );
 }
 
-function readReleaseSet(): ReleaseSet {
-  const { pr, json, targets } = parseArgs();
+function readRelease(crates: Map<string, Crate>): Release {
+  const { pr, json, targets, all } = parseArgs();
   if (pr) {
-    return toReleaseSet(readManifest(pr));
+    return { packages: fromUpdates(readManifest(pr)), bumped: true };
   }
   if (json) {
-    return toReleaseSet(JSON.parse(fs.readFileSync(json, 'utf-8')));
+    return { packages: fromUpdates(JSON.parse(fs.readFileSync(json, 'utf-8'))), bumped: false };
+  }
+  if (all) {
+    return {
+      packages: new Map([...crates.keys()].map((name) => [name, undefined])),
+      bumped: false,
+    };
   }
   const names = (targets ?? '')
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean);
   if (names.length === 0) {
-    throw new Error('Pass --pr <number>, --targets <a,b,c> or --json <file>');
+    throw new Error('Pass --pr <number>, --targets <a,b,c>, --all or --json <file>');
   }
-  return new Set(names);
+  return { packages: new Map(names.map((name) => [name, undefined])), bumped: false };
 }
 
 function readToml(file: string): TomlTable {
@@ -115,29 +142,49 @@ function asTable(value: unknown): TomlTable {
     : {};
 }
 
-function readCrates(): Map<string, Crate> {
+function memberDirs(members: unknown[]): string[] {
+  const dirs: string[] = [];
+  for (const member of members.filter((entry): entry is string => typeof entry === 'string')) {
+    if (!member.endsWith('/*')) {
+      dirs.push(path.join(ROOT, member));
+      continue;
+    }
+    const parent = path.join(ROOT, member.slice(0, -2));
+    for (const entry of fs.existsSync(parent) ? fs.readdirSync(parent) : []) {
+      dirs.push(path.join(parent, entry));
+    }
+  }
+  return dirs;
+}
+
+function readWorkspace(): { crates: Map<string, Crate>; inherited: TomlTable } {
+  const workspace = asTable(readToml(path.join(ROOT, 'Cargo.toml')).workspace);
+  const members = Array.isArray(workspace.members) ? workspace.members : [];
+  if (members.some((member) => typeof member === 'string' && /[*?[]/.test(member.slice(0, -2)))) {
+    throw new Error('Only plain paths and trailing /* globs are supported in workspace.members');
+  }
   const crates = new Map<string, Crate>();
-  for (const entry of fs.readdirSync(PACKAGES_DIR)) {
-    const manifestPath = path.join(PACKAGES_DIR, entry, 'Cargo.toml');
+  for (const dir of memberDirs(members)) {
+    const manifestPath = path.join(dir, 'Cargo.toml');
     if (!fs.existsSync(manifestPath)) {
       continue;
     }
     const toml = readToml(manifestPath);
     const name = asTable(toml.package).name;
     if (typeof name === 'string') {
-      crates.set(name, { name, manifestPath, toml });
+      crates.set(name, { name, toml });
     }
   }
-  return crates;
+  return { crates, inherited: asTable(workspace.dependencies) };
 }
 
 // Every path dependency on another workspace crate, across plain, build, dev and
 // `[target.'cfg(..)']` tables, with `workspace = true` entries resolved against the root.
-function workspaceDeps(crate: Crate, crates: Map<string, Crate>): WorkspaceDep[] {
-  const rootManifest = path.join(ROOT, 'Cargo.toml');
-  const inherited = fs.existsSync(rootManifest)
-    ? asTable(asTable(readToml(rootManifest).workspace).dependencies)
-    : {};
+function workspaceDeps(
+  crate: Crate,
+  crates: Map<string, Crate>,
+  inherited: TomlTable,
+): WorkspaceDep[] {
   const scopes = [crate.toml, ...Object.values(asTable(crate.toml.target)).map(asTable)];
   const deps: WorkspaceDep[] = [];
   for (const scope of scopes) {
@@ -159,13 +206,18 @@ function workspaceDeps(crate: Crate, crates: Map<string, Crate>): WorkspaceDep[]
   return deps;
 }
 
-// Cargo treats a bare requirement as caret and separates comparators with commas.
+// Cargo treats a bare requirement as caret and separates comparators with commas. Wildcard
+// parts (`1.2.*`) mean the same in both, and a caret in front would widen them.
 function toNpmRange(requirement: string): string {
   return requirement
     .split(',')
     .map((part) => part.trim())
-    .map((part) => (/^[\^~=<>*]/.test(part) ? part : `^${part}`))
+    .map((part) => (/^[\^~=<>]/.test(part) || /(^|\.)[*xX](\.|$)/.test(part) ? part : `^${part}`))
     .join(' ');
+}
+
+function satisfies(version: string, requirement: string): boolean {
+  return semver.satisfies(version, toNpmRange(requirement));
 }
 
 async function hasMatchingRelease(crate: string, requirement: string): Promise<boolean> {
@@ -183,24 +235,53 @@ async function hasMatchingRelease(crate: string, requirement: string): Promise<b
   if (!response.ok) {
     throw new Error(`crates.io index returned ${response.status} for ${crate}`);
   }
-  const range = toNpmRange(requirement);
   return (await response.text())
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line) as { vers: string; yanked: boolean })
-    .some((entry) => !entry.yanked && semver.satisfies(entry.vers, range));
+    .some((entry) => !entry.yanked && satisfies(entry.vers, requirement));
+}
+
+async function checkDep(
+  crate: Crate,
+  dep: WorkspaceDep & { requirement: string },
+  release: Release,
+): Promise<string | undefined> {
+  if (release.packages.has(dep.name)) {
+    const version = release.packages.get(dep.name);
+    // Before the version step the old requirement is still on disk and releasekit raises it
+    // later, so only a bumped checkout can confirm the requirement accepts the new version.
+    if (release.bumped && version !== undefined && !satisfies(version, dep.requirement)) {
+      return (
+        `${crate.name} requires ${dep.name} ${dep.requirement}, but this release publishes ` +
+        `${dep.name} ${version}. The requirement wasn't raised; update it before publishing.`
+      );
+    }
+    const label = version === undefined ? dep.name : `${dep.name} ${version}`;
+    console.log(`  ✓ ${crate.name} → ${label} (released in this run)`);
+    return undefined;
+  }
+  if (await hasMatchingRelease(dep.name, dep.requirement)) {
+    console.log(`  ✓ ${crate.name} → ${dep.name} ${dep.requirement} (on crates.io)`);
+    return undefined;
+  }
+  return (
+    `${crate.name} requires ${dep.name} ${dep.requirement}, which no published crates.io ` +
+    `release satisfies and which is not in this release. Release ${dep.name} first, or hold ` +
+    `${crate.name} back.`
+  );
 }
 
 async function main(): Promise<void> {
-  const releasing = readReleaseSet();
-  const crates = readCrates();
+  const { crates, inherited } = readWorkspace();
+  const release = readRelease(crates);
   const violations: string[] = [];
 
   for (const crate of crates.values()) {
-    if (!releasing.has(crate.name)) {
+    if (!release.packages.has(crate.name)) {
       continue;
     }
-    for (const dep of workspaceDeps(crate, crates)) {
+    for (const dep of workspaceDeps(crate, crates, inherited)) {
       if (dep.requirement === undefined) {
         // cargo publish strips version-less path dev-dependencies but rejects any other kind.
         if (dep.kind !== 'dev-dependencies') {
@@ -211,17 +292,9 @@ async function main(): Promise<void> {
         }
         continue;
       }
-      // A releasing dependency publishes first, and releasekit raises the requirement to match.
-      if (releasing.has(dep.name)) {
-        console.log(`  ✓ ${crate.name} → ${dep.name} (released in this run)`);
-      } else if (await hasMatchingRelease(dep.name, dep.requirement)) {
-        console.log(`  ✓ ${crate.name} → ${dep.name} ${dep.requirement} (on crates.io)`);
-      } else {
-        violations.push(
-          `${crate.name} requires ${dep.name} ${dep.requirement}, which no published crates.io ` +
-            `release satisfies and which is not in this release. Release ${dep.name} first, or ` +
-            `hold ${crate.name} back.`,
-        );
+      const violation = await checkDep(crate, { ...dep, requirement: dep.requirement }, release);
+      if (violation) {
+        violations.push(violation);
       }
     }
   }

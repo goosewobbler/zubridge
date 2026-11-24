@@ -220,6 +220,8 @@ jobs:
       # crates.io (core unticked on the standing PR, or left out of a targeted release), and
       # crates.io only rejects it after the npm packages are out. Fail before anything publishes.
       - name: Check Cargo prerequisites
+        # On a dry run, report the problem but still let releasekit print the computed versions.
+        continue-on-error: ${{ inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -228,8 +230,11 @@ jobs:
         run: |
           if [ -n "$STANDING_PR" ]; then
             pnpm exec tsx scripts/check-cargo-prerequisites.ts --pr "$STANDING_PR"
-          else
+          elif [ -n "$TARGETS" ]; then
             pnpm exec tsx scripts/check-cargo-prerequisites.ts --targets "$TARGETS"
+          else
+            # No target means releasekit releases every package.
+            pnpm exec tsx scripts/check-cargo-prerequisites.ts --all
           fi
 
       - name: Run ReleaseKit
