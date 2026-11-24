@@ -27,6 +27,7 @@
     "@wdio/logger": "^10.2.0"
   },
   "devDependencies": {
+    "@types/node": "26.6.6",
     "shx": "^0.4.0",
     "typescript": "^7.0.2",
     "vitest": "^5.1.1"
