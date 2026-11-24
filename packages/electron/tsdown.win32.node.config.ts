@@ -5,8 +5,20 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
-  external: ['electron', 'zustand', 'zustand/vanilla'],
-  noExternal: ['@zubridge/utils', 'weald', '@wdio/logger', 'tty', 'util', 'fs', 'os', 'process'],
+  deps: {
+    neverBundle: ['electron', 'zustand', 'zustand/vanilla'],
+    alwaysBundle: [
+      '@zubridge/utils',
+      'weald',
+      '@wdio/logger',
+      'tty',
+      'util',
+      'fs',
+      'os',
+      'process',
+    ],
+    onlyBundle: false,
+  },
   outDir: 'dist',
   clean: false,
   sourcemap: false,

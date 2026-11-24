@@ -1,6 +1,6 @@
 const sharedConfig = {
   plugins: [],
-  external: ['zustand', 'zustand/vanilla'],
+  external: ['react', '@zubridge/utils', /^@tauri-apps\/api/, 'zustand', 'zustand/vanilla'],
 };
 
 export default [
