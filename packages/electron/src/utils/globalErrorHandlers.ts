@@ -2,13 +2,27 @@ import { debug } from '@zubridge/utils';
 import { ConfigurationError, ResourceManagementError } from '../errors/index.js';
 import { logZubridgeError } from './errorHandling.js';
 
+let mainProcessHandlers:
+  | {
+      rejection: (reason: unknown, promise: Promise<unknown>) => void;
+      exception: (error: Error) => void;
+    }
+  | undefined;
+
 /**
  * Sets up global error handlers for the main process to catch unhandled errors
  * and promise rejections that could otherwise crash the application
  */
 export function setupMainProcessErrorHandlers(): void {
-  // Handle unhandled promise rejections
-  process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  // Installing is idempotent: creating several bridges must not stack listeners on `process`.
+  if (
+    mainProcessHandlers &&
+    process.listeners('unhandledRejection').includes(mainProcessHandlers.rejection)
+  ) {
+    return;
+  }
+
+  const rejection = (reason: unknown, promise: Promise<unknown>): void => {
     const error = new ResourceManagementError(
       'Unhandled promise rejection detected',
       'promise',
@@ -22,10 +36,9 @@ export function setupMainProcessErrorHandlers(): void {
 
     logZubridgeError(error);
     debug('process:error', 'Unhandled promise rejection detected and logged');
-  });
+  };
 
-  // Handle uncaught exceptions
-  process.on('uncaughtException', (error: Error) => {
+  const exception = (error: Error): void => {
     const wrappedError = new ResourceManagementError(
       'Uncaught exception detected',
       'process',
@@ -44,7 +57,11 @@ export function setupMainProcessErrorHandlers(): void {
     setTimeout(() => {
       process.exit(1);
     }, 100);
-  });
+  };
+
+  process.on('unhandledRejection', rejection);
+  process.on('uncaughtException', exception);
+  mainProcessHandlers = { rejection, exception };
 
   debug('process', 'Global error handlers setup for main process');
 }
@@ -91,8 +108,11 @@ export function setupRendererErrorHandlers(): void {
  */
 export function cleanupGlobalErrorHandlers(): void {
   if (typeof process !== 'undefined') {
-    process.removeAllListeners('unhandledRejection');
-    process.removeAllListeners('uncaughtException');
+    if (mainProcessHandlers) {
+      process.removeListener('unhandledRejection', mainProcessHandlers.rejection);
+      process.removeListener('uncaughtException', mainProcessHandlers.exception);
+      mainProcessHandlers = undefined;
+    }
     debug('process', 'Global error handlers cleaned up for main process');
   }
 

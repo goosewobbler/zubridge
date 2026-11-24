@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import type { Action } from '@zubridge/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BatchAckPayload, BatchPayload } from '../../src/batching/types.js';

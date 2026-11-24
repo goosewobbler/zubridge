@@ -38,6 +38,10 @@ export class ActionQueueManager<S extends AnyState = AnyState> {
     debug('queue', 'Main action queue manager initialized');
   }
 
+  destroy(): void {
+    this.thunkRegistrationQueue.destroy();
+  }
+
   /**
    * Central method to process an action with proper routing and concurrency control
    * This is the main entry point for action processing
@@ -193,6 +197,9 @@ export let actionQueue: ActionQueueManager;
 export function initActionQueue<S extends AnyState>(
   stateManager: StateManager<S>,
 ): ActionQueueManager<S> {
+  if (actionQueue) {
+    actionQueue.destroy();
+  }
   actionQueue = new ActionQueueManager<S>(stateManager);
   return actionQueue as ActionQueueManager<S>;
 }

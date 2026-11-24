@@ -2,6 +2,7 @@ import type { AnyState, BackendBridge, StateManager, WrapperOrWebContents } from
 import { debug } from '@zubridge/utils';
 import { createMemoizedDequal } from '../deltas/memoizedDequal.js';
 import { initActionQueue } from '../main/actionQueue.js';
+import { resetMainThunkProcessor } from '../main/mainThunkProcessor.js';
 import { actionScheduler, thunkManager } from '../thunk/init.js';
 import type { CoreBridgeOptions } from '../types/bridge.js';
 import { setupMainProcessErrorHandlers } from '../utils/globalErrorHandlers.js';
@@ -147,11 +148,10 @@ export function createCoreBridge<State extends AnyState>(
 
       // Force cleanup of thunk processors to prevent memory leaks
       try {
-        const { resetMainThunkProcessor } = await import('../main/mainThunkProcessor.js');
         resetMainThunkProcessor();
         debug('core', 'MainThunkProcessor cleaned up');
       } catch (error) {
-        debug('core', 'MainThunkProcessor cleanup skipped (not imported):', error);
+        debug('core', 'MainThunkProcessor cleanup failed:', error);
       }
 
       // ActionScheduler may have timers or listeners

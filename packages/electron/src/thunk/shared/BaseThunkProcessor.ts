@@ -8,6 +8,9 @@ import type { ThunkProcessorOptions } from '../../types/thunk.js';
  * Base class for thunk processors that handles common functionality
  * like action completion tracking, timeouts, and queue management
  */
+// Node and browsers fire timers set above 2^31-1 ms after 1ms instead of the requested delay
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
+
 export abstract class BaseThunkProcessor {
   // Configuration options
   protected actionCompletionTimeoutMs: number;
@@ -69,20 +72,23 @@ export abstract class BaseThunkProcessor {
     debug('core', `[${this.logPrefix}] Set completion callback for action ${actionId}`);
 
     // Set up safety timeout
-    const safetyTimeout = setTimeout(() => {
-      if (this.actionCompletionCallbacks.has(actionId)) {
-        debug(
-          'core',
-          `[${this.logPrefix}] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
-        );
-        if (timeoutCallback) {
-          timeoutCallback();
-        } else {
-          // Default timeout behavior - complete with timeout indicator
-          this.completeActionInternal(actionId, { __timeout: true });
+    const safetyTimeout = setTimeout(
+      () => {
+        if (this.actionCompletionCallbacks.has(actionId)) {
+          debug(
+            'core',
+            `[${this.logPrefix}] Safety timeout triggered for action ${actionId} after ${this.actionCompletionTimeoutMs}ms`,
+          );
+          if (timeoutCallback) {
+            timeoutCallback();
+          } else {
+            // Default timeout behavior - complete with timeout indicator
+            this.completeActionInternal(actionId, { __timeout: true });
+          }
         }
-      }
-    }, this.actionCompletionTimeoutMs);
+      },
+      Math.min(this.actionCompletionTimeoutMs, MAX_TIMER_DELAY_MS),
+    );
 
     // Store timeout for cleanup
     this.actionTimeouts.set(actionId, safetyTimeout);
