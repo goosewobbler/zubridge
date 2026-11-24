@@ -51,7 +51,7 @@ Criteria for `zubridge-core` to reach 1.0 are in [UNIFFI_REFACTOR_PLAN.md §7](.
 
 ### 3.1 NAPI ABI (Path A consumers)
 
-`@zubridge/node-native` (and downstream Path A consumers) is built against a specific N-API version. The matrix below applies from the first 3.2 release onward (node-native first ships with Electron 3.2).
+`@zubridge/node-native` (and downstream Path A consumers) is built against a specific N-API version. The matrix below applies from the first node-native release onward (P5 of the refactor plan; Electron 3.2 is its first Electron consumer).
 
 | Surface                                           | Constraint                                                                                                                                                                                                                                           |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
