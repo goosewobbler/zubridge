@@ -186,7 +186,7 @@ pnpm typecheck           # TypeScript validation across all packages
 
 The **Unified Rust Core Refactor** (P1–P7) is in progress. [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md) is the single source for phase status: its §2 "Progress" table tracks what has landed and what is outstanding. Check it when touching Tauri or Rust code to understand where that code sits in the refactor sequence.
 
-Releases go through releasekit's standing PR (`releasekit.config.jsonc`). `@zubridge/tauri` and `tauri-plugin-zubridge` form a `fixed` version group: they always release together at one shared version, since they are the two halves of one wire protocol. `zubridge-core` keeps its own version line; don't untick it on the standing PR while the plugin is releasing (releasekit doesn't guard this yet: [releasekit#1100](https://github.com/goosewobbler/releasekit/issues/1100)). Mark breaking changes with `type(scope)!:` or a `BREAKING CHANGE:` footer on a commit that touches the package.
+Releases go through releasekit's standing PR (`releasekit.config.jsonc`). `@zubridge/tauri` and `tauri-plugin-zubridge` form a `fixed` version group: they always release together at one shared version, since they are the two halves of one wire protocol. `zubridge-core` keeps its own version line; don't untick it on the standing PR while the plugin is releasing. releasekit doesn't guard this ([releasekit#1100](https://github.com/goosewobbler/releasekit/issues/1100)), so `scripts/check-cargo-prerequisites.ts` fails the standing-PR publish before anything ships. Mark breaking changes with `type(scope)!:` or a `BREAKING CHANGE:` footer on a commit that touches the package.
 
 ## Common Tasks
 
