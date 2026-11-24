@@ -46,7 +46,6 @@ jobs:
           repo: ${{ github.repository }}
           project-dir: .
           verbose: true
-          skip-checkout: "true"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
