@@ -10,6 +10,12 @@ interface CounterActionsProps {
   onDistinctive?: (method: CounterMethod) => void;
   isLoading?: boolean;
   className?: string;
+  /**
+   * Whether the platform can run a thunk in its main process. Only Electron can
+   * (its main process is Node/JS); Tauri's main process is native Rust with no
+   * JS runtime, so the main-thunk buttons are hidden there. Defaults to false.
+   */
+  supportsMainThunk?: boolean;
 }
 
 /**
@@ -22,6 +28,7 @@ export const CounterActions: React.FC<CounterActionsProps> = ({
   onDistinctive,
   isLoading = false,
   className = '',
+  supportsMainThunk = false,
 }) => {
   const rootClass = clsx('max-w-[theme(--container-width)] mx-auto my-5 mt-[60px]', className);
 
@@ -71,22 +78,26 @@ export const CounterActions: React.FC<CounterActionsProps> = ({
         >
           Double (Renderer Slow Thunk)
         </Button>
-        <Button
-          onClick={() => onDouble('main-thunk')}
-          disabled={isLoading}
-          aria-label="Double counter using main process thunk"
-          className="w-full"
-        >
-          Double (Main Thunk)
-        </Button>
-        <Button
-          onClick={() => onDouble('slow-main-thunk')}
-          disabled={isLoading}
-          aria-label="Double counter using slow main process thunk"
-          className="w-full"
-        >
-          Double (Main Slow Thunk)
-        </Button>
+        {supportsMainThunk && (
+          <>
+            <Button
+              onClick={() => onDouble('main-thunk')}
+              disabled={isLoading}
+              aria-label="Double counter using main process thunk"
+              className="w-full"
+            >
+              Double (Main Thunk)
+            </Button>
+            <Button
+              onClick={() => onDouble('slow-main-thunk')}
+              disabled={isLoading}
+              aria-label="Double counter using slow main process thunk"
+              className="w-full"
+            >
+              Double (Main Slow Thunk)
+            </Button>
+          </>
+        )}
         {onDistinctive && (
           <Button
             onClick={() => onDistinctive('thunk')}
