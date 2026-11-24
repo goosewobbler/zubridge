@@ -1,9 +1,6 @@
 // Releasekit configuration. Standing-PR release strategy mirroring the pattern
 // from wdio-desktop-mobile (feat/standing-pr-releases). See UNIFFI_REFACTOR_PLAN.md
 // §3 P4 for the release flow this drives.
-//
-// Auto-discovered alongside releasekit.config.json (.jsonc is preferred so this
-// file can carry inline rationale for non-obvious choices).
 {
   "$schema": "https://goosewobbler.github.io/releasekit/schema.json",
   "git": {
@@ -33,6 +30,9 @@
         "sync": "fixed"
       }
     },
+    "primaryPackages": [
+      "@zubridge/*"
+    ],
     "cargo": {
       "enabled": true
     },
@@ -95,7 +95,7 @@
       // without categorisation or prose polish.
       "llm": {
         "provider": "ollama",
-        "model": "minimax-m2.7:cloud",
+        "model": "minimax-m3.1-flash:cloud",
         "baseURL": "https://ollama.com/api",
         "tasks": {
           "enhance": true,
