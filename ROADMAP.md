@@ -56,7 +56,7 @@ Per-package release history lives in each package's `CHANGELOG.md`.
 
 ## 3. In progress: Unified Rust core refactor
 
-Unifies platform implementations onto a single Rust crate (`zubridge-core`) compiled with conditional features. End-state: Electron 3.1 + Tauri v2 both on the shared core. Full detail in [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md).
+Unifies platform implementations onto a single Rust crate (`zubridge-core`) compiled with conditional features. End-state: Electron 3.2 + Tauri v2 both on the shared core. Full detail in [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md).
 
 | Phase | Outputs                                                        |
 | ----- | -------------------------------------------------------------- |
@@ -65,8 +65,8 @@ Unifies platform implementations onto a single Rust crate (`zubridge-core`) comp
 | P3    | Absorb `packages/middleware/` into `core::middleware`          |
 | P4    | Release Tauri v2.0 on unified core                             |
 | P5    | NAPI-RS bindings + `@zubridge/node-native`                     |
-| P6    | Electron 3.1 main process migrates to NAPI core                |
-| P7    | Synchronized Electron 3.1 + Tauri 2.x stable release           |
+| P6    | Electron 3.2 main process migrates to NAPI core                |
+| P7    | Synchronized Electron 3.2 + Tauri 2.x stable release           |
 
 P7 unlocks the framework integrations below.
 
