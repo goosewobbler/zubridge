@@ -54,8 +54,12 @@ function normalizeKeys(keys?: string[]): string[] | '*' {
  */
 export function getPartialState<S>(state: S, keys?: string[]): Partial<S> {
   const normalized = normalizeKeys(keys);
-  if (normalized === '*') return { ...state };
-  if (normalized.length === 0) return {};
+  if (normalized === '*') {
+    return { ...state };
+  }
+  if (normalized.length === 0) {
+    return {};
+  }
   const result: Partial<S> = {};
   for (const key of normalized) {
     const value = deepGet(state as Record<string, unknown>, key);
@@ -97,7 +101,9 @@ function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): bo
   });
 
   // If prev is undefined, this is initial state
-  if (prev === undefined) return true;
+  if (prev === undefined) {
+    return true;
+  }
 
   // Even if same reference, we should check if values actually changed
   const normalized = normalizeKeys(keys);
@@ -115,7 +121,9 @@ function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): bo
     debug('subscription', '[hasRelevantChange] Full state subscription - notifying');
     return true;
   }
-  if (normalized.length === 0) return false;
+  if (normalized.length === 0) {
+    return false;
+  }
 
   // Compare actual values
   return normalized.some((key) => {
@@ -258,7 +266,9 @@ export class SubscriptionManager<S> {
 
     // For each subscription for this window, remove matching keys
     for (const [id, sub] of this.subscriptions) {
-      if (sub.windowId !== windowId) continue;
+      if (sub.windowId !== windowId) {
+        continue;
+      }
 
       // If it's a '*' subscription, keep it
       if (sub.keys === undefined) {
@@ -328,7 +338,9 @@ export class SubscriptionManager<S> {
     const allKeys: Set<string> = new Set();
 
     for (const sub of this.subscriptions.values()) {
-      if (sub.windowId !== windowId) continue;
+      if (sub.windowId !== windowId) {
+        continue;
+      }
 
       // If any subscription is '*', the window is subscribed to everything
       if (sub.keys === undefined) {

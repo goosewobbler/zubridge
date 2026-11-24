@@ -440,7 +440,9 @@ describe('Advanced State Synchronization', () => {
           targetWindowIndex < CORE_WINDOW_COUNT;
           targetWindowIndex++
         ) {
-          if (targetWindowIndex === sourceWindowIndex) continue;
+          if (targetWindowIndex === sourceWindowIndex) {
+            continue;
+          }
 
           await switchToWindow(targetWindowIndex);
           console.log(

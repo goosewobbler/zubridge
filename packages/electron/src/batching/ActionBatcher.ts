@@ -401,7 +401,11 @@ export class ActionBatcher {
  * nested thunks, assigning NORMAL_THUNK_ACTION (50) to non-root thunks.
  */
 export function calculatePriority(action: Action): number {
-  if (action.__immediate) return PRIORITY_LEVELS.IMMEDIATE;
-  if (action.__thunkParentId) return PRIORITY_LEVELS.ROOT_THUNK_ACTION;
+  if (action.__immediate) {
+    return PRIORITY_LEVELS.IMMEDIATE;
+  }
+  if (action.__thunkParentId) {
+    return PRIORITY_LEVELS.ROOT_THUNK_ACTION;
+  }
   return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
 }

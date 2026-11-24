@@ -34,9 +34,15 @@ function detectPlatform(): 'linux' | 'darwin' | 'win32' | 'unknown' {
   // In sandbox mode, PLATFORM is not available
   // Use navigator.userAgent as a fallback
   const ua = navigator.userAgent.toLowerCase();
-  if (ua.includes('win')) return 'win32';
-  if (ua.includes('mac')) return 'darwin';
-  if (ua.includes('linux')) return 'linux';
+  if (ua.includes('win')) {
+    return 'win32';
+  }
+  if (ua.includes('mac')) {
+    return 'darwin';
+  }
+  if (ua.includes('linux')) {
+    return 'linux';
+  }
   return 'unknown';
 }
 
@@ -118,10 +124,14 @@ export const preloadBridge = <S extends AnyState>(
 
     registerIpcListener(IpcChannel.BATCH_ACK, (_event: IpcRendererEvent, payload: unknown) => {
       const ackPayload = payload as BatchAckPayload;
-      if (!ackPayload?.batchId) return;
+      if (!ackPayload?.batchId) {
+        return;
+      }
 
       const pending = pendingBatches.get(ackPayload.batchId);
-      if (!pending) return;
+      if (!pending) {
+        return;
+      }
 
       clearTimeout(pending.timeoutId);
       pendingBatches.delete(ackPayload.batchId);
@@ -756,7 +766,9 @@ export const preloadBridge = <S extends AnyState>(
 
           // Check if a state key exists in an object
           stateKeyExists: (state: unknown, key: string): boolean => {
-            if (!key || !state || typeof state !== 'object') return false;
+            if (!key || !state || typeof state !== 'object') {
+              return false;
+            }
 
             // Handle dot notation by traversing the object
             const parts = key.split('.');

@@ -171,7 +171,9 @@ export const safelySendToWindow = (
         webContents.once('did-finish-load', () => {
           const messages = pendingMessages.get(wcId);
           pendingMessages.delete(wcId);
-          if (!messages) return;
+          if (!messages) {
+            return;
+          }
           try {
             if (!webContents.isDestroyed()) {
               debug(

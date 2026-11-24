@@ -14,7 +14,9 @@ export interface BaseState {
  * Type guard to check if a state object conforms to the BaseState interface
  */
 export function isBaseState(state: unknown): state is BaseState {
-  if (!state || typeof state !== 'object') return false;
+  if (!state || typeof state !== 'object') {
+    return false;
+  }
 
   const s = state as Record<string, unknown>;
   const window = s.window;

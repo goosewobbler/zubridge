@@ -137,7 +137,9 @@ describe('bridge.ts', () => {
     (getWebContents as Mock).mockImplementation((id) => ({ id }) as unknown as WebContents);
     (createWebContentsTracker as Mock).mockReturnValue(mockTracker);
     (prepareWebContents as Mock).mockImplementation((wrappers) => {
-      if (!wrappers) return [];
+      if (!wrappers) {
+        return [];
+      }
       return wrappers.map((w) => {
         const webContents = 'webContents' in w ? w.webContents : w;
         return { id: webContents.id, isDestroyed: () => false } as unknown as WebContents;
@@ -729,8 +731,12 @@ describe('bridge.ts', () => {
       const webContents2 = createMockWebContents(102);
 
       (getWebContents as ReturnType<typeof vi.fn>).mockImplementation((wrapper) => {
-        if (wrapper === wrapper1) return webContents1;
-        if (wrapper === wrapper2) return webContents2;
+        if (wrapper === wrapper1) {
+          return webContents1;
+        }
+        if (wrapper === wrapper2) {
+          return webContents2;
+        }
         return undefined;
       });
 
@@ -950,9 +956,15 @@ describe('bridge.ts', () => {
       const webContents3 = createMockWebContents(503);
 
       (getWebContents as ReturnType<typeof vi.fn>).mockImplementation((wrapper) => {
-        if (wrapper === wrapper1) return webContents1;
-        if (wrapper === wrapper2) return webContents2;
-        if (wrapper === wrapper3) return webContents3;
+        if (wrapper === wrapper1) {
+          return webContents1;
+        }
+        if (wrapper === wrapper2) {
+          return webContents2;
+        }
+        if (wrapper === wrapper3) {
+          return webContents3;
+        }
         return undefined;
       });
 
@@ -1018,8 +1030,12 @@ describe('bridge.ts', () => {
       const webContents2 = createMockWebContents(602);
 
       (getWebContents as ReturnType<typeof vi.fn>).mockImplementation((wrapper) => {
-        if (wrapper === wrapper1) return webContents1;
-        if (wrapper === wrapper2) return webContents2;
+        if (wrapper === wrapper1) {
+          return webContents1;
+        }
+        if (wrapper === wrapper2) {
+          return webContents2;
+        }
         return undefined;
       });
 

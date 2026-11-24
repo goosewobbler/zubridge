@@ -92,7 +92,9 @@ export async function isSubscribedToKey(key: string): Promise<boolean> {
 }
 
 export async function validateStateAccess(key: string, action?: Action): Promise<void> {
-  if (!key) return;
+  if (!key) {
+    return;
+  }
 
   if (action && action.__bypassAccessControl === true) {
     debug(
@@ -114,7 +116,9 @@ export async function validateStateAccess(key: string, action?: Action): Promise
 }
 
 export async function validateStateAccessBatch(keys: string[], action?: Action): Promise<void> {
-  if (!keys || keys.length === 0) return;
+  if (!keys || keys.length === 0) {
+    return;
+  }
 
   if (action && action.__bypassAccessControl === true) {
     debug(
@@ -150,7 +154,9 @@ export async function validateStateAccessBatch(keys: string[], action?: Action):
 }
 
 export function stateKeyExists(state: Record<string, unknown>, key: string): boolean {
-  if (!key || !state) return false;
+  if (!key || !state) {
+    return false;
+  }
 
   const parts = key.split('.');
   let current: unknown = state;

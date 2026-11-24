@@ -78,7 +78,9 @@ export class DeltaCalculator<S> {
     const rootsToPromote = new Set<string>();
     const childrenToSuppress = new Set<string>();
     for (const key of removed) {
-      if (!key.includes('.')) continue;
+      if (!key.includes('.')) {
+        continue;
+      }
       const root = key.split('.')[0];
       if (deepGet((fullNext ?? next) as Record<string, unknown>, root) === undefined) {
         rootsToPromote.add(root);
@@ -87,7 +89,9 @@ export class DeltaCalculator<S> {
     }
     const finalRemoved = removed.filter((k) => !childrenToSuppress.has(k));
     for (const root of rootsToPromote) {
-      if (!finalRemoved.includes(root)) finalRemoved.push(root);
+      if (!finalRemoved.includes(root)) {
+        finalRemoved.push(root);
+      }
     }
 
     const hasChanges = Object.keys(changed).length > 0;
@@ -147,8 +151,12 @@ export class DeltaCalculator<S> {
    *  with JSON serialization semantics. Deleted keys are represented via
    *  the `removed` array in the delta, not as undefined values here. */
   private getPartialState(state: S, normalizedKeys: NormalizedKeys): Partial<S> {
-    if (normalizedKeys === '*') return { ...state };
-    if (normalizedKeys.length === 0) return {};
+    if (normalizedKeys === '*') {
+      return { ...state };
+    }
+    if (normalizedKeys.length === 0) {
+      return {};
+    }
 
     const result: Partial<S> = {};
     for (const key of normalizedKeys) {

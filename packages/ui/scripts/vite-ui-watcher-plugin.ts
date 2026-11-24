@@ -32,15 +32,21 @@ export function watchUIPackage(): Plugin {
       // Listen for changes to UI package files
       server.watcher.on('change', async (filePath: string) => {
         // Only handle changes to UI package files
-        if (!filePath.includes(uiSourcePath)) return;
+        if (!filePath.includes(uiSourcePath)) {
+          return;
+        }
 
         // Debounce multiple changes within a short timeframe
         const currentTime = Date.now();
-        if (currentTime - lastChangedTime < 300) return;
+        if (currentTime - lastChangedTime < 300) {
+          return;
+        }
         lastChangedTime = currentTime;
 
         // Skip if already building
-        if (isBuildingUI) return;
+        if (isBuildingUI) {
+          return;
+        }
 
         console.log(
           `[watch-ui-package] UI package file changed: ${path.relative(uiSourcePath, filePath)}`,

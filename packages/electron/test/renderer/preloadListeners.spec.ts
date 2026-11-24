@@ -7,7 +7,9 @@ describe('createIPCManager', () => {
     const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
     return {
       on: vi.fn((channel: string, listener: (...args: unknown[]) => void) => {
-        if (!listeners.has(channel)) listeners.set(channel, new Set());
+        if (!listeners.has(channel)) {
+          listeners.set(channel, new Set());
+        }
         listeners.get(channel)?.add(listener);
       }),
       removeListener: vi.fn((channel: string, listener: (...args: unknown[]) => void) => {

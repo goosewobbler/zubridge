@@ -174,7 +174,9 @@ export async function findWindowBySubscription(
         subs = await getWindowSubscriptions();
 
         // If we got valid subscription info, break out of retry loop
-        if (subs !== null) break;
+        if (subs !== null) {
+          break;
+        }
 
         // Linux-specific: If subscription info is null, try refreshing handles
         if (process.platform === 'linux' && attempt < maxAttempts - 1) {

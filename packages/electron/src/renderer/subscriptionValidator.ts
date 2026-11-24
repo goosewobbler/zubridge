@@ -111,7 +111,9 @@ export async function isSubscribedToKey(key: string): Promise<boolean> {
  * @throws Error if window is not subscribed to the key and not bypassing
  */
 export async function validateStateAccess(key: string, action?: Action): Promise<void> {
-  if (!key) return; // No key means no validation needed
+  if (!key) {
+    return; // No key means no validation needed
+  }
 
   // Check if the action has the bypass access control flag set
   if (action && action.__bypassAccessControl === true) {
@@ -140,7 +142,9 @@ export async function validateStateAccess(key: string, action?: Action): Promise
  * @throws Error if window is not subscribed to any of the keys and not bypassing
  */
 export async function validateStateAccessBatch(keys: string[], action?: Action): Promise<void> {
-  if (!keys || keys.length === 0) return;
+  if (!keys || keys.length === 0) {
+    return;
+  }
 
   // Check if the action has the bypass access control flag set
   if (action && action.__bypassAccessControl === true) {
@@ -191,7 +195,9 @@ export function stateKeyExists(state: Record<string, unknown>, key: string): boo
   }
 
   // Fallback implementation
-  if (!key || !state) return false;
+  if (!key || !state) {
+    return false;
+  }
 
   // Handle dot notation by traversing the object
   const parts = key.split('.');

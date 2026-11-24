@@ -248,8 +248,12 @@ export class MainThunkProcessor extends BaseThunkProcessor {
     actionObj.__isFromMainProcess = true;
 
     // Attach keys/force to the action for downstream processing
-    if (options?.keys) actionObj.__keys = options.keys;
-    if (options?.immediate) actionObj.__immediate = options.immediate;
+    if (options?.keys) {
+      actionObj.__keys = options.keys;
+    }
+    if (options?.immediate) {
+      actionObj.__immediate = options.immediate;
+    }
 
     // Process the action
     debug('core', `[MAIN_THUNK] Processing standalone action: ${actionObj.type}`);
@@ -308,9 +312,15 @@ export class MainThunkProcessor extends BaseThunkProcessor {
     }
 
     // Attach keys/force to the action for downstream processing
-    if (options?.keys) actionObj.__keys = options.keys;
-    if (options?.immediate) actionObj.__immediate = options.immediate;
-    if (options?.bypassAccessControl) actionObj.__bypassAccessControl = options.bypassAccessControl;
+    if (options?.keys) {
+      actionObj.__keys = options.keys;
+    }
+    if (options?.immediate) {
+      actionObj.__immediate = options.immediate;
+    }
+    if (options?.bypassAccessControl) {
+      actionObj.__bypassAccessControl = options.bypassAccessControl;
+    }
 
     // Mark as from main process (use a special source window ID for main process)
     const MAIN_PROCESS_WINDOW_ID = 0;

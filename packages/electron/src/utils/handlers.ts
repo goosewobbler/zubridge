@@ -59,7 +59,9 @@ function manageCacheSize(
     let removedCount = 0;
 
     for (const key of handlersCache.keys()) {
-      if (removedCount >= entriesToRemove) break;
+      if (removedCount >= entriesToRemove) {
+        break;
+      }
       handlersCache.delete(key);
       removedCount++;
     }
