@@ -30,6 +30,7 @@
     // plugin's requirement whenever core releases. Nothing stops core being unticked on the
     // standing PR while the plugin still releases (the prerequisite warning only fires for
     // targeted releases), and that would publish the plugin against an unreleased core.
+    // https://github.com/goosewobbler/releasekit/issues/1100
     "groups": {
       "tauri": {
         "packages": [
