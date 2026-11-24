@@ -215,16 +215,6 @@ describe('Zustand Adapter', () => {
       await result.completion;
     });
 
-    it('should handle middleware option', () => {
-      const mockMiddleware = vi.fn();
-
-      const adapter = createZustandAdapter(store, {
-        middleware: mockMiddleware,
-      });
-
-      expect(adapter).toBeDefined();
-    });
-
     it('should handle actions with no handlers by returning sync result', () => {
       const adapter = createZustandAdapter(store);
       const action: Action = { type: 'UNKNOWN_ACTION', payload: 'test' };

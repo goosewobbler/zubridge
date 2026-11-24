@@ -338,18 +338,6 @@ describe('Redux Adapter', () => {
       expect(store.dispatch).not.toHaveBeenCalled();
     });
 
-    it('should handle middleware option', () => {
-      const mockMiddleware = vi.fn();
-
-      const adapter = createReduxAdapter(store, {
-        middleware: mockMiddleware,
-      });
-
-      // The middleware should be passed through but not directly tested here
-      // since it's more of an integration concern
-      expect(adapter).toBeDefined();
-    });
-
     it('should handle actions with no custom handlers by dispatching to Redux', () => {
       const action: Action = { type: 'NO_HANDLER_ACTION', payload: 'test-data' };
 

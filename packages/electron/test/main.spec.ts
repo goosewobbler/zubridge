@@ -138,9 +138,8 @@ describe('main.ts exports', () => {
       // Arrange
       const store = createMockStore();
       const options = {
-        middleware: {
-          processAction: vi.fn(),
-          setState: vi.fn(),
+        handlers: {
+          increment: vi.fn(),
         },
       };
       const mockCoreBridge = createMockCoreBridge();
