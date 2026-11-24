@@ -1,4 +1,4 @@
-import { debug } from '@zubridge/utils';
+import { debug, isDebugEnabled } from '@zubridge/utils';
 import { dequal } from 'dequal';
 import { deepGet } from '../utils/deepGet.js';
 
@@ -89,12 +89,19 @@ function setDeep(obj: Record<string, unknown>, path: string, value: unknown): vo
 /**
  * Checks if any of the subscribed keys have changed between prev and next state.
  */
-function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): boolean {
-  debug('subscription', '[hasRelevantChange] Comparing states:', {
-    prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
-    next: JSON.stringify(next),
-    keys,
-  });
+function hasRelevantChange<S>(
+  prev: S | undefined,
+  next: S,
+  keys: string[] | undefined,
+  isEqual: (a: unknown, b: unknown) => boolean,
+): boolean {
+  if (isDebugEnabled()) {
+    debug('subscription', '[hasRelevantChange] Comparing states:', {
+      prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
+      next: JSON.stringify(next),
+      keys,
+    });
+  }
 
   // If prev is undefined, this is initial state
   if (prev === undefined) return true;
@@ -121,7 +128,7 @@ function hasRelevantChange<S>(prev: S | undefined, next: S, keys?: string[]): bo
   return normalized.some((key) => {
     const prevValue = deepGet(prev as Record<string, unknown> & ({} | null), key);
     const nextValue = deepGet(next as Record<string, unknown>, key);
-    const changed = !dequal(prevValue, nextValue);
+    const changed = !isEqual(prevValue, nextValue);
     debug('subscription', `[hasRelevantChange] Comparing key ${key}:`, {
       prevValue,
       nextValue,
@@ -281,20 +288,26 @@ export class SubscriptionManager<S> {
   /**
    * Notify all subscribers whose keys have changed, passing the relevant partial state.
    */
-  notify(prev: S | undefined, next: S): void {
+  notify(
+    prev: S | undefined,
+    next: S,
+    isEqual: (a: unknown, b: unknown) => boolean = dequal,
+  ): void {
     debug(
       'subscription',
       `[notify] Starting notification with ${this.subscriptions.size} subscribers`,
     );
-    debug('subscription', '[notify] States:', {
-      prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
-      next: JSON.stringify(next),
-    });
+    if (isDebugEnabled()) {
+      debug('subscription', '[notify] States:', {
+        prev: prev === undefined ? 'undefined' : JSON.stringify(prev),
+        next: JSON.stringify(next),
+      });
+    }
 
     for (const { keys, callback, windowId } of this.subscriptions.values()) {
       debug('subscription', `[notify] Checking window ${windowId} with keys:`, keys);
 
-      if (hasRelevantChange(prev, next, keys)) {
+      if (hasRelevantChange(prev, next, keys, isEqual)) {
         const partialState = getPartialState(next, keys);
         debug('subscription', `[notify] Notifying window ${windowId} with state:`, partialState);
         // Always invoke the callback when a relevant change was detected —
