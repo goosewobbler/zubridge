@@ -17,13 +17,16 @@ export default defineConfig({
   entry: ['src/renderer.ts'],
   format: ['esm', 'cjs'],
   dts: true,
-  external: (id) => {
-    if (externalizeUnenvRuntime(id)) {
-      return true;
-    }
-    return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
+  deps: {
+    neverBundle: (id) => {
+      if (externalizeUnenvRuntime(id)) {
+        return true;
+      }
+      return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
+    },
+    alwaysBundle: ['@zubridge/utils', 'weald', '@wdio/logger'],
+    onlyBundle: false,
   },
-  noExternal: ['@zubridge/utils', 'weald', '@wdio/logger'],
   outDir: 'dist',
   clean: true,
   sourcemap: false,

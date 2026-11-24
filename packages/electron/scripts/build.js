@@ -3,7 +3,9 @@ import { spawn } from 'node:child_process';
 
 function runTsdown(args = []) {
   return new Promise((resolve, reject) => {
-    const tsdown = spawn('tsdown', args, {
+    // A single command string with `shell: true`: passing an args array alongside the shell
+    // option is deprecated (DEP0190) because the arguments aren't escaped.
+    const tsdown = spawn(['tsdown', ...args].join(' '), {
       stdio: 'inherit',
       shell: true,
       env: process.env,

@@ -11,7 +11,9 @@ export default defineConfig({
   clean: true,
   sourcemap: false,
   minify: false,
-  external: ['zustand', 'electron'],
+  deps: {
+    neverBundle: ['zustand', 'electron'],
+  },
   outExtensions({ format }) {
     return {
       js: format === 'cjs' ? '.cjs' : '.js',

@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['test/**/*.spec.ts{,x}'],
-    environment: 'jsdom',
+    environment: 'node',
     setupFiles: ['./test/setup.ts'],
     coverage: {
       enabled: true,
@@ -23,7 +23,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@zubridge/types': resolve(__dirname, '../types/dist/index.js'),
+      '@zubridge/types': resolve(import.meta.dirname, '../types/dist/index.js'),
     },
   },
 });
