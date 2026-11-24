@@ -48,10 +48,7 @@ export class ThunkRegistrationQueue {
     this.thunkManager.on(ThunkManagerEvent.THUNK_STARTED, this.onThunkStarted);
   }
 
-  /**
-   * Stop listening to the thunk manager. The manager is a shared singleton, so a replaced
-   * queue would otherwise keep reacting to events and accumulate listeners.
-   */
+  // The manager is shared, so a discarded queue must unsubscribe or its listeners accumulate.
   public destroy(): void {
     this.thunkManager.removeListener(
       ThunkManagerEvent.ROOT_THUNK_COMPLETED,

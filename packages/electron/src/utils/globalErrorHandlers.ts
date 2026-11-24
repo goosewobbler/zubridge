@@ -14,7 +14,7 @@ let mainProcessHandlers:
  * and promise rejections that could otherwise crash the application
  */
 export function setupMainProcessErrorHandlers(): void {
-  // Installing is idempotent: creating several bridges must not stack listeners on `process`.
+  // Creating several bridges must not stack listeners on `process`.
   if (
     mainProcessHandlers &&
     process.listeners('unhandledRejection').includes(mainProcessHandlers.rejection)
