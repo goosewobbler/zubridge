@@ -1,5 +1,13 @@
 name: Release Preview
 
+# Computes the release preview and uploads it as an artifact instead of posting it.
+# A `pull_request` run from a fork gets a read-only token, so posting from here
+# would 403 on every external PR.
+#
+# release-preview-comment.yml posts it from a `workflow_run`, which has a writable
+# token and never runs PR code. That split is also why this isn't simply
+# `pull_request_target`.
+
 on:
   pull_request:
     branches: [main]
@@ -10,7 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  pull-requests: write
   contents: read
 
 env:
@@ -19,19 +26,22 @@ env:
 jobs:
   preview:
     name: Release Preview
+    # Skip the standing PR here; releasekit would only skip it after a full checkout.
+    if: ${{ github.head_ref != 'release/next' || github.event.pull_request.head.repo.full_name != github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.head_ref }}
 
       - name: Release Preview
+        id: preview
         uses: goosewobbler/releasekit@v0.47.1
         with:
           node-version: "24"
           mode: preview
+          preview-dry-run: true
           pr: ${{ github.event.pull_request.number }}
           repo: ${{ github.repository }}
           project-dir: .
@@ -39,3 +49,29 @@ jobs:
           skip-checkout: "true"
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      # Stage only the body. The comment workflow finds the PR from the run's head
+      # SHA; a PR number here would let a fork aim the comment at another PR.
+      - name: Stage preview comment
+        id: stage
+        shell: bash
+        env:
+          PREVIEW_MARKDOWN: ${{ steps.preview.outputs.preview-markdown }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_MARKDOWN//[[:space:]]/}" ]; then
+            echo "No preview content produced; nothing to post."
+            echo "has_preview=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p preview
+          printf '%s\n' "$PREVIEW_MARKDOWN" > preview/preview.md
+          echo "has_preview=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preview artifact
+        if: steps.stage.outputs.has_preview == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-preview
+          path: preview/
+          retention-days: 1
