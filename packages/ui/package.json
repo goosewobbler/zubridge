@@ -65,7 +65,7 @@
     "shx": "^0.4.0",
     "tailwindcss": "^4.3.5",
     "tsdown": "^0.23.7",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.8"
   },
   "dependencies": {

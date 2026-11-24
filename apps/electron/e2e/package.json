@@ -60,6 +60,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "@wdio/electron-service": "next",
     "@zubridge/types": "workspace:*",
     "autoprefixer": "^10.7.0",
     "cross-env": "^10.1.0",
@@ -68,8 +69,7 @@
     "electron-vite": "6.0.0",
     "postcss": "^8.5.33",
     "tailwindcss": "^4.3.5",
-    "typescript": "^5.9.3",
-    "vite": "^8.3.8",
-    "@wdio/electron-service": "next"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
   }
 }

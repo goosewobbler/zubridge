@@ -61,7 +61,7 @@
     "rollup": "^4.68.8",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^5.1.1"
   },
   "files": [
