@@ -293,18 +293,21 @@ describe('BaseThunkProcessor', () => {
       expect(zeroTimeoutProcessor.testActionTimeouts.has(actionId)).toBe(true);
     });
 
-    it('should handle very large timeout values', () => {
-      const largeTimeoutProcessor = new TestThunkProcessor({
-        actionCompletionTimeoutMs: Number.MAX_SAFE_INTEGER,
-        maxQueueSize: 10,
-      });
+    it('should not fire immediately for timeout values beyond the timer limit', () => {
+      vi.useFakeTimers();
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+      try {
+        const largeTimeoutProcessor = new TestThunkProcessor({
+          actionCompletionTimeoutMs: Number.MAX_SAFE_INTEGER,
+          maxQueueSize: 10,
+        });
 
-      const actionId = 'large-timeout-action';
-      const callback = vi.fn();
+        largeTimeoutProcessor.testSetupActionCompletion('large-timeout-action', vi.fn());
 
-      expect(() =>
-        largeTimeoutProcessor.testSetupActionCompletion(actionId, callback),
-      ).not.toThrow();
+        expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 2 ** 31 - 1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should handle string actions with complex payloads', () => {
