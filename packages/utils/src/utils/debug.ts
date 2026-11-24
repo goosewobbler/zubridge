@@ -34,8 +34,8 @@ const isWDIOTest = (): boolean => {
   );
 };
 
-// Check if DEBUG environment variable or localStorage flag is set
-const isDebugEnabled = (): boolean => {
+// Exported so callers can skip building expensive debug arguments, like a serialized store.
+export const isDebugEnabled = (): boolean => {
   // Check environment variable (Node.js/Electron main process)
   if (typeof process !== 'undefined' && process.env?.DEBUG) {
     const debugPattern = process.env.DEBUG;

@@ -57,6 +57,7 @@ vi.mock('../../src/utils/windows.js', () => ({
 // Mock the debug utility
 vi.mock('@zubridge/utils', () => ({
   debug: vi.fn(), // Simplified mock
+  isDebugEnabled: () => false,
 }));
 
 // Mock console.error for error tests
