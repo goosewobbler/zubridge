@@ -13,7 +13,7 @@ const fakeWindow = (id: number) => ({ id, isDestroyed: () => false, once: vi.fn(
 
 describe('state broadcast', () => {
   // Comparisons are cached per object pair, which is only safe on sanitized copies.
-  it('sends every window a nested value the store changed in place', () => {
+  it('should send every window a nested value the store changed in place', () => {
     const store = createStore(() => ({ tick: 0, user: { name: 'Ada' } }));
     const all = fakeWindow(1);
     const userOnly = fakeWindow(2);

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMemoizedDequal } from '../../src/deltas/memoizedDequal.js';
 
 describe('createMemoizedDequal', () => {
-  it('deep-compares each pair of objects once', () => {
+  it('should deep-compare each pair of objects once', () => {
     const isEqual = createMemoizedDequal();
     let reads = 0;
     const prev = {
@@ -20,7 +20,7 @@ describe('createMemoizedDequal', () => {
     expect(reads).toBe(firstReads);
   });
 
-  it('keeps separate results for different pairs', () => {
+  it('should keep separate results for different pairs', () => {
     const isEqual = createMemoizedDequal();
     const prev = { a: 1 };
 

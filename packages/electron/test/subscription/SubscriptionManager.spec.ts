@@ -366,7 +366,7 @@ describe('SubscriptionManager debug serialization', () => {
     vi.unstubAllEnvs();
   });
 
-  it('serializes state for debug logs only when they are on', () => {
+  it('should serialize state for debug logs only when they are on', () => {
     const manager = new SubscriptionManager<Record<string, unknown>>();
     manager.subscribe(undefined, vi.fn(), 1);
     const stringify = vi.spyOn(JSON, 'stringify');
