@@ -80,8 +80,12 @@ async function setup(options?: PreloadOptions, ipcOverrides?: Record<string, unk
       }
       return value;
     }
-    if (channel === 'zubridge:get-window-id') return 7;
-    if (channel === 'zubridge:get-state') return { counter: 1 };
+    if (channel === 'zubridge:get-window-id') {
+      return 7;
+    }
+    if (channel === 'zubridge:get-state') {
+      return { counter: 1 };
+    }
     return undefined;
   });
 
