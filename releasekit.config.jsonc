@@ -9,9 +9,9 @@
   },
   "version": {
     "preset": "conventionalcommits",
-    // zubridge-core is pre-1.0: an inferred breaking change bumps its minor, not its major. An
-    // explicit `bump:major` label still graduates it to 1.0, so keep one off a standing PR that
-    // carries core.
+    // Applies to every 0.x package (zubridge-core today, @zubridge/node-native from P5): an
+    // inferred breaking change bumps the minor, not the major. An explicit `bump:major` label
+    // still takes a 0.x package to 1.0, so keep one off a standing PR that carries one.
     "zeroMajor": "spec",
     "sync": false,
     "versionPrefix": "v",
@@ -27,9 +27,9 @@
     // zubridge-core stays out of the group: a group shares one version, and core has its own
     // pre-1.0 line plus, from P5, a second consumer (@zubridge/node-native). The plugin's
     // versioned path dependency on core keeps them in step instead: releasekit raises the
-    // plugin's requirement whenever core releases. Nothing stops core being unticked on the
-    // standing PR while the plugin still releases (the prerequisite warning only fires for
-    // targeted releases), and that would publish the plugin against an unreleased core.
+    // plugin's requirement whenever core releases. releasekit doesn't stop the plugin releasing
+    // on the standing PR without core, so scripts/check-cargo-prerequisites.ts fails the publish
+    // up front if the core version the plugin needs isn't on crates.io or in the release.
     // https://github.com/goosewobbler/releasekit/issues/1100
     "groups": {
       "tauri": {
@@ -91,9 +91,10 @@
       "summaryTable": true
     },
     // PR scope labels → comma-separated list of packages eligible to bump.
-    // scope:tauri covers the whole Tauri stack: the fixed pair plus zubridge-core, so a feeder
-    // PR that also changed core can't release the plugin against an unpublished core. Core only
-    // bumps if it has commits of its own.
+    // scope:tauri covers the whole Tauri stack: the fixed pair plus zubridge-core, so a targeted
+    // release can't publish the plugin against an unpublished core. Keep it in step with the
+    // scope → packages mapping in _release.reusable.yml. A targeted release applies its bump to
+    // every target, so core releases with the pair even without commits of its own.
     "scopeLabels": {
       "scope:electron": "@zubridge/electron",
       "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge,zubridge-core",
