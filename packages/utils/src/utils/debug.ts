@@ -1,8 +1,10 @@
 /**
  * Debug logging utility for Zubridge packages
- * Supports optional weald and @wdio/logger dependencies that are loaded dynamically
- * Falls back to console logging in sandbox or when dependencies are unavailable
+ * Uses weald (TypeScript-native ESM fork of debug) as the backend, and @wdio/logger
+ * (loaded dynamically) when running inside a WDIO test environment
  */
+
+import weald from 'weald';
 
 type DebugFunction = (...args: unknown[]) => void;
 
@@ -13,9 +15,6 @@ interface WDIOLogger {
   info: (namespace: string, ...args: unknown[]) => void;
   debug: (namespace: string, ...args: unknown[]) => void;
 }
-
-// Weald debug function type
-type WealdDebugFunction = (namespace: string) => DebugFunction;
 
 // Global type extension for WDIO
 declare global {
@@ -60,43 +59,25 @@ export const isDebugEnabled = (): boolean => {
 
 // Optional logger instances
 let wdioLogger: WDIOLogger | null = null;
-let wealdDebug: WealdDebugFunction | null = null;
-let loggersInitialized = false;
 
 /**
- * Attempt to load optional logging dependencies dynamically
+ * Load the WDIO logger when running in a WDIO test environment
  */
-async function initializeOptionalLoggers(): Promise<void> {
-  if (loggersInitialized) {
+async function initializeWDIOLogger(): Promise<void> {
+  if (!isWDIOTest()) {
     return;
   }
-  loggersInitialized = true;
 
-  // Try to load WDIO logger if in test environment
-  if (isWDIOTest()) {
-    try {
-      const wdioModule = await import('@wdio/logger');
-      const loggerFactory = wdioModule.default || wdioModule;
-      // Call the factory function to create a logger instance
-      wdioLogger = (loggerFactory as (name: string) => WDIOLogger)('zubridge');
-    } catch {
-      // Not available - will use console fallback
-    }
-  }
-
-  // Try to load weald for non-WDIO environments
-  if (!isWDIOTest()) {
-    try {
-      const wealdModule = await import('weald');
-      wealdDebug = (wealdModule.default || wealdModule) as WealdDebugFunction;
-    } catch {
-      // Not available - will use console fallback
-    }
+  try {
+    const wdioModule = await import('@wdio/logger');
+    const loggerFactory = wdioModule.default || wdioModule;
+    wdioLogger = (loggerFactory as (name: string) => WDIOLogger)('zubridge');
+  } catch {
+    // Not available - weald is used instead
   }
 }
 
-// Start initializing loggers immediately
-initializeOptionalLoggers();
+initializeWDIOLogger();
 
 /**
  * Create a debug function for a specific namespace
@@ -121,15 +102,8 @@ function createDebugger(namespace: string): DebugFunction {
       return;
     }
 
-    // Use weald if available
-    if (wealdDebug) {
-      const debugInstance = wealdDebug(namespace);
-      debugInstance(...args);
-      return;
-    }
-
-    // Fallback to console
-    console.log(`[${namespace}]`, ...args);
+    const [format, ...rest] = args;
+    weald(namespace)(format, ...rest);
   };
 }
 
