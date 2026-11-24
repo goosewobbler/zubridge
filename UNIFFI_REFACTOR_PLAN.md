@@ -65,15 +65,15 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 ### Progress (as of 2026-10-09)
 
-| Phase | Status | Landed in | Outstanding |
-|-------|--------|-----------|-------------|
-| **P1** | Done | #153 | `wrappers/napi.rs` and `wrappers/uniffi.rs` are placeholders until P5. The §5 P1 docs (`docs/architecture/*`, `CONTRIBUTING.md`) are not written yet. |
-| **P2** | Done | #158 | The Tauri plugin's dispatch only goes through the scheduler once #187 (P4) merges. |
-| **P3** | Done | #168, #183 | The >10% regression gate in `benchmark-nightly.yml` is still a TODO. `benches/baseline.json` was captured locally and should be re-captured on the pinned CI runner. |
-| **P3.5** | Done | #159 | — |
-| **P4** | In progress | #169, #199–#204 (releasekit) | Open: scheduler wiring (#187), Rust backend thunks (#188), manual test checklist (#184). Release-tooling blockers are listed under §3 P4. Tauri v2 README, `docs/migration/tauri-v1-to-v2.md` and `docs/release-process.md` are not written yet. |
-| **P4.5** | Queued | Standing PR #174 | `@zubridge/electron` 3.1.0. The changelog must say the never-functional middleware API (`ZubridgeMiddleware`, `createMiddlewareOptions`, the `middleware` option) was removed. |
-| **P5–P7** | Not started | — | — |
+| Phase     | Status      | Landed in                    | Outstanding                                                                                                                                                                                                                                      |
+| --------- | ----------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **P1**    | Done        | #153                         | `wrappers/napi.rs` and `wrappers/uniffi.rs` are placeholders until P5. The §5 P1 docs (`docs/architecture/*`, `CONTRIBUTING.md`) are not written yet.                                                                                            |
+| **P2**    | Done        | #158                         | The Tauri plugin's dispatch only goes through the scheduler once #187 (P4) merges.                                                                                                                                                               |
+| **P3**    | Done        | #168, #183                   | The >10% regression gate in `benchmark-nightly.yml` is still a TODO. `benches/baseline.json` was captured locally and should be re-captured on the pinned CI runner.                                                                             |
+| **P3.5**  | Done        | #159                         | —                                                                                                                                                                                                                                                |
+| **P4**    | In progress | #169, #199–#204 (releasekit) | Open: scheduler wiring (#187), Rust backend thunks (#188), manual test checklist (#184). Release-tooling blockers are listed under §3 P4. Tauri v2 README, `docs/migration/tauri-v1-to-v2.md` and `docs/release-process.md` are not written yet. |
+| **P4.5**  | Queued      | Standing PR #174             | `@zubridge/electron` 3.1.0. The changelog must say the never-functional middleware API (`ZubridgeMiddleware`, `createMiddlewareOptions`, the `middleware` option) was removed.                                                                   |
+| **P5–P7** | Not started | —                            | —                                                                                                                                                                                                                                                |
 
 ---
 
