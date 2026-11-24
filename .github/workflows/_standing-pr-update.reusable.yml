@@ -34,6 +34,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # pull_request events (label/edit on the standing PR) would otherwise check out the
+          # detached refs/pull/N/merge commit, and releasekit cannot sync the remote branch from
+          # a detached HEAD. Rebuild from the base branch, as the push and schedule runs do.
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
           fetch-depth: 0
           ssh-key: ${{ secrets.ssh_key }}
 
