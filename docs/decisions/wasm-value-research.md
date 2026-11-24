@@ -53,7 +53,7 @@ A short report (under 1500 words) addressing the four research areas with concre
 
 **Go.** Adds Path D back to ROADMAP §4; Blazor + Dioxus Web re-promoted from "Deferred pending research" to the post-refactor integration plan; `wasm` feature scaffolded in `zubridge-core` as a separate post-P7 task (not part of the refactor itself); [`docs/decisions/wasm-bundle-budget.md`](./wasm-bundle-budget.md) unblocked. Dioxus integration scope expands to include the Web target.
 
-**No-go.** Blazor + Dioxus Web stay in "Deferred pending research" with the rationale captured here. ROADMAP updated to reflect that Dioxus integration scope is permanently desktop + mobile only. Path D is deprecated unless a future research run reverses the conclusion. Hygiene practices (use `web_time::Instant` etc.) stay in `CONTRIBUTING.md` since they have value on their own (clean Path A consumer builds).
+**No-go.** Blazor + Dioxus Web stay in "Deferred pending research" with the rationale captured here. ROADMAP updated to reflect that Dioxus integration scope is permanently desktop + mobile only. Path D is deprecated unless a future research run reverses the conclusion. Hygiene practices (use `web_time::Instant` etc.) go in `CONTRIBUTING.md` (a P1 deliverable in the refactor plan, not yet written) since they have value on their own (clean Path A consumer builds).
 
 ## Risks of the research itself
 
