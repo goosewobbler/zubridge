@@ -8,6 +8,11 @@ on:
       - v[0-9]+.[0-9]+.[0-9]+*
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Superseded PR runs are cancelled; main and tag pushes always run to completion.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   TURBO_TELEMETRY_DISABLED: 1
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
