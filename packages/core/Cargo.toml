@@ -31,7 +31,7 @@ log = "0.4"
 uniffi = { version = "0.28", optional = true }
 
 # Optional: napi feature
-napi = { version = "2", optional = true, features = ["napi4"] }
+napi = { version = "2", optional = true, features = ["napi8"] }
 napi-derive = { version = "2", optional = true }
 
 # Optional: tauri feature
