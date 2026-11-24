@@ -138,8 +138,7 @@ function createMockReduxStore(): Store<AnyState> {
 
 describe('bridge.ts', () => {
   afterEach(() => {
-    // Most tests never destroy their bridge; clear the listeners it leaves on the shared thunk
-    // manager so they stay under Node's listener limit.
+    // Most tests never destroy their bridge, so clear the listeners it leaves on the thunk manager.
     thunkManager.removeAllListeners();
   });
 

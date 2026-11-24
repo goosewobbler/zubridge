@@ -3,7 +3,6 @@ import { spawn } from 'node:child_process';
 
 function runTsdown(args = []) {
   return new Promise((resolve, reject) => {
-    // One command string: an args array combined with `shell: true` is deprecated (DEP0190).
     const tsdown = spawn(['tsdown', ...args].join(' '), {
       stdio: 'inherit',
       shell: true,

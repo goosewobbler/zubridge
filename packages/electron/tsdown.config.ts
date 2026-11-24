@@ -66,10 +66,8 @@ export default defineConfig([
     dts: true,
     deps: {
       neverBundle: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'],
-      // weald is bundled (not external): it's the production debug backend and is not a
-      // declared runtime dependency, so leaving it external makes the import fail in a
-      // consumer's app and debug silently falls back to console. @wdio/logger stays external
-      // — it's only loaded in WDIO E2E, where it's installed.
+      // weald is bundled because this package doesn't declare it; left external, the import
+      // fails in consumers. @wdio/logger stays external: it's only loaded in WDIO E2E.
       alwaysBundle: ['@zubridge/utils', 'weald'],
       onlyBundle: false,
     },
