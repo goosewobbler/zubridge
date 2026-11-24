@@ -308,7 +308,7 @@ describe('preloadBridge handlers', () => {
       ]);
     });
 
-    it('should not throw when sending the acknowledgement fails', async () => {
+    it('should not throw when the window id lookup for the acknowledgement fails', async () => {
       const { result, lastListener } = await setup(undefined, {
         'zubridge:get-window-id': new Error('gone'),
       });
@@ -321,10 +321,30 @@ describe('preloadBridge handlers', () => {
         ),
       ).resolves.toBeUndefined();
     });
+
+    it('should not throw when sending the acknowledgement fails', async () => {
+      const { result, lastListener, ipc } = await setup();
+      const callback = vi.fn();
+      result.handlers.subscribe(callback);
+      ipc.send.mockImplementation((channel: string) => {
+        if (channel === 'zubridge:state-update-ack') {
+          throw new Error('send failed');
+        }
+      });
+
+      await expect(
+        lastListener('zubridge:state-update')(
+          {},
+          { updateId: 'u1', seq: 1, delta: { type: 'full', fullState: { counter: 1 } } },
+        ),
+      ).resolves.toBeUndefined();
+      expect(ipc.send).toHaveBeenCalledWith('zubridge:state-update-ack', expect.anything());
+      expect(callback).toHaveBeenCalledWith({ counter: 1 });
+    });
   });
 
   describe('dispatch without batching', () => {
-    const options: PreloadOptions = { enableBatching: false };
+    const options: PreloadOptions = { enableBatching: false, batching: { ackTimeoutMs: 1000 } };
 
     it('should send a string action and resolve on a matching acknowledgement', async () => {
       const { result, lastListener, sentOn } = await setup(options);
@@ -387,7 +407,7 @@ describe('preloadBridge handlers', () => {
       const promise = result.handlers.dispatch('SLOW');
       const rejection = expect(promise).rejects.toThrow(/Timeout waiting for acknowledgment/);
       const [{ action }] = sentOn('zubridge:dispatch') as Array<{ action: Action }>;
-      await vi.advanceTimersByTimeAsync(61000);
+      await vi.advanceTimersByTimeAsync(1001);
 
       await rejection;
       expect(ipc.removeListener).toHaveBeenCalledWith(
@@ -468,11 +488,11 @@ describe('preloadBridge handlers', () => {
     });
 
     it('should reject when the batch acknowledgement never arrives', async () => {
-      const { result } = await setup({ batching: { windowMs: 10 } });
+      const { result } = await setup({ batching: { windowMs: 10, ackTimeoutMs: 1000 } });
 
       const promise = result.handlers.dispatch('INCREMENT');
       const rejection = expect(promise).rejects.toThrow(/Timeout waiting for batch acknowledgment/);
-      await vi.advanceTimersByTimeAsync(61000);
+      await vi.advanceTimersByTimeAsync(1100);
 
       await rejection;
     });
@@ -672,13 +692,13 @@ describe('preloadBridge handlers', () => {
     });
 
     it('should reject thunk registration on timeout', async () => {
-      const { initOptions } = await setup();
+      const { initOptions } = await setup({ batching: { ackTimeoutMs: 1000 } });
 
       const promise = initOptions.thunkRegistrar('t1');
       const rejection = expect(promise).rejects.toThrow(
         'Timeout waiting for REGISTER_THUNK_ACK for thunk t1',
       );
-      await vi.advanceTimersByTimeAsync(61000);
+      await vi.advanceTimersByTimeAsync(1001);
 
       await rejection;
     });
@@ -792,16 +812,29 @@ describe('preloadBridge handlers', () => {
       expect([...documentHandlers.keys()]).toEqual(['visibilitychange']);
     });
 
-    it('should reject pending thunk registrations on beforeunload and clear subscribers', async () => {
-      const { result, initOptions, windowHandlers } = await setup();
-      const callback = vi.fn();
-      result.handlers.subscribe(callback);
+    it('should reject pending thunk registrations on beforeunload', async () => {
+      const { initOptions, windowHandlers } = await setup();
       const registration = initOptions.thunkRegistrar('t1');
       const rejection = expect(registration).rejects.toThrow('Page unload');
 
       windowHandlers.get('beforeunload')?.();
 
       await rejection;
+    });
+
+    it('should stop notifying subscribers after beforeunload', async () => {
+      const { result, lastListener, windowHandlers } = await setup();
+      const callback = vi.fn();
+      result.handlers.subscribe(callback);
+      const handler = lastListener('zubridge:state-update');
+
+      windowHandlers.get('beforeunload')?.();
+      await handler(
+        {},
+        { updateId: 'u1', seq: 1, delta: { type: 'full', fullState: { counter: 5 } } },
+      );
+
+      expect(callback).not.toHaveBeenCalled();
     });
 
     it('should destroy the batcher and thunk processor on a full pagehide', async () => {
