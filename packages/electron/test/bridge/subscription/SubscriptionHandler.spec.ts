@@ -400,7 +400,9 @@ describe('SubscriptionHandler', () => {
       handler.selectiveSubscribe(singleWc, ['counter']);
 
       // Simulate a state update via the subscription callback
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (safelySendToWindow as Mock).mockClear();
       stateCallback(fullState);
 
@@ -461,7 +463,9 @@ describe('SubscriptionHandler', () => {
 
       handler.selectiveSubscribe(singleWc);
 
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (safelySendToWindow as Mock).mockClear();
       stateCallback(fullState);
 
@@ -520,7 +524,9 @@ describe('SubscriptionHandler', () => {
 
       handler.selectiveSubscribe(singleWc);
 
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (safelySendToWindow as Mock).mockClear();
       // Make sanitizeState return empty for the update too
       (sanitizeState as Mock).mockReturnValueOnce({});
@@ -993,7 +999,9 @@ describe('SubscriptionHandler', () => {
       (sanitizeState as Mock).mockImplementation((state: Record<string, unknown>) => {
         const result: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(state)) {
-          if (typeof v !== 'function') result[k] = v;
+          if (typeof v !== 'function') {
+            result[k] = v;
+          }
         }
         return result;
       });
@@ -1056,7 +1064,9 @@ describe('SubscriptionHandler', () => {
       (sanitizeState as Mock).mockImplementation((state: Record<string, unknown>) => {
         const result: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(state)) {
-          if (typeof v !== 'function' && typeof v !== 'symbol') result[k] = v;
+          if (typeof v !== 'function' && typeof v !== 'symbol') {
+            result[k] = v;
+          }
         }
         return result;
       });
@@ -1571,7 +1581,9 @@ describe('SubscriptionHandler', () => {
 
       handler.selectiveSubscribe(singleWc);
 
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (safelySendToWindow as Mock).mockClear();
       stateCallback(updatedState);
 
@@ -1627,7 +1639,9 @@ describe('SubscriptionHandler', () => {
 
       handler.selectiveSubscribe(singleWc);
 
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (safelySendToWindow as Mock).mockClear();
       stateCallback(updatedState);
 
@@ -1688,7 +1702,9 @@ describe('SubscriptionHandler', () => {
       handler.selectiveSubscribe(singleWc);
 
       // Trigger the subscription callback with a state update to get past the initial prevState seeding
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (sanitizeState as Mock).mockClear();
       (safelySendToWindow as Mock).mockClear();
       stateCallback(updatedState);
@@ -1747,7 +1763,9 @@ describe('SubscriptionHandler', () => {
 
       handler.selectiveSubscribe(singleWc);
 
-      if (!stateCallback) throw new Error('stateCallback was not captured');
+      if (!stateCallback) {
+        throw new Error('stateCallback was not captured');
+      }
       (safelySendToWindow as Mock).mockClear();
       stateCallback(updatedState);
 

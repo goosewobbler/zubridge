@@ -60,7 +60,9 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 
 // Process should be terminated when all windows are closed
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 type ZubridgeWindow = BrowserWindow & {

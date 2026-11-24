@@ -372,7 +372,9 @@ describe('actionValidator', () => {
 
       // Mock state existence check
       vi.mocked(subscriptionValidator.stateKeyExists).mockImplementation((_state, key) => {
-        if (key === 'nonexistent.key') return false;
+        if (key === 'nonexistent.key') {
+          return false;
+        }
         return true;
       });
 

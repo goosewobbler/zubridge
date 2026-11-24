@@ -123,7 +123,9 @@ export class DeltaMerger<S> {
     let originalCurrent = original;
     for (let i = 0; i < keys.length - 1; i++) {
       const next = current[keys[i]];
-      if (next == null || typeof next !== 'object') return;
+      if (next == null || typeof next !== 'object') {
+        return;
+      }
       const originalValue = originalCurrent[keys[i]] as Record<string, unknown> | undefined;
 
       if (next !== originalValue) {

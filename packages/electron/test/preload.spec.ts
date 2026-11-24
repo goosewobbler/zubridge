@@ -176,7 +176,9 @@ describe('Preload Bridge', () => {
       // We'll directly test the function logic rather than the attachment mechanism
 
       const stateKeyExists = (state: unknown, key: string): boolean => {
-        if (!key || !state || typeof state !== 'object') return false;
+        if (!key || !state || typeof state !== 'object') {
+          return false;
+        }
 
         const parts = key.split('.');
         let current = state as Record<string, unknown>;
@@ -279,8 +281,12 @@ describe('Preload Bridge', () => {
       const mockedIpc = vi.mocked(ipcRenderer);
 
       mockedIpc.invoke.mockImplementation(async (channel: string) => {
-        if (channel === 'zubridge:get-window-id') return 1;
-        if (channel === 'zubridge:get-state') return { counter: 42 };
+        if (channel === 'zubridge:get-window-id') {
+          return 1;
+        }
+        if (channel === 'zubridge:get-state') {
+          return { counter: 42 };
+        }
         return undefined;
       });
 

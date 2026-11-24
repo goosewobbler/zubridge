@@ -40,7 +40,9 @@ export function createCustomAdapter(customStore: CustomStore): UnifiedStore<Stat
 
       let previousState = customStore.getState() as unknown as State;
       const unsubscribe = customStore.subscribe((state) => {
-        if (isDestroyed) return;
+        if (isDestroyed) {
+          return;
+        }
         try {
           const currentState = state as unknown as State;
           listener(currentState, previousState);

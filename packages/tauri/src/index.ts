@@ -38,7 +38,9 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
     await cleanupPromise;
   }
 
-  if (initializePromise) return initializePromise;
+  if (initializePromise) {
+    return initializePromise;
+  }
 
   // Assign initializePromise FIRST so a concurrent caller in the same tick
   // hits the guard above and shares this promise. Everything else — store
@@ -138,7 +140,9 @@ export async function initializeBridge(options?: BackendOptions): Promise<void> 
  * Concurrent calls share the same in-flight cleanup.
  */
 export async function cleanupZubridge(): Promise<void> {
-  if (cleanupPromise) return cleanupPromise;
+  if (cleanupPromise) {
+    return cleanupPromise;
+  }
 
   const client = bridgeClient;
   bridgeClient = null;
@@ -248,7 +252,9 @@ export function useZubridgeDispatch<S extends AnyState = AnyState>(): DispatchFu
 
 async function ensureReady(): Promise<void> {
   let status = internalStore.getState().__bridge_status;
-  if (status === 'ready') return;
+  if (status === 'ready') {
+    return;
+  }
   if (initializePromise) {
     await initializePromise;
     status = internalStore.getState().__bridge_status;
@@ -264,17 +270,23 @@ async function ensureReady(): Promise<void> {
  * by the backend.
  */
 export async function subscribe(keys: string[]): Promise<string[]> {
-  if (!bridgeClient) throw new Error('Zubridge is not initialized.');
+  if (!bridgeClient) {
+    throw new Error('Zubridge is not initialized.');
+  }
   return bridgeClient.subscribe(keys);
 }
 
 export async function unsubscribe(keys: string[]): Promise<string[]> {
-  if (!bridgeClient) throw new Error('Zubridge is not initialized.');
+  if (!bridgeClient) {
+    throw new Error('Zubridge is not initialized.');
+  }
   return bridgeClient.unsubscribe(keys);
 }
 
 export async function getWindowSubscriptions(): Promise<string[]> {
-  if (!bridgeClient) throw new Error('Zubridge is not initialized.');
+  if (!bridgeClient) {
+    throw new Error('Zubridge is not initialized.');
+  }
   return bridgeClient.getWindowSubscriptions();
 }
 
@@ -283,7 +295,9 @@ export async function getWindowSubscriptions(): Promise<string[]> {
  * to specific keys.
  */
 export async function getState(keys?: string[]): Promise<AnyState> {
-  if (!bridgeClient) throw new Error('Zubridge is not initialized.');
+  if (!bridgeClient) {
+    throw new Error('Zubridge is not initialized.');
+  }
   return bridgeClient.getState(keys);
 }
 

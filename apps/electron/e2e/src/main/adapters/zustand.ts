@@ -48,7 +48,9 @@ export function createZustandAdapter<S>(zustandStore: StoreApi<S>): UnifiedStore
       }
 
       const unsubscribe = zustandStore.subscribe((currentState) => {
-        if (isDestroyed) return;
+        if (isDestroyed) {
+          return;
+        }
         try {
           listener(currentState, previousState);
           previousState = currentState;

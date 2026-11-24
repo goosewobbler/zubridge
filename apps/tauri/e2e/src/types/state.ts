@@ -9,7 +9,9 @@ export interface BaseState extends SharedBaseState {
 }
 
 export function isBaseState(state: unknown): state is BaseState {
-  if (!state || typeof state !== 'object') return false;
+  if (!state || typeof state !== 'object') {
+    return false;
+  }
   const s = state as Record<string, unknown>;
   return typeof s.counter === 'number' && (s.theme === 'light' || s.theme === 'dark');
 }

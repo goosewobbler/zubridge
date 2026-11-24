@@ -25,7 +25,9 @@ declare global {
 
 // Check if we're running in a WDIO test environment
 const isWDIOTest = (): boolean => {
-  if (typeof process === 'undefined') return false;
+  if (typeof process === 'undefined') {
+    return false;
+  }
 
   // Check for WDIO-specific globals or environment variables
   return (
@@ -65,7 +67,9 @@ let loggersInitialized = false;
  * Attempt to load optional logging dependencies dynamically
  */
 async function initializeOptionalLoggers(): Promise<void> {
-  if (loggersInitialized) return;
+  if (loggersInitialized) {
+    return;
+  }
   loggersInitialized = true;
 
   // Try to load WDIO logger if in test environment
@@ -99,7 +103,9 @@ initializeOptionalLoggers();
  */
 function createDebugger(namespace: string): DebugFunction {
   return (...args: unknown[]) => {
-    if (!isDebugEnabled()) return;
+    if (!isDebugEnabled()) {
+      return;
+    }
 
     // Use WDIO logger if available
     if (wdioLogger) {
@@ -153,7 +159,9 @@ function getDebugger(area: string): DebugFunction {
   }
 
   const debugFn = dynamicDebuggers.get(area);
-  if (!debugFn) throw new Error(`Failed to create debugger for area: ${area}`);
+  if (!debugFn) {
+    throw new Error(`Failed to create debugger for area: ${area}`);
+  }
   return debugFn;
 }
 

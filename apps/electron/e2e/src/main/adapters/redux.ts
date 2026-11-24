@@ -27,7 +27,9 @@ export function createReduxAdapter<S>(reduxStore: Store<S>): UnifiedStore<S> {
       }
 
       const unsubscribe = reduxStore.subscribe(() => {
-        if (isDestroyed) return;
+        if (isDestroyed) {
+          return;
+        }
         try {
           const currentState = reduxStore.getState();
           listener(currentState, previousState);

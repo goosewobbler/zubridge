@@ -36,8 +36,12 @@ export class InvokeListeners {
       const arr = this.unlistens.get(event);
       if (arr) {
         const idx = arr.indexOf(wrapped);
-        if (idx >= 0) arr.splice(idx, 1);
-        if (arr.length === 0) this.unlistens.delete(event);
+        if (idx >= 0) {
+          arr.splice(idx, 1);
+        }
+        if (arr.length === 0) {
+          this.unlistens.delete(event);
+        }
       }
     };
     const arr = this.unlistens.get(event) ?? [];

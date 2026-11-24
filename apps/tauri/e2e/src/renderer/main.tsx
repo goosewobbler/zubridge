@@ -11,7 +11,9 @@ import { AppRoot } from './App.js';
 
 const renderError = (label: string, message: string, stack?: string) => {
   const root = document.body || document.documentElement;
-  if (!root) return;
+  if (!root) {
+    return;
+  }
   let panel = document.getElementById('__renderer_error__');
   if (!panel) {
     panel = document.createElement('pre');
@@ -54,7 +56,9 @@ function AppBootstrap() {
     (async () => {
       try {
         const current = WebviewWindow.getCurrent();
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setWindowLabel(current.label);
         await initializeBridge({
           invoke: invoke as <R = unknown>(
@@ -67,10 +71,14 @@ function AppBootstrap() {
             handler: (event: E) => void,
           ) => Promise<UnlistenFn>,
         });
-        if (!cancelled) setBridgeReady(true);
+        if (!cancelled) {
+          setBridgeReady(true);
+        }
       } catch (error) {
         debug('ui:error', `Bridge initialization failed: ${error}`);
-        if (!cancelled) setBridgeError(String(error));
+        if (!cancelled) {
+          setBridgeError(String(error));
+        }
       }
     })();
     return () => {
@@ -90,7 +98,9 @@ function AppBootstrap() {
 }
 
 const container = document.getElementById('root');
-if (!container) throw new Error('Root container not found');
+if (!container) {
+  throw new Error('Root container not found');
+}
 
 const root = createRoot(container);
 root.render(

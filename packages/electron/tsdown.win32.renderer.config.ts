@@ -18,7 +18,9 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
   external: (id) => {
-    if (externalizeUnenvRuntime(id)) return true;
+    if (externalizeUnenvRuntime(id)) {
+      return true;
+    }
     return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
   },
   noExternal: ['@zubridge/utils', 'weald', '@wdio/logger'],

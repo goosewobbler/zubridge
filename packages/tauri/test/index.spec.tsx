@@ -369,8 +369,12 @@ describe('@zubridge/tauri', () => {
         const bare = cmd.startsWith('plugin:zubridge|')
           ? cmd.slice('plugin:zubridge|'.length)
           : cmd;
-        if (bare === 'register_thunk') throw registrationError;
-        if (originalImpl) return originalImpl(cmd, args);
+        if (bare === 'register_thunk') {
+          throw registrationError;
+        }
+        if (originalImpl) {
+          return originalImpl(cmd, args);
+        }
         return undefined;
       });
 
@@ -434,8 +438,12 @@ describe('@zubridge/tauri', () => {
         const bare = cmd.startsWith('plugin:zubridge|')
           ? cmd.slice('plugin:zubridge|'.length)
           : cmd;
-        if (bare === 'dispatch_action') throw new Error('backend rejected dispatch');
-        if (originalImpl) return originalImpl(cmd, args);
+        if (bare === 'dispatch_action') {
+          throw new Error('backend rejected dispatch');
+        }
+        if (originalImpl) {
+          return originalImpl(cmd, args);
+        }
         return undefined;
       });
 
@@ -520,7 +528,9 @@ describe('@zubridge/tauri', () => {
             failed: { action_id: ids[1], message: 'simulated mid-batch failure' },
           };
         }
-        if (originalImpl) return originalImpl(cmd, args);
+        if (originalImpl) {
+          return originalImpl(cmd, args);
+        }
         return undefined;
       });
 

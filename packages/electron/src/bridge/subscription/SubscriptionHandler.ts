@@ -79,7 +79,9 @@ export class SubscriptionHandler<State extends AnyState> {
 
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
-      if (!webContents || isDestroyed(webContents)) continue;
+      if (!webContents || isDestroyed(webContents)) {
+        continue;
+      }
 
       this.windowTracker.track(webContents);
 
@@ -237,7 +239,9 @@ export class SubscriptionHandler<State extends AnyState> {
                   removed.push(key);
                 }
               }
-              if (removed.length > 0) removedKeys = removed;
+              if (removed.length > 0) {
+                removedKeys = removed;
+              }
             }
 
             // Skip send if sanitized state is empty AND no keys were removed
@@ -447,12 +451,15 @@ export class SubscriptionHandler<State extends AnyState> {
             .map(([k, v]) => {
               // Functions, Symbols, and BigInts are not structured-clone serializable
               // and would cause DataCloneError over IPC — strip them.
-              if (typeof v === 'function' || typeof v === 'symbol' || typeof v === 'bigint')
+              if (typeof v === 'function' || typeof v === 'symbol' || typeof v === 'bigint') {
                 return [k, undefined];
-              if (Array.isArray(v))
+              }
+              if (Array.isArray(v)) {
                 return [k, sanitizeState(v as unknown as State, options) as unknown as unknown[]];
-              if (v !== null && typeof v === 'object')
+              }
+              if (v !== null && typeof v === 'object') {
                 return [k, sanitizeState(v as Record<string, unknown> as State, options)];
+              }
               return [k, v];
             })
             .filter(([, v]) => v !== undefined),
@@ -514,7 +521,9 @@ export class SubscriptionHandler<State extends AnyState> {
     const wrappers = Array.isArray(windows) ? windows : [windows];
     for (const wrapper of wrappers) {
       const webContents = getWebContents(wrapper);
-      if (!webContents) continue;
+      if (!webContents) {
+        continue;
+      }
       const windowId = webContents.id;
       const subManager = this.resourceManager.getSubscriptionManager(windowId);
       if (subManager) {

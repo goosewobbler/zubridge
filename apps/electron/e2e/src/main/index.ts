@@ -376,7 +376,9 @@ app
             win.once('closed', () => {
               debug('example-app:init', `Runtime window ${win.id} closed, cleaning up`);
               const index = runtimeWindows.indexOf(win);
-              if (index !== -1) runtimeWindows.splice(index, 1);
+              if (index !== -1) {
+                runtimeWindows.splice(index, 1);
+              }
               subscription.unsubscribe();
               debug('example-app:init', `Window ${win.id} closed and unsubscribed`);
             });

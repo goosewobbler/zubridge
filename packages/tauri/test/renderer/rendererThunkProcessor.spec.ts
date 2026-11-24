@@ -361,7 +361,9 @@ describe('RendererThunkProcessor (Tauri)', () => {
         .fn<(action: Action, parentId?: string) => Promise<void>>()
         .mockImplementation(async (action, _parentId) => {
           queueMicrotask(() => {
-            if (action.__id) processor.completeAction(action.__id as string, {});
+            if (action.__id) {
+              processor.completeAction(action.__id as string, {});
+            }
           });
         });
 

@@ -114,7 +114,9 @@ describe('SubscriptionManager', () => {
       expect(callback2).toHaveBeenCalled();
 
       // unsub2 cleans up the only remaining entry
-      if (result2.status === 'registered') result2.unsubscribe();
+      if (result2.status === 'registered') {
+        result2.unsubscribe();
+      }
       expect(subscriptionManager.getCurrentSubscriptionKeys(windowId)).toEqual([]);
     });
 

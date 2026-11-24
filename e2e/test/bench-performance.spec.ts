@@ -89,7 +89,9 @@ describe(`Performance bench (${getMode()})`, () => {
     const latencies = await browser.execute(
       async (samples: number, warmup: number) => {
         const z = window.zubridge;
-        if (!z) throw new Error('window.zubridge not available');
+        if (!z) {
+          throw new Error('window.zubridge not available');
+        }
         for (let i = 0; i < warmup; i++) {
           await z.dispatch('COUNTER:INCREMENT');
         }
@@ -117,7 +119,9 @@ describe(`Performance bench (${getMode()})`, () => {
     const measurement = await browser.execute(
       async (count: number, maxInFlight: number) => {
         const z = window.zubridge;
-        if (!z) throw new Error('window.zubridge not available');
+        if (!z) {
+          throw new Error('window.zubridge not available');
+        }
         const t0 = performance.now();
         let started = 0;
         let completed = 0;
@@ -171,7 +175,9 @@ describe(`Performance bench (${getMode()})`, () => {
     await browser.execute(() => {
       const w = window as unknown as BenchWindow & typeof window;
       const z = window.zubridge;
-      if (!z) throw new Error('window.zubridge not available');
+      if (!z) {
+        throw new Error('window.zubridge not available');
+      }
       w.__benchUpdates = [];
       w.__benchUnsub = z.subscribe((state: { counter?: number }) => {
         if (typeof state.counter === 'number') {
@@ -183,7 +189,9 @@ describe(`Performance bench (${getMode()})`, () => {
     // Read starting counter so we can match dispatches to receipts by target value.
     const startState = await browser.execute(() => {
       const z = window.zubridge;
-      if (!z) throw new Error('window.zubridge not available');
+      if (!z) {
+        throw new Error('window.zubridge not available');
+      }
       return z.getState();
     });
     const startCounter =
@@ -200,7 +208,9 @@ describe(`Performance bench (${getMode()})`, () => {
     const dispatches = await browser.execute(
       async (samples: number, base: number) => {
         const z = window.zubridge;
-        if (!z) throw new Error('window.zubridge not available');
+        if (!z) {
+          throw new Error('window.zubridge not available');
+        }
         const out: Array<{ ts: number; target: number }> = [];
         for (let i = 0; i < samples; i++) {
           const target = base + i + 1;
@@ -278,7 +288,9 @@ describe(`Performance bench (${getMode()})`, () => {
     await browser.execute(
       async (count: number, maxInFlight: number) => {
         const z = window.zubridge;
-        if (!z) throw new Error('window.zubridge not available');
+        if (!z) {
+          throw new Error('window.zubridge not available');
+        }
         let started = 0;
         let completed = 0;
         // Same bounded-in-flight pump as the throughput test above (see the note there);

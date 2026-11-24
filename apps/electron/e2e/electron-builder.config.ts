@@ -9,9 +9,15 @@ console.log(`[DEBUG] Mode: ${currentMode}, OutDir: out-${currentMode}`);
 // Check for platform-specific flag in command line arguments
 // When the build script passes -- -m or -- -w or -- -l, we need to respect that
 const argPlatforms: string[] = [];
-if (process.argv.includes('-m')) argPlatforms.push('mac');
-if (process.argv.includes('-w')) argPlatforms.push('win');
-if (process.argv.includes('-l')) argPlatforms.push('linux');
+if (process.argv.includes('-m')) {
+  argPlatforms.push('mac');
+}
+if (process.argv.includes('-w')) {
+  argPlatforms.push('win');
+}
+if (process.argv.includes('-l')) {
+  argPlatforms.push('linux');
+}
 
 // If platform flags were provided, use them, otherwise build for all platforms
 const buildPlatforms = argPlatforms.length > 0 ? argPlatforms : ['mac', 'win', 'linux'];

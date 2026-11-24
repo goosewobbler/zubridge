@@ -21,7 +21,9 @@ export const refreshWindowHandles = async () => {
       try {
         handles = await browser.getWindowHandles();
 
-        if (handles.length > 0) break;
+        if (handles.length > 0) {
+          break;
+        }
 
         // If we didn't get any handles, wait a bit and try again
         if (attempt < maxRetries - 1) {
@@ -358,7 +360,9 @@ async function createMissingCoreWindows(targetCount: number): Promise<void> {
   // We're missing windows - try to create them
   const windowsToCreate = targetCount - windowHandles.length;
 
-  if (windowsToCreate <= 0) return;
+  if (windowsToCreate <= 0) {
+    return;
+  }
 
   try {
     // First switch to an existing window
@@ -392,7 +396,9 @@ async function createMissingCoreWindows(targetCount: number): Promise<void> {
  */
 async function closeExcessWindows(coreCount: number): Promise<void> {
   // We have too many windows - close the excess ones
-  if (windowHandles.length <= coreCount) return;
+  if (windowHandles.length <= coreCount) {
+    return;
+  }
 
   try {
     // Try using Electron API first (most reliable method)

@@ -41,7 +41,9 @@ export function AppRoot({ windowLabel }: AppRootProps) {
           invoke<ModeInfo>('get_mode'),
           getWindowSubscriptions().catch(() => [] as string[]),
         ]);
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setWindowInfo(info);
         setModeInfo(mode);
         if (subs.length === 0 || subs.includes('*')) {

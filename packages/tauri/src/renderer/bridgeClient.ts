@@ -34,7 +34,9 @@ type Invoke = BackendOptions['invoke'];
 function resolveCommands(initial: 'plugin' | 'direct', config?: CommandConfig): ResolvedCommands {
   const fromTable = (key: keyof ResolvedCommands, plugin: string, direct: string): string => {
     const override = (config as Record<string, string | undefined> | undefined)?.[key];
-    if (override) return override;
+    if (override) {
+      return override;
+    }
     return initial === 'plugin' ? plugin : direct;
   };
   return {
@@ -187,7 +189,9 @@ export class BridgeClient {
       thunkCompleter: (thunkId, error) => this.completeThunk(thunkId, error),
     });
     this.thunkProcessor.setStateProvider(async (opts) => {
-      if (opts?.bypassAccessControl) return this.currentState;
+      if (opts?.bypassAccessControl) {
+        return this.currentState;
+      }
       // Future: filter to subscribed keys. For now the renderer-side replica
       // is already scoped by the backend's per-webview filter, so returning
       // it directly is correct.
@@ -404,7 +408,9 @@ export class BridgeClient {
   }
 
   private async flushBatch(): Promise<FlushResult> {
-    if (!this.batcher) return { batchId: '', actionsSent: 0, actionIds: [] };
+    if (!this.batcher) {
+      return { batchId: '', actionsSent: 0, actionIds: [] };
+    }
     return this.batcher.flushWithResult(true);
   }
 
@@ -431,7 +437,9 @@ export class BridgeClient {
       'payload' in raw && (raw as { payload: StateUpdatePayload }).payload
         ? (raw as { payload: StateUpdatePayload }).payload
         : (raw as StateUpdatePayload);
-    if (!payload || typeof payload !== 'object') return;
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
 
     // Drop in-flight events while a resync is pending. Applying them on top of
     // a state that's about to be replaced wholesale risks transient inconsistent
@@ -478,7 +486,9 @@ export class BridgeClient {
   }
 
   private async acknowledgeUpdate(updateId: string): Promise<void> {
-    if (!this.commands) return;
+    if (!this.commands) {
+      return;
+    }
     try {
       await this.invoke(this.commands.stateUpdateAck, {
         args: { update_id: updateId },
@@ -491,7 +501,9 @@ export class BridgeClient {
   private async resync(): Promise<void> {
     // De-dupe concurrent resyncs (multiple gaps can fire before the first
     // get_initial_state resolves).
-    if (this.resyncInFlight) return this.resyncInFlight;
+    if (this.resyncInFlight) {
+      return this.resyncInFlight;
+    }
     const cmds = this.requireCommands();
     this.resyncInFlight = (async () => {
       try {
@@ -529,7 +541,9 @@ export class BridgeClient {
   // ---- Lifecycle ----
 
   async destroy(): Promise<void> {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
     this.destroyed = true;
     // Wait for any in-flight resync so its continuation runs (and now sees
     // `this.destroyed === true`, skipping the state update). Without this
@@ -567,7 +581,9 @@ function readWindowLabel(): string {
 }
 
 function parseBatching(input: BackendOptions['batching']): Required<BatchingConfig> | null {
-  if (input === false) return null;
+  if (input === false) {
+    return null;
+  }
   const opts = (input ?? {}) as BatchingOptions;
   return {
     ...BATCHING_DEFAULTS,
@@ -577,12 +593,18 @@ function parseBatching(input: BackendOptions['batching']): Required<BatchingConf
 }
 
 function pickPriority(action: Action): number {
-  if (action.__immediate) return PRIORITY_LEVELS.IMMEDIATE;
-  if (action.__thunkParentId) return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
+  if (action.__immediate) {
+    return PRIORITY_LEVELS.IMMEDIATE;
+  }
+  if (action.__thunkParentId) {
+    return PRIORITY_LEVELS.NORMAL_THUNK_ACTION;
+  }
   return PRIORITY_LEVELS.NORMAL_ACTION;
 }
 
 function describe(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    return error.message;
+  }
   return typeof error === 'string' ? error : JSON.stringify(error);
 }

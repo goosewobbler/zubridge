@@ -236,16 +236,23 @@ describe('subscriptionValidator', () => {
       // Setup mock to use internal implementation
       mockWindowSubscriptionValidator.stateKeyExists.mockImplementation((state, key) => {
         // For the first call, use the mock
-        if (key === 'counter') return true;
+        if (key === 'counter') {
+          return true;
+        }
 
         // For other calls, fall back to original implementation
-        if (!key || !state) return false;
+        if (!key || !state) {
+          return false;
+        }
         const parts = key.split('.');
         let current = state;
         for (const part of parts) {
-          if (current === undefined || current === null || typeof current !== 'object')
+          if (current === undefined || current === null || typeof current !== 'object') {
             return false;
-          if (!(part in current)) return false;
+          }
+          if (!(part in current)) {
+            return false;
+          }
           current = current[part];
         }
         return true;
@@ -290,8 +297,12 @@ describe('subscriptionValidator', () => {
 
       // Setup mock with conditional responses
       mockWindowSubscriptionValidator.stateKeyExists.mockImplementation((s, k) => {
-        if (!k || !s) return false;
-        if (k === 'empty' || k === 'zero' || k === 'falsy') return true;
+        if (!k || !s) {
+          return false;
+        }
+        if (k === 'empty' || k === 'zero' || k === 'falsy') {
+          return true;
+        }
         return false;
       });
 

@@ -49,7 +49,9 @@ function findPublishablePackages(): { name: string; dir: string }[] {
   for (const entry of fs.readdirSync(PACKAGES_DIR)) {
     const dir = path.join(PACKAGES_DIR, entry);
     const pkgJsonPath = path.join(dir, 'package.json');
-    if (!fs.existsSync(pkgJsonPath)) continue;
+    if (!fs.existsSync(pkgJsonPath)) {
+      continue;
+    }
     const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
     if (pkg.name && !pkg.private) {
       result.push({ name: pkg.name, dir });
@@ -76,7 +78,9 @@ function lintManifest(pkg: PackedPackage): string[] {
   const violations: string[] = [];
   for (const field of DEP_FIELDS) {
     const deps = pkg.manifest[field];
-    if (!deps || typeof deps !== 'object') continue;
+    if (!deps || typeof deps !== 'object') {
+      continue;
+    }
     for (const [name, spec] of Object.entries(deps as Record<string, string>)) {
       if (typeof spec === 'string' && FORBIDDEN_PROTOCOL.test(spec)) {
         violations.push(`${pkg.name}: ${field}.${name} = "${spec}"`);
@@ -147,7 +151,9 @@ function main(): void {
     console.log('');
 
     for (const pkg of packed) {
-      if (!INSTALL_SMOKE.includes(pkg.name)) continue;
+      if (!INSTALL_SMOKE.includes(pkg.name)) {
+        continue;
+      }
       try {
         installSmoke(pkg.tarball);
         console.log(`  ✓ ${pkg.name}: clean npm install succeeds`);
