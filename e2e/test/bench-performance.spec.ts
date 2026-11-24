@@ -8,8 +8,8 @@
 // rely on internal instrumentation — same methodology will run unchanged
 // against 3.2 (Rust core via NAPI) to produce the comparison story.
 
+import { browser } from '@wdio/electron-service';
 import { after, before, describe, it } from 'mocha';
-import { browser } from 'wdio-electron-service';
 import { getMode, type ModeBenchResult, summarize, writeModeResult } from '../utils/bench.js';
 import {
   refreshWindowHandles,

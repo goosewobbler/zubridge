@@ -22,7 +22,9 @@ const mainWindow = new BrowserWindow({
 });
 
 // Option A: Instantiate bridge with initial window
-const { unsubscribe, subscribe, dispatch, getSubscribedWindows } = createZustandBridge(store, [mainWindow]);
+const { unsubscribe, subscribe, dispatch, getSubscribedWindows } = createZustandBridge(store, [
+  mainWindow,
+]);
 
 // Option B: Instantiate bridge without windows, subscribe later
 const bridge = createZustandBridge(store);
@@ -51,7 +53,9 @@ const mainWindow = new BrowserWindow({
 });
 
 // Option A: Instantiate bridge with Redux store and initial window
-const { unsubscribe, subscribe, dispatch, getSubscribedWindows } = createReduxBridge(store, [mainWindow]);
+const { unsubscribe, subscribe, dispatch, getSubscribedWindows } = createReduxBridge(store, [
+  mainWindow,
+]);
 
 // Option B: Instantiate bridge without windows, subscribe later
 const bridge = createReduxBridge(store);
@@ -140,7 +144,10 @@ const secondaryWindow = new BrowserWindow({
 });
 
 // Instantiate bridge with multiple windows
-const { subscribe, unsubscribe, getSubscribedWindows } = createZustandBridge(store, [mainWindow, secondaryWindow]);
+const { subscribe, unsubscribe, getSubscribedWindows } = createZustandBridge(store, [
+  mainWindow,
+  secondaryWindow,
+]);
 
 // Later, create a new window or view
 const runtimeView = new WebContentsView({

@@ -15,6 +15,7 @@ This app demonstrates that Zubridge correctly handles state updates made with Zu
 ## Key Differences from minimal-zustand-basic
 
 **Store creation with middleware:**
+
 ```typescript
 import { immer } from 'zustand/middleware/immer';
 
@@ -24,6 +25,7 @@ const store = create<State>()(immer(() => initialState));
 **Action handlers with mutable syntax:**
 
 **minimal-zustand-basic (spreads):**
+
 ```typescript
 store.setState((state) => ({
   ...state,
@@ -32,6 +34,7 @@ store.setState((state) => ({
 ```
 
 **minimal-zustand-immer (mutable):**
+
 ```typescript
 store.setState((state) => {
   state.counter += 1; // Direct mutation, Immer handles immutability

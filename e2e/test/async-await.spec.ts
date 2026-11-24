@@ -1,6 +1,6 @@
+import { browser } from '@wdio/electron-service';
 import { expect } from '@wdio/globals';
 import { before, describe, it } from 'mocha';
-import { browser } from 'wdio-electron-service';
 import { TIMING } from '../constants.js';
 import { getCounterValue, resetCounter, waitForSpecificValue } from '../utils/counter.js';
 import { getButtonInCurrentWindow, setupTestEnvironment } from '../utils/window.js';

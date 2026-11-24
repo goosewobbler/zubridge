@@ -4,46 +4,46 @@ on:
   workflow_call:
     inputs:
       target_packages:
-        description: 'Comma-separated list of packages to release (derived from scope if not provided)'
+        description: "Comma-separated list of packages to release (derived from scope if not provided)"
         required: false
         type: string
-        default: ''
+        default: ""
       target_branch:
-        description: 'Branch to release from'
+        description: "Branch to release from"
         required: true
         type: string
       bump:
-        description: 'Version increment (patch, minor, major)'
+        description: "Version increment (patch, minor, major)"
         required: true
         type: string
       release_type:
-        description: 'Release type (stable or prerelease)'
+        description: "Release type (stable or prerelease)"
         required: false
         type: string
-        default: 'prerelease'
+        default: "prerelease"
       dry_run:
-        description: 'Dry run mode'
+        description: "Dry run mode"
         required: false
         type: boolean
         default: false
       scope:
-        description: 'Release scope (electron, tauri, core, utils, types, ui, all) — controls build and toolchain steps'
+        description: "Release scope (electron, tauri, core, utils, types, ui, all) — controls build and toolchain steps"
         required: true
         type: string
       standing_pr_number:
-        description: 'When set, run the manifest-driven standing-pr publish for this PR number instead of the scoped release flow'
+        description: "When set, run the manifest-driven standing-pr publish for this PR number instead of the scoped release flow"
         required: false
         type: string
-        default: ''
+        default: ""
     secrets:
       ssh_key:
-        description: 'SSH deploy key for pushing to the repository'
+        description: "SSH deploy key for pushing to the repository"
         required: false
       crates_io_token:
-        description: 'Crates.io token for publishing Rust crates (required for tauri and core scopes)'
+        description: "Crates.io token for publishing Rust crates (required for tauri and core scopes)"
         required: false
       ollama_api_key:
-        description: 'Ollama API key for LLM-enhanced release notes'
+        description: "Ollama API key for LLM-enhanced release notes"
         required: false
 
 # pull-requests: write is needed by the standing-pr publish path (manifest comment read +
@@ -77,8 +77,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -225,20 +225,20 @@ jobs:
       - name: Run ReleaseKit
         id: releasekit
         if: ${{ inputs.standing_pr_number == '' }}
-        uses: goosewobbler/releasekit@v0.41.1
+        uses: goosewobbler/releasekit@v0.47.1
         with:
           mode: release
-          node-version: '24'
+          node-version: "24"
           target: ${{ inputs.target_packages || steps.targets.outputs.packages }}
           branch: ${{ inputs.target_branch }}
           bump: ${{ steps.params.outputs.bump }}
           stable: ${{ steps.params.outputs.stable }}
-          json: 'true'
+          json: "true"
           dry-run: ${{ inputs.dry_run }}
           project-dir: .
-          verbose: 'true'
-          summary: 'true'
-          skip-checkout: 'true'
+          verbose: "true"
+          summary: "true"
+          skip-checkout: "true"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
@@ -250,16 +250,16 @@ jobs:
       - name: Run ReleaseKit (standing PR publish)
         id: releasekit-standing
         if: ${{ inputs.standing_pr_number != '' }}
-        uses: goosewobbler/releasekit@v0.41.1
+        uses: goosewobbler/releasekit@v0.47.1
         with:
           mode: standing-pr-publish
-          node-version: '24'
+          node-version: "24"
           pr: ${{ inputs.standing_pr_number }}
-          json: 'true'
+          json: "true"
           project-dir: .
-          verbose: 'true'
-          summary: 'true'
-          skip-checkout: 'true'
+          verbose: "true"
+          summary: "true"
+          skip-checkout: "true"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}

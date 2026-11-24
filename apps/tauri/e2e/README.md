@@ -17,13 +17,13 @@ The fixture exposes five state-manager implementations selected via the
 different shape, mirroring the JS fixtures in
 `apps/electron/e2e/src/modes/`:
 
-| `ZUBRIDGE_MODE`    | Rust module                  | Shape                                                                    |
-| ------------------ | ---------------------------- | ------------------------------------------------------------------------ |
-| `zustand-basic`    | `modes::zustand_basic`       | `Mutex<BaseState>` with inline match-arm handlers                        |
-| `zustand-handlers` | `modes::zustand_handlers`    | `Mutex<BaseState>` with a `HashMap` of named handler closures            |
-| `zustand-reducers` | `modes::zustand_reducers`    | Per-slice pure reducers (`reduce_counter`, `reduce_theme`, ...)          |
-| `redux`            | `modes::redux`               | Single `root_reducer(state, action) -> state`                            |
-| `custom`           | `modes::custom`              | Hand-written store with a Tokio broadcast channel for change events      |
+| `ZUBRIDGE_MODE`    | Rust module               | Shape                                                               |
+| ------------------ | ------------------------- | ------------------------------------------------------------------- |
+| `zustand-basic`    | `modes::zustand_basic`    | `Mutex<BaseState>` with inline match-arm handlers                   |
+| `zustand-handlers` | `modes::zustand_handlers` | `Mutex<BaseState>` with a `HashMap` of named handler closures       |
+| `zustand-reducers` | `modes::zustand_reducers` | Per-slice pure reducers (`reduce_counter`, `reduce_theme`, ...)     |
+| `redux`            | `modes::redux`            | Single `root_reducer(state, action) -> state`                       |
+| `custom`           | `modes::custom`           | Hand-written store with a Tokio broadcast channel for change events |
 
 Default is `zustand-basic`.
 

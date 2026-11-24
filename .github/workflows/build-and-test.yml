@@ -306,7 +306,6 @@ jobs:
           retention-days: 1
           if-no-files-found: warn
 
-
   # Build on Windows
   windows-build:
     name: Windows Build
@@ -518,7 +517,17 @@ jobs:
   # Final status aggregation
   ci-status:
     name: Status
-    needs: [linux-build, macos-build, windows-build, linux-test, macos-test, windows-test, linux-package-test, macos-package-test]
+    needs:
+      [
+        linux-build,
+        macos-build,
+        windows-build,
+        linux-test,
+        macos-test,
+        windows-test,
+        linux-package-test,
+        macos-package-test,
+      ]
     if: always()
     runs-on: ubuntu-latest
     outputs:

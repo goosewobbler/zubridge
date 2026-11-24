@@ -200,7 +200,9 @@ function Counter() {
       <h1>Counter: {counter}</h1>
       <button onClick={() => dispatch({ type: 'INCREMENT' })}>+</button>
       <button onClick={() => dispatch({ type: 'DECREMENT' })}>-</button>
-      <button onClick={() => dispatch({ type: 'THEME:TOGGLE' })}>Toggle Theme ({isDark ? 'Dark' : 'Light'})</button>
+      <button onClick={() => dispatch({ type: 'THEME:TOGGLE' })}>
+        Toggle Theme ({isDark ? 'Dark' : 'Light'})
+      </button>
     </div>
   );
 }

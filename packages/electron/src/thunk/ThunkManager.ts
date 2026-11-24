@@ -399,7 +399,7 @@ export class ThunkManager extends EventEmitter {
 }
 
 // Export the enums and types for compatibility
-export { ThunkActionType, ThunkManagerEvent, type ThunkHandle };
+export { ThunkActionType, type ThunkHandle, ThunkManagerEvent };
 
 // Global instance management (for backward compatibility)
 let thunkManager: ThunkManager | undefined;

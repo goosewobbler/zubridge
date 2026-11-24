@@ -17,18 +17,21 @@ Zubridge is a cross-platform state management library that helps desktop and mob
 ### User personas
 
 **Senior Frontend Developer** (28–45)
+
 - **Role:** Lead engineer / tech lead
 - **Context:** Building Electron or Tauri applications for enterprise clients; managing state across main process, renderer processes, and multiple windows
 - **Pain points:** Complex IPC boilerplate, state-synchronisation bugs, performance overhead from naive state syncing, lack of type safety across process boundaries
 - **Goals:** Reduce development time, maintain type safety, achieve predictable state updates, minimise IPC overhead
 
 **Full-stack Developer** (25–35)
+
 - **Role:** Product engineer
 - **Context:** Shipping cross-platform desktop applications for startups or SaaS products; rapid development without sacrificing reliability
 - **Pain points:** Switching mental models between web state management and desktop IPC patterns; debugging async state issues across processes
 - **Goals:** Use familiar APIs (Zustand), ship features quickly, maintain code quality
 
 **Systems Programmer** (30–50)
+
 - **Role:** Senior software engineer / architect
 - **Context:** Building high-performance desktop applications with strict latency requirements; considering migration to Rust-based frameworks
 - **Pain points:** Performance unpredictability with JavaScript-only solutions; lack of control over state-synchronisation batching and priority

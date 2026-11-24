@@ -51,18 +51,18 @@
     }
   },
   "devDependencies": {
-    "@tauri-apps/api": "^2.8.0",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.17",
+    "@tauri-apps/api": "^2.12.5",
+    "@testing-library/jest-dom": "^8.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
     "@types/shelljs": "^0.10.0",
-    "@vitest/coverage-v8": "^4.1.9",
-    "react": "^19.2.7",
-    "rollup": "^4.62.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "react": "^19.3.1",
+    "rollup": "^4.68.8",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.9"
+    "vitest": "^5.1.1"
   },
   "files": [
     "dist/*",
@@ -78,6 +78,6 @@
   "dependencies": {
     "@zubridge/types": "workspace:*",
     "@zubridge/utils": "workspace:*",
-    "zustand": "^5.0.14"
+    "zustand": "^5.1.0"
   }
 }

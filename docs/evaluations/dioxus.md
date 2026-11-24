@@ -43,5 +43,5 @@ Direct Rust-to-Rust — no FFI layer needed. `zubridge-dioxus` crate provides:
 
 - Dioxus is pre-1.0 (last checked); API churn during integration development
 - Adoption is growing but smaller than React/Flutter — investment vs. demand calculation
-- Dioxus's own state-management story (Signals, Context) — clarify positioning: Zubridge for *cross-process* / *cross-window* state, Dioxus primitives for local/component state. Document the distinction.
+- Dioxus's own state-management story (Signals, Context) — clarify positioning: Zubridge for _cross-process_ / _cross-window_ state, Dioxus primitives for local/component state. Document the distinction.
 - Performance characteristics with Wry vs Tauri; benchmark parity expected since Wry is shared

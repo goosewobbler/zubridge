@@ -67,6 +67,7 @@ export const createUseStore = <S extends AnyState>(
 ): UseBoundStore<StoreApi<S>> => {
   const handlers = customHandlers || createHandlers<S>();
   const vanillaStore = createStore<S>(handlers);
+  // biome-ignore lint/correctness/noComponentHookFactories: hook factory by design, like zustand's create()
   const useBoundStore = (selector: (state: S) => unknown) => useStore(vanillaStore, selector);
 
   Object.assign(useBoundStore, vanillaStore);

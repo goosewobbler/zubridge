@@ -383,11 +383,11 @@ describe('MainThunkProcessor', () => {
   });
 
   describe('error scenarios', () => {
-    it('should handle state manager initialization without state manager', () => {
+    it('should handle state manager initialization without state manager', async () => {
       const uninitializedProcessor = new MainThunkProcessor();
       const thunk = createMockThunk();
 
-      expect(() => uninitializedProcessor.executeThunk(thunk, { windowId: 1 })).rejects.toThrow();
+      await expect(uninitializedProcessor.executeThunk(thunk, { windowId: 1 })).rejects.toThrow();
     });
 
     it('should handle multiple action completions for same action', () => {

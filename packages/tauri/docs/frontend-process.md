@@ -133,6 +133,7 @@ function CounterControls() {
 
 - `useZubridgeDispatch` returns a single `dispatch` function.
 - You **must** pass an action object with at least a `type` property:
+
   ```typescript
   type ZubridgeAction = {
     type: string;

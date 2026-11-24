@@ -24,4 +24,4 @@ scheduler.setOnTaskCompletedCallback(() => {
 debug('scheduler', 'ThunkScheduler callback wired to ActionScheduler.processQueue');
 
 // Export the initialized components
-export { thunkManager, actionScheduler };
+export { actionScheduler, thunkManager };

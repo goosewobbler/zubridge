@@ -35,11 +35,13 @@ Two windows will open side-by-side with a yellow warning banner indicating conte
 ## Testing Checklist
 
 ### ✅ Visual Indicators
+
 - [ ] Yellow warning banner displays: "contextIsolation: ❌ Disabled"
 - [ ] Banner shows: `__zubridge_subscriptionValidator on window: ✅ Yes`
 - [ ] Security warning text is visible
 
 ### ✅ State Management
+
 - [ ] Counter increments/decrements correctly
 - [ ] Theme toggle switches between light/dark
 - [ ] Both windows receive state updates simultaneously
@@ -51,18 +53,19 @@ Open DevTools (Cmd+Option+I / Ctrl+Shift+I) and verify:
 
 ```javascript
 // Validator should be accessible on window (not contextBridge)
-window.__zubridge_subscriptionValidator
+window.__zubridge_subscriptionValidator;
 // → Should return object with stateKeyExists function
 
 // Test the validator
-window.__zubridge_subscriptionValidator.stateKeyExists('counter')
+window.__zubridge_subscriptionValidator.stateKeyExists('counter');
 // → Should return true
 
-window.__zubridge_subscriptionValidator.stateKeyExists('nonexistent')
+window.__zubridge_subscriptionValidator.stateKeyExists('nonexistent');
 // → Should return false
 ```
 
 ### ✅ No Errors
+
 - [ ] No console errors about missing `contextBridge`
 - [ ] No warnings about unsafe property access
 - [ ] App runs without crashes
@@ -79,6 +82,7 @@ For more information about using Zubridge with `contextIsolation: false`:
 This app is **not** a recommended example - it's a reference implementation for an edge case. Most applications should use the default `contextIsolation: true` configuration for security.
 
 This exists because:
+
 - Some legacy applications genuinely cannot enable context isolation without extensive refactoring
 - Zubridge officially supports this configuration for compatibility
 - Having a working reference helps validate the feature and assists users with legacy constraints

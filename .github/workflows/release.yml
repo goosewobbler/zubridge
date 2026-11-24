@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: 'Release scope (electron, tauri, core, utils, types, ui)'
+        description: "Release scope (electron, tauri, core, utils, types, ui)"
         required: true
         type: choice
         options:
@@ -28,7 +28,7 @@ on:
           - ui
         default: electron
       bump:
-        description: 'Version increment'
+        description: "Version increment"
         required: true
         type: choice
         options:
@@ -38,7 +38,7 @@ on:
           - prerelease
         default: patch
       release_type:
-        description: 'Release type'
+        description: "Release type"
         required: true
         type: choice
         options:
@@ -46,20 +46,20 @@ on:
           - prerelease
         default: stable
       target_branch:
-        description: 'Branch to release from (default: main)'
+        description: "Branch to release from (default: main)"
         required: false
         type: string
         default: main
       dry_run:
-        description: 'Dry run (show what would happen without publishing)'
+        description: "Dry run (show what would happen without publishing)"
         required: false
         type: boolean
         default: false
       standing_pr_number:
-        description: 'PR number of a merged standing release PR. When set, runs the manifest-driven publish path and ignores scope/bump. Set by standing-pr.yml; manual callers should leave blank.'
+        description: "PR number of a merged standing release PR. When set, runs the manifest-driven publish path and ignores scope/bump. Set by standing-pr.yml; manual callers should leave blank."
         required: false
         type: string
-        default: ''
+        default: ""
 
 concurrency:
   group: release
@@ -95,15 +95,15 @@ jobs:
 
       - name: Run ReleaseKit Gate
         id: gate
-        uses: goosewobbler/releasekit@v0.41.1
+        uses: goosewobbler/releasekit@v0.47.1
         with:
           mode: gate
-          node-version: '24'
+          node-version: "24"
           project-dir: .
           branch: main
-          json: 'true'
-          summary: 'true'
-          skip-checkout: 'true'
+          json: "true"
+          summary: "true"
+          skip-checkout: "true"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

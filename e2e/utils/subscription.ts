@@ -1,4 +1,4 @@
-import { browser } from 'wdio-electron-service';
+import { browser } from '@wdio/electron-service';
 import { TIMING } from '../constants.js';
 import {
   getButtonInCurrentWindow,

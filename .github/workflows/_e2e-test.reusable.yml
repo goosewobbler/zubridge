@@ -18,7 +18,7 @@ on:
       artifact_name:
         description: "Name of the build artifact to download (Electron only)"
         required: false
-        default: ''
+        default: ""
         type: string
     secrets:
       TURBO_TOKEN:
@@ -41,7 +41,7 @@ jobs:
     if: inputs.app == 'electron' || inputs.app == 'tauri'
     steps:
       # Install Linux dependencies for Tauri apps before running E2E tests
-      - name: Install Linux dependencies for Tauri & E2E (including WebKitWebDriver)
+      - name: Install Linux dependencies for Tauri & E2E
         if: (inputs.app == 'tauri' || inputs.app == 'tauri-v1') && inputs.os == 'linux'
         shell: bash
         run: |
@@ -67,7 +67,6 @@ jobs:
 
           TAURI_V2_DEPS=\
           "libwebkit2gtk-4.1-dev \
-          webkit2gtk-driver \
           libjavascriptcoregtk-4.1-dev"
 
 
@@ -186,4 +185,4 @@ jobs:
         if: failure()
         with:
           machineName: zubridge-e2e-${{ inputs.os }}-${{ inputs.app }}-${{ inputs.mode }}
-          timeout: '120000'
+          timeout: "120000"

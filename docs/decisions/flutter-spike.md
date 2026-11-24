@@ -4,7 +4,7 @@
 
 ## Context
 
-Flutter is the Path C anchor. The full integration is L–XL effort; a misstep is expensive. The spike validates `flutter_rust_bridge` ergonomics, Dart's null-safety interop with Rust's `Option<T>`, and Flutter's multi-isolate model against `zubridge-core` *before* committing to the full integration.
+Flutter is the Path C anchor. The full integration is L–XL effort; a misstep is expensive. The spike validates `flutter_rust_bridge` ergonomics, Dart's null-safety interop with Rust's `Option<T>`, and Flutter's multi-isolate model against `zubridge-core` _before_ committing to the full integration.
 
 ## Owner
 

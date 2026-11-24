@@ -31,6 +31,7 @@ export function ErrorLog({ errors, onClear }: ErrorLogProps) {
         ) : (
           errors.map((error, index) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: entries can share a timestamp, so the index disambiguates
               key={`${error.timestamp}-${index}`}
               className="mb-2 error-log-entry last:mb-0"
               data-testid="error-entry"

@@ -33,6 +33,6 @@ tauri = { version = "2.11.1", features = ["tray-icon", "devtools"] }
 tauri-plugin-log = "2.0.0-rc"
 tokio = { version = "1", features = ["time", "sync", "macros", "rt"] }
 tauri-plugin-zubridge = { path = "../../../../packages/tauri-plugin" }
-tauri-plugin-wdio = "1.0.0"
-tauri-plugin-wdio-webdriver = "1.0.0"
+tauri-plugin-wdio = "2.0.0-next.0"
+tauri-plugin-wdio-webdriver = "2.0.0-next.0"
 uuid = { version = "1", features = ["v4"] }

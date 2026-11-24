@@ -1,5 +1,5 @@
 // Utility functions for E2E window and counter management
-import { browser } from 'wdio-electron-service';
+import { browser } from '@wdio/electron-service';
 import { TIMING } from '../constants.js';
 import { subscribeToAllState } from './subscription.js';
 

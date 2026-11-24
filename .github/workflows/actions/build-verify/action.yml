@@ -1,8 +1,8 @@
-name: 'Build and Verify'
-description: 'Build and verify packages'
+name: "Build and Verify"
+description: "Build and verify packages"
 outputs:
   package_version:
-    description: 'Current package version'
+    description: "Current package version"
     value: ${{ steps.verify_build.outputs.success }}
 runs:
   using: composite

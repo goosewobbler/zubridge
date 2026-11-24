@@ -22,7 +22,6 @@ Under the hood, the plugin implements the following contract:
 ### Commands
 
 1. **`__zubridge_get_initial_state`**: Returns the complete current state of your application
-
    - Called when the frontend initializes
    - Returns a JSON serializable object representing your state
 

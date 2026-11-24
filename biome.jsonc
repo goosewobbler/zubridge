@@ -23,6 +23,8 @@
       "!**/.electron-user-data-*",
       "!**/electron-builder-output",
       "!**/dist*",
+      "!**/target",
+      "!**/gen/schemas",
       // ignore NAPI-RS generated files
       "!packages/middleware/node/index.js",
       "!packages/middleware/node/index.d.ts"
@@ -31,7 +33,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "noUnusedVariables": "error"
       },

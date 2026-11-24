@@ -85,7 +85,7 @@ describe('DeltaMerger', () => {
       // Child key inserted before parent — sort must reorder so parent is processed first
       const changed: Record<string, unknown> = {};
       changed['user.name'] = 'Bob';
-      changed['user'] = { name: 'Alice', profile: { theme: 'dark' } };
+      changed.user = { name: 'Alice', profile: { theme: 'dark' } };
 
       const result = merger.merge(currentState, { type: 'delta', changed });
 

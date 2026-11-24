@@ -1659,7 +1659,7 @@ describe('bridge.ts', () => {
   });
 });
 
-describe('bridge.ts', () => {
+describe('bridge.ts createCoreBridge', () => {
   describe('createCoreBridge', () => {
     it('should create a core bridge with basic functionality', () => {
       const stateManager = createMockStateManager();

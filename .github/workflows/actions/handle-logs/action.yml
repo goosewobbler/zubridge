@@ -1,14 +1,14 @@
-name: 'Handle Logs'
-description: 'Displays and uploads logs'
+name: "Handle Logs"
+description: "Displays and uploads logs"
 inputs:
   os:
-    description: 'Operating system of the runner'
+    description: "Operating system of the runner"
     required: true
   app:
-    description: 'Type of application (electron, tauri, tauri-v1) or package-test'
+    description: "Type of application (electron, tauri, tauri-v1) or package-test"
     required: true
   mode:
-    description: 'Application mode (basic, handlers, etc.)'
+    description: "Application mode (basic, handlers, etc.)"
     required: true
 
 runs:
@@ -18,9 +18,9 @@ runs:
       if: inputs.app == 'electron'
       run: |
         echo "=== E2E Test Logs for ${{ inputs.app }}-${{ inputs.mode }} ==="
-        
+
         LOG_DIR="./e2e/wdio-logs-${{ inputs.app }}/e2e-${{ inputs.mode }}"
-        
+
         if [ -d "$LOG_DIR" ]; then
           find "$LOG_DIR" -name "*.log" -type f | sort | while read -r log_file; do
             log_name=$(basename "$log_file")
@@ -33,7 +33,7 @@ runs:
         else
           echo "No log directory found at: $LOG_DIR"
         fi
-        
+
         echo "=== End of E2E Test Logs ==="
       shell: bash
 

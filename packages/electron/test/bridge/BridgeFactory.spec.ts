@@ -4,7 +4,6 @@ import { createCoreBridge } from '../../src/bridge/index.js';
 import type { IpcHandler } from '../../src/bridge/ipc/IpcHandler.js';
 import type { ResourceManager } from '../../src/bridge/resources/ResourceManager.js';
 import { thunkManager } from '../../src/thunk/init.js';
-import type { CoreBridgeOptions } from '../../src/types/bridge.js';
 import type { WebContentsTracker } from '../../src/utils/windows.js';
 
 // Mock dependencies
