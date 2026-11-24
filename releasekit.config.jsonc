@@ -45,6 +45,7 @@
       "zubridge-monorepo",
       "zubridge-e2e",
       "@zubridge/apps-shared",
+      "@zubridge/ui",
       "electron-e2e",
       "electron-minimal-context-isolation-false",
       "electron-minimal-custom",
@@ -82,8 +83,7 @@
       "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge",
       "scope:core": "zubridge-core",
       "scope:utils": "@zubridge/utils",
-      "scope:types": "@zubridge/types",
-      "scope:ui": "@zubridge/ui"
+      "scope:types": "@zubridge/types"
     }
   },
   "notes": {
