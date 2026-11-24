@@ -83,6 +83,8 @@ initializeWDIOLogger();
  * Create a debug function for a specific namespace
  */
 function createDebugger(namespace: string): DebugFunction {
+  let wealdInstance: ReturnType<typeof weald> | undefined;
+
   return (...args: unknown[]) => {
     if (!isDebugEnabled()) {
       return;
@@ -102,8 +104,9 @@ function createDebugger(namespace: string): DebugFunction {
       return;
     }
 
+    wealdInstance ??= weald(namespace);
     const [format, ...rest] = args;
-    weald(namespace)(format, ...rest);
+    wealdInstance(format, ...rest);
   };
 }
 
