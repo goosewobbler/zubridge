@@ -11,15 +11,15 @@ vi.mock('@zubridge/utils', () => ({ debug: vi.fn() }));
 describe('findCaseInsensitiveMatch', () => {
   const obj = { Increment: 1, other: 2 };
 
-  it('prefers an exact match', () => {
+  it('should prefer an exact match', () => {
     expect(findCaseInsensitiveMatch(obj, 'Increment')).toEqual(['Increment', 1]);
   });
 
-  it('falls back to a case-insensitive match', () => {
+  it('should fall back to a case-insensitive match', () => {
     expect(findCaseInsensitiveMatch(obj, 'INCREMENT')).toEqual(['Increment', 1]);
   });
 
-  it('returns undefined when nothing matches', () => {
+  it('should return undefined when nothing matches', () => {
     expect(findCaseInsensitiveMatch(obj, 'missing')).toBeUndefined();
   });
 });
@@ -28,43 +28,43 @@ describe('findNestedHandler', () => {
   const increment = () => undefined;
   const handlers = { counter: { increment }, value: 5 };
 
-  it('resolves a nested path case-insensitively', () => {
+  it('should resolve a nested path case-insensitively', () => {
     expect(findNestedHandler(handlers, 'COUNTER.Increment')).toBe(increment);
   });
 
-  it('returns undefined when a path segment is missing', () => {
+  it('should return undefined when a path segment is missing', () => {
     expect(findNestedHandler(handlers, 'counter.decrement')).toBeUndefined();
   });
 
-  it('returns undefined when the target is not a function', () => {
+  it('should return undefined when the target is not a function', () => {
     expect(findNestedHandler(handlers, 'value')).toBeUndefined();
   });
 
-  it('returns undefined instead of throwing on a null segment', () => {
+  it('should return undefined instead of throwing on a null segment', () => {
     expect(findNestedHandler({ a: null }, 'a.b')).toBeUndefined();
   });
 });
 
 describe('resolveHandler', () => {
-  it('resolves a direct handler', () => {
+  it('should resolve a direct handler', () => {
     const inc = vi.fn();
     const handlers = { INCREMENT: inc };
 
     expect(resolveHandler(handlers, 'increment')).toBe(inc);
   });
 
-  it('resolves a nested handler', () => {
+  it('should resolve a nested handler', () => {
     const inc = vi.fn();
     const handlers = { counter: { increment: inc } };
 
     expect(resolveHandler(handlers, 'counter.increment')).toBe(inc);
   });
 
-  it('returns undefined for unknown action types', () => {
+  it('should return undefined for unknown action types', () => {
     expect(resolveHandler({}, 'nope')).toBeUndefined();
   });
 
-  it('caches resolutions per handlers object', () => {
+  it('should cache resolutions per handlers object', () => {
     const handlers: Record<string, Handler | unknown> = {};
     const first = vi.fn();
     handlers.thing = first;
@@ -74,7 +74,7 @@ describe('resolveHandler', () => {
     expect(resolveHandler(handlers, 'thing')).toBe(first);
   });
 
-  it('does not share the cache between handlers objects', () => {
+  it('should not share the cache between handlers objects', () => {
     const a = vi.fn();
     const b = vi.fn();
 
@@ -82,7 +82,7 @@ describe('resolveHandler', () => {
     expect(resolveHandler({ thing: b }, 'thing')).toBe(b);
   });
 
-  it('expires cached entries after the TTL', () => {
+  it('should expire cached entries after the TTL', () => {
     vi.useFakeTimers();
     try {
       const handlers: Record<string, unknown> = { thing: vi.fn() };
@@ -99,7 +99,7 @@ describe('resolveHandler', () => {
     }
   });
 
-  it('keeps resolving correctly when the cache exceeds its size limit', () => {
+  it('should keep resolving correctly when the cache exceeds its size limit', () => {
     const handlers: Record<string, unknown> = {};
     for (let i = 0; i < 1100; i++) {
       handlers[`action${i}`] = vi.fn();

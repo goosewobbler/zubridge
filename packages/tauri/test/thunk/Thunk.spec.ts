@@ -7,7 +7,7 @@ const makeThunk = (overrides: Partial<ConstructorParameters<typeof Thunk>[0]> = 
   new Thunk({ sourceWindowId: 1, source: 'renderer', ...overrides });
 
 describe('Thunk', () => {
-  it('starts pending with the provided options', () => {
+  it('should start pending with the provided options', () => {
     const thunk = makeThunk({
       id: 'abc',
       parentId: 'parent',
@@ -29,11 +29,11 @@ describe('Thunk', () => {
     expect(thunk.isComplete()).toBe(false);
   });
 
-  it('generates unique ids when none is provided', () => {
+  it('should generate unique ids when none is provided', () => {
     expect(makeThunk().id).not.toBe(makeThunk().id);
   });
 
-  it('transitions through its lifecycle states', () => {
+  it('should transition through its lifecycle states', () => {
     const thunk = makeThunk();
 
     thunk.activate();
@@ -45,7 +45,7 @@ describe('Thunk', () => {
     expect(thunk.isComplete()).toBe(true);
   });
 
-  it('treats a failed thunk as complete', () => {
+  it('should treat a failed thunk as complete', () => {
     const thunk = makeThunk();
 
     thunk.fail();
@@ -54,7 +54,7 @@ describe('Thunk', () => {
     expect(thunk.isComplete()).toBe(true);
   });
 
-  it('tracks child thunk ids without duplicates', () => {
+  it('should track child thunk ids without duplicates', () => {
     const thunk = makeThunk();
 
     thunk.addChild('c1');
@@ -64,7 +64,7 @@ describe('Thunk', () => {
     expect(thunk.getChildren()).toEqual(['c1', 'c2']);
   });
 
-  it('allows updating the source window and context id', () => {
+  it('should allow updating the source window and context id', () => {
     const thunk = makeThunk();
 
     thunk.sourceWindowId = 7;

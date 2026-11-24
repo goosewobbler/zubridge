@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { QueueOverflowError } from '../../src/types/errors.js';
 
 describe('QueueOverflowError', () => {
-  it('exposes the queue size and limit', () => {
+  it('should expose the queue size and limit', () => {
     const error = new QueueOverflowError(12, 10);
 
     expect(error).toBeInstanceOf(Error);

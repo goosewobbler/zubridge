@@ -11,7 +11,7 @@ describe('errorHandling', () => {
   });
 
   describe('logError', () => {
-    it('logs details and the stack under the context namespace', () => {
+    it('should log details and the stack under the context namespace', () => {
       logError('ipc', new Error('boom'), { extra: 1 });
 
       expect(debug).toHaveBeenCalledWith(
@@ -22,7 +22,7 @@ describe('errorHandling', () => {
       expect(debug).toHaveBeenCalledWith('ipc:error', 'Stack trace:', expect.any(String));
     });
 
-    it('normalises non-Error values', () => {
+    it('should normalise non-Error values', () => {
       logError('ipc', 'plain string');
 
       expect(debug).toHaveBeenCalledWith(
@@ -34,7 +34,7 @@ describe('errorHandling', () => {
   });
 
   describe('logZubridgeError', () => {
-    it('derives the namespace from the error class name', () => {
+    it('should derive the namespace from the error class name', () => {
       const error = new TauriCommandError('failed', { command: 'dispatch' });
 
       logZubridgeError(error, { extra: true });
@@ -48,7 +48,7 @@ describe('errorHandling', () => {
   });
 
   describe('serializeError', () => {
-    it('keeps context and timestamp from a Zubridge error', () => {
+    it('should keep context and timestamp from a Zubridge error', () => {
       const error = new TauriCommandError('failed', { command: 'dispatch' });
 
       expect(serializeError(error)).toEqual({
@@ -60,7 +60,7 @@ describe('errorHandling', () => {
       });
     });
 
-    it('wraps a native Error', () => {
+    it('should wrap a native Error', () => {
       const serialized = serializeError(new TypeError('bad'));
 
       expect(serialized.name).toBe('TypeError');
@@ -68,7 +68,7 @@ describe('errorHandling', () => {
       expect(typeof serialized.timestamp).toBe('number');
     });
 
-    it('produces a structured-clone-safe object', () => {
+    it('should produce a structured-clone-safe object', () => {
       expect(() => structuredClone(serializeError(new Error('x')))).not.toThrow();
     });
   });

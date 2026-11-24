@@ -32,7 +32,7 @@ describe('debug', () => {
   });
 
   describe('isDebugEnabled', () => {
-    it('is false when neither DEBUG nor localStorage is set', async () => {
+    it('should be false when neither DEBUG nor localStorage is set', async () => {
       const { isDebugEnabled } = await loadModule();
 
       expect(isDebugEnabled()).toBe(false);
@@ -43,7 +43,7 @@ describe('debug', () => {
       ['zubridge:*', true],
       ['zubridge:ipc,other:*', true],
       ['other:*', false],
-    ])('reads DEBUG=%s from the environment', async (pattern, expected) => {
+    ])('should read DEBUG=%s from the environment', async (pattern, expected) => {
       vi.stubEnv('DEBUG', pattern);
       const { isDebugEnabled } = await loadModule();
 
@@ -55,14 +55,14 @@ describe('debug', () => {
       ['zubridge:*', true],
       ['other:*', false],
       [null, false],
-    ])('reads localStorage debug=%s when DEBUG is unset', async (stored, expected) => {
+    ])('should read localStorage debug=%s when DEBUG is unset', async (stored, expected) => {
       vi.stubGlobal('localStorage', { getItem: () => stored });
       const { isDebugEnabled } = await loadModule();
 
       expect(isDebugEnabled()).toBe(expected);
     });
 
-    it('is false when localStorage access throws', async () => {
+    it('should be false when localStorage access throws', async () => {
       vi.stubGlobal('localStorage', {
         getItem: () => {
           throw new Error('blocked');
@@ -75,7 +75,7 @@ describe('debug', () => {
   });
 
   describe('debugLog', () => {
-    it('does not call weald when debugging is disabled', async () => {
+    it('should not call weald when debugging is disabled', async () => {
       const { debugLog } = await loadModule();
 
       debugLog('ipc', 'message');
@@ -84,7 +84,7 @@ describe('debug', () => {
       expect(wealdInstance).not.toHaveBeenCalled();
     });
 
-    it('logs through weald under the zubridge namespace when enabled', async () => {
+    it('should log through weald under the zubridge namespace when enabled', async () => {
       vi.stubEnv('DEBUG', 'zubridge:*');
       const { debugLog } = await loadModule();
 
@@ -94,7 +94,7 @@ describe('debug', () => {
       expect(wealdInstance).toHaveBeenCalledWith('sent %s', 'action');
     });
 
-    it('creates one weald instance per namespace and reuses it', async () => {
+    it('should create one weald instance per namespace and reuse it', async () => {
       vi.stubEnv('DEBUG', '*');
       const { debugLog } = await loadModule();
 
@@ -108,7 +108,7 @@ describe('debug', () => {
       expect(wealdInstance).toHaveBeenCalledTimes(3);
     });
 
-    it('exports debug as an alias of debugLog', async () => {
+    it('should export debug as an alias of debugLog', async () => {
       const mod = await loadModule();
 
       expect(mod.debug).toBe(mod.debugLog);
@@ -131,7 +131,7 @@ describe('debug', () => {
       }
     });
 
-    it('routes logs to @wdio/logger by namespace suffix instead of weald', async () => {
+    it('should route logs to @wdio/logger by namespace suffix instead of weald', async () => {
       vi.doMock('@wdio/logger', () => ({ default: () => wdioLogger }));
       const { debugLog } = await loadModule();
       await flushPromises();
@@ -148,7 +148,7 @@ describe('debug', () => {
       expect(wealdFactory).not.toHaveBeenCalled();
     });
 
-    it('holds logs made before @wdio/logger loads and sends them to it', async () => {
+    it('should hold logs made before @wdio/logger loads and send them to it', async () => {
       let releaseImport: () => void = () => undefined;
       const importGate = new Promise<void>((resolve) => {
         releaseImport = resolve;
@@ -172,7 +172,7 @@ describe('debug', () => {
       expect(wealdFactory).not.toHaveBeenCalled();
     });
 
-    it('falls back to weald when @wdio/logger cannot be loaded', async () => {
+    it('should fall back to weald when @wdio/logger cannot be loaded', async () => {
       vi.doMock('@wdio/logger', () => {
         throw new Error('not installed');
       });
