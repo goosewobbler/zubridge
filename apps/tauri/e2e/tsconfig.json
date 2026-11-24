@@ -21,7 +21,6 @@
       "DOM.Iterable"
     ],
     "composite": true,
-    "baseUrl": ".",
     "types": [
       "vite/client"
     ]

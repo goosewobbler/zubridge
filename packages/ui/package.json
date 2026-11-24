@@ -38,7 +38,7 @@
     "scripts/**/*.ts"
   ],
   "scripts": {
-    "build:plugin": "tsc scripts/vite-ui-watcher-plugin.ts --outDir dist/scripts --module ESNext --moduleResolution bundler --target ESNext --esModuleInterop",
+    "build:plugin": "tsc scripts/vite-ui-watcher-plugin.ts --outDir dist/scripts --module ESNext --moduleResolution bundler --target ESNext --esModuleInterop --ignoreConfig",
     "build:css": "pnpm exec tailwindcss -i ./src/styles/tailwind.css -o ./dist/styles.css --postcss",
     "build:lib": "tsdown",
     "build": "pnpm run build:lib && pnpm run build:plugin && pnpm run build:css",

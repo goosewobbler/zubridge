@@ -16,7 +16,6 @@
     "noImplicitAny": false,
     "noImplicitReturns": true,
     "composite": true,
-    "baseUrl": ".",
     "types": [
       "electron-vite/node"
     ]
