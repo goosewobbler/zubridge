@@ -59,7 +59,8 @@ jobs:
             // Stamped into the comment so a run can tell whether a newer one already
             // wrote it. Unlike the head SHA, `run_number` orders runs that share a
             // commit, as label events do.
-            const RUN_TAG = /<!-- releasekit-preview-run: (\d+) -->/;
+            const RUN_TAG = /<!-- releasekit-preview-run: (\d+) -->\s*$/;
+            const ANY_RUN_TAG = /<!--\s*releasekit-preview-run:[^>]*-->/g;
             const runNumber = context.payload.workflow_run.run_number;
 
             if (!fs.existsSync('preview/preview.md')) {
@@ -67,7 +68,9 @@ jobs:
               return;
             }
 
-            const raw = fs.readFileSync('preview/preview.md', 'utf8').trim();
+            // The artifact is untrusted: drop any run stamp it carries so only the one
+            // appended below is ever read back.
+            const raw = fs.readFileSync('preview/preview.md', 'utf8').replace(ANY_RUN_TAG, '').trim();
             if (!raw) {
               core.info('Preview artifact was empty; nothing to post.');
               return;
@@ -110,7 +113,11 @@ jobs:
               issue_number: prNumber,
               per_page: 100,
             });
-            const existing = comments.find((comment) => comment.body?.includes(MARKER));
+            // Anyone can paste the marker and a stamp, so only trust our own comment.
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.login === 'github-actions[bot]' && comment.body?.includes(MARKER),
+            );
 
             if (existing) {
               // The concurrency group means no other run for this branch is active, so
