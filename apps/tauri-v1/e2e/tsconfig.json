@@ -20,7 +20,6 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "baseUrl": ".",
     "types": [
       "vite/client"
     ]

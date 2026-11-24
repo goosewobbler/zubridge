@@ -20,8 +20,7 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "composite": true,
-    "baseUrl": "."
+    "composite": true
   },
   "include": [
     "src/features/**/*",

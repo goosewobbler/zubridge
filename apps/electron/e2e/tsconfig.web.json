@@ -21,7 +21,9 @@
       "DOM.Iterable"
     ],
     "composite": true,
-    "baseUrl": "."
+    "types": [
+      "vite/client"
+    ]
   },
   "include": [
     "src/features/**/*",
