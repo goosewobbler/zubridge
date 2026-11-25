@@ -216,6 +216,25 @@ jobs:
             git checkout -B ${{ inputs.target_branch || 'main' }} origin/${{ inputs.target_branch || 'main' }} 2>/dev/null || git checkout ${{ inputs.target_branch || 'main' }}
           fi
 
+      # Fails before anything publishes; see scripts/check-cargo-prerequisites.ts.
+      - name: Check Cargo prerequisites
+        # On a dry run, report the problem but still let releasekit print the computed versions.
+        continue-on-error: ${{ inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STANDING_PR: ${{ inputs.standing_pr_number }}
+          TARGETS: ${{ inputs.target_packages || steps.targets.outputs.packages }}
+        run: |
+          if [ -n "$STANDING_PR" ]; then
+            pnpm exec tsx scripts/check-cargo-prerequisites.ts --pr "$STANDING_PR"
+          elif [ -n "$TARGETS" ]; then
+            pnpm exec tsx scripts/check-cargo-prerequisites.ts --targets "$TARGETS"
+          else
+            # No target means releasekit releases every package.
+            pnpm exec tsx scripts/check-cargo-prerequisites.ts --all
+          fi
+
       - name: Run ReleaseKit
         id: releasekit
         if: ${{ inputs.standing_pr_number == '' }}

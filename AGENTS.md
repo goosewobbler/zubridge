@@ -15,33 +15,34 @@ Zubridge is a cross-platform state management library that brings Zustand-inspir
 
 **Shipped Adapters:**
 
-- **Electron** — `@zubridge/electron` (v3.x, stable)
-- **Tauri v2** — `@zubridge/tauri` (v1.x, in active refactor via P4)
+- **Electron** — `@zubridge/electron` (stable)
+- **Tauri v2** — `@zubridge/tauri` (2.0 in progress, P4)
 - **Tauri v1** — `@zubridge/tauri` (maintenance only)
 
 **Planned Integrations:** Electrobun, Dioxus, Flutter, React Native, Ionic/Capacitor. See [ROADMAP.md](./ROADMAP.md) for details.
 
 ## Tech Stack
 
-| Category           | Technology                                         |
-| ------------------ | -------------------------------------------------- |
-| Language           | TypeScript 5.9+ (strict mode, ESM)                 |
-| Runtime            | Node.js ≥ 24                                       |
-| Package Manager    | pnpm 10.8.1+                                       |
-| Monorepo           | Turborepo 2.8+ with pnpm workspaces                |
-| Testing            | Vitest 4.1+ (unit), WebdriverIO 9.4+ (E2E)         |
-| Linting/Formatting | Biome 2.4+                                         |
-| Bundling           | Rollup 4 (electron), tsdown (other packages)       |
-| Rust               | tauri-plugin-zubridge, zubridge-core (P1 refactor) |
+| Category           | Technology                                 |
+| ------------------ | ------------------------------------------ |
+| Language           | TypeScript (strict mode, ESM)              |
+| Package Manager    | pnpm                                       |
+| Monorepo           | Turborepo with pnpm workspaces             |
+| Testing            | Vitest (unit), WebdriverIO (E2E)           |
+| Linting/Formatting | Biome                                      |
+| Bundling           | Rollup (electron), tsdown (other packages) |
+| Rust               | tauri-plugin-zubridge, zubridge-core       |
+
+For exact versions, see `package.json` (`engines`, `packageManager`, `devDependencies`) and each crate's `Cargo.toml`.
 
 ## Monorepo Structure
 
 ```
 packages/
-├── core/              # zubridge-core — Unified Rust crate (P1 refactor; platform-agnostic state primitives)
+├── core/              # zubridge-core — Unified Rust crate (platform-agnostic scheduler, thunks, deltas, subscriptions)
 ├── electron/          # @zubridge/electron — Electron adapter (main, renderer, preload)
 ├── tauri/             # @zubridge/tauri — Tauri adapter (v1 + v2)
-├── tauri-plugin/      # tauri-plugin-zubridge — Rust-side Tauri plugin (being absorbed into core)
+├── tauri-plugin/      # tauri-plugin-zubridge — Tauri commands + glue over zubridge-core
 ├── types/             # @zubridge/types — Shared TypeScript type definitions
 ├── utils/             # @zubridge/utils — Debug system and shared utilities
 ├── ui/                # @zubridge/ui — Reusable React UI components for examples/tests
@@ -183,19 +184,9 @@ pnpm typecheck           # TypeScript validation across all packages
 
 ## Active Development Context
 
-The **Unified Rust Core Refactor** (P1–P7) is in progress. Key phases:
+The **Unified Rust Core Refactor** (P1–P7) is in progress. [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md) is the single source for phase status: its §2 "Progress" table tracks what has landed and what is outstanding. Check it when touching Tauri or Rust code to understand where that code sits in the refactor sequence.
 
-| Phase | Status      | Goal                                                   |
-| ----- | ----------- | ------------------------------------------------------ |
-| P1    | In progress | Extract `zubridge-core` Rust crate from tauri-plugin   |
-| P2    | Planned     | Port action/thunk scheduler from TypeScript to Rust    |
-| P3    | Planned     | Absorb middleware package                              |
-| P4    | Planned     | Release `@zubridge/tauri` v2.0                         |
-| P5    | Planned     | NAPI-RS bindings + `@zubridge/node-native`             |
-| P6    | Planned     | Electron 3.1 migrates to NAPI core                     |
-| P7    | Planned     | Synchronised stable release (Electron 3.1 + Tauri 2.x) |
-
-When touching Tauri or Rust code, check [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md) to understand where that code sits in the refactor sequence.
+Releases go through releasekit's standing PR (`releasekit.config.jsonc`). `@zubridge/tauri` and `tauri-plugin-zubridge` always release together at one version. Don't untick `zubridge-core` on the standing PR while the plugin is releasing, and release core with `scope:core` before a `scope:tauri` release that needs it. Mark breaking changes with `type(scope)!:` or a `BREAKING CHANGE:` footer on a commit that touches the package. Details are in [UNIFFI_REFACTOR_PLAN.md](./UNIFFI_REFACTOR_PLAN.md) §3 P4.
 
 ## Common Tasks
 

@@ -67,13 +67,16 @@
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",
     "@releasekit/release": "^0.47.1",
+    "@types/semver": "^7.8.0",
     "@types/shelljs": "^0.10.0",
     "@wdio/logger": "^10.2.0",
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.2",
+    "semver": "^7.8.6",
     "shelljs": "^0.10.0",
     "shx": "^0.4.0",
+    "smol-toml": "^1.9.1",
     "tsx": "^4.23.15",
     "turbo": "^2.11.13"
   },

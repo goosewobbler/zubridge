@@ -16,7 +16,6 @@ import { IpcChannel } from '../../src/constants.js';
 import { resetMainThunkProcessor } from '../../src/main/mainThunkProcessor.js';
 import { getStateManager } from '../../src/registry/stateManagerRegistry.js';
 import { thunkManager } from '../../src/thunk/init.js';
-import type { CoreBridgeOptions } from '../../src/types/bridge.js';
 import {
   createWebContentsTracker,
   getWebContents,
@@ -1708,19 +1707,6 @@ describe('bridge.ts createCoreBridge', () => {
       });
 
       const bridge = createCoreBridge(stateManager);
-      expect(bridge).toBeDefined();
-    });
-
-    it('should create bridge with middleware options', () => {
-      const stateManager = createMockStateManager();
-      const options = {
-        middleware: {
-          beforeProcessAction: vi.fn(),
-          afterProcessAction: vi.fn(),
-        },
-      };
-
-      const bridge = createCoreBridge(stateManager, options as unknown as CoreBridgeOptions);
       expect(bridge).toBeDefined();
     });
 

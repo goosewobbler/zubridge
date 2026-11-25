@@ -24,10 +24,7 @@
       "!**/electron-builder-output",
       "!**/dist*",
       "!**/target",
-      "!**/gen/schemas",
-      // ignore NAPI-RS generated files
-      "!packages/middleware/node/index.js",
-      "!packages/middleware/node/index.d.ts"
+      "!**/gen/schemas"
     ]
   },
   "linter": {

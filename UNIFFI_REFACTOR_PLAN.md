@@ -58,13 +58,25 @@ Notable state at the time this plan was written:
 | **P2**   | Port full action + thunk scheduler           | Core gains `ActionScheduler`, `ThunkScheduler`, `ActionExecutor`, `ActionBatcher` (the batcher has no platform consumer; both platforms keep their TS batchers)                                                                                                                         |
 | **P3**   | Perf comparison harness + middleware removal | `packages/middleware/` (Rust + Node bindings) deleted; TS `ZubridgeMiddleware` interface deleted; renderer-side benchmark suite measuring dispatch latency, throughput, multi-window propagation, memory growth against current Electron core; baseline captured for 3.1→3.2 comparison |
 | **P3.5** | Tauri E2E test suite                         | `@wdio/tauri-service` (embedded provider) standing up counter + window-sync specs; CI enabled on macOS + Linux                                                                                                                                                                          |
-| **P4**   | Tauri v2.0 release                           | `tauri-plugin-zubridge@0.2.0` + `@zubridge/tauri@2.0.0` published on unified core                                                                                                                                                                                                       |
+| **P4**   | Tauri v2.0 release                           | `@zubridge/tauri@2.0.0` + `tauri-plugin-zubridge@2.0.0` (fixed pair) published on unified core                                                                                                                                                                                          |
 | **P4.5** | Electron 3.1 release                         | `@zubridge/electron@3.1.0` released with the P3 benchmark suite and `benches/baseline.json` captured — same TS architecture as 3.0, gain measurement infrastructure                                                                                                                     |
 | **P5**   | NAPI-RS bindings + Electron 3.2 prep         | Broadcast orchestration lifted into `core` (decision #12); `napi` facade over core; `@zubridge/node-native` ships platform `.node` artifacts; the Electron seams prototyped in the smoke test                                                                                           |
 | **P6**   | Electron 3.2 migration                       | `packages/electron/src/{action,thunk,main,subscription,deltas}` replaced with NAPI calls; the three Electron seams wired (decision #11); renderer TS unchanged; the preload's TS batcher handles per-action batch acks (#224)                                                           |
-| **P7**   | Synchronized release                         | Concurrent Electron 3.2.0 + Tauri 2.x + core 0.2.0 release with migration guides; benchmark suite re-run against 3.2 produces the published 3.1→3.2 comparison                                                                                                                          |
+| **P7**   | Synchronized release                         | Concurrent Electron 3.2.0 + Tauri 2.x + core 0.x release with migration guides; benchmark suite re-run against 3.2 produces the published 3.1→3.2 comparison                                                                                                                            |
 
 P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** as a TS-with-perf-baseline release; despite the numbering, it goes out before Tauri v2. P5–P7 are the critical path to **Electron 3.2** on the Rust core. The refactor ends at P7. Additional framework integrations (Electrobun, Dioxus, Flutter, React Native, Ionic / Capacitor, Neutralino, and the deferred Blazor / Dioxus Web targets) are sequenced in [ROADMAP.md](./ROADMAP.md).
+
+### Progress (as of 2026-10-09)
+
+| Phase     | Status      | Landed in                    | Outstanding                                                                                                                                                                                                                                      |
+| --------- | ----------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **P1**    | Done        | #153                         | `wrappers/napi.rs` and `wrappers/uniffi.rs` are placeholders until P5. The §5 P1 docs (`docs/architecture/*`, `CONTRIBUTING.md`) are not written yet.                                                                                            |
+| **P2**    | Done        | #158                         | The Tauri plugin's dispatch only goes through the scheduler once #187 (P4) merges.                                                                                                                                                               |
+| **P3**    | Done        | #168, #183                   | The >10% regression gate in `benchmark-nightly.yml` is still a TODO. `benches/baseline.json` was captured locally and should be re-captured on the pinned CI runner.                                                                             |
+| **P3.5**  | Done        | #159                         | —                                                                                                                                                                                                                                                |
+| **P4**    | In progress | #169, #199–#204 (releasekit) | Open: scheduler wiring (#187), Rust backend thunks (#188), manual test checklist (#184). Release-tooling blockers are listed under §3 P4. Tauri v2 README, `docs/migration/tauri-v1-to-v2.md` and `docs/release-process.md` are not written yet. |
+| **P4.5**  | Queued      | Standing PR #174             | `@zubridge/electron` 3.1.0. The changelog must say the never-functional middleware API (`ZubridgeMiddleware`, `createMiddlewareOptions`, the `middleware` option) was removed.                                                                   |
+| **P5–P7** | Not started | —                            | —                                                                                                                                                                                                                                                |
 
 ---
 
@@ -340,13 +352,25 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 
 **Release flow (used for P4 and every release thereafter):**
 
-1. Label feature PRs with the relevant `scope:*` label (e.g. `scope:tauri`) plus `release:stable` (or `release:prerelease`). Merge them to main.
+1. Label feature PRs with the relevant `scope:*` label (e.g. `scope:tauri`) and merge them to main. In standing-PR mode, labels on feeder PRs are advisory: bumps come from conventional commits, and overrides (`bump:*`, `graduate:<package>`, the per-row channel toggle) are set on the standing PR itself.
 2. `standing-pr.yml` accumulates the changes onto `release/next`; the standing PR shows the next versions + draft changelog.
 3. When ready to ship, merge the standing PR. `standing-pr.yml` detects the merge and dispatches `release.yml` in manifest mode.
-4. `release.yml` publishes via releasekit: `zubridge-core` (Cargo) → `tauri-plugin-zubridge` (Cargo) → `@zubridge/tauri` (npm with provenance). Tags, GitHub Release drafts, and per-package `CHANGELOG.md` updates land automatically.
+4. `release.yml` publishes via releasekit: npm packages first (`@zubridge/tauri` with provenance), then the crates in dependency order (`zubridge-core` → `tauri-plugin-zubridge`). Because npm goes first, a crate that crates.io rejects leaves a half-done release; `scripts/check-cargo-prerequisites.ts` runs before publishing to catch the main cause (a crate needing a workspace crate version that isn't on crates.io). Tags, GitHub Release drafts, and per-package `CHANGELOG.md` updates land automatically.
 5. Post-publish reconcile rebuilds the standing PR against the new HEAD.
 
-Versions for P4 (`tauri-plugin-zubridge` → 0.2.0, `@zubridge/tauri` → 2.0.0, `zubridge-core` → 0.1.0 first publish) come from the conventional-commit history releasekit reads off main; no manual version edits in `package.json` / `Cargo.toml` are required.
+Target versions for P4 are `@zubridge/tauri` + `tauri-plugin-zubridge` → 2.0.0, and the first crates.io publish of `zubridge-core` at 0.1.0. The JS package and the plugin are the `fixed` `tauri` group in `releasekit.config.jsonc`, so they always release together at one version. `zubridge-core` keeps its own pre-1.0 line; releasekit raises the plugin's versioned path dependency on it whenever core releases.
+
+**Staging commit.** On a prerelease line releasekit only advances the counter, and `bump:major` on the standing PR would also major Electron, so once the v2 work is ready for `next`, one commit sets the lines by hand:
+
+- `packages/tauri/package.json` and `packages/tauri-plugin/Cargo.toml` → `2.0.0-next.0`;
+- `packages/core/Cargo.toml` → `0.1.0-next.0`, with the plugin requiring `zubridge-core = { version = "0.1.0-next.0", … }` (Cargo doesn't match a prerelease against a plain `0.1.0`);
+- delete the seeded `zubridge-core@v0.1.0` baseline tag, locally and on origin, or it collides with core's graduation.
+
+The pair then releases as `2.0.0-next.N` and core as `0.1.0-next.N`, and they graduate via the per-row channel toggle or `graduate:` labels. Until the staging commit lands, keep the pair unticked on the standing PR: a release now would put plugin `1.1.1-next.N` on crates.io.
+
+**Don't hold core back.** Don't untick `zubridge-core` on the standing PR while the plugin releases; the prerequisite check fails the publish if it is. Targeted `scope:tauri` releases leave core out (their explicit bump would take core to 1.0), so release core with `scope:core` first.
+
+Every release is dry-run first (`releasekit version --dry-run --json`), and the standing PR's version summary is checked before merging.
 
 **Scheduler wiring + backend thunks:**
 
@@ -372,8 +396,8 @@ P2 ported the scheduler into `core`, but the Tauri plugin's `dispatch_action` st
 - Tauri E2E: a renderer thunk and a Rust backend thunk each hold back a concurrent action until they complete, and a batch mixing a thunk's action with one queued behind it settles without hitting the ack timeout (#224).
 - `pnpm exec releasekit version --dry-run --json` discovers all expected publishable packages (npm + Cargo) and reports the next versions releasekit would compute, confirming the config + workspace layout is sound.
 - The standing PR opens on the first push to main after the workflow lands.
-- A `scope:tauri` + `release:stable` test PR (a no-op doc tweak) round-trips: merges, lands in standing PR, publishes the Tauri v2 trio on standing-PR merge.
-- All `apps/tauri/**` E2E specs pass on the released `@zubridge/tauri@2.0.0` / `tauri-plugin-zubridge@0.2.0` artifacts.
+- A `scope:tauri` test PR (a no-op doc tweak) round-trips: merges, lands in standing PR, publishes the Tauri pair (and `zubridge-core`) on standing-PR merge.
+- All `apps/tauri/**` E2E specs pass on the released `@zubridge/tauri@2.0.0` / `tauri-plugin-zubridge@2.0.0` artifacts.
 
 ---
 
@@ -521,11 +545,11 @@ P2 ported the scheduler into `core`, but the Tauri plugin's `dispatch_action` st
 **Steps:**
 
 1. **Versioning:**
-   - `zubridge-core` → 0.2.0 (post-NAPI maturation)
+   - `zubridge-core` → next 0.x minor (post-NAPI maturation)
    - `@zubridge/node-native` → 0.1.0 (first release) + platform packages
    - `@zubridge/electron` → 3.2.0
    - `@zubridge/tauri` → 2.1.0 (if changed since v2) or stays at 2.0
-   - `tauri-plugin-zubridge` → 0.3.0 (if API changed) or stays at 0.2
+   - `tauri-plugin-zubridge` → same version as `@zubridge/tauri` (fixed group)
 
 2. **Release stage plan** (sequential to avoid resolution races):
    1. `zubridge-core` (`cargo publish`)
@@ -625,7 +649,7 @@ Documentation is treated as a phase output, not a follow-up. Each phase that shi
 | Package                                | Update trigger                   | What changes                                                                                                                 |
 | -------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core/README.md` (new)        | P1                               | Architecture overview, conditional compilation explanation, build instructions per feature, module map, testing instructions |
-| `packages/tauri-plugin/README.md`      | P1 (dep on core), P4 (release)   | Updated install + usage for 0.2 API; reference to `zubridge-core` as backend                                                 |
+| `packages/tauri-plugin/README.md`      | P1 (dep on core), P4 (release)   | Updated install + usage for the 2.0 API; reference to `zubridge-core` as backend                                             |
 | `packages/tauri/README.md`             | P4                               | v2 API (current README is for v1); migration callout from v1                                                                 |
 | `packages/electron/README.md`          | P6                               | Notes on native binary install, troubleshooting, what's new in 3.2                                                           |
 | `packages/node-native/README.md` (new) | P5                               | Platform package list, install/troubleshooting, supported triples, build-from-source instructions                            |

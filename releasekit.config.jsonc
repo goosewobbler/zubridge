@@ -8,7 +8,11 @@
     "skipHooks": true
   },
   "version": {
-    "preset": "angular",
+    "preset": "conventionalcommits",
+    // For every 0.x package, an inferred breaking change bumps the minor, not the major. An
+    // explicit `bump:major` still takes a 0.x package to 1.0, so don't add one to a standing PR
+    // that includes a 0.x package.
+    "zeroMajor": "spec",
     "sync": false,
     "versionPrefix": "v",
     "tagTemplate": "${packageName}@v${version}",
@@ -16,11 +20,14 @@
     "prereleaseIdentifier": "next",
     "packageSpecificTags": true,
     "mismatchStrategy": "prefer-package",
-    // @zubridge/tauri (npm) + tauri-plugin-zubridge (cargo) share a wire protocol and must
-    // ship together. `fixed` releases both at one shared version whenever either changes, so a
-    // Tauri-TS-only change can't publish an npm release whose crate half is stale. This enforces
-    // the coupling on the standing-PR accumulation path; scopeLabels below only couples them
-    // when a scope:tauri feeder PR is the trigger.
+    // @zubridge/tauri (npm) + tauri-plugin-zubridge (cargo) are the two halves of one wire
+    // protocol. `fixed` releases both at one shared version whenever either changes, so users
+    // pair them by version alone and a TS-only change can't ship against a stale crate.
+    //
+    // zubridge-core stays out of the group: a group shares one version, and core has its own
+    // pre-1.0 line plus, from P5, a second consumer (@zubridge/node-native). The plugin's
+    // versioned path dependency on core keeps them in step instead: releasekit raises the
+    // plugin's requirement whenever core releases.
     "groups": {
       "tauri": {
         "packages": [
@@ -30,8 +37,11 @@
         "sync": "fixed"
       }
     },
+    // One standing-PR checkbox per release unit: Electron on its own, Tauri with the plugin nested
+    // read-only beneath it. Ungrouped packages (core, types, utils) keep their own rows.
     "primaryPackages": [
-      "@zubridge/*"
+      "@zubridge/electron",
+      "@zubridge/tauri"
     ],
     "cargo": {
       "enabled": true
@@ -71,12 +81,17 @@
     },
     "standingPr": {
       "branch": "release/next",
-      "mergeMethod": "squash"
+      "mergeMethod": "squash",
+      // Per-row prerelease/stable toggle: lets the Tauri pair ship on `next` for the manual
+      // test pass and then graduate, without moving Electron off `latest`.
+      "channelToggle": true,
+      "summaryTable": true
     },
     // PR scope labels → comma-separated list of packages eligible to bump.
-    // Tauri ships `@zubridge/tauri` (npm) + `tauri-plugin-zubridge` (cargo)
-    // together because the wire protocol couples them; bumping just one of
-    // the pair would publish a release whose npm/cargo halves are out of sync.
+    // Keep these in step with the scope → packages mapping in _release.reusable.yml. scope:tauri
+    // leaves zubridge-core out on purpose: a targeted release applies its bump to every target,
+    // so a major for Tauri 2.0 would take core to 1.0. Release core with scope:core first when
+    // the plugin needs a new core; the prerequisite check fails a Tauri release until then.
     "scopeLabels": {
       "scope:electron": "@zubridge/electron",
       "scope:tauri": "@zubridge/tauri,tauri-plugin-zubridge",

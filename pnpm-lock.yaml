@@ -194,6 +194,9 @@ importers:
       '@releasekit/release':
         specifier: ^0.47.1
         version: 0.47.1(undici@8.13.1)(ws@8.23.0)
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
       '@types/shelljs':
         specifier: ^0.10.0
         version: 0.10.0
@@ -209,12 +212,18 @@ importers:
       lint-staged:
         specifier: ^17.6.2
         version: 17.6.2
+      semver:
+        specifier: ^7.8.6
+        version: 7.8.6
       shelljs:
         specifier: ^0.10.0
         version: 0.10.0
       shx:
         specifier: ^0.4.0
         version: 0.4.0
+      smol-toml:
+        specifier: ^1.9.1
+        version: 1.9.1
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -3248,6 +3257,9 @@ packages:
 
   '@types/responselike@1.0.3':
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/shelljs@0.10.0':
     resolution: {integrity: sha512-OEfyhE5Ox+FeoHbhrEDwm0kXxntO6nsyMRCFvNsIBHPZu5rV1w2OjPcLclaC/IZ1TlzZPgbeMfwAZEi5N238yQ==}
@@ -7993,6 +8005,8 @@ snapshots:
     dependencies:
       '@types/node': 24.19.2
 
+  '@types/semver@7.8.0': {}
+
   '@types/shelljs@0.10.0':
     dependencies:
       '@types/node': 24.19.2
@@ -10569,13 +10583,13 @@ snapshots:
 
   node-abi@4.43.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.6
 
   node-addon-api@7.1.1: {}
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.6
 
   node-gyp@12.4.0:
     dependencies:
@@ -10584,7 +10598,7 @@ snapshots:
       graceful-fs: 4.2.12
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.7.4
+      semver: 7.8.6
       tar: 7.5.23
       tinyglobby: 0.2.17
       undici: 6.29.1
