@@ -7,10 +7,13 @@ import type { BaseState, ThunkContext } from '../types.js';
  */
 const getLogPrefix = (context: ThunkContext) => {
   const { environment, logPrefix } = context;
-  const prefix =
-    logPrefix ||
-    (environment === 'main' ? 'MAIN_PROCESS' : environment === 'renderer' ? 'RENDERER' : 'TAURI');
-  return `[${prefix}_THUNK]`;
+  let environmentPrefix = 'TAURI';
+  if (environment === 'main') {
+    environmentPrefix = 'MAIN_PROCESS';
+  } else if (environment === 'renderer') {
+    environmentPrefix = 'RENDERER';
+  }
+  return `[${logPrefix || environmentPrefix}_THUNK]`;
 };
 
 /**

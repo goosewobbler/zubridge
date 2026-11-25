@@ -270,12 +270,17 @@ export class IpcHandler<State extends AnyState> {
             // Get current thunk state to piggyback with acknowledgment
             const thunkState = thunkManager.getActiveThunksSummary();
 
+            let errorMessage: string | null = null;
+            if (error) {
+              errorMessage = error instanceof Error ? error.message : String(error);
+            }
+
             // Send acknowledgment with thunk state and error information
             safelySendToWindow(event.sender, IpcChannel.DISPATCH_ACK, {
               actionId: actionObj.__id,
               thunkState,
               // Include error information if there was an error
-              error: error ? (error instanceof Error ? error.message : String(error)) : null,
+              error: errorMessage,
             });
 
             debug(

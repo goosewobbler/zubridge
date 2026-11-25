@@ -39,13 +39,10 @@ const isTauriApp = appName.includes('tauri');
 const isElectronApp = appName.includes('electron');
 
 // For Electron apps, we now use a mode-specific dist directory
+const electronDistDir = isElectronApp ? `dist-${mode}` : 'dist';
 const distDir = path.resolve(
   process.cwd(),
-  isTauriApp
-    ? 'src-tauri/target/release/bundle'
-    : isElectronApp
-      ? `dist-${mode}` // Mode-specific directory
-      : 'dist',
+  isTauriApp ? 'src-tauri/target/release/bundle' : electronDistDir,
 );
 
 // Check if dist directory exists
@@ -78,9 +75,9 @@ try {
   } else {
     console.error('An unknown error occurred while starting the application');
   }
-  console.error(
-    `Please make sure you have built the app using "${isTauriApp ? 'pnpm tauri build' : isElectronApp ? `pnpm build:${mode}` : 'pnpm build'}"`,
-  );
+  const electronBuildCommand = isElectronApp ? `pnpm build:${mode}` : 'pnpm build';
+  const buildCommand = isTauriApp ? 'pnpm tauri build' : electronBuildCommand;
+  console.error(`Please make sure you have built the app using "${buildCommand}"`);
   process.exit(1);
 }
 

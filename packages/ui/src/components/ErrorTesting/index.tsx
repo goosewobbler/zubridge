@@ -68,11 +68,7 @@ export function ErrorTesting({
         (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('counter'));
 
       // Choose a key we're not subscribed to (or counter if we're subscribed to everything)
-      const keyToCheck = !isCounterSubscribed
-        ? 'counter'
-        : !isThemeSubscribed
-          ? 'theme'
-          : 'counter';
+      const keyToCheck = isCounterSubscribed && !isThemeSubscribed ? 'theme' : 'counter';
 
       debug(
         'ui',
@@ -158,7 +154,7 @@ export function ErrorTesting({
         (Array.isArray(currentSubscriptions) && currentSubscriptions.includes('counter'));
 
       // Choose a key we're not subscribed to (or counter if we're subscribed to everything)
-      const targetKey = !isCounterSubscribed ? 'counter' : !isThemeSubscribed ? 'theme' : 'counter';
+      const targetKey = isCounterSubscribed && !isThemeSubscribed ? 'theme' : 'counter';
       const actionType = targetKey === 'counter' ? 'COUNTER:SET' : 'THEME:SET';
       const payload = targetKey === 'counter' ? 42 : 'dark';
 
