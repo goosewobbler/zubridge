@@ -216,9 +216,7 @@ jobs:
             git checkout -B ${{ inputs.target_branch || 'main' }} origin/${{ inputs.target_branch || 'main' }} 2>/dev/null || git checkout ${{ inputs.target_branch || 'main' }}
           fi
 
-      # releasekit doesn't stop a crate publishing against a workspace crate that isn't on
-      # crates.io (core unticked on the standing PR, or left out of a targeted release), and
-      # crates.io only rejects it after the npm packages are out. Fail before anything publishes.
+      # Fails before anything publishes; see scripts/check-cargo-prerequisites.ts.
       - name: Check Cargo prerequisites
         # On a dry run, report the problem but still let releasekit print the computed versions.
         continue-on-error: ${{ inputs.dry_run }}

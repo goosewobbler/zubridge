@@ -36,7 +36,7 @@ serde_json = "1.0"
 
 The matching frontend dependency is `@zubridge/tauri` `^2.0`.
 
-While 2.0 is in prerelease, use `tauri-plugin-zubridge = "2.0.0-next.0"` and `@zubridge/tauri@next` instead: Cargo never matches a prerelease against a `"2.0"` requirement.
+While 2.0 is in prerelease, use `tauri-plugin-zubridge = "2.0.0-next.0"` and `@zubridge/tauri@next`: Cargo never matches a prerelease against a `"2.0"` requirement.
 
 ## Quick start
 

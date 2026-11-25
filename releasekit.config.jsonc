@@ -9,9 +9,9 @@
   },
   "version": {
     "preset": "conventionalcommits",
-    // Applies to every 0.x package (zubridge-core today, @zubridge/node-native from P5): an
-    // inferred breaking change bumps the minor, not the major. An explicit `bump:major` label
-    // still takes a 0.x package to 1.0, so keep one off a standing PR that carries one.
+    // For every 0.x package, an inferred breaking change bumps the minor, not the major. An
+    // explicit `bump:major` still takes a 0.x package to 1.0, so don't add one to a standing PR
+    // that includes a 0.x package.
     "zeroMajor": "spec",
     "sync": false,
     "versionPrefix": "v",
@@ -27,10 +27,7 @@
     // zubridge-core stays out of the group: a group shares one version, and core has its own
     // pre-1.0 line plus, from P5, a second consumer (@zubridge/node-native). The plugin's
     // versioned path dependency on core keeps them in step instead: releasekit raises the
-    // plugin's requirement whenever core releases. releasekit doesn't stop the plugin releasing
-    // without core, so scripts/check-cargo-prerequisites.ts fails the publish up front if the
-    // core version the plugin needs isn't on crates.io or in the release.
-    // https://github.com/goosewobbler/releasekit/issues/1100
+    // plugin's requirement whenever core releases.
     "groups": {
       "tauri": {
         "packages": [
@@ -85,7 +82,7 @@
     "standingPr": {
       "branch": "release/next",
       "mergeMethod": "squash",
-      // Per-row prerelease/stable toggle: lets the Tauri v2 set ship on `next` for the manual
+      // Per-row prerelease/stable toggle: lets the Tauri pair ship on `next` for the manual
       // test pass and then graduate, without moving Electron off `latest`.
       "channelToggle": true,
       "summaryTable": true

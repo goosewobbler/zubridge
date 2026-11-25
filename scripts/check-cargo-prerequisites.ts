@@ -33,10 +33,9 @@ type WorkspaceDep = { name: string; requirement?: string; kind: (typeof DEP_TABL
 type GhComment = { login: string; type: string; body: string };
 
 /**
- * Package name → the version it releases at, when known. `bumped` says whether the checked-out
- * manifests already carry the release's versions (a merged standing PR does; a targeted release
- * bumps inside releasekit, after this check), and so whether requirements can be checked against
- * the new versions.
+ * Package name → its release version, when known. `bumped`: whether the checked-out manifests
+ * already carry the release's versions (a merged standing PR does; a targeted release bumps
+ * later, inside releasekit), which is when requirements can be checked against them.
  */
 type Release = { packages: Map<string, string | undefined>; bumped: boolean };
 
