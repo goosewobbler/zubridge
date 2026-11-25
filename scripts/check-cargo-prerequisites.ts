@@ -32,12 +32,15 @@ type Crate = { name: string; toml: TomlTable };
 type WorkspaceDep = { name: string; requirement?: string; kind: (typeof DEP_TABLES)[number] };
 type GhComment = { login: string; type: string; body: string };
 
-/**
- * Package name → its release version, when known. `bumped`: whether the checked-out manifests
- * already carry the release's versions (a merged standing PR does; a targeted release bumps
- * later, inside releasekit), which is when requirements can be checked against them.
- */
-type Release = { packages: Map<string, string | undefined>; bumped: boolean };
+type Release = {
+  /** Package name → the version it releases at, if known. */
+  packages: Map<string, string | undefined>;
+  /**
+   * The checked-out manifests already have the new versions. True for a merged standing PR;
+   * false for a targeted release, which only bumps inside releasekit after this check runs.
+   */
+  bumped: boolean;
+};
 
 function parseArgs(): { pr?: string; json?: string; targets?: string; all: boolean } {
   const args = process.argv.slice(2);
@@ -239,15 +242,20 @@ function satisfies(version: string, requirement: string): boolean {
   return semver.satisfies(version, toNpmRange(requirement));
 }
 
+// https://doc.rust-lang.org/cargo/reference/registry-index.html#index-files
+function indexPath(crate: string): string {
+  const name = crate.toLowerCase();
+  if (name.length <= 2) {
+    return `${name.length}/${name}`;
+  }
+  if (name.length === 3) {
+    return `3/${name[0]}/${name}`;
+  }
+  return `${name.slice(0, 2)}/${name.slice(2, 4)}/${name}`;
+}
+
 async function hasMatchingRelease(crate: string, requirement: string): Promise<boolean> {
-  const lower = crate.toLowerCase();
-  const indexPath =
-    lower.length <= 2
-      ? `${lower.length}/${lower}`
-      : lower.length === 3
-        ? `3/${lower[0]}/${lower}`
-        : `${lower.slice(0, 2)}/${lower.slice(2, 4)}/${lower}`;
-  const response = await fetch(`https://index.crates.io/${indexPath}`);
+  const response = await fetch(`https://index.crates.io/${indexPath(crate)}`);
   if (response.status === 404) {
     return false;
   }
