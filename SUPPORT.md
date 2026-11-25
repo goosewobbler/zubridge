@@ -51,15 +51,15 @@ Criteria for `zubridge-core` to reach 1.0 are in [UNIFFI_REFACTOR_PLAN.md §7](.
 
 ### 3.1 NAPI ABI (Path A consumers)
 
-`@zubridge/node-native` (and downstream Path A consumers) is built against a specific N-API version. The matrix below applies from the first 3.1 release onward.
+`@zubridge/node-native` (and downstream Path A consumers) is built against a specific N-API version. The matrix below applies from the first node-native release onward (P5 of the refactor plan; Electron 3.2 is its first Electron consumer).
 
-| Surface                                           | Constraint                                                                                                                                                                     |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| N-API version                                     | **8** (matches napi-rs default for the build chain at 3.1 release)                                                                                                             |
-| Electron                                          | Last three LTS lines covered, plus the current latest. Initial commitment at 3.1 release: **Electron 22 LTS through latest**.                                                  |
-| Node.js (for `apps/standalone-node/` and tooling) | **≥ 20 LTS**                                                                                                                                                                   |
-| Bun                                               | Minimum version determined by the Bun NAPI compatibility audit (part of the Electrobun spike); see [docs/decisions/electrobun-spike.md](./docs/decisions/electrobun-spike.md). |
-| Neutralino runtime                                | No version constraint; the Node-extension shim runs under Node ≥ 20 inside the Neutralino app process.                                                                         |
+| Surface                                                                     | Constraint                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| N-API version                                                               | **8** (matches napi-rs default for the build chain at 3.2 release)                                                                                                                                                               |
+| Electron                                                                    | The three most recent major versions, matching Electron's own support window. Initial commitment at 3.2 release: **the oldest of those three at release time through latest** (the exact versions are filled in when 3.2 ships). |
+| Node.js (for `@zubridge/node-native` consumers and `apps/standalone-node/`) | **≥ 22**                                                                                                                                                                                                                         |
+| Bun                                                                         | Minimum version determined by the Bun NAPI compatibility audit; see [docs/decisions/electrobun-spike.md](./docs/decisions/electrobun-spike.md).                                                                                  |
+| Neutralino runtime                                                          | No version constraint; the Node-extension shim runs under Node ≥ 22 inside the Neutralino app process.                                                                                                                           |
 
 Per-platform triple availability matches what `napi-rs` produces in the standard release pipeline: `darwin-x64`, `darwin-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, `win32-x64-msvc`, `win32-arm64-msvc`.
 
