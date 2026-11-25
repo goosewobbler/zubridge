@@ -23,9 +23,12 @@ export class DeltaMerger<S> {
       // Sort entries so parent paths ('user') are processed before child paths
       // ('user.name'). Structural sharing requires parents to be cloned first
       // so child writes target the already-cloned node.
-      for (const [keyPath, value] of Object.entries(delta.changed).sort(([a], [b]) =>
-        a < b ? -1 : a > b ? 1 : 0,
-      )) {
+      for (const [keyPath, value] of Object.entries(delta.changed).sort(([a], [b]) => {
+        if (a < b) {
+          return -1;
+        }
+        return a > b ? 1 : 0;
+      })) {
         this.setDeepWithStructuralSharing(
           result,
           currentState as Record<string, unknown>,

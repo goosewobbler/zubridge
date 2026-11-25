@@ -50,6 +50,7 @@
         "noInferrableTypes": "error",
         "noUselessElse": "error",
         "noNonNullAssertion": "error",
+        "noNestedTernary": "error",
         "useBlockStatements": "error"
       },
       "suspicious": {

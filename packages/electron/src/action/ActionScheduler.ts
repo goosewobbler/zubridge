@@ -595,12 +595,12 @@ export class ActionScheduler extends EventEmitter {
 
     for (const queuedAction of this.queue) {
       const priority = queuedAction.priority;
-      const priorityName =
-        priority >= PRIORITY_LEVELS.ROOT_THUNK_ACTION
-          ? 'High'
-          : priority >= PRIORITY_LEVELS.NORMAL_THUNK_ACTION
-            ? 'Normal'
-            : 'Low';
+      let priorityName = 'Low';
+      if (priority >= PRIORITY_LEVELS.ROOT_THUNK_ACTION) {
+        priorityName = 'High';
+      } else if (priority >= PRIORITY_LEVELS.NORMAL_THUNK_ACTION) {
+        priorityName = 'Normal';
+      }
       priorityDistribution[priorityName] = (priorityDistribution[priorityName] || 0) + 1;
     }
 
