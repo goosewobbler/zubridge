@@ -142,33 +142,53 @@ function asTable(value: unknown): TomlTable {
     : {};
 }
 
-function memberDirs(members: unknown[]): string[] {
-  const dirs: string[] = [];
-  for (const member of members.filter((entry): entry is string => typeof entry === 'string')) {
-    if (!member.endsWith('/*')) {
-      dirs.push(path.join(ROOT, member));
+const GLOB = /[*?[]/;
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+}
+
+// Manifest paths of the workspace members. Cargo errors on an explicit member without a
+// Cargo.toml, so this does too rather than silently dropping the crate from the check.
+function memberManifests(members: string[], exclude: string[]): string[] {
+  const excluded = exclude.map((entry) => path.join(ROOT, entry));
+  const isExcluded = (dir: string) =>
+    excluded.some((entry) => dir === entry || dir.startsWith(`${entry}${path.sep}`));
+  const manifests: string[] = [];
+  for (const member of members) {
+    const globbed = member.endsWith('/*');
+    if (GLOB.test(globbed ? member.slice(0, -2) : member)) {
+      throw new Error(
+        `Unsupported workspace member "${member}": only plain paths and a trailing /* are handled`,
+      );
+    }
+    if (!globbed) {
+      const manifest = path.join(ROOT, member, 'Cargo.toml');
+      if (!fs.existsSync(manifest)) {
+        throw new Error(`Workspace member "${member}" has no Cargo.toml`);
+      }
+      manifests.push(manifest);
       continue;
     }
     const parent = path.join(ROOT, member.slice(0, -2));
     for (const entry of fs.existsSync(parent) ? fs.readdirSync(parent) : []) {
-      dirs.push(path.join(parent, entry));
+      const dir = path.join(parent, entry);
+      const manifest = path.join(dir, 'Cargo.toml');
+      if (!isExcluded(dir) && fs.existsSync(manifest)) {
+        manifests.push(manifest);
+      }
     }
   }
-  return dirs;
+  return manifests;
 }
 
 function readWorkspace(): { crates: Map<string, Crate>; inherited: TomlTable } {
   const workspace = asTable(readToml(path.join(ROOT, 'Cargo.toml')).workspace);
-  const members = Array.isArray(workspace.members) ? workspace.members : [];
-  if (members.some((member) => typeof member === 'string' && /[*?[]/.test(member.slice(0, -2)))) {
-    throw new Error('Only plain paths and trailing /* globs are supported in workspace.members');
-  }
+  const manifests = memberManifests(stringList(workspace.members), stringList(workspace.exclude));
   const crates = new Map<string, Crate>();
-  for (const dir of memberDirs(members)) {
-    const manifestPath = path.join(dir, 'Cargo.toml');
-    if (!fs.existsSync(manifestPath)) {
-      continue;
-    }
+  for (const manifestPath of manifests) {
     const toml = readToml(manifestPath);
     const name = asTable(toml.package).name;
     if (typeof name === 'string') {
