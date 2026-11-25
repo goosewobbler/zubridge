@@ -599,16 +599,15 @@ describe('@zubridge/tauri', () => {
       // bridgeClient is non-null here (assigned synchronously inside the IIFE)
       // but BridgeClient.initialize() hasn't completed. Dispatch a thunk now.
       const { result } = renderHook(() => useZubridgeDispatch());
-      const thunkDone = act(async () => {
-        await result.current(async (_getStateFn, dispatchFn) => {
+      await act(async () => {
+        const thunkDone = result.current(async (_getStateFn, dispatchFn) => {
           await dispatchFn('STARTED_BEFORE_READY');
         });
-      });
 
-      // Now let init resolve.
-      releaseInit?.();
-      await initPromise;
-      await thunkDone;
+        releaseInit?.();
+        await initPromise;
+        await thunkDone;
+      });
 
       // Thunk lifecycle commands must have been invoked AFTER init wired up
       // the processor.

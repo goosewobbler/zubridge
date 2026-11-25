@@ -8,12 +8,14 @@ import type {
 import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import { ipcMain } from 'electron';
 import type { Store } from 'redux';
-import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { StoreApi } from 'zustand/vanilla';
 import type { ZustandOptions } from '../../src/adapters/zustand.js';
 import { createBridgeFromStore, createCoreBridge } from '../../src/bridge/index.js';
 import { IpcChannel } from '../../src/constants.js';
+import { resetMainThunkProcessor } from '../../src/main/mainThunkProcessor.js';
 import { getStateManager } from '../../src/registry/stateManagerRegistry.js';
+import { thunkManager } from '../../src/thunk/init.js';
 import {
   createWebContentsTracker,
   getWebContents,
@@ -44,6 +46,11 @@ vi.mock('../../src/registry/stateManagerRegistry.js', () => {
 });
 
 // Mock the windows utilities
+vi.mock('../../src/main/mainThunkProcessor.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/main/mainThunkProcessor.js')>();
+  return { ...actual, resetMainThunkProcessor: vi.fn(actual.resetMainThunkProcessor) };
+});
+
 vi.mock('../../src/utils/windows.js', () => ({
   createWebContentsTracker: vi.fn(),
   getWebContents: vi.fn(),
@@ -129,6 +136,11 @@ function createMockReduxStore(): Store<AnyState> {
 }
 
 describe('bridge.ts', () => {
+  afterEach(() => {
+    // Most tests never destroy their bridge, so clear the listeners it leaves on the thunk manager.
+    thunkManager.removeAllListeners();
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
 
@@ -1346,14 +1358,13 @@ describe('bridge.ts', () => {
     it('should handle bridge destroy with thunk processor cleanup errors', async () => {
       const stateManager = createMockStateManager();
 
-      // Mock mainThunkProcessor import to throw an error
-      vi.doMock('../../src/main/mainThunkProcessor.js', () => {
-        throw new Error('Import error');
+      vi.mocked(resetMainThunkProcessor).mockImplementationOnce(() => {
+        throw new Error('Reset error');
       });
 
       const bridge = createCoreBridge(stateManager);
 
-      // Destroy should handle import errors gracefully
+      // Destroy should handle reset errors gracefully
       await expect(bridge.destroy()).resolves.toBeUndefined();
     });
 

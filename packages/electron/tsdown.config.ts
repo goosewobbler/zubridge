@@ -18,13 +18,16 @@ export default defineConfig([
     entry: ['src/renderer.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: (id) => {
-      if (externalizeUnenvRuntime(id)) {
-        return true;
-      }
-      return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
+    deps: {
+      neverBundle: (id) => {
+        if (externalizeUnenvRuntime(id)) {
+          return true;
+        }
+        return ['electron', 'zustand', 'zustand/vanilla'].includes(id);
+      },
+      alwaysBundle: ['@zubridge/utils', 'weald', '@wdio/logger'],
+      onlyBundle: false,
     },
-    noExternal: ['@zubridge/utils', 'weald', '@wdio/logger'],
     outDir: 'dist',
     clean: true,
     sourcemap: false,
@@ -61,12 +64,13 @@ export default defineConfig([
     entry: ['src/main.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'],
-    // weald is bundled (not external): it's the production debug backend and is not a
-    // declared runtime dependency, so leaving it external makes the import fail in a
-    // consumer's app and debug silently falls back to console. @wdio/logger stays external
-    // — it's only loaded in WDIO E2E, where it's installed.
-    noExternal: ['@zubridge/utils', 'weald'],
+    deps: {
+      neverBundle: ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'],
+      // weald is bundled because this package doesn't declare it; left external, the import
+      // fails in consumers. @wdio/logger stays external: it's only loaded in WDIO E2E.
+      alwaysBundle: ['@zubridge/utils', 'weald'],
+      onlyBundle: false,
+    },
     outDir: 'dist',
     clean: false,
     sourcemap: false,
@@ -88,13 +92,16 @@ export default defineConfig([
     entry: ['src/preload.ts'],
     format: ['esm', 'cjs'],
     dts: true,
-    external: (id) => {
-      if (externalizeUnenvRuntime(id)) {
-        return true;
-      }
-      return ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'].includes(id);
+    deps: {
+      neverBundle: (id) => {
+        if (externalizeUnenvRuntime(id)) {
+          return true;
+        }
+        return ['electron', 'zustand', 'zustand/vanilla', '@wdio/logger'].includes(id);
+      },
+      alwaysBundle: ['@zubridge/utils', 'weald'],
+      onlyBundle: false,
     },
-    noExternal: ['@zubridge/utils', 'weald'],
     outDir: 'dist',
     clean: false,
     sourcemap: false,

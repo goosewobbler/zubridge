@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import type { Action } from '@zubridge/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionScheduler } from '../../src/action/ActionScheduler.js';

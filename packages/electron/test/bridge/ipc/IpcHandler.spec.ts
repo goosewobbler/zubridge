@@ -60,7 +60,7 @@ vi.mock('../../../src/thunk/Thunk.js', () => ({
 
 vi.mock('../../../src/thunk/registration/ThunkRegistrationQueue.js', () => ({
   ThunkRegistrationQueue: vi.fn().mockImplementation(function () {
-    return { registerThunk: vi.fn() };
+    return { registerThunk: vi.fn(), destroy: vi.fn() };
   }),
 }));
 
@@ -548,6 +548,14 @@ describe('IpcHandler', () => {
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.DISPATCH);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.REGISTER_THUNK);
       expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IpcChannel.COMPLETE_THUNK);
+    });
+
+    it('should stop the thunk registration queue listening to the thunk manager', () => {
+      const mockRegistrationQueue = vi.mocked(ThunkRegistrationQueue).mock.results[0]?.value;
+
+      ipcHandler.cleanup();
+
+      expect(mockRegistrationQueue.destroy).toHaveBeenCalledTimes(1);
     });
   });
 

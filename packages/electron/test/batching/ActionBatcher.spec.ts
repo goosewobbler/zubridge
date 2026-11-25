@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import type { Action } from '@zubridge/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionBatcher, calculatePriority } from '../../src/batching/ActionBatcher.js';

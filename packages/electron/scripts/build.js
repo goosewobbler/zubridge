@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 
 function runTsdown(args = []) {
   return new Promise((resolve, reject) => {
-    const tsdown = spawn('tsdown', args, {
+    const tsdown = spawn(['tsdown', ...args].join(' '), {
       stdio: 'inherit',
       shell: true,
       env: process.env,

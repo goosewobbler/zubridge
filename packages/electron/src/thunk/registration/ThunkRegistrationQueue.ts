@@ -20,28 +20,41 @@ export class ThunkRegistrationQueue {
   private thunkRegistrationQueue: QueuedThunk<unknown>[] = [];
   private processingThunkRegistration = false;
   private thunkManager: ThunkManager;
+  private readonly onRootThunkCompleted: () => void;
+  private readonly onThunkStarted: () => void;
 
   constructor(thunkManager: ThunkManager) {
     this.thunkManager = thunkManager;
     debug('queue', '[THUNK-QUEUE] ThunkRegistrationQueue initialized');
 
     // Listen for thunk completion events to process the next registration
-    this.thunkManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, () => {
+    this.onRootThunkCompleted = () => {
       debug(
         'queue',
         '[THUNK-QUEUE] Received ROOT_THUNK_COMPLETED event, processing next registration',
       );
       this.processNextThunkRegistration();
-    });
+    };
+    this.thunkManager.on(ThunkManagerEvent.ROOT_THUNK_COMPLETED, this.onRootThunkCompleted);
 
     // Listen for thunk started events (useful for bypass thunks)
-    this.thunkManager.on(ThunkManagerEvent.THUNK_STARTED, () => {
+    this.onThunkStarted = () => {
       debug(
         'queue',
         '[THUNK-QUEUE] Received THUNK_STARTED event, processing next registration for bypass thunks',
       );
       this.processNextThunkRegistration();
-    });
+    };
+    this.thunkManager.on(ThunkManagerEvent.THUNK_STARTED, this.onThunkStarted);
+  }
+
+  // The manager is shared, so a discarded queue must unsubscribe or its listeners accumulate.
+  public destroy(): void {
+    this.thunkManager.removeListener(
+      ThunkManagerEvent.ROOT_THUNK_COMPLETED,
+      this.onRootThunkCompleted,
+    );
+    this.thunkManager.removeListener(ThunkManagerEvent.THUNK_STARTED, this.onThunkStarted);
   }
 
   public registerThunk<T = unknown>(
