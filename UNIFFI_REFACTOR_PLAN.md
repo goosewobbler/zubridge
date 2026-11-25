@@ -84,7 +84,7 @@ P1–P4 are the critical path to **Tauri v2**. P3 + P4.5 ship **Electron 3.1** a
 2. **Create new `packages/core/` Rust crate** with crate name `zubridge-core`.
    - `Cargo.toml` features: `uniffi`, `napi`, `tauri` (gated optional dependencies). Default = empty. **No `wasm` feature** — that decision is deferred pending P5 research (see §1 decision 7).
    - **UniFFI flow: proc-macro, not UDL.** UniFFI 0.25+ supports `#[uniffi::export]` attributes on Rust items directly; UDL is being maintained but not preferred. Proc-macro keeps a single source of truth in the Rust source — important during P2 when interfaces churn heavily.
-   - **Code hygiene for forward-compatibility** (not enforced via CI; to be documented in `CONTRIBUTING.md`, a §5 P1 deliverable not yet written):
+   - **Code hygiene for forward-compatibility** (not enforced via CI; to be documented in `CONTRIBUTING.md`):
      - Prefer `web_time::Instant` (`web-time` crate) over `std::time::Instant` (core still uses `std::time::Instant` in `action`, `batching` and `thunk`; migrating those is a P1 follow-up) — re-exports `std` natively, supports WASM if needed later. Not `instant`: unmaintained (RUSTSEC-2024-0384)
      - Keep `tokio` confined to feature-gated modules (`telemetry`, `websocket`); do not introduce hard tokio dependency in core paths
      - Keep `EventEmitter` trait sync (step 4) — no `async fn` in the trait
